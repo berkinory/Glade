@@ -205,9 +205,8 @@ base branch into a branch that fell behind, Ready marks a draft ready for review
 offered only when nothing blocks it, merges on GitHub with a method the repository allows.
 Each review comment can also be sent to the agent on its own. Checks refresh while any are
 running. A new worktree based on the checked-out branch copies local changes unless Copy
-changes is turned off; From origin instead fetches the branch's remote counterpart and starts
-there. Creating a branch does not publish it; the first push does. The commit-and-push
-shortcut runs the panel's next step.
+uncommitted changes is turned off. Creating a branch does not publish it; the first push does.
+The commit-and-push shortcut runs the panel's next step.
 
 Settings under Git & worktrees show the GitHub CLI sign-in state. Automatic worktree cleanup
 only touches worktrees of archived or deleted chats: it keeps the 15 most recent archived

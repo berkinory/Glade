@@ -497,60 +497,15 @@ const makeGitWorktrees = Effect.gen(function* () {
       return { verified: true, reason: null };
     });
 
-  // Uses the branch's configured upstream, falling back to the same name on origin, and fetches it
-  // so the new worktree starts from what the remote has now.
-  const fetchRemoteStartRef = (cwd: string, branch: string) =>
-    Effect.gen(function* () {
-      const readConfig = (key: string) =>
-        executeGit("GitCore.createDetachedWorktree.upstreamConfig", cwd, ["config", "--get", key], {
-          allowNonZeroExit: true,
-        }).pipe(Effect.map((result) => (result.code === 0 ? result.stdout.trim() : "")));
-      const remote = (yield* readConfig(`branch.${branch}.remote`)) || "origin";
-      const mergeRef = yield* readConfig(`branch.${branch}.merge`);
-      const remoteBranch = mergeRef.replace(/^refs\/heads\//, "") || branch;
-      if (remote === ".") return branch;
-      const fetched = yield* executeGit(
-        "GitCore.createDetachedWorktree.fetchRemote",
-        cwd,
-        [
-          "fetch",
-          "--no-tags",
-          remote,
-          `+refs/heads/${remoteBranch}:refs/remotes/${remote}/${remoteBranch}`,
-        ],
-        { allowNonZeroExit: true, timeoutMs: 120_000 },
-      );
-      if (fetched.code !== 0) {
-        return yield* createGitCommandError(
-          "GitCore.createDetachedWorktree.fetchRemote",
-          cwd,
-          ["fetch", remote, remoteBranch],
-          `Could not fetch ${remote}/${remoteBranch}: ${fetched.stderr.trim() || "the remote branch may not exist"}`,
-        );
-      }
-      return `refs/remotes/${remote}/${remoteBranch}`;
-    });
-
   const createDetachedWorktree: GitCoreShape["createDetachedWorktree"] = (input, options) =>
     Effect.gen(function* () {
       const onPhase = options?.onPhase ?? (() => Effect.void);
       const newBranch = input.newBranch ?? null;
-      if (input.startFromRemote && input.copyChangesFrom) {
-        return yield* createGitCommandError(
-          "GitCore.createDetachedWorktree",
-          input.cwd,
-          ["worktree", "add"],
-          "Local changes cannot be copied onto the remote branch. Choose one of the two.",
-        );
-      }
-      const startRef = input.startFromRemote
-        ? yield* fetchRemoteStartRef(input.cwd, input.ref)
-        : input.ref;
       const refResult = yield* executeGit("GitCore.createDetachedWorktree.resolveRef", input.cwd, [
         "rev-parse",
         "--verify",
         "--end-of-options",
-        `${startRef}^{commit}`,
+        `${input.ref}^{commit}`,
       ]);
       const resolvedRef = refResult.stdout.trim();
       if (input.copyChangesFrom) {

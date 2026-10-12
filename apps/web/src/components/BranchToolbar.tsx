@@ -362,18 +362,7 @@ export default function BranchToolbar({
   const canSwitchToLocal = Boolean(!envLocked && effectiveEnvMode === "worktree");
   const showEnvPicker = effectiveEnvMode === "local" || canSwitchToLocal;
   // Mirrors the send-time rule: only a worktree based on the checked-out branch can carry its changes.
-  const canStartFromRemote =
-    !hasServerThread &&
-    effectiveEnvMode === "worktree" &&
-    !activeWorktreePath &&
-    activeThreadBranch !== null &&
-    (draftGit.data?.branches.some(
-      (branch) => branch.isRemote === true && branch.name.endsWith(`/${activeThreadBranch}`),
-    ) ??
-      false);
-  const startFromRemote = canStartFromRemote && draftThread?.startFromRemote === true;
   const canCopyLocalChanges =
-    !startFromRemote &&
     !hasServerThread &&
     effectiveEnvMode === "worktree" &&
     !activeWorktreePath &&
@@ -446,7 +435,7 @@ export default function BranchToolbar({
                 />
                 Worktree
               </label>
-              {canStartFromRemote || canCopyLocalChanges ? (
+              {canCopyLocalChanges ? (
                 <Menu>
                   <MenuTrigger
                     disabled={envLocked}
@@ -462,32 +451,19 @@ export default function BranchToolbar({
                       />
                     }
                   >
-                    {startFromRemote ? "From origin" : "From local"}
+                    {(draftThread?.copyLocalChanges ?? true) ? "With changes" : "Without changes"}
                     <ChevronDownIcon aria-hidden className="size-3 opacity-60" />
                   </MenuTrigger>
                   <ComposerPickerMenuPopup align="end" side="top" className="min-w-60">
-                    {canStartFromRemote ? (
-                      <MenuCheckboxItem
-                        checked={startFromRemote}
-                        variant="switch"
-                        onCheckedChange={(checked) =>
-                          setDraftThreadContext(threadId, { startFromRemote: Boolean(checked) })
-                        }
-                      >
-                        Start from the latest remote branch
-                      </MenuCheckboxItem>
-                    ) : null}
-                    {canCopyLocalChanges ? (
-                      <MenuCheckboxItem
-                        checked={draftThread?.copyLocalChanges ?? true}
-                        variant="switch"
-                        onCheckedChange={(checked) =>
-                          setDraftThreadContext(threadId, { copyLocalChanges: Boolean(checked) })
-                        }
-                      >
-                        Copy uncommitted changes
-                      </MenuCheckboxItem>
-                    ) : null}
+                    <MenuCheckboxItem
+                      checked={draftThread?.copyLocalChanges ?? true}
+                      variant="switch"
+                      onCheckedChange={(checked) =>
+                        setDraftThreadContext(threadId, { copyLocalChanges: Boolean(checked) })
+                      }
+                    >
+                      Copy uncommitted changes
+                    </MenuCheckboxItem>
                   </ComposerPickerMenuPopup>
                 </Menu>
               ) : null}

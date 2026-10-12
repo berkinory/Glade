@@ -530,41 +530,6 @@ it.layer(TestLayer)("git integration", (it) => {
       }),
     );
 
-    it.effect("starts a worktree from the freshly fetched remote branch", () =>
-      Effect.gen(function* () {
-        const tmp = yield* makeTmpDir();
-        yield* initRepoWithCommit(tmp);
-        const core = yield* GitCore;
-        const branch = yield* git(tmp, ["branch", "--show-current"]);
-        const remote = yield* makeTmpDir();
-        yield* git(remote, ["init", "--bare"]);
-        yield* git(tmp, ["remote", "add", "origin", remote]);
-        yield* git(tmp, ["push", "-u", "origin", branch]);
-        const other = yield* makeTmpDir();
-        yield* git(other, ["clone", remote, "."]);
-        yield* git(other, ["config", "user.email", "other@example.com"]);
-        yield* git(other, ["config", "user.name", "Other"]);
-        yield* writeTextFile(path.join(other, "remote.txt"), "from the remote\n");
-        yield* git(other, ["add", "remote.txt"]);
-        yield* git(other, ["commit", "-m", "Remote work"]);
-        yield* git(other, ["push", "origin", branch]);
-        const remoteHead = yield* git(other, ["rev-parse", "HEAD"]);
-
-        const wtPath = path.join(tmp, "wt-from-remote");
-        const result = yield* core.createDetachedWorktree({
-          cwd: tmp,
-          ref: branch,
-          path: wtPath,
-          startFromRemote: true,
-        });
-
-        expect(result.worktree.ref).toBe(remoteHead);
-        expect(yield* readTextFile(path.join(wtPath, "remote.txt"))).toBe("from the remote\n");
-        expect(yield* git(tmp, ["rev-parse", branch])).not.toBe(remoteHead);
-        yield* core.removeWorktree({ cwd: tmp, path: wtPath, force: true });
-      }),
-    );
-
     it.effect("deletes the pre-created branch when worktree add fails", () =>
       Effect.gen(function* () {
         const tmp = yield* makeTmpDir();

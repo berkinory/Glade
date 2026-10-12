@@ -30,6 +30,7 @@
 - The confirmation dialog and context preparation step when switching providers.
 - The subagent list above the composer. Subagents show in their card in the chat, which can also stop them all, and in the Environment panel.
 - The Open PR in browser action in the pull request dialog. Create PR and Create draft PR remain.
+- The option to start a new worktree from the latest remote branch. New worktrees start from the local branch and can still copy uncommitted changes.
 
 ## 0.2.4 - 2026-10-12
 
