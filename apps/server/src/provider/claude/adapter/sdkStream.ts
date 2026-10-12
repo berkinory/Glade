@@ -201,7 +201,7 @@ export function makeClaudeSdkStream(input: {
     });
 
   const runSdkStream = (context: ClaudeSessionContext): Effect.Effect<void, Error> =>
-    Stream.fromAsyncIterable(context.messageStream ?? context.query, (cause) =>
+    Stream.fromAsyncIterable(context.messageStream, (cause) =>
       toError(cause, "Claude runtime stream failed."),
     ).pipe(
       Stream.takeWhile(() => !context.stopped),

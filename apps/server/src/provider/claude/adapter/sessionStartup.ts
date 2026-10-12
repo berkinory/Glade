@@ -39,7 +39,7 @@ import { makeClaudeSdkHooks } from "./sdkHooks";
 import { withClaudeArtifactOptIn } from "../claudeProcessEnv.ts";
 import { buildClaudeMcpServers } from "../../../agentGateway/mcpInjection.ts";
 import { toMessage } from "./streamErrors";
-import { prestartClaudeMessageStream } from "./sdkProcessRuntime";
+import { cancellableClaudeMessageStream } from "./sdkProcessRuntime";
 import { type ProviderSession } from "@glade/contracts/provider/provider";
 import { ClaudeRequestUsage } from "../claudeRequestUsage.ts";
 import { makeClaudeDiscovery } from "./discovery";
@@ -325,8 +325,9 @@ export function makeClaudeSessionStartup(input: {
           ]).pipe(Effect.asVoid),
         ),
       );
-      const messageStream =
-        input.runtimeMode === "auto" ? prestartClaudeMessageStream(queryRuntime) : undefined;
+      const messageStream = cancellableClaudeMessageStream(queryRuntime, {
+        prestart: input.runtimeMode === "auto",
+      });
 
       let installationContext: ClaudeSessionContext | undefined;
       let installationComplete = false;
@@ -420,7 +421,7 @@ export function makeClaudeSessionStartup(input: {
             : {}),
           promptQueue,
           query: queryRuntime,
-          ...(messageStream ? { messageStream } : {}),
+          messageStream,
           processOwner,
           streamFiber: undefined,
           startedAt,

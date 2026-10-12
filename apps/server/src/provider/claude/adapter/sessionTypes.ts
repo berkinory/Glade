@@ -172,7 +172,7 @@ export interface ClaudeSessionQuery {
   initToolNames?: ReadonlySet<string>;
   initSkillNames?: ReadonlySet<string>;
   loadedPluginNames?: ReadonlySet<string>;
-  readonly messageStream?: AsyncIterable<SDKMessage>;
+  readonly messageStream: AsyncIterable<SDKMessage>;
   readonly processOwner: ClaudeProcessOwner;
   stopDeferred?: Deferred.Deferred<void, ProviderAdapterProcessError>;
   streamFiber: Fiber.Fiber<void, Error> | undefined;

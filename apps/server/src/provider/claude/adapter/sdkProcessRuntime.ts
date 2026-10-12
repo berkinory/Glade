@@ -10,21 +10,23 @@ import { ClaudeQueryRuntime, ClaudeOwnedProcess } from "./adapterConfiguration";
 
 export const CLAUDE_DISCOVERY_THREAD_ID = ThreadId.makeUnsafe("claude:discovery");
 
-export function prestartClaudeMessageStream(
+export function cancellableClaudeMessageStream(
   queryRuntime: ClaudeQueryRuntime,
+  options: { readonly prestart: boolean },
 ): AsyncIterable<SDKMessage> {
-  // SDK discovery waits for a handshake that only starts on the first iterator read. Keep that read
-  // for the real stream consumer, while making cancellation win the race so session teardown never
-  // waits on an unread first message.
+  // Stream interruption awaits the iterator's `return()`, and the SDK query is an async generator
+  // whose `return()` queues behind the pending `next()`, which never settles while Claude is idle.
+  // Cancellation must win that race or stopping an idle session never reaches process teardown.
+  // SDK discovery (Auto mode) waits for a handshake that only starts on the first iterator read, so
+  // `prestart` issues that read now and keeps it for the real consumer.
   const iterator = queryRuntime[Symbol.asyncIterator]();
-  const firstResult = iterator.next();
-  void firstResult.catch(() => undefined);
+  let firstResult = options.prestart ? iterator.next() : undefined;
+  void firstResult?.catch(() => undefined);
   const doneResult: IteratorResult<SDKMessage> = { done: true, value: undefined };
   let resolveClosed!: (result: IteratorResult<SDKMessage>) => void;
   const closedResult = new Promise<IteratorResult<SDKMessage>>((resolve) => {
     resolveClosed = resolve;
   });
-  let firstResultPending = true;
   let closed = false;
 
   const raceWithClose = (
@@ -39,8 +41,8 @@ export function prestartClaudeMessageStream(
       if (closed) {
         return Promise.resolve(doneResult);
       }
-      const result = firstResultPending ? firstResult : iterator.next();
-      firstResultPending = false;
+      const result = firstResult ?? iterator.next();
+      firstResult = undefined;
       return raceWithClose(result);
     },
     return: async () => {
