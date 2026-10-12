@@ -119,10 +119,9 @@ export function makeClaudeRuntimeEventsLive(options?: ClaudeAdapterLiveOptions) 
           }
           return {
             threadId,
-            turns: context.turns.map((turn) => ({
-              id: turn.id,
-              items: [...turn.items],
-            })),
+            // Turn items are not retained: nothing reads them, and every SDK message of a long
+            // session would otherwise stay in memory.
+            turns: context.turns.map((turn) => ({ id: turn.id, items: [] })),
           };
         });
 

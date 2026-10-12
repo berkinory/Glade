@@ -334,7 +334,6 @@ export function makeClaudeTurnDispatch(input: {
               },
             }
           : {}),
-        items: [],
         assistantTextBlocks: new Map(),
         assistantTextBlockOrder: [],
 

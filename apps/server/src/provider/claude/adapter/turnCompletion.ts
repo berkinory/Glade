@@ -300,10 +300,7 @@ export function makeClaudeTurnCompletion(input: {
         });
       }
 
-      context.turns.push({
-        id: turnState.turnId,
-        items: [...turnState.items],
-      });
+      context.turns.push({ id: turnState.turnId });
 
       if (usageSnapshot) {
         const usageStamp = yield* makeEventStamp();

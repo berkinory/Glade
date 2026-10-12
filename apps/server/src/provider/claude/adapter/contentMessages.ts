@@ -24,7 +24,6 @@ import {
   toolResultBlocksFromUserMessage,
   toolResultStreamKind,
 } from "./toolPresentation";
-import { stripDiagnosticImages } from "../../core/stripDiagnosticImages.ts";
 import {
   parseClaudeWorkflowLaunch,
   parseClaudeWorkflowLaunchFromText,
@@ -243,10 +242,6 @@ export function makeClaudeContentMessages(input: {
     Effect.gen(function* () {
       if (message.type !== "user") {
         return;
-      }
-
-      if (context.turnState) {
-        context.turnState.items.push(stripDiagnosticImages(message.message));
       }
 
       const content = message.message.content;
@@ -485,7 +480,6 @@ export function makeClaudeContentMessages(input: {
       }
 
       if (context.turnState) {
-        context.turnState.items.push(stripDiagnosticImages(message.message));
         yield* backfillReasoning(context, message);
         yield* backfillAssistantTextBlocksFromSnapshot(context, message);
       }

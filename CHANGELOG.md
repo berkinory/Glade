@@ -5,6 +5,7 @@
 ### Improved
 
 - Glade starts faster and uses much less memory, and Codex replies take far less work to process.
+- Long Claude sessions use less memory.
 
 ## 0.2.5 - 2026-10-13
 
