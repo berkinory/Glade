@@ -73,6 +73,7 @@
 - New chat no longer stops responding after an interrupted navigation, and text typed while a new chat opens is no longer overwritten.
 - New chats are dated when they're created, not when their draft was opened.
 - Send explains why it can't send yet instead of silently doing nothing.
+- Text you type right after sending or steering no longer gets the sent message stuck in front of it.
 - "Add new project" in the composer works in the browser and on paired devices.
 - Chat hover cards show the reasoning effort, and Fast only when Claude is actually serving it.
 - Sidebar text no longer turns blurry after moving between displays or changing zoom.
