@@ -24,6 +24,10 @@ import {
 
 const EMPTY_TREE_OBJECT_ID = "4b825dc642cb6eb9a060e54bf8d69288fbee4904";
 
+// Working-tree diffs against the real index use `diff-index`/`diff-files`: porcelain `git diff`
+// refreshes and rewrites `.git/index` even with GIT_OPTIONAL_LOCKS=0, which contends with the
+// agent's own git commands and wakes the repository watcher. `-M` keeps porcelain's rename detection.
+
 const UNCOMMITTED_BLAME_RESULT: GitBlameLineResult = {
   sha: "0".repeat(40),
   shortSha: "",
@@ -255,7 +259,8 @@ const makeGitDiff = Effect.gen(function* () {
         "GitCore.readUnstagedPatch.trackedPatch",
         cwd,
         [
-          "diff",
+          "diff-files",
+          "-M",
           "--patch",
           "--no-color",
           ...RAW_DIFF_ARGS,
@@ -417,7 +422,15 @@ const makeGitDiff = Effect.gen(function* () {
           yield* executeGit(
             "GitCore.readWorkingTreePatch.renamePaths",
             cwd,
-            ["diff", "--name-status", "-z", "--diff-filter=R", ...RAW_DIFF_ARGS, "HEAD"],
+            [
+              "diff-index",
+              "-M",
+              "--name-status",
+              "-z",
+              "--diff-filter=R",
+              ...RAW_DIFF_ARGS,
+              "HEAD",
+            ],
             {
               timeoutMs: WORKING_TREE_DIFF_TIMEOUT_MS,
               outputMode: "truncate",
@@ -439,7 +452,8 @@ const makeGitDiff = Effect.gen(function* () {
         "GitCore.readWorkingTreePatch.trackedPatch",
         cwd,
         [
-          "diff",
+          "diff-index",
+          "-M",
           "--patch",
           "--no-color",
           ...RAW_DIFF_ARGS,
@@ -562,7 +576,7 @@ const makeGitDiff = Effect.gen(function* () {
       const tracked = yield* executeGit(
         "GitCore.readBranchPatch.trackedPatch",
         cwd,
-        ["diff", "--patch", "--minimal", "--no-color", ...RAW_DIFF_ARGS, mergeBase],
+        ["diff-index", "-M", "--patch", "--minimal", "--no-color", ...RAW_DIFF_ARGS, mergeBase],
         {
           timeoutMs: WORKING_TREE_DIFF_TIMEOUT_MS,
           maxOutputBytes: 10_000_000,
@@ -732,7 +746,7 @@ const makeGitDiff = Effect.gen(function* () {
         `${operationPrefix}.trackedAdditions`,
         cwd,
         [
-          "diff",
+          "diff-index",
           "--name-only",
           "--no-renames",
           "--diff-filter=A",
@@ -798,12 +812,20 @@ const makeGitDiff = Effect.gen(function* () {
           trackedArgs = ["diff", "--cached", "--numstat", "-z", ...RAW_DIFF_ARGS];
           break;
         case "unstaged":
-          trackedArgs = ["diff", "--numstat", "-z", ...RAW_DIFF_ARGS];
+          trackedArgs = ["diff-files", "-M", "--numstat", "-z", ...RAW_DIFF_ARGS];
           includeUntracked = true;
           break;
         case "branch": {
           const mergeBase = yield* resolveBranchMergeBase(cwd);
-          trackedArgs = ["diff", "--numstat", "-z", "--minimal", ...RAW_DIFF_ARGS, mergeBase];
+          trackedArgs = [
+            "diff-index",
+            "-M",
+            "--numstat",
+            "-z",
+            "--minimal",
+            ...RAW_DIFF_ARGS,
+            mergeBase,
+          ];
           includeUntracked = true;
           break;
         }
@@ -856,7 +878,8 @@ const makeGitDiff = Effect.gen(function* () {
             { allowNonZeroExit: true },
           ).pipe(Effect.map((result) => result.code === 0));
           trackedArgs = [
-            "diff",
+            "diff-index",
+            "-M",
             "--numstat",
             "-z",
             ...RAW_DIFF_ARGS,

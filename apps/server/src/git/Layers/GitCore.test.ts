@@ -224,6 +224,48 @@ it.layer(TestLayer)("git integration", (it) => {
       }),
     );
 
+    it.effect("reads working-tree diffs with renames without rewriting the index", () =>
+      Effect.gen(function* () {
+        const core = yield* GitCore;
+        const tmp = yield* makeTmpDir();
+        yield* initRepoWithCommit(tmp);
+        const body = Array.from({ length: 20 }, (_, line) => `line ${line}\n`).join("");
+        yield* writeTextFile(path.join(tmp, "old.txt"), body);
+        yield* writeTextFile(path.join(tmp, "touched.txt"), "unchanged\n");
+        yield* git(tmp, ["add", "."]);
+        yield* git(tmp, ["commit", "-m", "files"]);
+        yield* git(tmp, ["mv", "old.txt", "new.txt"]);
+        yield* writeTextFile(path.join(tmp, "new.txt"), `${body}added\n`);
+        // A stat-only change is what makes porcelain `git diff` refresh and rewrite the index.
+        yield* Effect.promise(() =>
+          fs.utimes(path.join(tmp, "touched.txt"), new Date(0), new Date(0)),
+        );
+        const indexPath = path.join(tmp, ".git", "index");
+        const indexBefore = yield* Effect.promise(() => fs.stat(indexPath));
+
+        expect(yield* core.readDiffStats(tmp, "workingTree", undefined, true)).toEqual({
+          additions: 1,
+          deletions: 0,
+          fileCount: 1,
+          files: [{ path: "new.txt", insertions: 1, deletions: 0 }],
+        });
+        expect(yield* core.readDiffStats(tmp, "unstaged")).toEqual({
+          additions: 1,
+          deletions: 0,
+          fileCount: 1,
+        });
+        const patch = (yield* core.readWorkingTreePatch(tmp)).patch;
+        expect(patch).toContain("rename from old.txt\nrename to new.txt\n");
+        expect((yield* core.readUnstagedPatch(tmp)).patch).toContain("+added\n");
+
+        const indexAfter = yield* Effect.promise(() => fs.stat(indexPath));
+        expect([indexAfter.ino, indexAfter.mtimeMs]).toEqual([
+          indexBefore.ino,
+          indexBefore.mtimeMs,
+        ]);
+      }),
+    );
+
     it.effect("truncates an oversized unstaged patch instead of failing", () =>
       Effect.gen(function* () {
         const core = yield* GitCore;

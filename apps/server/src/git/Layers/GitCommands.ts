@@ -36,6 +36,8 @@ import {
 const COALESCED_READ_COMMANDS = new Set([
   "status",
   "diff",
+  "diff-index",
+  "diff-files",
   "rev-parse",
   "rev-list",
   "show-ref",

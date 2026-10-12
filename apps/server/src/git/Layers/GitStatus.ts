@@ -614,7 +614,7 @@ const makeGitStatus = Effect.gen(function* () {
       const numstatResult = yield* executeGit(
         "GitCore.statusDetails.numstat",
         cwd,
-        ["diff", "HEAD", "--numstat", "-z"],
+        ["diff-index", "-M", "--numstat", "-z", "HEAD"],
         { allowNonZeroExit: true },
       ).pipe(Effect.catchIf(isMissingGitCwdError, () => Effect.succeed(null)));
       if (numstatResult === null) return NON_REPOSITORY_STATUS_DETAILS;
@@ -622,7 +622,7 @@ const makeGitStatus = Effect.gen(function* () {
         return yield* createGitCommandError(
           "GitCore.statusDetails.numstat",
           cwd,
-          ["diff", "HEAD", "--numstat", "-z"],
+          ["diff-index", "-M", "--numstat", "-z", "HEAD"],
           numstatResult.stderr.trim(),
         );
       }

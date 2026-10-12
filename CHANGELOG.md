@@ -8,6 +8,10 @@
 - Long Claude sessions use less memory.
 - The visual reply preview browser loads only when a preview is first needed, so Glade starts lighter.
 
+### Fixed
+
+- Live change counts no longer touch the Git index while an agent works, which could make the agent's own Git commands fail.
+
 ## 0.2.5 - 2026-10-13
 
 ### New
