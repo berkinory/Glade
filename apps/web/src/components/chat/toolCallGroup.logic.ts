@@ -22,6 +22,9 @@ export interface ToolCallGroupSummary {
   hasRunningEntry: boolean;
   failedCount: number;
 
+  // The group wears its activity's glyph; "mixed" when it spans several, null when it is only
+  // reasoning. Generic tool groups and reasoning keep the first entry's icon.
+  activity: ToolCallGroupActivity | "mixed" | null;
   iconEntry: WorkLogEntry;
   // A browser or computer run names its latest step, such as `Clicked "Sign in" · github.com`.
   latestStep: string | null;
@@ -67,7 +70,7 @@ const FILE_COUNTED_CATEGORIES: ReadonlySet<ToolCallSummaryCategory> = new Set(["
 
 // The title names what the agent did, not every tool it touched: reading, listing and searching are
 // all exploring, and fetching and web search are both browsing.
-type SummaryActivity =
+export type ToolCallGroupActivity =
   | "edit"
   | "command"
   | "explore"
@@ -78,7 +81,7 @@ type SummaryActivity =
   | "image_generation"
   | "tools";
 
-const ACTIVITY_OF: Record<ToolCallSummaryCategory, SummaryActivity> = {
+const ACTIVITY_OF: Record<ToolCallSummaryCategory, ToolCallGroupActivity> = {
   edit: "edit",
   command: "command",
   read: "explore",
@@ -96,7 +99,7 @@ const ACTIVITY_OF: Record<ToolCallSummaryCategory, SummaryActivity> = {
   other: "tools",
 };
 
-const ACTIVITY_ORDER: ReadonlyArray<SummaryActivity> = [
+const ACTIVITY_ORDER: ReadonlyArray<ToolCallGroupActivity> = [
   "edit",
   "command",
   "explore",
@@ -115,7 +118,7 @@ function timesLabel(verb: string, count: number): string {
 }
 
 function activityLabel(
-  activity: SummaryActivity,
+  activity: ToolCallGroupActivity,
   counts: ReadonlyMap<ToolCallSummaryCategory, number>,
 ): string {
   const count = (category: ToolCallSummaryCategory) => counts.get(category) ?? 0;
@@ -199,7 +202,7 @@ export function summarizeToolCallGroup(
     countByCategory.set(category, (countByCategory.get(category) ?? 0) + distinctFiles.size);
   }
 
-  const callsByActivity = new Map<SummaryActivity, number>();
+  const callsByActivity = new Map<ToolCallGroupActivity, number>();
   for (const [category, count] of countByCategory) {
     const activity = ACTIVITY_OF[category];
     callsByActivity.set(activity, (callsByActivity.get(activity) ?? 0) + count);
@@ -224,6 +227,7 @@ export function summarizeToolCallGroup(
     entryCount: groupable.length,
     hasRunningEntry,
     failedCount,
+    activity: activities.length > 1 ? "mixed" : (activities[0] ?? null),
     iconEntry: summarizable[0] ?? groupable[0]!,
     latestStep: isStepRun ? latestStepText(summarizable) : null,
   };
