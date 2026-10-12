@@ -3,6 +3,7 @@ import type { EditorId } from "@glade/contracts/settings/editor";
 import type { ResolvedKeybindingsConfig } from "@glade/contracts/settings/keybindings";
 import type { CSSProperties } from "react";
 import { useCopyPathToClipboard } from "~/hooks/useCopyToClipboard";
+import { splitRepoRelativePath } from "~/lib/diffRendering";
 import { cn } from "~/lib/utils";
 import { MenuItem } from "../ui/menu";
 import { DiffStatLabel } from "./DiffStatLabel";
@@ -33,6 +34,8 @@ interface EditedFileRowProps {
   };
   onReview: () => void;
 }
+// A fixed height in the chat font's em lets the turn's file list cap itself at a row count.
+export const EDITED_FILE_ROW_HEIGHT_EM = 2.25;
 const MENU_ICON_CLASS_NAME = "size-3.5 shrink-0 text-muted-foreground";
 const EDITED_FILE_EDITOR_ORDER: ReadonlyArray<EditorId> = [
   "file-manager",
@@ -48,42 +51,50 @@ export function EditedFileRow(props: EditedFileRowProps) {
     props.file.path,
     props.file.workspaceRoot,
   );
+  const { dir, name } = splitRepoRelativePath(relativePath ?? props.file.path);
   return (
     <div
       data-edited-file-row="true"
       className={cn(
-        "flex w-full min-w-0 items-center gap-1.5 overflow-hidden border-t border-[color:var(--color-border-light)] bg-transparent py-1.5 pr-2 transition-colors hover:bg-[var(--color-background-button-secondary-hover)] dark:bg-transparent dark:hover:bg-transparent",
+        "font-system-ui flex w-full min-w-0 items-center gap-1.5 overflow-hidden border-t border-[color:var(--color-border-light)] bg-transparent pr-2 transition-colors hover:bg-[var(--color-background-button-secondary-hover)] dark:bg-transparent dark:hover:bg-transparent",
         props.appearance.withFirstReset && "first:border-t-0",
       )}
+      style={{
+        fontSize: props.appearance.fontSize,
+        height: `${EDITED_FILE_ROW_HEIGHT_EM}em`,
+      }}
     >
       <button
         type="button"
         aria-label={`Review changes to ${props.file.path}`}
-        className="group/file-row flex min-w-0 flex-1 items-center gap-2 self-stretch bg-transparent py-1 pl-3 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/60"
+        title={props.file.path}
+        className="group/file-row flex h-full min-w-0 flex-1 items-center gap-2 bg-transparent pl-3 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/60"
         onClick={props.onReview}
       >
         <FileEntryIcon
           pathValue={props.file.path}
           kind="file"
           theme={props.appearance.theme}
-          className="size-4 shrink-0 text-[var(--color-text-foreground)] opacity-70 dark:opacity-80"
+          className="opacity-70 dark:opacity-80"
         />
-        <span
-          className="font-system-ui min-w-0 truncate font-normal text-[var(--color-text-foreground)] underline-offset-2 group-hover/file-row:underline group-focus-visible/file-row:underline"
-          style={{
-            fontSize: props.appearance.fontSize,
-          }}
-          title={props.file.path}
-        >
-          {props.file.path}
+        <span className="flex min-w-0 items-baseline gap-1.5">
+          <span
+            className={cn(
+              "min-w-0 truncate text-[var(--color-text-foreground)] underline-offset-2 group-hover/file-row:underline group-focus-visible/file-row:underline",
+              props.file.kind === "deleted" && "line-through",
+            )}
+          >
+            {name}
+          </span>
+          {dir ? (
+            // The folder gives way before the file name does.
+            <span className="min-w-0 shrink-[100] truncate text-[0.85em] text-muted-foreground/60">
+              {dir.replace(/\/$/, "")}
+            </span>
+          ) : null}
         </span>
         {props.file.additions + props.file.deletions > 0 ? (
-          <span
-            className="font-system-ui ml-auto shrink-0 tabular-nums"
-            style={{
-              fontSize: props.appearance.fontSize,
-            }}
-          >
+          <span className="ml-auto shrink-0 tabular-nums">
             <DiffStatLabel additions={props.file.additions} deletions={props.file.deletions} />
           </span>
         ) : null}

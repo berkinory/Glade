@@ -3,7 +3,7 @@ import { ThreadId } from "@glade/contracts/core/baseSchemas";
 import { pluralize } from "@glade/shared/text/text";
 import { AsyncUserInputCard } from "~/components/chat/AsyncUserInputCard";
 import { DiffStatLabel } from "~/components/chat/DiffStatLabel";
-import { EditedFileRow } from "~/components/chat/EditedFileRow";
+import { EDITED_FILE_ROW_HEIGHT_EM, EditedFileRow } from "~/components/chat/EditedFileRow";
 import { GladeThreadCreationCard } from "~/components/chat/GladeThreadCreationCard";
 import {
   MESSAGE_ACTION_ICON_CLASS_NAME,
@@ -41,6 +41,7 @@ import { formatDayAwareTimestamp } from "~/timestampFormat";
 import { isFileChangeWorkLogEntry, type WorkLogEntry } from "~/workLog.types";
 import { collectAbsoluteFilePathsFromWorkEntries } from "./timelineTransitions";
 import type { TimelineController } from "./useTimelineController";
+const EDITED_FILE_LIST_VISIBLE_ROWS = 6.5;
 export function renderTimelineAssistantMessage(
   controller: TimelineController,
   row: Extract<
@@ -619,7 +620,16 @@ export function renderTimelineAssistantMessage(
                   </div>
                 </div>
                 <DisclosureRegion open={fileChangesExpanded}>
-                  {checkpointFiles.map((file) => renderCheckpointFileRow(file, true))}
+                  {/* Six rows and a sliver of the seventh, so a long list reads as scrollable. */}
+                  <div
+                    className="scroll-fade-y overflow-y-auto"
+                    style={{
+                      fontSize: chatTypographyStyle.fontSize,
+                      maxHeight: `${EDITED_FILE_LIST_VISIBLE_ROWS * EDITED_FILE_ROW_HEIGHT_EM}em`,
+                    }}
+                  >
+                    {checkpointFiles.map((file) => renderCheckpointFileRow(file, true))}
+                  </div>
                 </DisclosureRegion>
               </div>
             );
