@@ -10,6 +10,8 @@
 - Worktrees of archived chats can be removed once their pull request is merged or after a chosen number of days.
 - Browse a project's pull requests from the right sidebar, open or closed and split into yours and everyone else's, and open any of them in a tab with a summary of its branch, reviewers, checks and comments, its changed files, and Merge or Ready for review next to Fix and Rerun.
 - Read the end of a failing GitHub Actions log right next to the check, rerun failed jobs, and have Fix hand the agent the failing log.
+- Answered agent questions stay visible in the conversation with your answer.
+- Each turn shows how long it worked and whether it finished, was stopped or failed.
 
 ### Improved
 
@@ -35,6 +37,14 @@
 - Subagent cards share the tool groups' rail, and subagent lists show reasoning effort the way the model picker does.
 - Tool output in the chat keeps much more of a long result before it is shortened.
 - Opening a file from the chat, the file search or Source Control opens it in the main view without switching the right sidebar to the Explorer.
+- Claude chats show the Monitor event that woke the agent, instead of a reply with no prompt.
+- Queued messages pause after you stop a turn or it fails, with Resume and Edit options.
+- File and content search shortcuts can be changed in Settings, and file search opens pasted absolute or home paths directly.
+- Markdown previews render embedded HTML safely.
+- Right-to-left text in replies displays in the correct direction.
+- Explorer reopens with the current file's folders expanded when you switch chats.
+- The Activity list scrolls to the chat you open.
+- Grouped tool calls show an icon for the kind of work they did.
 
 ### Fixed
 
@@ -44,6 +54,45 @@
 - Stopping a single Codex subagent no longer fails with a turn mismatch.
 - Codex commands that finish quickly show their output.
 - Claude fast mode warns when Claude serves requests at standard speed, for example without usage credits or during a rate-limit cooldown, and notes that fast mode is billed from usage credits.
+- Quitting no longer leaves idle Claude processes running in the background.
+- Claude background tasks whose description ends in whitespace are no longer dropped.
+- Subagents stopped with their parent chat show as stopped instead of failed, no longer stay running, and no longer show up under the next turn.
+- Replies started by background events are no longer attributed to the wrong subagent.
+- Claude image generation tools show as image generation instead of file edits.
+- Claude turns that fail on pending organization verification or cloud credentials say why and recover after you fix it.
+- Stopped turns no longer appear as completed after reopening the app.
+- Replies cut off by a restart or a stopped session no longer stay stuck as still streaming, and multi-part replies no longer finish the wrong part early.
+- Stop settles immediately when the agent had already finished.
+- Chats no longer stay stuck on "Starting" long after the agent failed to start.
+- Changing access on an idle chat no longer makes it look busy or restart the agent before you send.
+- Questions from a stopped agent no longer reappear as unanswered later, and a crashed or stopped agent's pending request no longer locks the message box.
+- Replies no longer appear above the tool activity and answered questions that came before them.
+- Scrolling down while reading earlier messages no longer jumps you to the end of the chat, and the chat keeps following a streaming reply when message rows resize.
+- Chats stay in sync with the agent after reconnects and catch-ups, without flickering when reopened, duplicated text, missing reply endings or finished turns showing as running.
+- The open or working chat no longer jumps into Drafts while you type.
+- New chat no longer stops responding after an interrupted navigation, and text typed while a new chat opens is no longer overwritten.
+- New chats are dated when they're created, not when their draft was opened.
+- Send explains why it can't send yet instead of silently doing nothing.
+- "Add new project" in the composer works in the browser and on paired devices.
+- Chat hover cards show the reasoning effort, and Fast only when Claude is actually serving it.
+- Sidebar text no longer turns blurry after moving between displays or changing zoom.
+- Activity rows show the project folder before the branch name when space is tight.
+- Edits to the keybindings file apply without restarting, and Cmd+Ctrl+P runs Commit and push again instead of opening file search.
+- Tab strips scroll with a regular mouse wheel, and files keep their scroll position when you switch tabs.
+- Diffs remember your unified or side-by-side choice.
+- Creating a branch no longer fails when its name clashes with an existing branch folder.
+- Diffs and worktree copies are no longer altered by custom Git diff drivers.
+- A slow or stuck branch push no longer holds up creating other branches and worktrees.
+- The branch picker shows "Detached HEAD" instead of an outdated branch name.
+- Undo refuses to change files while another chat is working in the same folder.
+- Usage stats no longer undercount tokens after switching a chat between providers or from stopped Claude turns that ran subagents.
+- Provider usage loads behind proxies that use fake-IP DNS.
+- Text in light-themed terminals is easier to read.
+- The voice recording waveform fills the full width of wide chats.
+- Revealing a macOS app bundle shows it in Finder instead of launching it.
+- Restored browser tabs no longer flash black while loading.
+- On Windows, a program in the project folder can no longer stand in for an installed agent CLI, and relative command paths resolve from the project folder.
+- Glade picks up your PATH when your login shell is Nushell.
 
 ## 0.2.3 - 2026-10-10
 
