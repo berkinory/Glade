@@ -209,8 +209,11 @@ export function ChatComposerSurface({
 
     emptyLandingControls,
     relocateComposerLeadingControls,
-    renderComposerLeadingControls,
+    renderComposerFooterControls,
   } = presentation;
+  const footerControls = relocateComposerLeadingControls
+    ? null
+    : renderComposerFooterControls({ iconOnly: false });
   const heldMessageId = activeThread?.claudeCacheReview?.messageId;
   const heldMessage = activeThread?.messages.find((message) => message.id === heldMessageId);
   if (isNativeSubagent && !activePendingApproval && pendingUserInputs.length === 0) {
@@ -529,12 +532,9 @@ export function ChatComposerSurface({
                 {activePendingApproval ? null : (
                   <ChatComposerFooter
                     isComposerFooterCompact={isComposerFooterCompact}
-                    leadingControls={
-                      relocateComposerLeadingControls
-                        ? null
-                        : renderComposerLeadingControls({ iconOnly: false })
-                    }
+                    leadingControls={footerControls?.leading ?? null}
                     composerPickerControls={composerPickerControls}
+                    runtimeControls={footerControls?.runtime ?? null}
                     contextMeter={
                       !isVoiceRecording &&
                       !isVoiceTranscribing &&

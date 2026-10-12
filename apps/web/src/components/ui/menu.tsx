@@ -221,12 +221,15 @@ function MenuRadioItem({
   children,
   preserveChildLayout: preserveChildLayoutProp,
   trailing,
+  showIndicator: showIndicatorProp,
   ...props
 }: MenuPrimitive.RadioItem.Props & {
   preserveChildLayout?: boolean;
   trailing?: React.ReactNode;
+  showIndicator?: boolean;
 }) {
   const preserveChildLayout = preserveChildLayoutProp ?? false;
+  const showIndicator = showIndicatorProp ?? true;
   return (
     <MenuPrimitive.RadioItem
       className={cn(
@@ -254,9 +257,11 @@ function MenuRadioItem({
       ) : (
         <span className="flex w-full min-w-0 items-center gap-2">
           {children}
-          <MenuPrimitive.RadioItemIndicator className="ml-auto shrink-0">
-            <CheckIcon className="size-3" strokeWidth="2" />
-          </MenuPrimitive.RadioItemIndicator>
+          {showIndicator ? (
+            <MenuPrimitive.RadioItemIndicator className="ml-auto shrink-0">
+              <CheckIcon className="size-3" strokeWidth="2" />
+            </MenuPrimitive.RadioItemIndicator>
+          ) : null}
         </span>
       )}
     </MenuPrimitive.RadioItem>

@@ -271,12 +271,15 @@ export function ChatControllerSurface({ controller }: { controller: ChatControll
     handleRenameActiveThread,
     showEmptyLandingProjectPicker,
     relocateComposerLeadingControls,
-    renderComposerLeadingControls,
+    renderComposerFooterControls,
     contentInsetRightPx,
     branchToolbarProps,
     environmentPanelProps,
     environmentOverlayVariant,
   } = presentation;
+  const relocatedFooterControls = relocateComposerLeadingControls
+    ? renderComposerFooterControls({ iconOnly: true })
+    : null;
   const latestTurnFailure = findLatestTurnFailure(timelineEntries);
   const turnFailureRecovery =
     latestTurnFailure?.turnId && latestTurnFailure.turnId === activeThread?.latestTurn?.turnId
@@ -475,7 +478,8 @@ export function ChatControllerSurface({ controller }: { controller: ChatControll
                     <div className={CHAT_COLUMN_FRAME_CLASS_NAME}>
                       <div className="flex w-full items-center gap-1">
                         <div className="flex shrink-0 items-center gap-1 pl-1">
-                          {renderComposerLeadingControls({ iconOnly: true })}
+                          {relocatedFooterControls?.leading}
+                          {relocatedFooterControls?.runtime}
                         </div>
                       </div>
                     </div>
@@ -595,7 +599,8 @@ export function ChatControllerSurface({ controller }: { controller: ChatControll
                         <div className="flex w-full items-center gap-1">
                           {relocateComposerLeadingControls ? (
                             <div className="flex shrink-0 items-center gap-1 pl-1">
-                              {renderComposerLeadingControls({ iconOnly: true })}
+                              {relocatedFooterControls?.leading}
+                              {relocatedFooterControls?.runtime}
                             </div>
                           ) : null}
                           {isGitRepo && !environmentEnabled ? (

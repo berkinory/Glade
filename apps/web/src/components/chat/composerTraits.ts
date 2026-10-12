@@ -171,7 +171,7 @@ export function resolveComposerModelOptions(
 }
 
 export function resolveComposerTraitsSummary(selection: ComposerTraitSelection): {
-  primaryLabel: string | null;
+  label: string;
   showsFastBadge: boolean;
   summaryText: string;
 } {
@@ -183,6 +183,7 @@ export function resolveComposerTraitsSummary(selection: ComposerTraitSelection):
     resolveComposerTraitStatusLabel(selection) ??
     (isFastOnlyControl ? (selection.fastModeEnabled ? "Fast" : "Default") : null);
   const showsFastBadge = showsComposerFastModeBadge(selection) && !isFastOnlyControl;
-  const summaryText = [primaryLabel, showsFastBadge ? "Fast" : null].filter(Boolean).join(" · ");
-  return { primaryLabel, showsFastBadge, summaryText };
+  const label = primaryLabel ?? "Options";
+  const summaryText = [label, showsFastBadge ? "Fast" : null].filter(Boolean).join(" · ");
+  return { label, showsFastBadge, summaryText };
 }

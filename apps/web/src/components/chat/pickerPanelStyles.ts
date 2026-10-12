@@ -17,8 +17,9 @@ export const PICKER_PANEL_ROW_GEOMETRY_CLASS_NAME =
 
 export const PICKER_PANEL_ROW_ICON_CLASS_NAME = "size-[1.077em] shrink-0 text-muted-foreground/70";
 
+// Stronger than the hover fill so the selected row stays distinct while another row is hovered.
 export const PICKER_PANEL_ROW_SELECTED_CLASS_NAME =
-  "bg-[var(--color-background-elevated-secondary)] text-[var(--color-text-foreground)]";
+  "bg-[color-mix(in_srgb,var(--color-text-foreground)_9%,transparent)] hover:bg-[color-mix(in_srgb,var(--color-text-foreground)_9%,transparent)] data-highlighted:bg-[color-mix(in_srgb,var(--color-text-foreground)_9%,transparent)] text-[var(--color-text-foreground)]";
 
 export const PICKER_PANEL_GROUP_LABEL_CLASS_NAME =
   "px-1.5 py-1 font-normal text-muted-foreground/60 text-ui-xs";

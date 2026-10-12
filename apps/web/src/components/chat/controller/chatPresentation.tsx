@@ -146,26 +146,29 @@ export function createChatPresentation(
     pendingContextWindowLabel: contextWindowSelectionStatus.pendingSelectedLabel,
   };
   const relocateComposerLeadingControls = composerFooterControlsPlan.relocateLeadingControls;
-  const renderComposerLeadingControls = (options: { iconOnly: boolean }) => (
-    <>
-      <ComposerExtrasTrigger
-        open={isComposerExtrasPanelOpen}
-        panelId={COMPOSER_EXTRAS_PANEL_ID}
-        onToggle={() => {
-          setIsComposerExtrasPanelOpen((open) => !open);
-          scheduleComposerFocus();
-        }}
-      />
-      {!isVoiceRecording && !isVoiceTranscribing ? (
+  const renderComposerFooterControls = (options: { iconOnly: boolean }) => ({
+    leading: (
+      <>
+        <ComposerExtrasTrigger
+          open={isComposerExtrasPanelOpen}
+          panelId={COMPOSER_EXTRAS_PANEL_ID}
+          onToggle={() => {
+            setIsComposerExtrasPanelOpen((open) => !open);
+            scheduleComposerFocus();
+          }}
+        />
+        {isCenteredEmptyLanding ? null : <RemoteEnvironmentStatusChip />}
+      </>
+    ),
+    runtime:
+      !isVoiceRecording && !isVoiceTranscribing ? (
         <RuntimeUsageControls
           {...runtimeUsageControlsProps}
           className="shrink-0"
           hideLabel={options.iconOnly}
         />
-      ) : null}
-      {isCenteredEmptyLanding ? null : <RemoteEnvironmentStatusChip />}
-    </>
-  );
+      ) : null,
+  });
   const branchToolbarProps = {
     threadId: activeThread.id,
     onEnvModeChange,
@@ -334,7 +337,7 @@ export function createChatPresentation(
     showComposerWorkflowRunCard,
     emptyLandingControls,
     relocateComposerLeadingControls,
-    renderComposerLeadingControls,
+    renderComposerFooterControls,
     activeThreadDisplayTitle,
     environmentHeaderState,
     handleRenameActiveThread,

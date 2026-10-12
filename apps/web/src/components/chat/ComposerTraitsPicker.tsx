@@ -1,4 +1,4 @@
-import { Brain03Icon, EnergyFilledIcon, SettingsIcon } from "~/lib/icons";
+import { Brain03Icon, ChevronDownIcon, EnergyFilledIcon, SettingsIcon } from "~/lib/icons";
 import { CLAUDE_FAST_MODE_BILLING_NOTE } from "~/lib/fastModeStatus";
 import { type ProviderKind, type ThreadId } from "@glade/contracts/core/baseSchemas";
 import { type ProviderOptionDescriptor } from "@glade/contracts/provider/model";
@@ -29,6 +29,7 @@ import {
   resolveComposerModelOptions,
   resolveComposerTraitsSummary,
 } from "./composerTraits";
+import { PICKER_PANEL_ROW_SELECTED_CLASS_NAME } from "./pickerPanelStyles";
 import { useComposerTraitCommit } from "./useComposerTraitCommit";
 
 export const TRAITS_PICKER_POPUP_ATTRIBUTE = "data-traits-picker-popup";
@@ -147,7 +148,6 @@ export function ComposerTraitsPicker(props: {
   if (reasoning === null && speed === null && otherSections.length === 0) return null;
 
   const summary = resolveComposerTraitsSummary(selection);
-  const label = summary.primaryLabel ?? "Options";
   const fastModeNotice = speed?.checked ? props.fastModeNotice : null;
   const TriggerIcon =
     reasoning !== null ? Brain03Icon : speed !== null ? EnergyFilledIcon : SettingsIcon;
@@ -164,7 +164,15 @@ export function ComposerTraitsPicker(props: {
         onValueChange={(value: string) => commitTrait(section.patchFor(value))}
       >
         {section.options.map((option) => (
-          <MenuRadioItem key={option.value} value={option.value}>
+          <MenuRadioItem
+            key={option.value}
+            value={option.value}
+            closeOnClick
+            showIndicator={false}
+            className={
+              option.value === section.value ? PICKER_PANEL_ROW_SELECTED_CLASS_NAME : undefined
+            }
+          >
             {option.label}
           </MenuRadioItem>
         ))}
@@ -177,11 +185,11 @@ export function ComposerTraitsPicker(props: {
       size="sm"
       variant="chrome"
       className={cn(
-        "min-w-0 shrink-0 gap-1.5 whitespace-nowrap px-2 [&_svg]:mx-0",
+        "min-w-0 shrink-0 gap-1.5 whitespace-nowrap ps-1 pe-2 [&_svg]:mx-0",
         COMPOSER_PICKER_TRIGGER_TEXT_CLASS_NAME,
       )}
-      aria-label={`Change reasoning and speed, currently ${summary.summaryText || label}`}
-      {...(props.hideLabel ? { title: summary.summaryText || label } : {})}
+      aria-label={`Change reasoning and speed, currently ${summary.summaryText}`}
+      {...(props.hideLabel ? { title: summary.summaryText } : {})}
     />
   );
   const triggerContent = (
@@ -190,10 +198,11 @@ export function ComposerTraitsPicker(props: {
         aria-hidden="true"
         className={TriggerIcon === EnergyFilledIcon ? fastBadgeClassName : "size-3.5 shrink-0"}
       />
-      <span className={props.hideLabel ? "sr-only" : "text-ui-xs"}>{label}</span>
+      <span className={props.hideLabel ? "sr-only" : "text-ui-xs"}>{summary.label}</span>
       {summary.showsFastBadge ? (
         <EnergyFilledIcon aria-hidden="true" className={fastBadgeClassName} />
       ) : null}
+      <ChevronDownIcon aria-hidden="true" className="ms-0.5 size-3 shrink-0 opacity-60" />
     </span>
   );
 
@@ -213,7 +222,7 @@ export function ComposerTraitsPicker(props: {
         ) : null}
       </Tooltip>
       <ComposerPickerMenuPopup
-        align="end"
+        align="start"
         side="top"
         className="w-[min(12rem,92vw)] bg-popover/55 backdrop-blur-3xl backdrop-saturate-200"
         {...{ [TRAITS_PICKER_POPUP_ATTRIBUTE]: "" }}

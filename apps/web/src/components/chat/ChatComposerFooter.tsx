@@ -12,6 +12,7 @@ interface ChatComposerFooterProps {
   isComposerFooterCompact: boolean;
   leadingControls: ReactNode;
   composerPickerControls: ReactNode;
+  runtimeControls: ReactNode;
   contextMeter: ReactNode;
   voice: {
     enabled: boolean;
@@ -43,6 +44,7 @@ export function ChatComposerFooter({
   isComposerFooterCompact,
   leadingControls,
   composerPickerControls,
+  runtimeControls,
   contextMeter,
   voice,
   pendingInput,
@@ -69,6 +71,7 @@ export function ChatComposerFooter({
         )}
       >
         {leadingControls}
+        {!voice.recording && !voice.transcribing ? composerPickerControls : null}
       </div>
 
       <div
@@ -79,7 +82,7 @@ export function ChatComposerFooter({
         )}
       >
         {contextMeter}
-        {!voice.recording && !voice.transcribing ? composerPickerControls : null}
+        {runtimeControls}
         {voice.enabled && (voice.recording || voice.transcribing) ? (
           <ComposerVoiceRecorderBar
             isRecording={voice.recording}
