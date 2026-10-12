@@ -63,7 +63,8 @@ export function deriveBackgroundWork(input: {
     if (payload.taskType === "plan") continue;
     tasks.set(payload.taskId, { background, terminal });
     if (terminal && background) {
-      failed ||= payload.status !== "completed";
+      // A task the agent or user killed or stopped ended on purpose; only a crash is a failure.
+      failed ||= payload.status === "failed";
       settledAt = activity.createdAt;
     }
   }

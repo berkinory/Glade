@@ -360,18 +360,31 @@ export function useChatWorkspaceController({
   // finished turn marks it read, but deliberately marking it unread must stick.
   const autoReadThreadId = activeThread?.id;
   const activeTurnCompletedAt = activeLatestTurn?.completedAt;
+  const backgroundSettledAt = activeThread?.backgroundWork?.settledAt ?? null;
   useEffect(() => {
     if (!autoReadThreadId) return;
     if (!latestTurnSettled) return;
     if (!activeTurnCompletedAt) return;
     const turnCompletedAt = Date.parse(activeTurnCompletedAt);
     if (Number.isNaN(turnCompletedAt)) return;
+    const readThrough = Math.max(
+      turnCompletedAt,
+      backgroundSettledAt ? Date.parse(backgroundSettledAt) || 0 : 0,
+    );
     const visitedAt = getThreadFromState(useStore.getState(), autoReadThreadId)?.lastVisitedAt;
     const lastVisitedAt = visitedAt ? Date.parse(visitedAt) : NaN;
-    if (!Number.isNaN(lastVisitedAt) && lastVisitedAt >= turnCompletedAt) return;
+    if (!Number.isNaN(lastVisitedAt) && lastVisitedAt >= readThrough) return;
 
     markThreadVisited(autoReadThreadId);
-  }, [autoReadThreadId, activeTurnCompletedAt, latestTurnSettled, markThreadVisited]);
+    // Background work can settle after the turn without moving the thread's updatedAt.
+    if (backgroundSettledAt) markThreadVisited(autoReadThreadId, backgroundSettledAt);
+  }, [
+    autoReadThreadId,
+    activeTurnCompletedAt,
+    backgroundSettledAt,
+    latestTurnSettled,
+    markThreadVisited,
+  ]);
   return {
     settledThreadBranchWarningDismissedThreadId,
     setSettledThreadBranchWarningDismissedThreadId,

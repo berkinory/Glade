@@ -14,6 +14,7 @@ import {
   THREAD_STATUS_PRIORITY,
   createCompletedDismissalKey,
   createThreadStatusDismissalKey,
+  hasUnseenBackgroundFailure,
   hasUnseenCompletion,
 } from "./Sidebar.logic.statusTypes";
 import type {
@@ -135,7 +136,7 @@ export function resolveThreadStatusPill(input: {
     };
   }
 
-  if (thread.backgroundWork?.failed && thread.latestTurn?.completedAt) {
+  if (thread.latestTurn?.completedAt && hasUnseenBackgroundFailure(thread)) {
     return {
       label: "Background failed",
       colorClass: "text-destructive",

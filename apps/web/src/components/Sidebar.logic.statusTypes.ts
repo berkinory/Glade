@@ -278,15 +278,29 @@ export function createCompletedDismissalKey(thread: ThreadStatusInput): string |
   return ["Completed", thread.latestTurn.turnId, thread.latestTurn.completedAt].join(":");
 }
 
-export function hasUnseenCompletion(thread: Pick<Thread, "latestTurn" | "lastVisitedAt">): boolean {
-  if (!thread.latestTurn?.completedAt) return false;
-  const completedAt = Date.parse(thread.latestTurn.completedAt);
-  if (Number.isNaN(completedAt)) return false;
-  if (!thread.lastVisitedAt) return true;
+function isUnseenSince(at: string | null | undefined, lastVisitedAt: string | undefined): boolean {
+  if (!at) return false;
+  const atMs = Date.parse(at);
+  if (Number.isNaN(atMs)) return false;
+  if (!lastVisitedAt) return true;
 
-  const lastVisitedAt = Date.parse(thread.lastVisitedAt);
-  if (Number.isNaN(lastVisitedAt)) return true;
-  return completedAt > lastVisitedAt;
+  const lastVisitedAtMs = Date.parse(lastVisitedAt);
+  if (Number.isNaN(lastVisitedAtMs)) return true;
+  return atMs > lastVisitedAtMs;
+}
+
+export function hasUnseenCompletion(thread: Pick<Thread, "latestTurn" | "lastVisitedAt">): boolean {
+  return isUnseenSince(thread.latestTurn?.completedAt, thread.lastVisitedAt);
+}
+
+export function hasUnseenBackgroundFailure(
+  thread: Pick<Thread, "backgroundWork" | "latestTurn" | "lastVisitedAt">,
+): boolean {
+  if (!thread.backgroundWork?.failed) return false;
+  return isUnseenSince(
+    thread.backgroundWork.settledAt ?? thread.latestTurn?.completedAt,
+    thread.lastVisitedAt,
+  );
 }
 
 export function shouldClearThreadSelectionOnMouseDown(target: HTMLElement | null): boolean {
