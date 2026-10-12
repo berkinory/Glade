@@ -221,6 +221,9 @@ export function useChatTurnSubmission({
         notifyBlockedSend("send-in-flight");
         return false;
       }
+      // Set once the sent text leaves the composer; cleared when the queue or the turn dispatch takes
+      // over the failure handling.
+      let restoreSentPromptOnExit: (() => void) | null = null;
       try {
         sendPreflightInFlightRef.current = true;
         const editorSaved = !hasUnsavedWorkspaceEditors(
@@ -399,6 +402,34 @@ export function useChatTurnSubmission({
           return false;
         }
 
+        // The sent text leaves the composer before the first send await, so text typed meanwhile
+        // starts a fresh draft. Until the queue or the dispatch takes over, an early refusal puts the
+        // text back, but only into an empty composer. A pending provider transition keeps its draft
+        // until the transition accepts the message.
+        const preservesHandoffDraft = Boolean(
+          activeThread.handoff?.operationId &&
+          activeThread.handoff.bootstrapStatus === "pending" &&
+          activeThread.handoff.stage !== "cancelled",
+        );
+        if (queuedChatTurn === null && !preservesHandoffDraft) {
+          const sentPrompt = promptForSend;
+          const draftStore = useComposerDraftStore.getState();
+          if (draftStore.draftsByThreadId[activeThread.id]?.prompt === sentPrompt) {
+            draftStore.setPrompt(activeThread.id, "");
+            if (activeThreadIdRef.current === activeThread.id) {
+              promptRef.current = "";
+              setComposerCursor(0);
+              setComposerTrigger(null);
+            }
+            restoreSentPromptOnExit = () => {
+              const current = useComposerDraftStore.getState();
+              if (!current.draftsByThreadId[activeThread.id]?.prompt) {
+                current.setPrompt(activeThread.id, sentPrompt);
+              }
+            };
+          }
+        }
+
         sendPreflightInFlightRef.current = true;
         const sendProviderAvailability = await resolveProviderSendAvailabilityWithRefresh({
           provider: selectedModelSelectionForSend.provider,
@@ -417,6 +448,7 @@ export function useChatTurnSubmission({
 
         if (hasQueueableLiveTurn && dispatchMode === "queue" && queuedChatTurn === null) {
           clearComposerDraftContent(activeThread.id, { consumedDraft, preservePreviewUrls: true });
+          restoreSentPromptOnExit = null;
           if (activeThreadIdRef.current === activeThread.id) scheduleComposerFocus();
           const queuedImagesForPersistence = await Promise.all(
             composerImagesForSend.map(async (image) => {
@@ -668,15 +700,8 @@ export function useChatTurnSubmission({
             description: toastCopy.description,
           });
         }
-        // Clear before the dispatch await: the composer must not keep showing sent text that the
-        // user then types after. A failed send puts the text back only into an empty composer.
-        // Queued turns send from their captured snapshot and never touch the live draft. A pending
-        // provider transition keeps its draft until the transition accepts the message.
-        const preservesHandoffDraft = Boolean(
-          activeThread.handoff?.operationId &&
-          activeThread.handoff.bootstrapStatus === "pending" &&
-          activeThread.handoff.stage !== "cancelled",
-        );
+        // Queued turns send from their captured snapshot and never touch the live draft. From here
+        // the turn dispatch restores a failed send, again only into an empty composer.
         const clearSentComposerContent = () => {
           clearComposerDraftContent(threadIdForSend, { preservePreviewUrls: true, consumedDraft });
           if (
@@ -693,6 +718,7 @@ export function useChatTurnSubmission({
             scheduleComposerFocus();
           }
         };
+        restoreSentPromptOnExit = null;
         if (queuedChatTurn === null && !preservesHandoffDraft) clearSentComposerContent();
 
         const accepted = await executePreparedTurn({
@@ -749,6 +775,7 @@ export function useChatTurnSubmission({
         }
         return accepted;
       } finally {
+        restoreSentPromptOnExit?.();
         pendingDispatch.endSubmission(activeThread.id);
         sendPreflightInFlightRef.current = false;
         sendInFlightRef.current = false;
