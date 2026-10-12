@@ -13,6 +13,7 @@ import {
 import { Button } from "../ui/button";
 import { Collapsible, CollapsiblePanel, CollapsibleTrigger } from "../ui/collapsible";
 import { Textarea } from "../ui/textarea";
+import { AnsweredQuestionList } from "./AnsweredQuestionList";
 import { UserInputQuestionForm } from "./UserInputQuestionForm";
 export function AsyncUserInputCard({
   messageId,
@@ -108,16 +109,13 @@ export function AsyncUserInputCard({
       <CollapsiblePanel>
         <div className="pt-2">
           {acceptedAnswers ? (
-            <dl className="space-y-3 rounded-xl border border-border p-3.5 text-ui leading-snug">
-              {questions.map((question, index) => (
-                <div key={question.id}>
-                  <dt className="font-medium">{question.question}</dt>
-                  <dd className="whitespace-pre-wrap text-muted-foreground">
-                    {acceptedAnswers[index]}
-                  </dd>
-                </div>
-              ))}
-            </dl>
+            <AnsweredQuestionList
+              items={questions.map((question, index) => ({
+                id: question.id,
+                question: question.question,
+                answer: acceptedAnswers[index] ?? null,
+              }))}
+            />
           ) : activeQuestion ? (
             <form
               aria-label="Questions from Codex"

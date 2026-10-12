@@ -83,6 +83,8 @@ export interface WorkLogEntry {
   visualReply?: VisualReply;
   // Durable provider failure of this entry's turn; session readiness never clears it.
   turnFailure?: { message: string };
+  // An answered agent question with the user's answers; it stays visible outside a settled turn's fold.
+  userInputExchange?: ReadonlyArray<WorkLogUserInputExchangeItem>;
 
   providerContextLifecycle?: ProviderContextLifecycleInfo;
   providerTransition?: {
@@ -97,6 +99,12 @@ export interface WorkLogEntry {
   activityKind?: OrchestrationThreadActivity["kind"];
 
   nativeEventType?: string;
+}
+
+export interface WorkLogUserInputExchangeItem {
+  id: string;
+  question: string;
+  answer: string | null;
 }
 
 export type WorkLogLiveActivityState =

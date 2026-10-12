@@ -98,6 +98,16 @@ export function deriveMessagesTimelineRows(input: {
       });
       continue;
     }
+    if (timelineEntry.kind === "work" && timelineEntry.entry.userInputExchange) {
+      flushPendingWorkGroup();
+      nextRows.push({
+        kind: "user-input",
+        id: timelineEntry.entry.id,
+        createdAt: timelineEntry.createdAt,
+        items: timelineEntry.entry.userInputExchange,
+      });
+      continue;
+    }
     if (timelineEntry.kind === "work" && timelineEntry.entry.turnFailure) {
       flushPendingWorkGroup();
       nextRows.push({
@@ -131,6 +141,7 @@ export function deriveMessagesTimelineRows(input: {
           nextEntry.kind !== "work" ||
           nextEntry.entry.visualReply !== undefined ||
           nextEntry.entry.turnFailure !== undefined ||
+          nextEntry.entry.userInputExchange !== undefined ||
           ["response.started", "provider.transition"].includes(nextEntry.entry.activityKind ?? "")
         )
           break;
@@ -328,7 +339,8 @@ function collapseSettledTurns(
     const foldIndices: number[] = [];
     for (let scan = pass - 1; scan >= 0; scan -= 1) {
       const prev = rows[scan]!;
-      if (prev.kind === "visual-reply") continue;
+      // Visual replies and answered questions stay visible beside the fold without splitting the turn.
+      if (prev.kind === "visual-reply" || prev.kind === "user-input") continue;
       if (prev.kind === "work") {
         if (
           prev.groupedEntries.some((entry) =>

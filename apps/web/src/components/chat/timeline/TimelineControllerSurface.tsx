@@ -17,8 +17,10 @@ import {
   TimelineWorkEntryRow,
 } from "~/components/chat/TimelineWorkEntryRow";
 import { ToolCallGroupSummaryRow } from "~/components/chat/ToolCallGroupSummaryRow";
+import { AnsweredQuestionList } from "~/components/chat/AnsweredQuestionList";
 import ChatMarkdown from "~/components/ChatMarkdown";
 import { DisclosureRegion } from "~/components/ui/DisclosureRegion";
+import { HelpCircleIcon } from "~/lib/icons";
 import { cn } from "~/lib/utils";
 import { MUTED_LABEL_TEXT_CLASS_NAME } from "~/surfaceStyles";
 import { type WorkLogEntry } from "~/workLog.types";
@@ -117,6 +119,15 @@ export function TimelineControllerSurface({ controller }: { controller: Timeline
     >
       {forkDividerBeforeRowId === row.id ? forkSourceDivider : null}
       {row.kind === "visual-reply" && <VisualReplyCard reply={row.reply} activityId={row.id} />}
+      {row.kind === "user-input" && (
+        <div className="space-y-1.5 py-1">
+          <div className={cn("flex items-center gap-1.5 text-ui", MUTED_LABEL_TEXT_CLASS_NAME)}>
+            <HelpCircleIcon className="size-3.5" aria-hidden="true" />
+            {row.items.length === 1 ? "Asked a question" : `Asked ${row.items.length} questions`}
+          </div>
+          <AnsweredQuestionList items={row.items} />
+        </div>
+      )}
       {row.kind === "turn-failure" && (
         <TurnFailureNotice
           turnId={row.turnId}

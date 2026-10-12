@@ -57,6 +57,7 @@ import {
 } from "./workLog.reconciliation";
 import { classifyWorkLogToolKind } from "./workLog.toolKind";
 import { deriveTurnFailureEntries, isTurnFailureActivity } from "./workLog.turnFailures";
+import { pairAnsweredUserInputs } from "./workLog.userInput";
 import {
   collabPayloadItem,
   deriveCommandActionDisplay,
@@ -139,7 +140,7 @@ export function deriveWorkLogEntries(
     .map(toDerivedWorkLogEntry);
 
   const derived = reconcileSettledLiveActivities(
-    collapseDerivedWorkLogEntries(entries),
+    collapseDerivedWorkLogEntries(pairAnsweredUserInputs(entries, ordered)),
     ordered,
     latestTurnId,
     options,

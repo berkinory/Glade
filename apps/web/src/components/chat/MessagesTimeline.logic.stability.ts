@@ -230,6 +230,10 @@ function isRowUnchanged(a: MessagesTimelineRow, b: MessagesTimelineRow): boolean
         a.message === failure.message
       );
     }
+    case "user-input": {
+      const exchange = b as typeof a;
+      return a.createdAt === exchange.createdAt && deepEqualJson(a.items, exchange.items);
+    }
     case "working":
       return true;
 

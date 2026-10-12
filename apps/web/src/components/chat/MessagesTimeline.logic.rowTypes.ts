@@ -1,6 +1,6 @@
 import type { VisualReply } from "@glade/contracts/orchestration/visualReply";
 import type { MessageId, TurnId } from "@glade/contracts/core/baseSchemas";
-import type { WorkLogEntry } from "../../workLog.types";
+import type { WorkLogEntry, WorkLogUserInputExchangeItem } from "../../workLog.types";
 import { normalizeCompactToolLabel as normalizeCompactToolLabelValue } from "../../lib/toolCallLabel.presentations";
 import {
   isGroupableWorkEntry,
@@ -149,6 +149,12 @@ interface TimelineDiffMessage {
 export type MessagesTimelineRow =
   | { kind: "visual-reply"; id: string; createdAt: string; reply: VisualReply }
   | { kind: "turn-failure"; id: string; createdAt: string; turnId: TurnId | null; message: string }
+  | {
+      kind: "user-input";
+      id: string;
+      createdAt: string;
+      items: ReadonlyArray<WorkLogUserInputExchangeItem>;
+    }
   | {
       kind: "work";
       id: string;
