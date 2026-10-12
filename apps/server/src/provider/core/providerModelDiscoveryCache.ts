@@ -295,9 +295,6 @@ export function makeProviderModelDiscoveryCache<E>(options?: {
           cached: true,
           discoveredAt: new Date(entry.storedAt).toISOString(),
           stale: !fresh,
-          ...(failure !== undefined
-            ? { error: "The saved model catalog is shown because native discovery is unavailable." }
-            : {}),
         };
       }
       const pending = inflight.get(serialized);
