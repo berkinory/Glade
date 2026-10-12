@@ -9,7 +9,9 @@ export function claudeAssistantFailure(code: SDKAssistantMessageError): Provider
         return { kind: "auth_required", action: "login" } as const;
       case "oauth_org_not_allowed":
       case "account_on_hold":
+      case "verification_required":
       case "billing_error":
+      case "cloud_credential_error":
         return { kind: "access_denied", action: null } as const;
       case "rate_limit":
         return { kind: "rate_limited", action: "wait" } as const;

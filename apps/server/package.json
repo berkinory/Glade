@@ -27,7 +27,7 @@
     "test": "vitest run --maxWorkers=1 --no-file-parallelism"
   },
   "dependencies": {
-    "@anthropic-ai/claude-agent-sdk": "0.3.259",
+    "@anthropic-ai/claude-agent-sdk": "0.3.296",
     "@anthropic-ai/sdk": "^0.100.0",
     "@effect/platform-node": "catalog:",
     "@effect/sql-sqlite-bun": "catalog:",

@@ -165,8 +165,12 @@ export function claudeAssistantErrorMessage(error: SDKAssistantMessageError): st
       return "Claude authentication succeeded, but this organization does not allow Claude Code.";
     case "account_on_hold":
       return "The active Claude account is on hold. Resolve the account issue, then retry.";
+    case "verification_required":
+      return "Claude requires organization verification for this account. Complete it, then retry.";
     case "billing_error":
       return "Claude billing or subscription access failed. Check the active Claude account, then retry.";
+    case "cloud_credential_error":
+      return "Claude could not use the cloud provider credentials. Check or refresh them, then retry.";
     case "rate_limit":
       return "Claude rate limit reached. Wait briefly, then retry.";
     case "overloaded":
@@ -191,7 +195,9 @@ export function claudeAssistantErrorRequiresProcessRestart(
     error === "authentication_failed" ||
     error === "oauth_org_not_allowed" ||
     error === "account_on_hold" ||
-    error === "billing_error"
+    error === "verification_required" ||
+    error === "billing_error" ||
+    error === "cloud_credential_error"
   );
 }
 
