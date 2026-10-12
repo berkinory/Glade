@@ -14,7 +14,6 @@ import {
   type OrchestrationProjectShell,
   type OrchestrationThread,
 } from "@glade/contracts/orchestration/threadEntities";
-import { type ProviderSession } from "@glade/contracts/provider/provider";
 import { type ProviderRuntimeEvent } from "@glade/contracts/provider/runtimeEvents";
 import { Cause, Deferred, Effect, Fiber, Layer, Option, Schedule, Stream } from "effect";
 import {
@@ -52,6 +51,7 @@ import {
 } from "../commandInvariants.ts";
 import { isGitRepository } from "../../git/isRepo.ts";
 import { resolveProviderSessionThread } from "../providerSessionThread.ts";
+import { hasPeerTurnInCheckout, providerSessionHasInFlightTurn } from "../checkoutPeerActivity.ts";
 import { CHECKPOINT_BASELINE_SKIPPED_ACTIVITY_KIND } from "../providerCommands/preTurnBaseline.ts";
 
 type ReactorInput =
@@ -77,14 +77,6 @@ function sameId(left: string | null | undefined, right: string | null | undefine
     return false;
   }
   return left === right;
-}
-
-function providerSessionHasInFlightTurn(session: ProviderSession | undefined): boolean {
-  return (
-    session?.status === "connecting" ||
-    session?.status === "running" ||
-    (session?.status !== "error" && session?.status !== "closed" && session?.activeTurnId != null)
-  );
 }
 
 function checkpointStatusFromRuntime(status: string | undefined): "ready" | "missing" | "error" {
@@ -1001,6 +993,27 @@ const make = Effect.gen(function* () {
           event.payload.scope === "files"
             ? "No git workspace is available for file Undo."
             : "No git workspace is available for this thread's checkpoints.",
+        createdAt: now,
+      }).pipe(Effect.catch(() => Effect.void));
+      return;
+    }
+
+    if (
+      yield* hasPeerTurnInCheckout({
+        cwd: checkpointCwd,
+        ownThreadIds: relevantThreadIds,
+        readModel: commandReadModel,
+        providerSessions,
+        hasPendingTurnStart: (threadId) =>
+          projectionTurnRepository
+            .getPendingTurnStartByThreadId({ threadId })
+            .pipe(Effect.map(Option.isSome)),
+      })
+    ) {
+      yield* appendRevertFailureActivity({
+        threadId: event.payload.threadId,
+        turnCount: event.payload.turnCount,
+        detail: "Another chat is working in this folder. Stop its turn before undoing changes.",
         createdAt: now,
       }).pipe(Effect.catch(() => Effect.void));
       return;
