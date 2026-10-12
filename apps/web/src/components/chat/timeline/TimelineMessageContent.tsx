@@ -42,6 +42,8 @@ import { BrowserElementChip } from "~/components/browser/BrowserElementChip";
 import { Button } from "~/components/ui/button";
 import { splitPromptIntoDisplaySegments } from "~/composer-editor-mentions";
 import { type ParsedTerminalContextEntry } from "~/lib/terminalContext";
+import { UI_MOTION_DEFAULT_CLASS } from "~/lib/uiMotion";
+import { useClampHeightMotion } from "~/lib/useClampHeightMotion";
 import { cn } from "~/lib/utils";
 import { TimelineMessage } from "./timelineSupport";
 export const UserImageAttachmentThumbnail = memo(function UserImageAttachmentThumbnail(props: {
@@ -334,6 +336,7 @@ export const UserMessageCollapsibleText = memo(function UserMessageCollapsibleTe
   const clampHeightPx = USER_MESSAGE_COLLAPSED_MAX_LINES * lineHeightPx;
   const fadeStartPx = clampHeightPx - USER_MESSAGE_COLLAPSED_FADE_LINES * lineHeightPx;
   const clamped = collapsed && overflowing;
+  const maxHeight = useClampHeightMotion(contentRef, props.expanded, clampHeightPx);
 
   return (
     <>
@@ -341,19 +344,19 @@ export const UserMessageCollapsibleText = memo(function UserMessageCollapsibleTe
         id={contentId}
         ref={contentRef}
         data-user-message-clamp={clamped ? "true" : "false"}
-        className={cn("min-w-0", collapsed && "overflow-hidden")}
-        style={
-          collapsed
+        className={cn(
+          "min-w-0",
+          `transition-[max-height] ${UI_MOTION_DEFAULT_CLASS}`,
+          maxHeight !== "none" && "overflow-hidden",
+        )}
+        style={{
+          maxHeight,
+          ...(clamped
             ? {
-                maxHeight: `${clampHeightPx}px`,
-                ...(clamped
-                  ? {
-                      maskImage: `linear-gradient(to bottom, black ${fadeStartPx}px, transparent 100%)`,
-                    }
-                  : {}),
+                maskImage: `linear-gradient(to bottom, black ${fadeStartPx}px, transparent 100%)`,
               }
-            : undefined
-        }
+            : {}),
+        }}
       >
         {props.children}
       </div>

@@ -5,6 +5,7 @@ import { cn } from "~/lib/utils";
 import type { WorkLogToolKind } from "~/workLog.types";
 import ChatMarkdown from "../ChatMarkdown";
 import { DisclosureChevron } from "../ui/DisclosureChevron";
+import { DisclosureRegion } from "../ui/DisclosureRegion";
 import { FileNameChip } from "./FileNameChip";
 import { MarkdownToolCodeBlock, TOOL_DETAILS_MARKDOWN_CLASS_NAME } from "./ToolDetailBlocks";
 import {
@@ -29,10 +30,6 @@ export function ToolIoDetails({
   const [openField, setOpenField] = useState<string | null>(null);
   const filePath = toolInputFilePath(details.input);
   const fields = details.input ? describeToolInput(details.input, toolKind) : [];
-  const expanded = fields.find(
-    (field): field is Extract<ToolInputField, { layout: "block" }> =>
-      field.key === openField && field.layout === "block",
-  );
   const outputText = details.output?.output;
   const output = outputText
     ? describeToolOutput({
@@ -45,30 +42,43 @@ export function ToolIoDetails({
   return (
     <div className="space-y-2">
       {fields.length > 0 ? (
-        <div className="flex flex-wrap gap-1.5">
+        <div>
+          <div className="flex flex-wrap gap-1.5">
+            {fields.map((field) =>
+              field.layout === "inline" ? (
+                <span key={field.key} className={ARGUMENT_CHIP_CLASS_NAME}>
+                  <span className="shrink-0 text-muted-foreground/60">{field.key}</span>
+                  {field.text === filePath ? (
+                    <FilePathValue path={filePath} />
+                  ) : (
+                    <span className="truncate font-chat-code text-foreground/80">{field.text}</span>
+                  )}
+                </span>
+              ) : (
+                <BlockFieldChip
+                  key={field.key}
+                  field={field}
+                  open={openField === field.key}
+                  onToggle={() => setOpenField(openField === field.key ? null : field.key)}
+                />
+              ),
+            )}
+          </div>
           {fields.map((field) =>
-            field.layout === "inline" ? (
-              <span key={field.key} className={ARGUMENT_CHIP_CLASS_NAME}>
-                <span className="shrink-0 text-muted-foreground/60">{field.key}</span>
-                {field.text === filePath ? (
-                  <FilePathValue path={filePath} />
-                ) : (
-                  <span className="truncate font-chat-code text-foreground/80">{field.text}</span>
-                )}
-              </span>
-            ) : (
-              <BlockFieldChip
+            field.layout === "block" ? (
+              <DisclosureRegion
                 key={field.key}
-                field={field}
                 open={openField === field.key}
-                onToggle={() => setOpenField(openField === field.key ? null : field.key)}
-              />
-            ),
+                lazy
+                contentClassName="pt-2"
+              >
+                <MarkdownToolCodeBlock language={field.language}>
+                  {field.text}
+                </MarkdownToolCodeBlock>
+              </DisclosureRegion>
+            ) : null,
           )}
         </div>
-      ) : null}
-      {expanded ? (
-        <MarkdownToolCodeBlock language={expanded.language}>{expanded.text}</MarkdownToolCodeBlock>
       ) : null}
       {output?.format === "error" ? (
         <p className="whitespace-pre-wrap break-words font-chat-code text-chat-code text-destructive/85">

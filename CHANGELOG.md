@@ -6,6 +6,7 @@
 
 - Switching to another provider is instant: the chat switches right away, your next message carries the conversation over, and switching back before sending undoes it.
 - Returning to a provider you used earlier in a chat resumes its own session and only tells it what happened while another provider was working.
+- Everything that opens and closes in the chat uses the same motion, including tool details, subagent cards, pasted text, error details and long messages.
 
 ### Removed
 

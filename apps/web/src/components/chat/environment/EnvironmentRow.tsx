@@ -1,3 +1,4 @@
+import { DisclosureRegion } from "../../ui/DisclosureRegion";
 import { ChevronDownIcon } from "~/lib/icons";
 import { useState, type ComponentPropsWithoutRef, type ReactNode } from "react";
 import { Collapsible, CollapsiblePanel, CollapsibleTrigger } from "~/components/ui/collapsible";
@@ -94,7 +95,11 @@ export function EnvironmentCollapsibleSection({
           className="size-3 shrink-0 text-[var(--color-text-foreground-secondary)] opacity-60"
         />
       </CollapsibleTrigger>
-      {collapsedContent && !open ? <div className="pt-0.5">{collapsedContent}</div> : null}
+      {collapsedContent ? (
+        <DisclosureRegion open={!open} contentClassName="pt-0.5">
+          {collapsedContent}
+        </DisclosureRegion>
+      ) : null}
       <CollapsiblePanel>
         <div className="flex flex-col pt-0.5">{children}</div>
       </CollapsiblePanel>

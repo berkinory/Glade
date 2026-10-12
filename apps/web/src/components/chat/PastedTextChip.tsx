@@ -1,3 +1,4 @@
+import { DisclosureRegion } from "../ui/DisclosureRegion";
 import { ChevronRightIcon, File02Icon } from "~/lib/icons";
 import { type ButtonHTMLAttributes, type ReactNode, useState } from "react";
 import { formatPastedTextCountLabel, pastedTextTitle } from "~/lib/composerPastedText";
@@ -92,11 +93,11 @@ export function UserMessagePastedTextCard({ text, metrics }: UserMessagePastedTe
           </PastedTextCardAction>
         }
       />
-      {expanded ? (
+      <DisclosureRegion open={expanded} lazy className="w-full">
         <pre className="max-h-80 w-full max-w-full overflow-auto rounded-md border border-[color:var(--color-border-light)] bg-[var(--color-background-elevated-secondary)] p-2 font-mono text-ui-sm leading-snug whitespace-pre-wrap break-words text-foreground">
           {text}
         </pre>
-      ) : null}
+      </DisclosureRegion>
     </div>
   );
 }

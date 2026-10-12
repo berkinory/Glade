@@ -2,6 +2,7 @@ import { useId, useLayoutEffect, useRef, useState, type ReactNode } from "react"
 
 import { CheckIcon, Copy01Icon, XIcon } from "~/lib/icons";
 import { useCopyToClipboard } from "~/lib/clipboard";
+import { UI_MOTION_DEFAULT_CLASS } from "~/lib/uiMotion";
 import { cn } from "~/lib/utils";
 import { Alert, AlertDescription, AlertTitle } from "../ui/alert";
 import { Button } from "../ui/button";
@@ -56,7 +57,9 @@ function ChatErrorNoticeContent({
           id={detailsId}
           className={cn(
             "whitespace-pre-wrap [overflow-wrap:anywhere]",
-            expanded ? "max-h-60 overflow-y-auto" : "line-clamp-3",
+            `transition-[max-height] ${UI_MOTION_DEFAULT_CLASS}`,
+            expanded ? "max-h-60 overflow-y-auto" : "max-h-[3lh] overflow-hidden",
+            !expanded && clamped && "[mask-image:linear-gradient(to_bottom,black_55%,transparent)]",
           )}
           tabIndex={expanded ? 0 : undefined}
         >
