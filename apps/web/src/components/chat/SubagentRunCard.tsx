@@ -1,4 +1,5 @@
 import { ThreadId, type ProviderKind } from "@glade/contracts/core/baseSchemas";
+import { formatEffortLabel } from "@glade/shared/provider/effortLabel";
 import { useQuery } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
@@ -124,15 +125,17 @@ export function SubagentRunCard({
       </button>
       <DisclosureRegion open={open}>
         {open ? (
-          <div className="mt-1 mb-1.5 overflow-hidden rounded-lg border border-border/60">
-            {members.map((member) => (
-              <SubagentRunRow
-                key={`${member.subagent.threadId}:${member.launchedAt}`}
-                member={member}
-                nowMs={nowMs}
-                fontSizePx={fontSizePx}
-              />
-            ))}
+          <div className="tool-group-tree">
+            <div className="space-y-px pt-0.5">
+              {members.map((member) => (
+                <SubagentRunRow
+                  key={`${member.subagent.threadId}:${member.launchedAt}`}
+                  member={member}
+                  nowMs={nowMs}
+                  fontSizePx={fontSizePx}
+                />
+              ))}
+            </div>
           </div>
         ) : null}
       </DisclosureRegion>
@@ -168,7 +171,11 @@ function SubagentRunRow({
     title: subagent.title,
     fallbackId: subagent.threadId,
   });
-  const meta = [presentation.role, formatSubagentModelLabel(subagent.model)]
+  const meta = [
+    presentation.role,
+    formatSubagentModelLabel(subagent.model),
+    subagent.effort ? formatEffortLabel(subagent.effort) : null,
+  ]
     .filter(Boolean)
     .join(" · ");
   const launchedMs = Date.parse(member.launchedAt);
@@ -197,14 +204,14 @@ function SubagentRunRow({
 
   return (
     <div
-      className="group/subagent-row relative border-border/60 not-first:border-t hover:bg-[var(--color-background-button-secondary-hover)]"
+      className="group/subagent-row relative rounded-md hover:bg-[var(--color-background-button-secondary-hover)]"
       style={{ fontSize: `${fontSizePx}px` }}
     >
       <button
         type="button"
         disabled={!childExists}
         title={childExists ? `Open ${presentation.primaryLabel}` : undefined}
-        className="flex w-full min-w-0 items-start gap-2 px-2.5 py-1.5 text-left disabled:cursor-default"
+        className="flex w-full min-w-0 items-start gap-2 px-1.5 py-1 text-left disabled:cursor-default"
         onClick={() => {
           void navigate({ to: "/$threadId", params: { threadId } });
         }}
@@ -259,7 +266,7 @@ function SubagentStopButton({
       type="button"
       aria-label="Stop subagent"
       title="Stop subagent"
-      className="absolute top-1.5 right-2 flex size-5 items-center justify-center rounded-md bg-background opacity-0 transition-opacity hover:bg-[var(--color-background-button-secondary-hover)] group-hover/subagent-row:opacity-100 focus-visible:opacity-100"
+      className="absolute top-1 right-1 flex size-5 items-center justify-center rounded-md bg-background opacity-0 transition-opacity hover:bg-[var(--color-background-button-secondary-hover)] group-hover/subagent-row:opacity-100 focus-visible:opacity-100"
       onClick={() => {
         void interruptThreadTurn(threadId).catch((error: unknown) => {
           setError(threadId, error instanceof Error ? error.message : "Could not stop subagent.");

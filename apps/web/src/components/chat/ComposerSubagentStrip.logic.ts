@@ -1,4 +1,5 @@
 import { ThreadId, type TurnId } from "@glade/contracts/core/baseSchemas";
+import { formatEffortLabel } from "@glade/shared/provider/effortLabel";
 
 import type { WorkLogEntry, WorkLogSubagent } from "../../workLog.types";
 import {
@@ -87,6 +88,7 @@ function toStripItem(
     subagent.isActive,
   );
   const modelLabel = formatSubagentModelLabel(subagent.model);
+  const effortLabel = subagent.effort ? formatEffortLabel(subagent.effort) : undefined;
   const threadId = ThreadId.makeUnsafe(subagent.resolvedThreadId ?? subagent.threadId);
 
   return {
@@ -100,9 +102,7 @@ function toStripItem(
     task: subagent.prompt,
     latestUpdate: subagent.latestUpdate,
     modelLabel:
-      modelLabel && subagent.effort
-        ? `${modelLabel} · ${subagent.effort}`
-        : (modelLabel ?? subagent.effort),
+      modelLabel && effortLabel ? `${modelLabel} · ${effortLabel}` : (modelLabel ?? effortLabel),
     statusLabel,
     statusKind,
     isActive: statusKind === "running",
