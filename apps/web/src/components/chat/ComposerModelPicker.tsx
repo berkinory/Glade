@@ -3,14 +3,7 @@ import { type ModelSlug, type ProviderModelOptions } from "@glade/contracts/prov
 import { type ProviderKind, type ThreadId } from "@glade/contracts/core/baseSchemas";
 import { type ProviderModelDescriptor } from "@glade/contracts/provider/providerDiscovery";
 import { type ServerProviderStatus } from "@glade/contracts/server/server";
-import {
-  useDeferredValue,
-  useEffect,
-  useEffectEvent,
-  useRef,
-  useState,
-  type ReactNode,
-} from "react";
+import { useDeferredValue, useEffect, useRef, useState, type ReactNode } from "react";
 import { appHistory } from "../../appNavigation";
 import { useComposerDraftStore } from "../../composerDraftStore";
 import { useStarredModels } from "../../hooks/useStarredModels";
@@ -20,7 +13,7 @@ import {
   type ProviderOptions,
 } from "../../providerModelOptions";
 import { starredModelSlotKey } from "~/lib/starredModels";
-import { cn, isMacNavigatorPlatform } from "~/lib/utils";
+import { cn } from "~/lib/utils";
 import { Input } from "../ui/input";
 import { Menu, MenuGroup, MenuGroupLabel } from "../ui/menu";
 import { Skeleton } from "../ui/skeleton";
@@ -31,13 +24,15 @@ import {
   buildStarredTabRows,
   type ComposerModelPickerRow as PickerRow,
   type ComposerModelPickerTab,
-  MODEL_PICKER_POPUP_ATTRIBUTE,
-  MODEL_PICKER_SHORTCUT_ROW_LIMIT,
-  modelPickerShortcutRowIndex,
   resolveStarredTraits,
   STARRED_TAB,
 } from "./ComposerModelPicker.logic";
 import { ComposerModelPickerRow } from "./ComposerModelPickerRow";
+import {
+  composerPickerRowShortcutLabel,
+  MODEL_PICKER_POPUP_ATTRIBUTE,
+  useComposerPickerRowShortcuts,
+} from "./composerPickerShortcuts";
 import {
   ComposerModelPickerTabs,
   resolveComposerModelPickerProviderTabs,
@@ -286,28 +281,10 @@ export function ComposerModelPicker(props: ComposerModelPickerProps) {
     setTab(openTabs[(index + direction + openTabs.length) % openTabs.length] ?? STARRED_TAB);
   };
 
-  // mod+1…9 picks a visible row. Registered on window capture because thread-jump owns the same chord
-  // globally (the sidebar yields while this picker is open).
-  const onShortcutKeyDown = useEffectEvent((event: KeyboardEvent) => {
-    const rowIndex = modelPickerShortcutRowIndex(event);
-    if (rowIndex === null) return;
-    event.preventDefault();
-    event.stopPropagation();
-    const row = rows[rowIndex];
+  useComposerPickerRowShortcuts(isMenuOpen, (index) => {
+    const row = rows[index];
     if (row) selectRow(row);
   });
-  useEffect(() => {
-    if (!isMenuOpen) return;
-    const listener = (event: KeyboardEvent) => onShortcutKeyDown(event);
-    window.addEventListener("keydown", listener, {
-      capture: true,
-    });
-    return () =>
-      window.removeEventListener("keydown", listener, {
-        capture: true,
-      });
-  }, [isMenuOpen]);
-  const shortcutModifierLabel = isMacNavigatorPlatform() ? "⌘" : "Ctrl ";
   const isTabLoading = tab !== STARRED_TAB && (props.loadingModelProviders?.[tab] ?? false);
   const discoveryError = tab === STARRED_TAB ? undefined : props.discoveryErrorsByProvider?.[tab];
   return (
@@ -407,9 +384,7 @@ export function ComposerModelPicker(props: ComposerModelPickerProps) {
                     key={row.key}
                     row={row}
                     shortcutHint={
-                      row.selectableModel !== null && index < MODEL_PICKER_SHORTCUT_ROW_LIMIT
-                        ? `${shortcutModifierLabel}${index + 1}`
-                        : null
+                      row.selectableModel !== null ? composerPickerRowShortcutLabel(index) : null
                     }
                     providerOptions={providerOptionsFor(row.provider)}
                     runtimeModels={props.runtimeModelsByProvider?.[row.provider]}

@@ -21,17 +21,6 @@ type ComposerTraitSelection = ReturnType<typeof getComposerTraitSelection>;
 export const STARRED_TAB = "starred";
 export type ComposerModelPickerTab = typeof STARRED_TAB | ProviderKind;
 
-export const MODEL_PICKER_POPUP_ATTRIBUTE = "data-model-picker-popup";
-
-export function isModelPickerShortcutScopeActive(): boolean {
-  return (
-    typeof document !== "undefined" &&
-    document.querySelector(`[${MODEL_PICKER_POPUP_ATTRIBUTE}]`) !== null
-  );
-}
-
-export const MODEL_PICKER_SHORTCUT_ROW_LIMIT = 9;
-
 export function resolveStarredTraits(
   selection: ComposerTraitSelection,
   modelOptions?: ProviderOptions | null,
@@ -213,16 +202,4 @@ export function buildStarredTabRows(input: {
       },
     ];
   });
-}
-
-export function modelPickerShortcutRowIndex(event: {
-  key: string;
-  metaKey: boolean;
-  ctrlKey: boolean;
-  altKey: boolean;
-  shiftKey: boolean;
-}): number | null {
-  if (!(event.metaKey || event.ctrlKey) || event.altKey || event.shiftKey) return null;
-  if (!/^[1-9]$/u.test(event.key)) return null;
-  return Number(event.key) - 1;
 }

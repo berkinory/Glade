@@ -14,7 +14,7 @@ import {
   spaceJumpIndexFromCommand,
   threadJumpIndexFromCommand,
 } from "../keybindings";
-import { isModelPickerShortcutScopeActive } from "./chat/ComposerModelPicker.logic";
+import { isComposerPickerShortcutScopeActive } from "./chat/composerPickerShortcuts";
 import { normalizeSidebarProjectThreadListCwd } from "./Sidebar.uiState";
 import { getNextVisibleSidebarThreadId } from "./Sidebar.logic.preview";
 import {
@@ -159,10 +159,12 @@ export function useSidebarPanelEffects(context: ReturnType<typeof useSidebarDeri
         return;
       const shortcutContext = getCurrentSidebarShortcutContext();
       if (!shouldIgnoreThreadJumpHintUpdate(event)) {
-        const shouldShowHints = shouldShowThreadJumpHints(event, keybindings, {
-          platform: navigator.platform,
-          context: shortcutContext,
-        });
+        const shouldShowHints =
+          !isComposerPickerShortcutScopeActive() &&
+          shouldShowThreadJumpHints(event, keybindings, {
+            platform: navigator.platform,
+            context: shortcutContext,
+          });
         if (!shouldShowHints) {
           if (
             showThreadJumpHintsRef.current ||
@@ -275,7 +277,7 @@ export function useSidebarPanelEffects(context: ReturnType<typeof useSidebarDeri
       }
       const jumpIndex = threadJumpIndexFromCommand(command ?? "");
       if (jumpIndex !== null) {
-        if (isModelPickerShortcutScopeActive()) return;
+        if (isComposerPickerShortcutScopeActive()) return;
         event.preventDefault();
         event.stopPropagation();
         const threadJumpTargetId = threadJumpThreadIds[jumpIndex];
@@ -303,10 +305,12 @@ export function useSidebarPanelEffects(context: ReturnType<typeof useSidebarDeri
         return;
       }
       const shortcutContext = getCurrentSidebarShortcutContext();
-      const shouldShowHints = shouldShowThreadJumpHints(event, keybindings, {
-        platform: navigator.platform,
-        context: shortcutContext,
-      });
+      const shouldShowHints =
+        !isComposerPickerShortcutScopeActive() &&
+        shouldShowThreadJumpHints(event, keybindings, {
+          platform: navigator.platform,
+          context: shortcutContext,
+        });
       if (!shouldShowHints) {
         clearThreadJumpHints();
         return;

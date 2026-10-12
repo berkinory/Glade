@@ -30,9 +30,12 @@ import {
   resolveComposerTraitsSummary,
 } from "./composerTraits";
 import { PICKER_PANEL_ROW_SELECTED_CLASS_NAME } from "./pickerPanelStyles";
+import {
+  composerPickerRowShortcutLabel,
+  TRAITS_PICKER_POPUP_ATTRIBUTE,
+  useComposerPickerRowShortcuts,
+} from "./composerPickerShortcuts";
 import { useComposerTraitCommit } from "./useComposerTraitCommit";
-
-export const TRAITS_PICKER_POPUP_ATTRIBUTE = "data-traits-picker-popup";
 
 const INHERIT_VALUE = "__inherit__";
 
@@ -145,6 +148,13 @@ export function ComposerTraitsPicker(props: {
         !isSpeedDescriptor(descriptor),
     )
     .map((descriptor) => resolveDescriptorSection(descriptor, modelOptions));
+  useComposerPickerRowShortcuts(props.open, (index) => {
+    const option = reasoning?.options[index];
+    if (!reasoning || !option) return;
+    commitTrait(reasoning.patchFor(option.value));
+    props.onOpenChange(false);
+  });
+
   if (reasoning === null && speed === null && otherSections.length === 0) return null;
 
   const summary = resolveComposerTraitsSummary(selection);
@@ -163,19 +173,29 @@ export function ComposerTraitsPicker(props: {
         value={section.value}
         onValueChange={(value: string) => commitTrait(section.patchFor(value))}
       >
-        {section.options.map((option) => (
-          <MenuRadioItem
-            key={option.value}
-            value={option.value}
-            closeOnClick
-            showIndicator={false}
-            className={
-              option.value === section.value ? PICKER_PANEL_ROW_SELECTED_CLASS_NAME : undefined
-            }
-          >
-            {option.label}
-          </MenuRadioItem>
-        ))}
+        {section.options.map((option, index) => {
+          const shortcutLabel =
+            section === reasoning ? composerPickerRowShortcutLabel(index) : null;
+          return (
+            <MenuRadioItem
+              key={option.value}
+              value={option.value}
+              closeOnClick
+              showIndicator={false}
+              className={
+                option.value === section.value ? PICKER_PANEL_ROW_SELECTED_CLASS_NAME : undefined
+              }
+            >
+              {option.label}
+              {shortcutLabel ? (
+                <ShortcutKbd
+                  shortcutLabel={shortcutLabel}
+                  className="ms-auto shrink-0 text-muted-foreground"
+                />
+              ) : null}
+            </MenuRadioItem>
+          );
+        })}
       </MenuRadioGroup>
     </MenuGroup>
   );

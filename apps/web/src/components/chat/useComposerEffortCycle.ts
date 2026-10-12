@@ -7,7 +7,7 @@ import {
   planComposerEffortChange,
   resolveComposerEffortLadderIndex,
 } from "./composerTraits";
-import { TRAITS_PICKER_POPUP_ATTRIBUTE } from "./ComposerTraitsPicker";
+import { TRAITS_PICKER_POPUP_ATTRIBUTE } from "./composerPickerShortcuts";
 import { useComposerTraitCommit } from "./useComposerTraitCommit";
 
 export function useComposerEffortCycle(input: {

@@ -14,8 +14,7 @@ import { isTerminalFocused } from "../../lib/terminalFocus";
 import type { Project } from "../../types";
 import { type Thread } from "../../types";
 import { resolveCycledModelSlug } from "../ChatView.logic.worktree";
-import { MODEL_PICKER_POPUP_ATTRIBUTE } from "./ComposerModelPicker.logic";
-import { TRAITS_PICKER_POPUP_ATTRIBUTE } from "./ComposerTraitsPicker";
+import { findOpenComposerPickerPopup } from "./composerPickerShortcuts";
 import { collectForegroundRunningSubagentRosterItems } from "./subagentRoster.logic";
 import { useChatProviderModels } from "./useChatProviderModels";
 import type { ThreadTerminalState } from "~/terminalStateNormalization";
@@ -204,9 +203,7 @@ export function useChatKeyboardShortcuts({
   useEffect(() => {
     const handler = (event: globalThis.KeyboardEvent) => {
       if (!activeThreadId || event.defaultPrevented || event.isComposing) return;
-      const picker = document.querySelector<HTMLElement>(
-        `[${MODEL_PICKER_POPUP_ATTRIBUTE}], [${TRAITS_PICKER_POPUP_ATTRIBUTE}]`,
-      );
+      const picker = findOpenComposerPickerPopup();
       const effortCommand =
         resolveShortcutCommand(event, keybindings, {
           context: { terminalFocus: isTerminalFocused() },
