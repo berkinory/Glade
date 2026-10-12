@@ -5,6 +5,7 @@ import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react
 import { collapseExpandedComposerCursor, detectComposerTrigger } from "../../composer-logic";
 import type { QueuedComposerTurn } from "../../composerDraftDomain";
 import { cloneComposerImageAttachment } from "../../lib/composerSend";
+import { useComposerDraftStore } from "../../composerDraftStore";
 import { queuedComposerDrain } from "../../lib/queuedComposerDrain";
 import { derivePhase } from "../../session-logic";
 import { type ChatMessage, type Thread } from "../../types";
@@ -13,6 +14,7 @@ import {
   resolveQueuedSteerGateTransition,
   type QueuedSteerGate,
 } from "../ChatView.logic.dispatch";
+import { deriveQueuedComposerPause } from "./ComposerQueuedHeader.logic";
 import { useChatComposerDraft } from "./useChatComposerDraft";
 import { useChatLocalDispatch } from "./useChatLocalDispatch";
 import { useChatPendingInteractions } from "./useChatPendingInteractions";
@@ -164,6 +166,18 @@ export function useChatQueuedTurns({
   const { scheduleComposerFocus } = composer;
   const { lateComposerSendHandlersRef } = turn;
   const { isLocalDraftThread, activeLatestTurn } = workspace;
+  const queueStoppedTurnId = useComposerDraftStore(
+    (store) => store.draftsByThreadId[threadId]?.queueStoppedTurnId ?? null,
+  );
+  const queueResumedTurnId = useComposerDraftStore(
+    (store) => store.draftsByThreadId[threadId]?.queueResumedTurnId ?? null,
+  );
+  const queuePause = deriveQueuedComposerPause(activeThread, {
+    queuedTurns: queuedComposerTurns,
+    queueStoppedTurnId,
+    queueResumedTurnId,
+  });
+  const isQueuePaused = queuePause !== null;
   const queuedComposerTurnsRef = useRef<QueuedComposerTurn[]>([]);
 
   const autoDispatchingQueuedTurnRef = useRef(false);
@@ -325,6 +339,20 @@ export function useChatQueuedTurns({
     [removeQueuedComposerTurn, restoreQueuedTurnToComposer],
   );
 
+  const onResumeQueuedComposerTurns = () => {
+    if (queuePause) {
+      useComposerDraftStore.getState().resumeQueuedTurns(threadId, queuePause.turnId);
+    }
+  };
+
+  // Takes the next queued message back into the composer; the rest stays paused until it is sent.
+  const onEditPausedQueuedComposerTurn = () => {
+    const nextQueuedTurn = queuedComposerTurnsRef.current[0];
+    if (nextQueuedTurn) {
+      onEditQueuedComposerTurn(nextQueuedTurn);
+    }
+  };
+
   const sessionErroredForSteerGate = activeThread?.session?.status === "error";
   const activeTurnIdForSteerGate = activeThread?.session?.activeTurnId ?? null;
 
@@ -372,6 +400,7 @@ export function useChatQueuedTurns({
 
   useEffect(() => {
     if (
+      isQueuePaused ||
       queuedComposerDrain.isQueuedComposerAwaitingTurnStart(threadId) ||
       resolveQueuedComposerAutoDispatchHold({
         localDispatch,
@@ -454,6 +483,7 @@ export function useChatQueuedTurns({
     dispatchQueuedComposerTurn,
     isConnecting,
     isLocalDraftThread,
+    isQueuePaused,
     localDispatch,
     pendingUserInputs.length,
     phase,
@@ -468,5 +498,8 @@ export function useChatQueuedTurns({
     removeQueuedComposerTurn,
     onSteerQueuedComposerTurn,
     onEditQueuedComposerTurn,
+    queuePause,
+    onResumeQueuedComposerTurns,
+    onEditPausedQueuedComposerTurn,
   };
 }

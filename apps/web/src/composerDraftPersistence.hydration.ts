@@ -124,6 +124,8 @@ export function toHydratedThreadDraft(
     skills: [...(persistedDraft.skills ?? [])],
     mentions: [...(persistedDraft.mentions ?? [])],
     queuedTurns: hydrateQueuedTurnsFromPersisted(threadId, persistedDraft.queuedTurns),
+    queueStoppedTurnId: persistedDraft.queueStoppedTurnId ?? null,
+    queueResumedTurnId: persistedDraft.queueResumedTurnId ?? null,
 
     modelSelectionByProvider,
     activeProvider,

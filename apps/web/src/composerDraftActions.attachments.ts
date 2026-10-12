@@ -22,6 +22,17 @@ import {
   effectiveComposerAttachmentCount,
 } from "./lib/composerAttachmentCapacity";
 
+// Pause markers describe the queue that was waiting; a fresh queue starts unpaused.
+function withoutQueuePauseIfEmpty(draft: ComposerThreadDraftState): ComposerThreadDraftState {
+  if (
+    draft.queuedTurns.length > 0 ||
+    (draft.queueStoppedTurnId == null && draft.queueResumedTurnId == null)
+  ) {
+    return draft;
+  }
+  return { ...draft, queueStoppedTurnId: null, queueResumedTurnId: null };
+}
+
 type DraftSet = Parameters<StateCreator<ComposerDraftStoreState>>[0];
 type DraftGet = Parameters<StateCreator<ComposerDraftStoreState>>[1];
 
@@ -33,6 +44,8 @@ export function createAttachmentsActions(
   | "enqueueQueuedTurn"
   | "insertQueuedTurn"
   | "removeQueuedTurn"
+  | "pauseQueuedTurnsAfterStop"
+  | "resumeQueuedTurns"
   | "addImage"
   | "addImages"
   | "removeImage"
@@ -53,7 +66,7 @@ export function createAttachmentsActions(
           draftsByThreadId: {
             ...state.draftsByThreadId,
             [threadId]: {
-              ...existing,
+              ...withoutQueuePauseIfEmpty(existing),
               queuedTurns: [...existing.queuedTurns, queuedTurn],
             },
           },
@@ -97,11 +110,49 @@ export function createAttachmentsActions(
         if (!current || current.queuedTurns.every((entry) => entry.id !== queuedTurnId)) {
           return state;
         }
-        const nextDraft: ComposerThreadDraftState = {
+        const nextDraft: ComposerThreadDraftState = withoutQueuePauseIfEmpty({
           ...current,
           queuedTurns: current.queuedTurns.filter((entry) => entry.id !== queuedTurnId),
-        };
+        });
         return putComposerDraft(state, threadId, nextDraft);
+      });
+    },
+    // Only a waiting queue records the stop: a message queued after Stop was written with the
+    // stop in mind. `null` withdraws the record when the stop request itself failed.
+    pauseQueuedTurnsAfterStop: (threadId, stoppedTurnId) => {
+      set((state) => {
+        const current = state.draftsByThreadId[threadId];
+        if (
+          !current ||
+          current.queuedTurns.length === 0 ||
+          (current.queueStoppedTurnId ?? null) === stoppedTurnId
+        ) {
+          return state;
+        }
+        return putComposerDraft(state, threadId, {
+          ...current,
+          queueStoppedTurnId: stoppedTurnId,
+        });
+      });
+    },
+    // Clears a recorded stop; a turn id also acknowledges that turn's failure or usage limit.
+    resumeQueuedTurns: (threadId, pausedTurnId) => {
+      set((state) => {
+        const current = state.draftsByThreadId[threadId];
+        const queueResumedTurnId = pausedTurnId ?? current?.queueResumedTurnId ?? null;
+        if (
+          !current ||
+          current.queuedTurns.length === 0 ||
+          ((current.queueStoppedTurnId ?? null) === null &&
+            (current.queueResumedTurnId ?? null) === queueResumedTurnId)
+        ) {
+          return state;
+        }
+        return putComposerDraft(state, threadId, {
+          ...current,
+          queueStoppedTurnId: null,
+          queueResumedTurnId,
+        });
       });
     },
     addImage: (threadId, image) => {

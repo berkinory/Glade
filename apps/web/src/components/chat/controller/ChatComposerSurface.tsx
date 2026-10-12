@@ -130,6 +130,9 @@ export function ChatComposerSurface({
     onSteerQueuedComposerTurn,
     removeQueuedComposerTurn,
     onEditQueuedComposerTurn,
+    queuePause,
+    onResumeQueuedComposerTurns,
+    onEditPausedQueuedComposerTurn,
 
     composerTraitSelection,
     toggleFastMode,
@@ -347,6 +350,9 @@ export function ChatComposerSurface({
               }}
               onRemove={removeQueuedComposerTurn}
               onEdit={onEditQueuedComposerTurn}
+              pause={queuePause}
+              onResume={onResumeQueuedComposerTurns}
+              onEditPaused={onEditPausedQueuedComposerTurn}
               cwd={threadWorkspaceCwd ?? undefined}
               attachedToPrevious={
                 showComposerLiveChangesHeader ||

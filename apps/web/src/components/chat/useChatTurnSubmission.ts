@@ -22,6 +22,7 @@ import {
 } from "../../lib/composerSend";
 import { appendFileCommentsToPrompt } from "../../lib/fileComments";
 import { appendPullRequestContextsToPrompt } from "../../lib/pullRequestContext";
+import { prepareQueuedComposerResumeAfterSend } from "../../lib/queuedComposerDrain";
 import { unblockThreadFromClient } from "../../lib/threadUnblock";
 import {
   IMAGE_ONLY_BOOTSTRAP_PROMPT,
@@ -211,6 +212,10 @@ export function useChatTurnSubmission({
         notifyBlockedSend("session-starting");
         return false;
       }
+      const resumeQueueAfterSend =
+        !queuedTurn || dispatchMode === "steer"
+          ? prepareQueuedComposerResumeAfterSend(activeThread.id)
+          : null;
       const pendingDispatch = usePendingTurnDispatchStore.getState();
       if (!pendingDispatch.beginSubmission(activeThread.id)) {
         notifyBlockedSend("send-in-flight");
@@ -714,6 +719,7 @@ export function useChatTurnSubmission({
           composerSkillsSnapshot,
           composerMentionsSnapshot,
         });
+        if (accepted) resumeQueueAfterSend?.();
         if (accepted && queuedChatTurn === null) {
           clearComposerDraftContent(threadIdForSend, { preservePreviewUrls: true, consumedDraft });
           if (

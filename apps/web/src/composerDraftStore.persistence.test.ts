@@ -373,7 +373,7 @@ describe("composerDraftStore queued follow-ups", () => {
     expect(useComposerDraftStore.getState().draftsByThreadId[threadId]).toBeUndefined();
   });
 
-  it("persists queued chat turns for refresh and restart rehydration", () => {
+  it("persists queued chat turns and their pause for refresh and restart rehydration", () => {
     const queuedImage = makeImage({
       id: "queued-image-persisted",
       previewUrl: "data:image/png;base64,AA==",
@@ -381,11 +381,13 @@ describe("composerDraftStore queued follow-ups", () => {
     });
     const store = useComposerDraftStore.getState();
     store.enqueueQueuedTurn(threadId, makeQueuedChatTurn("queued-chat-1", queuedImage));
+    store.pauseQueuedTurnsAfterStop(threadId, "turn-stopped");
 
     const persistedState = persistComposerDraftState();
     expect(persistedState.draftsByThreadId?.[threadId]?.queuedTurns).toHaveLength(1);
 
     const mergedState = mergePersistedComposerDraftState(persistedState);
+    expect(mergedState.draftsByThreadId[threadId]?.queueStoppedTurnId).toBe("turn-stopped");
     expect(mergedState.draftsByThreadId[threadId]?.queuedTurns).toMatchObject([
       {
         id: "queued-chat-1",

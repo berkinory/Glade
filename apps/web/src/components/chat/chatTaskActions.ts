@@ -2,17 +2,26 @@ import { confirmWorkspaceRestore } from "./confirmWorkspaceRestore";
 import type { ThreadId } from "@glade/contracts/core/baseSchemas";
 import type { PendingFileUndo } from "~/components/ChatView.logic.session";
 import { localSubagentThreadId } from "~/components/ChatView.selectors";
+import { holdQueuedComposerTurnsForStop } from "~/lib/queuedComposerDrain";
 import { newCommandId } from "~/lib/utils";
 import { readNativeApi } from "~/nativeApi";
 import type { Thread } from "~/types";
 
 export async function interruptThreadTurn(threadId: ThreadId): Promise<void> {
-  await readNativeApi()?.orchestration.dispatchCommand({
-    type: "thread.turn.interrupt",
-    commandId: newCommandId(),
-    threadId,
-    createdAt: new Date().toISOString(),
-  });
+  const api = readNativeApi();
+  if (!api) return;
+  const releaseQueueHold = holdQueuedComposerTurnsForStop(threadId);
+  await api.orchestration
+    .dispatchCommand({
+      type: "thread.turn.interrupt",
+      commandId: newCommandId(),
+      threadId,
+      createdAt: new Date().toISOString(),
+    })
+    .catch((error: unknown) => {
+      releaseQueueHold();
+      throw error;
+    });
 }
 
 export async function stopWorkflowTask(threadId: ThreadId, taskId: string): Promise<void> {

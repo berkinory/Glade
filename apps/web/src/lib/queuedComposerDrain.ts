@@ -18,6 +18,7 @@ import { useStore } from "../store";
 import type { AppState } from "../storeState";
 import { getThreadFromState } from "../threadDerivation";
 import type { SessionPhase } from "../types";
+import { deriveQueuedComposerPause } from "../components/chat/ComposerQueuedHeader.logic";
 import { dispatchQueuedComposerTurnHeadless } from "./queuedComposerDispatch";
 import { newMessageId } from "./utils";
 
@@ -32,6 +33,7 @@ interface QueuedComposerAutoDispatchGates {
   hasPendingProgress: boolean;
   pendingUserInputCount: number;
   queuedTurnCount: number;
+  isQueuePaused: boolean;
 }
 
 function shouldAutoDispatchQueuedComposerTurn(gates: QueuedComposerAutoDispatchGates): boolean {
@@ -45,7 +47,8 @@ function shouldAutoDispatchQueuedComposerTurn(gates: QueuedComposerAutoDispatchG
     gates.hasPendingApproval ||
     gates.hasPendingProgress ||
     gates.pendingUserInputCount > 0 ||
-    gates.queuedTurnCount === 0
+    gates.queuedTurnCount === 0 ||
+    gates.isQueuePaused
   );
 }
 
@@ -242,7 +245,11 @@ export function createQueuedComposerDrain() {
       ...(Object.keys(previous) as ThreadId[]),
     ]);
     for (const threadId of threadIds) {
-      if (current[threadId]?.queuedTurns !== previous[threadId]?.queuedTurns) {
+      if (
+        current[threadId]?.queuedTurns !== previous[threadId]?.queuedTurns ||
+        current[threadId]?.queueStoppedTurnId !== previous[threadId]?.queueStoppedTurnId ||
+        current[threadId]?.queueResumedTurnId !== previous[threadId]?.queueResumedTurnId
+      ) {
         return true;
       }
     }
@@ -294,6 +301,7 @@ export function createQueuedComposerDrain() {
       thread.session?.orchestrationStatus ?? "",
       thread.session?.activeTurnId ?? "",
       thread.latestTurn?.turnId ?? "",
+      thread.latestTurn?.state ?? "",
       thread.latestTurn?.startedAt ?? "",
       thread.latestTurn?.completedAt ?? "",
       thread.error ?? "",
@@ -359,6 +367,7 @@ export function createQueuedComposerDrain() {
       hasPendingProgress: pendingUserInputs.length > 0,
       pendingUserInputCount: pendingUserInputs.length,
       queuedTurnCount: draft?.queuedTurns.length ?? 0,
+      isQueuePaused: deriveQueuedComposerPause(thread, draft) !== null,
     };
   }
 
@@ -573,3 +582,40 @@ export function createQueuedComposerDrain() {
 }
 
 export const queuedComposerDrain = createQueuedComposerDrain();
+
+// Records a user Stop so the waiting queue pauses instead of sending when the stopped turn ends.
+// Returns an undo for a stop request that failed.
+export function holdQueuedComposerTurnsForStop(threadId: ThreadId): () => void {
+  const thread = getThreadFromState(useStore.getState(), threadId);
+  const stoppedTurnId = thread?.session?.activeTurnId ?? thread?.latestTurn?.turnId ?? null;
+  const drafts = useComposerDraftStore.getState();
+  const previousStoppedTurnId = drafts.draftsByThreadId[threadId]?.queueStoppedTurnId ?? null;
+  if (stoppedTurnId === null || stoppedTurnId === previousStoppedTurnId) {
+    return () => {};
+  }
+  drafts.pauseQueuedTurnsAfterStop(threadId, stoppedTurnId);
+  return () => {
+    const current = useComposerDraftStore.getState();
+    if (current.draftsByThreadId[threadId]?.queueStoppedTurnId === stoppedTurnId) {
+      current.pauseQueuedTurnsAfterStop(threadId, previousStoppedTurnId);
+    }
+  };
+}
+
+// A message sent by hand goes ahead of a stopped queue, which then follows once its turn ends.
+// Captured before the send so a newer Stop or Resume made meanwhile is not overwritten.
+export function prepareQueuedComposerResumeAfterSend(threadId: ThreadId): () => void {
+  const draft = useComposerDraftStore.getState().draftsByThreadId[threadId];
+  const stoppedTurnId = draft?.queueStoppedTurnId ?? null;
+  const resumedTurnId = draft?.queueResumedTurnId ?? null;
+  return () => {
+    const drafts = useComposerDraftStore.getState();
+    const current = drafts.draftsByThreadId[threadId];
+    if (
+      (current?.queueStoppedTurnId ?? null) === stoppedTurnId &&
+      (current?.queueResumedTurnId ?? null) === resumedTurnId
+    ) {
+      drafts.resumeQueuedTurns(threadId, null);
+    }
+  };
+}

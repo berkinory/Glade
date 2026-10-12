@@ -322,6 +322,12 @@ export function normalizePersistedDraftsByThreadId(
       ...(skills.length > 0 ? { skills } : {}),
       ...(mentions.length > 0 ? { mentions } : {}),
       ...(hasQueuedTurns ? { queuedTurns: normalizedQueuedTurns } : {}),
+      ...(hasQueuedTurns && typeof draftCandidate.queueStoppedTurnId === "string"
+        ? { queueStoppedTurnId: draftCandidate.queueStoppedTurnId }
+        : {}),
+      ...(hasQueuedTurns && typeof draftCandidate.queueResumedTurnId === "string"
+        ? { queueResumedTurnId: draftCandidate.queueResumedTurnId }
+        : {}),
 
       ...(hasModelData ? { modelSelectionByProvider, activeProvider } : {}),
       ...(runtimeMode ? { runtimeMode } : {}),

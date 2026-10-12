@@ -7,7 +7,7 @@ import { useStore } from "../store";
 import { initialState } from "../storeState";
 import { makeActivity, makeState, makeThread } from "../storeTestFixtures";
 import type { Thread, ThreadSession } from "../types";
-import { createQueuedComposerDrain } from "./queuedComposerDrain";
+import { createQueuedComposerDrain, holdQueuedComposerTurnsForStop } from "./queuedComposerDrain";
 
 let drain = createQueuedComposerDrain();
 let stopDrain: () => void = () => {};
@@ -476,4 +476,58 @@ describe("queued composer drain watcher", () => {
     await flushDrain();
     expect(dispatch).not.toHaveBeenCalled();
   });
+
+  const rejectedRateLimit = (turnId: string) =>
+    makeActivity({
+      kind: "account.rate-limited",
+      payload: { status: "rejected" },
+      turnId,
+      createdAt: "2026-02-13T00:00:02.000Z",
+    });
+  it.each([
+    { name: "a user Stop", stop: true, state: "completed", activities: [], paused: true },
+    { name: "a failed turn", stop: false, state: "error", activities: [], paused: true },
+    {
+      name: "a usage limit on the latest turn",
+      stop: false,
+      state: "completed",
+      activities: [rejectedRateLimit("turn-live")],
+      paused: true,
+    },
+    {
+      name: "a usage limit on an older turn",
+      stop: false,
+      state: "completed",
+      activities: [rejectedRateLimit("turn-older")],
+      paused: false,
+    },
+  ] as const)(
+    "pauses the queue after $name until Resume: $paused",
+    async ({ stop, state, activities, paused }) => {
+      seedThread(makeThread({ id: THREAD_ID, session: makeSession("running", LIVE_TURN_ID) }));
+      useComposerDraftStore.getState().enqueueQueuedTurn(THREAD_ID, makeQueuedTurn("queued-1"));
+      if (stop) holdQueuedComposerTurnsForStop(THREAD_ID);
+      seedThread(
+        makeThread({
+          id: THREAD_ID,
+          session: makeSession("ready"),
+          activities: [...activities],
+          latestTurn: {
+            turnId: LIVE_TURN_ID,
+            state,
+            requestedAt: "2026-02-13T00:00:01.000Z",
+            startedAt: "2026-02-13T00:00:01.000Z",
+            completedAt: "2026-02-13T00:00:03.000Z",
+            assistantMessageId: null,
+          },
+        }),
+      );
+      await flushDrain();
+      expect(dispatch).toHaveBeenCalledTimes(paused ? 0 : 1);
+      if (!paused) return;
+
+      useComposerDraftStore.getState().resumeQueuedTurns(THREAD_ID, LIVE_TURN_ID);
+      await vi.waitFor(() => expect(dispatch).toHaveBeenCalledTimes(1));
+    },
+  );
 });

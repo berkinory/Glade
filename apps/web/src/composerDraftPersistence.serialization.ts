@@ -228,6 +228,12 @@ export function partializeComposerDraftStoreState(
       ...(draft.skills.length > 0 ? { skills: [...draft.skills] } : {}),
       ...(draft.mentions.length > 0 ? { mentions: [...draft.mentions] } : {}),
       ...(hasQueuedTurns ? { queuedTurns: persistedQueuedTurns } : {}),
+      ...(hasQueuedTurns && draft.queueStoppedTurnId
+        ? { queueStoppedTurnId: draft.queueStoppedTurnId }
+        : {}),
+      ...(hasQueuedTurns && draft.queueResumedTurnId
+        ? { queueResumedTurnId: draft.queueResumedTurnId }
+        : {}),
 
       ...(hasModelData
         ? {
