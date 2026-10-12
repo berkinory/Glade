@@ -3,7 +3,12 @@ import { nonEmptyTrimmed } from "@glade/shared/text/text";
 import { makeClaudeInteractionSettlement } from "./interactionSettlement";
 import { makeClaudeWorkflowRuntime } from "./workflowRuntime";
 import { Effect, FileSystem } from "effect";
-import { EventId, RuntimeTaskId, RuntimeItemId } from "@glade/contracts/core/baseSchemas";
+import {
+  EventId,
+  RuntimeTaskId,
+  RuntimeItemId,
+  type TurnId,
+} from "@glade/contracts/core/baseSchemas";
 import type { ClaudeRuntimeEventsShape } from "../../Services/ClaudeRuntimeEvents.ts";
 import { makeClaudeTurnCompletion } from "./turnCompletion";
 import { makeClaudeToolTracking } from "./toolTracking";
@@ -28,6 +33,15 @@ import {
   parseClaudeWorkflowProgressAgents,
 } from "../claudeWorkflowScript.ts";
 import { readClaudeWorkflowOutputText } from "../claudeWorkflowRuntime.ts";
+
+// Task events belong to the turn that started the task, so late updates from a stopped turn do not
+// land in the next one. Untracked tasks fall back to the active turn.
+function taskOwnerTurnId(context: ClaudeSessionContext, taskId: string): TurnId | undefined {
+  return (
+    context.taskTurnIds?.get(taskId) ??
+    (context.turnState ? asCanonicalTurnId(context.turnState.turnId) : undefined)
+  );
+}
 
 export function makeClaudeSystemMessages(input: {
   readonly settlePendingHumanInteractionsForAgent: ReturnType<
@@ -95,6 +109,7 @@ export function makeClaudeSystemMessages(input: {
         if (isTerminalStatus || isBackgrounded === false) {
           context.knownBackgroundTaskIds.delete(message.task_id);
         }
+        const ownerTurnId = taskOwnerTurnId(context, message.task_id);
         const isSettledRuntimeStatus = isTerminalStatus || status === "paused";
         if (isSettledRuntimeStatus && context.liveWorkflowTaskIds.has(message.task_id)) {
           context.taskTurnIds?.delete(message.task_id);
@@ -117,7 +132,7 @@ export function makeClaudeSystemMessages(input: {
           provider: PROVIDER,
           createdAt: taskStamp.createdAt,
           threadId: context.session.threadId,
-          ...(context.turnState ? { turnId: asCanonicalTurnId(context.turnState.turnId) } : {}),
+          ...(ownerTurnId ? { turnId: ownerTurnId } : {}),
           payload: {
             taskId: RuntimeTaskId.makeUnsafe(message.task_id),
             ...(status !== undefined ? { status } : {}),
@@ -505,8 +520,10 @@ export function makeClaudeSystemMessages(input: {
           const workflowTaskId = context.workflowTaskIdByMemberTaskId.get(message.task_id);
           const summary = nonEmptyTrimmed(message.summary);
           const lastToolName = nonEmptyTrimmed(message.last_tool_name);
+          const ownerTurnId = taskOwnerTurnId(context, message.task_id);
           yield* offerRuntimeEvent(context, {
             ...base,
+            ...(ownerTurnId ? { turnId: ownerTurnId } : {}),
             type: "task.progress",
             payload: {
               taskId: RuntimeTaskId.makeUnsafe(message.task_id),
@@ -630,10 +647,7 @@ export function makeClaudeSystemMessages(input: {
             context.knownBackgroundTaskIds.add(task.task_id);
           }
           for (const task of added) {
-            const ownerTurnId =
-              context.taskTurnIds?.get(task.task_id) ??
-              context.turnState?.turnId ??
-              context.lastTurnId;
+            const ownerTurnId = taskOwnerTurnId(context, task.task_id) ?? context.lastTurnId;
             if (ownerTurnId) {
               context.taskTurnIds ??= new Map();
               context.taskTurnIds.set(task.task_id, ownerTurnId);
@@ -644,16 +658,7 @@ export function makeClaudeSystemMessages(input: {
               type: "task.updated",
               provider: PROVIDER,
               threadId: context.session.threadId,
-              ...((context.taskTurnIds?.get(task.task_id) ??
-              context.turnState?.turnId ??
-              context.lastTurnId)
-                ? {
-                    turnId:
-                      context.taskTurnIds?.get(task.task_id) ??
-                      context.turnState?.turnId ??
-                      context.lastTurnId,
-                  }
-                : {}),
+              ...(ownerTurnId ? { turnId: ownerTurnId } : {}),
               payload: { taskId: RuntimeTaskId.makeUnsafe(task.task_id), isBackgrounded: true },
               providerRefs: nativeProviderRefs(context),
             });
