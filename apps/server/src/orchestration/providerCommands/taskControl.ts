@@ -2,7 +2,7 @@ import type { ServiceMap } from "effect";
 import type { ProjectionSnapshotQueryShape } from "../Services/ProjectionSnapshotQuery.ts";
 import type { OrchestrationThreadShell } from "@glade/contracts/orchestration/threadEntities";
 import type { ProviderProjectionAccessShape } from "../Services/ProviderProjectionAccess.ts";
-import { Effect, Cause } from "effect";
+import { Effect, Cause, Option } from "effect";
 import { makeProviderThreadProjection } from "./threadProjection";
 import { ProviderService } from "../../provider/Services/ProviderService.ts";
 import { QueuedTurnPromotionRepository } from "../../persistence/Services/QueuedTurnPromotions.ts";
@@ -62,22 +62,29 @@ export function makeProviderTaskControl(input: {
     resolveSubagentProviderThreadId,
     resolveLiveProviderTurnId,
   } = projectionAccess;
+  const isActiveNativeChild = (child: OrchestrationThreadShell) =>
+    child.session?.activeTurnId !== null && child.session?.status === "running";
   const readActiveNativeChildren = Effect.fnUntraced(function* (ownerId: ThreadId) {
     const children = yield* projectionSnapshotQuery.listChildThreadShells(ownerId);
     return children.filter(
       (child) =>
         resolveSubagentProviderThreadId(child.id, ownerId) !== undefined &&
-        child.session?.activeTurnId !== null &&
-        child.session?.status === "running",
+        isActiveNativeChild(child),
     );
   });
-  const settleStoppedNativeChildren = Effect.fnUntraced(function* (
-    children: ReadonlyArray<OrchestrationThreadShell>,
+  // Teardown proves these native turns ended, but the child's own settling events race this write.
+  // The update is conditional so a later child update survives it; losing that race means the child
+  // already moved on, which must never fail the parent's interrupt.
+  const settleStoppedNativeChild = (
+    childId: ThreadId,
     createdAt: string,
-  ) {
-    for (const child of children) {
-      if (!child.session) continue;
-      // Teardown proves these native turns ended; a later child update must survive this settlement.
+    attemptsLeft: number,
+  ): Effect.Effect<void> =>
+    Effect.gen(function* () {
+      const child = Option.getOrUndefined(
+        yield* projectionSnapshotQuery.getThreadShellById(childId),
+      );
+      if (!child?.session || !isActiveNativeChild(child)) return;
       yield* setThreadSession({
         threadId: child.id,
         expectedSession: child.session,
@@ -89,8 +96,26 @@ export function makeProviderTaskControl(input: {
         },
         createdAt,
       });
-    }
-  });
+    }).pipe(
+      Effect.catchTag("OrchestrationCommandInvariantError", () =>
+        attemptsLeft > 1
+          ? settleStoppedNativeChild(childId, createdAt, attemptsLeft - 1)
+          : Effect.void,
+      ),
+      Effect.catch((error) =>
+        Effect.logWarning("failed to settle a stopped native child thread", {
+          threadId: childId,
+          error: error.message,
+        }),
+      ),
+    );
+  const settleStoppedNativeChildren = (
+    children: ReadonlyArray<OrchestrationThreadShell>,
+    createdAt: string,
+  ) =>
+    Effect.forEach(children, (child) => settleStoppedNativeChild(child.id, createdAt, 2), {
+      discard: true,
+    });
   const interruptProviderTurn = Effect.fnUntraced(function* (input: {
     readonly threadId: ThreadId;
     readonly turnId?: TurnId | undefined;
