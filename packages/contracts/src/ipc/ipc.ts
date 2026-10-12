@@ -33,7 +33,7 @@ import type {
 } from "../browser/browserView";
 import type {
   PreviewWorkspaceRestoreInput,
-  WorkspaceRestorePreview,
+  WorkspaceRestoreReview,
 } from "../orchestration/workspaceRestore";
 import {
   ProviderManagementContext,
@@ -783,7 +783,7 @@ export interface NativeApi {
     repairState: () => Promise<OrchestrationReadModel>;
     previewWorkspaceRestore: (
       input: PreviewWorkspaceRestoreInput,
-    ) => Promise<WorkspaceRestorePreview>;
+    ) => Promise<WorkspaceRestoreReview>;
     getTurnDiff: (input: OrchestrationGetTurnDiffInput) => Promise<OrchestrationGetTurnDiffResult>;
     getFullThreadDiff: (
       input: OrchestrationGetFullThreadDiffInput,

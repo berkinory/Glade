@@ -420,6 +420,7 @@ export const ThreadRevertedPayload = Schema.Struct({
 });
 
 export const ThreadConversationRollbackRequestedPayload = Schema.Struct({
+  workspaceRestore: Schema.optional(WorkspaceRestoreConfirmation),
   threadId: ThreadId,
   messageId: MessageId,
   numTurns: NonNegativeInt,

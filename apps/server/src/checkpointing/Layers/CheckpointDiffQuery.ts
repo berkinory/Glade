@@ -1,4 +1,5 @@
 import { scopedTurnCheckpoints } from "../scopedTurnCheckpoints";
+import { findConcurrentWorkspaceThreads } from "../concurrentWorkspaceThreads.ts";
 import { collectTailTurnIds } from "@glade/shared/threads/conversationEdit";
 import {
   OrchestrationGetTurnDiffResult,
@@ -77,10 +78,25 @@ const make = Effect.gen(function* () {
             ? checkpoint.checkpointTurnCount === target.turnCount
             : removedTurnIds.includes(checkpoint.turnId),
       );
-      return yield* checkpointStore.previewScopedRestore({
+      const preview = yield* checkpointStore.previewScopedRestore({
         cwd,
         turns: scopedTurnCheckpoints(thread, checkpoints),
       });
+      const restoredTurnIds = new Set(checkpoints.map((checkpoint) => checkpoint.turnId));
+      const since = thread.messages
+        .filter((message) => message.turnId && restoredTurnIds.has(message.turnId))
+        .map((message) => message.createdAt)
+        .toSorted()[0];
+      const concurrentThreads =
+        preview.files.length > 0 && since
+          ? findConcurrentWorkspaceThreads({
+              threadId: thread.id,
+              cwd,
+              since,
+              snapshot: yield* projectionSnapshotQuery.getShellSnapshot(),
+            })
+          : [];
+      return { fingerprint: preview.fingerprint, files: preview.files, concurrentThreads };
     }).pipe(
       Effect.mapError(
         (cause) =>

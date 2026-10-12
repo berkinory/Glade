@@ -1,4 +1,4 @@
-import { confirmWorkspaceRestore } from "./confirmWorkspaceRestore";
+import { requestWorkspaceRestoreDecision } from "./workspaceRestoreDecision";
 import type { ThreadId } from "@glade/contracts/core/baseSchemas";
 import type { PendingFileUndo } from "~/components/ChatView.logic.session";
 import { holdQueuedComposerTurnsForStop } from "~/lib/queuedComposerDrain";
@@ -87,15 +87,18 @@ export async function undoTurnFiles(input: {
         threadId: thread.id,
         target: { type: "undoFiles", turnCount },
       });
-      const workspaceRestore = await confirmWorkspaceRestore(preview, api.dialogs.confirm);
-      if (!workspaceRestore) {
+      const decision = await requestWorkspaceRestoreDecision({
+        mode: "undoFiles",
+        review: preview,
+      });
+      if (decision?.kind !== "restore") {
         setPendingFileUndo(null);
         setIsReverting(false);
         return;
       }
       await api.orchestration.dispatchCommand({
         type: "thread.checkpoint.revert",
-        workspaceRestore,
+        workspaceRestore: decision.confirmation,
         commandId: newCommandId(),
         threadId: thread.id,
         turnCount,

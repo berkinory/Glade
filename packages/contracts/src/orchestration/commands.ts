@@ -447,6 +447,7 @@ const ThreadCheckpointRevertCommand = Schema.Struct({
 });
 
 const ThreadConversationRollbackCommand = Schema.Struct({
+  workspaceRestore: Schema.optional(WorkspaceRestoreConfirmation),
   type: Schema.Literal("thread.conversation.rollback"),
   commandId: CommandId,
   threadId: ThreadId,
@@ -517,6 +518,7 @@ const DispatchableClientOrchestrationCommand = Schema.Union([
   ThreadApprovalRespondCommand,
   ThreadUserInputRespondCommand,
   ThreadCheckpointRevertCommand,
+  ThreadConversationRollbackCommand,
   ThreadMessageEditAndResendCommand,
   ThreadActivityAppendCommand,
   ThreadSessionStopCommand,
@@ -556,6 +558,7 @@ export const ClientOrchestrationCommand = Schema.Union([
   ThreadApprovalRespondCommand,
   ThreadUserInputRespondCommand,
   ThreadCheckpointRevertCommand,
+  ThreadConversationRollbackCommand,
   ThreadMessageEditAndResendCommand,
   ThreadActivityAppendCommand,
   ThreadSessionStopCommand,
@@ -662,7 +665,6 @@ const InternalOrchestrationCommand = Schema.Union([
   ThreadTurnDiffCompleteCommand,
   ThreadActivityAppendCommand,
   ThreadRevertCompleteCommand,
-  ThreadConversationRollbackCommand,
   ThreadConversationRollbackCompleteCommand,
   ThreadDispatchQueuedTurnCommand,
 ]);

@@ -78,6 +78,7 @@ interface ChatTranscriptPaneProps {
   onUndoTurnFiles?: ComponentProps<typeof MessagesTimeline>["onUndoTurnFiles"];
   onRespondToAsyncUserInput?: ComponentProps<typeof MessagesTimeline>["onRespondToAsyncUserInput"];
   onEditUserMessage?: (messageId: MessageId, text: string) => boolean | Promise<boolean>;
+  onRewindToMessage?: ComponentProps<typeof MessagesTimeline>["onRewindToMessage"];
   editableUserMessageId?: MessageId | null;
   onScrollToBottom: () => void;
   resolvedTheme: "light" | "dark";
@@ -143,6 +144,7 @@ export function ChatTranscriptPane({
   onOpenThread,
   onUndoTurnFiles,
   onEditUserMessage,
+  onRewindToMessage,
   onRespondToAsyncUserInput,
   editableUserMessageId,
   onScrollToBottom,
@@ -284,6 +286,7 @@ export function ChatTranscriptPane({
                   onEditUserMessage,
                 }
               : {})}
+            {...(onRewindToMessage ? { onRewindToMessage } : {})}
             {...(onRespondToAsyncUserInput
               ? {
                   onRespondToAsyncUserInput,

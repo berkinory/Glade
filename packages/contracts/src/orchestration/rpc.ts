@@ -1,4 +1,4 @@
-import { PreviewWorkspaceRestoreInput, WorkspaceRestorePreview } from "./workspaceRestore";
+import { PreviewWorkspaceRestoreInput, WorkspaceRestoreReview } from "./workspaceRestore";
 import { Schema, Struct } from "effect";
 import {
   NonNegativeInt,
@@ -285,7 +285,7 @@ export const OrchestrationUnsubscribeThreadInput = Schema.Struct({
 export type OrchestrationUnsubscribeThreadInput = typeof OrchestrationUnsubscribeThreadInput.Type;
 
 export const OrchestrationRpcSchemas = {
-  previewWorkspaceRestore: { input: PreviewWorkspaceRestoreInput, output: WorkspaceRestorePreview },
+  previewWorkspaceRestore: { input: PreviewWorkspaceRestoreInput, output: WorkspaceRestoreReview },
   getSnapshot: {
     input: OrchestrationGetSnapshotInput,
     output: OrchestrationGetSnapshotResult,

@@ -154,6 +154,7 @@ export function decideConversationCommand({
           }),
           type: "thread.conversation-rollback-requested",
           payload: {
+            ...(command.workspaceRestore ? { workspaceRestore: command.workspaceRestore } : {}),
             threadId: command.threadId,
             messageId: command.messageId,
             numTurns: command.numTurns,

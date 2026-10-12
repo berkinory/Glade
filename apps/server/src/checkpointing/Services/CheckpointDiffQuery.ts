@@ -1,6 +1,6 @@
 import type {
   PreviewWorkspaceRestoreInput,
-  WorkspaceRestorePreview,
+  WorkspaceRestoreReview,
 } from "@glade/contracts/orchestration/workspaceRestore";
 import type {
   OrchestrationGetFullThreadDiffInput,
@@ -16,7 +16,7 @@ import type { CheckpointServiceError } from "../Errors.ts";
 export interface CheckpointDiffQueryShape {
   readonly previewWorkspaceRestore: (
     input: PreviewWorkspaceRestoreInput,
-  ) => Effect.Effect<WorkspaceRestorePreview, CheckpointServiceError>;
+  ) => Effect.Effect<WorkspaceRestoreReview, CheckpointServiceError>;
   readonly getTurnDiff: (
     input: OrchestrationGetTurnDiffInput,
   ) => Effect.Effect<OrchestrationGetTurnDiffResult, CheckpointServiceError>;

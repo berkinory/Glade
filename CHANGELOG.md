@@ -5,6 +5,7 @@
 ### New
 
 - Add a project from GitHub on an SSH host or a paired machine: the repository is cloned on that machine.
+- Rewind a chat to any of your messages: later messages are removed, the message returns to the composer, and you choose whether files changed since then stay or are restored.
 
 ### Improved
 
@@ -20,6 +21,7 @@
 - A turn's edited files list shows about six files and scrolls the rest, with each file's name followed by its folder.
 - While a finished turn still waits on a subagent or background command, the end of the chat shows what it is waiting for, and the reply marker takes its place when the agent picks the result up.
 - The pull request dialog says once that an empty title and description are generated, instead of repeating it in both fields.
+- Editing a message asks whether to keep or restore the files changed after it, lists them with their icons and folders, and warns when another chat worked in the same folder since then.
 - Loading indicators are easier to read at small sizes, with smoother motion and a distinct look for actions, loading content, a working agent, subagents and voice transcription.
 
 ### Fixed

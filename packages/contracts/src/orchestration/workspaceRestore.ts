@@ -13,6 +13,13 @@ export const WorkspaceRestorePreview = Schema.Struct({
 });
 export type WorkspaceRestorePreview = typeof WorkspaceRestorePreview.Type;
 
+// Checkpoints snapshot the whole folder, so edits by other chats working in it can show up as files to restore.
+export const WorkspaceRestoreReview = Schema.Struct({
+  ...WorkspaceRestorePreview.fields,
+  concurrentThreads: Schema.Array(Schema.Struct({ id: ThreadId, title: TrimmedNonEmptyString })),
+});
+export type WorkspaceRestoreReview = typeof WorkspaceRestoreReview.Type;
+
 export const PreviewWorkspaceRestoreInput = Schema.Struct({
   threadId: ThreadId,
   target: Schema.Union([

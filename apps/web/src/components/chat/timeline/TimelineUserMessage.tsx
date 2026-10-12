@@ -1,4 +1,4 @@
-import { SquarePenIcon } from "~/lib/icons";
+import { SquarePenIcon, UndoIcon } from "~/lib/icons";
 import { AssistantSelectionsSummaryChip } from "~/components/chat/AssistantSelectionsSummaryChip";
 import {
   USER_MESSAGE_BUBBLE_BORDER_CLASS_NAME,
@@ -55,6 +55,8 @@ export function renderTimelineUserMessage(
   } = controller.state;
   const {
     onEditUserMessage,
+    onRewindToMessage,
+    isWorking,
     onOpenThread,
     onImageExpand,
     resolvedTheme,
@@ -126,6 +128,11 @@ export function renderTimelineUserMessage(
       Boolean(onEditUserMessage) &&
       row.message.id === latestEditableUserMessageId &&
       displayedUserMessage.copyText.trim().length > 0;
+    const showRewindToMessage =
+      Boolean(onRewindToMessage) &&
+      !isWorking &&
+      Boolean(row.message.turnId) &&
+      (row.message.source === undefined || row.message.source === "native");
     const hasLeadingMedia = hasLeadingUserMedia({
       imageCount: userImages.length,
       fileCount: userFiles.length,
@@ -296,6 +303,20 @@ export function renderTimelineUserMessage(
                       onClick={() => startUserMessageEdit(row.message.id)}
                     >
                       <SquarePenIcon className={MESSAGE_ACTION_ICON_CLASS_NAME} />
+                    </MessageActionButton>
+                  )}
+                  {showRewindToMessage && (
+                    <MessageActionButton
+                      label="Rewind to here"
+                      tooltip="Rewind to here"
+                      disabled={isRevertingCheckpoint}
+                      className={cn(
+                        MESSAGE_HOVER_REVEAL_CLASS_NAME,
+                        "disabled:text-muted-foreground/35",
+                      )}
+                      onClick={() => onRewindToMessage?.(row.message.id)}
+                    >
+                      <UndoIcon className={MESSAGE_ACTION_ICON_CLASS_NAME} />
                     </MessageActionButton>
                   )}
                 </div>

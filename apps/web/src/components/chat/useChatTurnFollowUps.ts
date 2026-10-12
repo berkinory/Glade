@@ -1,11 +1,14 @@
-import { confirmWorkspaceRestore } from "./confirmWorkspaceRestore";
+import { requestWorkspaceRestoreDecision } from "./workspaceRestoreDecision";
 import {
   MessageId,
   ThreadId,
   type ProviderKind,
   type TurnId,
 } from "@glade/contracts/core/baseSchemas";
-import { resolveTailUserMessageEditTarget } from "@glade/shared/threads/conversationEdit";
+import {
+  collectTailTurnIds,
+  resolveTailUserMessageEditTarget,
+} from "@glade/shared/threads/conversationEdit";
 
 import { deriveAssociatedWorktreeMetadata } from "@glade/shared/threads/threadWorkspace";
 import { useNavigate } from "@tanstack/react-router";
@@ -14,7 +17,11 @@ import { useCallback } from "react";
 import { newCommandId, randomUUID } from "~/lib/utils";
 import { readNativeApi } from "~/nativeApi";
 
-import { appendOriginalComposerPromptBlocks } from "../../lib/terminalContext";
+import {
+  appendOriginalComposerPromptBlocks,
+  deriveDisplayedUserMessageState,
+} from "../../lib/terminalContext";
+import { useComposerDraftStore } from "../../composerDraftStore";
 
 import { useStore } from "../../store";
 import { getThreadFromState } from "../../threadDerivation";
@@ -211,8 +218,8 @@ export function useChatTurnFollowUps({
           threadId: activeThread.id,
           target: { type: "edit", messageId },
         });
-        const workspaceRestore = await confirmWorkspaceRestore(preview, api.dialogs.confirm);
-        if (!workspaceRestore) return false;
+        const decision = await requestWorkspaceRestoreDecision({ mode: "edit", review: preview });
+        if (!decision) return false;
         await persistThreadSettingsForNextTurn({
           ...threadSettingsDispatchFields(turnDispatchSettings),
           threadId: activeThread.id,
@@ -220,7 +227,7 @@ export function useChatTurnFollowUps({
         });
         await api.orchestration.dispatchCommand({
           type: "thread.message.edit-and-resend",
-          workspaceRestore,
+          ...(decision.kind === "restore" ? { workspaceRestore: decision.confirmation } : {}),
           commandId: newCommandId(),
           threadId: activeThread.id,
           messageId,
@@ -257,6 +264,61 @@ export function useChatTurnFollowUps({
       setThreadError,
       turnDispatchSettings,
     ],
+  );
+
+  const onRewindToMessage = useCallback(
+    async (messageId: MessageId): Promise<void> => {
+      const api = readNativeApi();
+      if (!api || !activeThread || !isServerThread || isRevertingCheckpoint) return;
+      const currentThread =
+        getThreadFromState(useStore.getState(), activeThread.id) ?? activeThread;
+      const status = currentThread.session?.orchestrationStatus;
+      if (status === "running" || status === "starting") {
+        toastManager.add({ type: "warning", title: "Stop the current turn before rewinding." });
+        return;
+      }
+      const message = currentThread.messages.find((entry) => entry.id === messageId);
+      const numTurns = collectTailTurnIds({ messages: currentThread.messages, messageId }).length;
+      if (!message || message.role !== "user" || numTurns === 0) return;
+
+      setIsRevertingCheckpoint(true);
+      setThreadError(activeThread.id, null);
+      try {
+        const review = await api.orchestration.previewWorkspaceRestore({
+          threadId: activeThread.id,
+          target: { type: "edit", messageId },
+        });
+        const decision = await requestWorkspaceRestoreDecision({ mode: "rewind", review });
+        if (!decision) return;
+        await api.orchestration.dispatchCommand({
+          type: "thread.conversation.rollback",
+          ...(decision.kind === "restore" ? { workspaceRestore: decision.confirmation } : {}),
+          commandId: newCommandId(),
+          threadId: activeThread.id,
+          messageId,
+          numTurns,
+          createdAt: new Date().toISOString(),
+        });
+        // The rewound prompt goes in front of any draft so neither is lost.
+        const restoredPrompt = deriveDisplayedUserMessageState(message.text, {}).copyText.trim();
+        const draftStore = useComposerDraftStore.getState();
+        const draft = draftStore.draftsByThreadId[activeThread.id]?.prompt.trim() ?? "";
+        if (restoredPrompt) {
+          draftStore.setPrompt(
+            activeThread.id,
+            draft ? `${restoredPrompt}\n\n${draft}` : restoredPrompt,
+          );
+        }
+      } catch (err) {
+        setThreadError(
+          activeThread.id,
+          err instanceof Error ? err.message : "Failed to rewind the conversation.",
+        );
+      } finally {
+        setIsRevertingCheckpoint(false);
+      }
+    },
+    [activeThread, isRevertingCheckpoint, isServerThread, setIsRevertingCheckpoint, setThreadError],
   );
 
   // Sent as its own message so the composer draft stays untouched. Eligibility is re-read from the
@@ -353,6 +415,7 @@ export function useChatTurnFollowUps({
 
   return {
     onEditUserMessage,
+    onRewindToMessage,
     onContinueFailedTurn,
     onResumeWorkflowRun,
   };

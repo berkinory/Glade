@@ -333,60 +333,71 @@ describe("Provider reactor conversationEdits", () => {
     });
   });
 
-  it("restores the previous filesystem checkpoint before resending a completed edit", async () => {
-    const harness = await createHarness();
-    const now = new Date().toISOString();
-    harness.isGitRepository.mockImplementationOnce(() => Effect.succeed(true));
+  it.each([
+    { choice: "restore", workspaceRestore: { fingerprint: "empty", overwritePaths: [] } },
+    { choice: "keep", workspaceRestore: undefined },
+  ])(
+    "honours the $choice files choice before resending a completed edit",
+    async ({ workspaceRestore }) => {
+      const harness = await createHarness();
+      const now = new Date().toISOString();
+      harness.isGitRepository.mockImplementationOnce(() => Effect.succeed(true));
 
-    await seedRollbackTarget(harness, {
-      messageId: asMessageId("user-message-checkpoint-edit"),
-      turnId: asTurnId("turn-checkpoint-edit"),
-      createdAt: now,
-    });
-    await Effect.runPromise(
-      harness.engine.dispatch({
-        type: "thread.turn.diff.complete",
-        commandId: CommandId.makeUnsafe("cmd-checkpoint-edit-complete"),
-        threadId: ThreadId.makeUnsafe("thread-1"),
-        turnId: asTurnId("turn-checkpoint-edit"),
-        completedAt: now,
-        checkpointRef: checkpointRefForThreadTurn(ThreadId.makeUnsafe("thread-1"), 1),
-        status: "ready",
-        files: [],
-        assistantMessageId: asMessageId("assistant-user-message-checkpoint-edit"),
-        checkpointTurnCount: 1,
-        createdAt: now,
-      }),
-    );
-
-    await Effect.runPromise(
-      harness.engine.dispatch({
-        type: "thread.message.edit-and-resend",
-        commandId: CommandId.makeUnsafe("cmd-edit-checkpoint-resend"),
-        threadId: ThreadId.makeUnsafe("thread-1"),
+      await seedRollbackTarget(harness, {
         messageId: asMessageId("user-message-checkpoint-edit"),
-        text: "edited checkpoint prompt",
-        runtimeMode: "approval-required",
+        turnId: asTurnId("turn-checkpoint-edit"),
         createdAt: now,
-      }),
-    );
+      });
+      await Effect.runPromise(
+        harness.engine.dispatch({
+          type: "thread.turn.diff.complete",
+          commandId: CommandId.makeUnsafe("cmd-checkpoint-edit-complete"),
+          threadId: ThreadId.makeUnsafe("thread-1"),
+          turnId: asTurnId("turn-checkpoint-edit"),
+          completedAt: now,
+          checkpointRef: checkpointRefForThreadTurn(ThreadId.makeUnsafe("thread-1"), 1),
+          status: "ready",
+          files: [],
+          assistantMessageId: asMessageId("assistant-user-message-checkpoint-edit"),
+          checkpointTurnCount: 1,
+          createdAt: now,
+        }),
+      );
 
-    await waitFor(() => harness.sendTurn.mock.calls.length === 1);
-    expect(harness.restoreScopedCheckpoint).toHaveBeenCalledWith(
-      expect.objectContaining({
-        cwd: "/tmp/provider-project",
-        turns: [
-          expect.objectContaining({
-            fallbackBeforeCheckpointRef: checkpointRefForThreadTurn(
-              ThreadId.makeUnsafe("thread-1"),
-              0,
-            ),
-          }),
-        ],
-        confirmation: { fingerprint: "empty", overwritePaths: [] },
-      }),
-    );
-  });
+      await Effect.runPromise(
+        harness.engine.dispatch({
+          type: "thread.message.edit-and-resend",
+          commandId: CommandId.makeUnsafe("cmd-edit-checkpoint-resend"),
+          threadId: ThreadId.makeUnsafe("thread-1"),
+          messageId: asMessageId("user-message-checkpoint-edit"),
+          text: "edited checkpoint prompt",
+          runtimeMode: "approval-required",
+          ...(workspaceRestore ? { workspaceRestore } : {}),
+          createdAt: now,
+        }),
+      );
+
+      await waitFor(() => harness.sendTurn.mock.calls.length === 1);
+      if (!workspaceRestore) {
+        expect(harness.restoreScopedCheckpoint).not.toHaveBeenCalled();
+        return;
+      }
+      expect(harness.restoreScopedCheckpoint).toHaveBeenCalledWith(
+        expect.objectContaining({
+          cwd: "/tmp/provider-project",
+          turns: [
+            expect.objectContaining({
+              fallbackBeforeCheckpointRef: checkpointRefForThreadTurn(
+                ThreadId.makeUnsafe("thread-1"),
+                0,
+              ),
+            }),
+          ],
+          confirmation: { fingerprint: "empty", overwritePaths: [] },
+        }),
+      );
+    },
+  );
 
   it("rewinds a stopped conversation before resending an edited message", async () => {
     const harness = await createHarness();

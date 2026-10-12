@@ -357,7 +357,15 @@ export function makeProviderDomainEvents(input: {
           yield* processUserInputResponseRequested(event);
           return;
         case "thread.conversation-rollback-requested":
-          yield* processConversationRollbackRequested(event);
+          yield* processConversationRollbackRequested(event).pipe(
+            Effect.catchCause((cause) =>
+              setThreadSessionError({
+                threadId: event.payload.threadId,
+                detail: providerFailureMessage(cause),
+                createdAt: event.payload.createdAt,
+              }).pipe(Effect.andThen(Effect.failCause(cause))),
+            ),
+          );
           return;
         case "thread.message-edit-resend-requested":
           yield* processMessageEditResendRequested(event).pipe(

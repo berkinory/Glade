@@ -82,9 +82,10 @@ export function makeProviderConversationEdit(input: {
   const planWorkspaceRestoreForEditReplay = Effect.fnUntraced(function* (input: {
     readonly threadId: ThreadId;
     readonly removedTurnIds: ReadonlyArray<TurnId>;
-    readonly confirmation?: WorkspaceRestoreConfirmation;
+    readonly confirmation: WorkspaceRestoreConfirmation | undefined;
   }) {
-    if (!input.removedTurnIds.length) return null;
+    // Without a confirmation the user chose to keep the workspace as it is.
+    if (!input.confirmation || !input.removedTurnIds.length) return null;
     const thread = yield* resolveThread(input.threadId);
     if (!thread) return null;
     const cwd = yield* resolveProjectedThreadWorkspaceCwd(thread);
@@ -95,10 +96,7 @@ export function makeProviderConversationEdit(input: {
     const plan = { cwd, turns: scopedTurnCheckpoints(thread, checkpoints) };
     const preview = yield* checkpointStore.previewScopedRestore(plan);
     yield* validateRestoreConfirmation(preview, input.confirmation);
-    return {
-      ...plan,
-      confirmation: input.confirmation ?? { fingerprint: preview.fingerprint, overwritePaths: [] },
-    } satisfies EditReplayWorkspaceRestorePlan;
+    return { ...plan, confirmation: input.confirmation } satisfies EditReplayWorkspaceRestorePlan;
   });
 
   const executeEditReplayWorkspaceRestore = Effect.fnUntraced(function* (
@@ -126,6 +124,12 @@ export function makeProviderConversationEdit(input: {
         ),
       );
     }
+    // Validated before the provider trims its conversation, which cannot be undone.
+    const workspaceRestorePlan = yield* planWorkspaceRestoreForEditReplay({
+      threadId: event.payload.threadId,
+      removedTurnIds,
+      confirmation: event.payload.workspaceRestore,
+    });
     if (event.payload.numTurns > 0) {
       const providerThread = yield* resolveProviderSessionThread(event.payload.threadId);
       if (
@@ -146,6 +150,7 @@ export function makeProviderConversationEdit(input: {
         numTurns: event.payload.numTurns,
       });
     }
+    yield* executeEditReplayWorkspaceRestore(workspaceRestorePlan);
     yield* orchestrationEngine.dispatch({
       type: "thread.conversation.rollback.complete",
       commandId: serverCommandId("conversation-rollback-complete"),
@@ -235,7 +240,7 @@ export function makeProviderConversationEdit(input: {
     const workspaceRestorePlan = yield* planWorkspaceRestoreForEditReplay({
       threadId: payload.threadId,
       removedTurnIds: editTarget.removedTurnIds.map((turnId) => TurnId.makeUnsafe(turnId)),
-      ...(payload.workspaceRestore ? { confirmation: payload.workspaceRestore } : {}),
+      confirmation: payload.workspaceRestore,
     });
     if (options?.skipProviderRollback !== true && editTarget.rollbackTurnCount > 0) {
       yield* rollbackProviderConversationForEdit({

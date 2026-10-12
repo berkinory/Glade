@@ -222,6 +222,7 @@ export function ChatControllerSurface({ controller }: { controller: ChatControll
     handleResetWorkspaceToHome,
     handleForkFromMessage,
     onEditUserMessage,
+    onRewindToMessage,
     onContinueFailedTurn,
   } = controller.submission;
   if (!activeThread) {
@@ -543,6 +544,9 @@ export function ChatControllerSurface({ controller }: { controller: ChatControll
                       }).catch(reportChatActionFailure);
                     }}
                     onEditUserMessage={onEditUserMessage}
+                    onRewindToMessage={(messageId) => {
+                      void onRewindToMessage(messageId);
+                    }}
                     onRespondToAsyncUserInput={onRespondToAsyncUserInput}
                     editableUserMessageId={editableUserMessageId}
                     isRevertingCheckpoint={isRevertingCheckpoint}
