@@ -37,8 +37,17 @@ export function PanelTabBar(props: {
     const scroller = scrollerRef.current;
     const wheelRegion = wheelRegionRef.current;
     if (!scroller || !wheelRegion) return;
+    // Mouse wheels only emit vertical deltas, so those scroll the strip sideways. A trackpad can
+    // emit a deltaX of 0 mid-swipe, so once a gesture moves sideways its vertical samples are
+    // ignored until a quiet gap; wheel events have no gesture-end signal.
+    let lastWheelAt = -Infinity;
+    let horizontalGesture = false;
     const wheel = (event: WheelEvent) => {
-      const delta = event.deltaX || (event.shiftKey ? event.deltaY : 0);
+      if (event.ctrlKey) return;
+      if (event.timeStamp - lastWheelAt > 250) horizontalGesture = false;
+      lastWheelAt = event.timeStamp;
+      if (event.deltaX) horizontalGesture = true;
+      const delta = event.deltaX || (horizontalGesture ? 0 : event.deltaY);
       if (!delta || scroller.scrollWidth <= scroller.clientWidth) return;
       if (event.deltaX && event.target instanceof Node && scroller.contains(event.target)) return;
       event.preventDefault();
