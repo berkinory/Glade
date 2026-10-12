@@ -598,7 +598,7 @@ export function useSidebarRows(context: ReturnType<typeof useSidebarPanelEffects
       <SidebarIconButton
         icon={SquarePenIcon}
         label={`Create new chat in ${project.name}`}
-        tooltip={newThreadShortcutLabel ? `New thread (${newThreadShortcutLabel})` : "New thread"}
+        tooltip={newThreadShortcutLabel ? `New chat (${newThreadShortcutLabel})` : "New chat"}
         tooltipSide="top"
         data-testid="new-thread-button"
         onMouseEnter={() => {
