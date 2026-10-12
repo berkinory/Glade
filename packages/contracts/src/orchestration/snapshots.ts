@@ -100,6 +100,12 @@ export const OrchestrationThreadStreamItem = Schema.Union([
     kind: Schema.Literal("event"),
     event: OrchestrationEvent,
   }),
+  // A cursor-resume gap in one item, so the client applies the catch-up as one store update instead of
+  // rendering each intermediate state. Sent only to subscribers that ask with `batchReplay`.
+  Schema.Struct({
+    kind: Schema.Literal("replay"),
+    events: Schema.Array(OrchestrationEvent),
+  }),
 ]);
 
 export type OrchestrationThreadStreamItem = typeof OrchestrationThreadStreamItem.Type;

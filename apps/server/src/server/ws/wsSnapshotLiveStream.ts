@@ -11,7 +11,8 @@ const ORCHESTRATION_SNAPSHOT_REPLAY_LIMIT = 4_096;
 
 export type SnapshotLiveStreamItem<Snapshot> =
   | { readonly kind: "snapshot"; readonly snapshot: Snapshot }
-  | { readonly kind: "event"; readonly event: OrchestrationEvent };
+  | { readonly kind: "event"; readonly event: OrchestrationEvent }
+  | { readonly kind: "replay"; readonly events: ReadonlyArray<OrchestrationEvent> };
 
 export interface ResnapshotReport {
   readonly snapshotSequence: number;
@@ -64,6 +65,8 @@ export function makeCursorSafeSnapshotLiveStream<Snapshot, E>(input: {
     throughSequenceInclusive: number,
   ) => Stream.Stream<OrchestrationEvent, E>;
   readonly resumeFromSequence?: number | undefined;
+  // Deliver a cursor-resume gap as one `replay` item (omitted when empty) instead of one item per event.
+  readonly batchReplay?: boolean | undefined;
 
   readonly resumeSubjectExists?: Effect.Effect<boolean, E>;
   readonly onResnapshotRequired?: (report: ResnapshotReport) => Effect.Effect<void, never>;
@@ -126,7 +129,13 @@ export function makeCursorSafeSnapshotLiveStream<Snapshot, E>(input: {
             input.resnapshotEscalation?.tracker.recordHealthyStart(
               input.resnapshotEscalation.streamKey,
             );
-            return Stream.concat(Stream.fromIterable(rows).pipe(Stream.map(toItem)), liveTail);
+            const replay: Stream.Stream<SnapshotLiveStreamItem<Snapshot>> =
+              input.batchReplay !== true
+                ? Stream.fromIterable(rows).pipe(Stream.map(toItem))
+                : rows.length === 0
+                  ? Stream.empty
+                  : Stream.succeed({ kind: "replay", events: rows });
+            return Stream.concat(replay, liveTail);
           }
         }
       }

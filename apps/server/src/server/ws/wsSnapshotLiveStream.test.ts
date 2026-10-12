@@ -19,6 +19,7 @@ const harness = (input: {
   readonly highWater: number;
   readonly replay?: ReadonlyArray<OrchestrationEvent>;
   readonly resumeFromSequence?: number;
+  readonly batchReplay?: boolean;
 }) =>
   Effect.gen(function* () {
     const live = yield* PubSub.unbounded<OrchestrationEvent>();
@@ -33,6 +34,7 @@ const harness = (input: {
           (input.replay ?? []).filter((row) => row.sequence > from && row.sequence <= through),
         ),
       resumeFromSequence: input.resumeFromSequence,
+      batchReplay: input.batchReplay,
     });
     const pull = yield* Stream.toPull(stream);
     const publish = (events: ReadonlyArray<OrchestrationEvent>) =>
@@ -42,7 +44,11 @@ const harness = (input: {
 
 const sequences = (items: ReadonlyArray<SnapshotLiveStreamItem<number>>) =>
   items.map((item) =>
-    item.kind === "snapshot" ? `snapshot@${item.snapshot}` : item.event.sequence,
+    item.kind === "snapshot"
+      ? `snapshot@${item.snapshot}`
+      : item.kind === "replay"
+        ? `replay@${item.events.map((entry) => entry.sequence).join(",")}`
+        : item.event.sequence,
   );
 
 const expectOverflow = (exit: Exit.Exit<unknown, unknown>) => {
@@ -90,21 +96,28 @@ describe("makeCursorSafeSnapshotLiveStream", () => {
       ),
     ));
 
-  it("resumes from a cursor without a snapshot and skips live events inside the fence", () =>
-    Effect.runPromise(
-      Effect.scoped(
-        Effect.gen(function* () {
-          const { pull, publish } = yield* harness({
-            highWater: 12,
-            resumeFromSequence: 10,
-            replay: [event(11), event(12)],
-          });
-          expect(sequences(yield* pull)).toEqual([11, 12]);
-          yield* publish([event(12), event(13)]);
-          expect(sequences(yield* pull)).toEqual([13]);
-        }),
+  it.each([
+    { batchReplay: false, gap: [11, 12] },
+    { batchReplay: true, gap: ["replay@11,12"] },
+  ])(
+    "resumes from a cursor without a snapshot and skips live events inside the fence (batchReplay: $batchReplay)",
+    ({ batchReplay, gap }) =>
+      Effect.runPromise(
+        Effect.scoped(
+          Effect.gen(function* () {
+            const { pull, publish } = yield* harness({
+              highWater: 12,
+              resumeFromSequence: 10,
+              replay: [event(11), event(12)],
+              batchReplay,
+            });
+            expect(sequences(yield* pull)).toEqual(gap);
+            yield* publish([event(12), event(13)]);
+            expect(sequences(yield* pull)).toEqual([13]);
+          }),
+        ),
       ),
-    ));
+  );
 
   it("falls back to a snapshot when the resume replay exceeds its byte budget", () =>
     Effect.runPromise(

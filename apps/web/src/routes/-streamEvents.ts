@@ -1,6 +1,7 @@
 import { onAppPresentation } from "../wsNativeApi";
 import { presentAppRequest } from "../lib/appPresentation";
 import { ThreadId } from "@glade/contracts/core/baseSchemas";
+import { type OrchestrationEvent } from "@glade/contracts/orchestration/events";
 import { WS_STREAM_OVERFLOW_CODE } from "@glade/contracts/transport/ws/rpcErrors";
 import { type ServerConfig } from "@glade/contracts/server/server";
 import { type ServerSettingsView } from "@glade/contracts/settings/settings";
@@ -161,6 +162,53 @@ export function subscribeStreamEvents(
     }
   });
 
+  const applyThreadStreamEvent = (event: OrchestrationEvent) => {
+    const threadId = ThreadId.makeUnsafe(String(event.aggregateId));
+    const latestThreadSequence = state.threadSnapshotSequenceById.get(threadId);
+    if (latestThreadSequence === undefined) {
+      const pendingThreadEvents =
+        state.pendingThreadEventsById.get(threadId) ?? createPendingThreadEventBuffer();
+      bufferPendingThreadEvent(pendingThreadEvents, event);
+      state.pendingThreadEventsById.set(threadId, pendingThreadEvents);
+      if (
+        event.type === "thread.session-set" &&
+        isTerminalThreadSessionStatus(event.payload.session.status)
+      ) {
+        policy.armThreadProjectionTerminalFence(threadId, event.sequence);
+      } else if (event.type === "thread.session-set") {
+        policy.clearThreadProjectionTerminalFence(threadId);
+      }
+      if (state.subscribedThreadIds.has(threadId)) {
+        void operations.reconcileThreadProjection(threadId).catch(() => undefined);
+      }
+      return;
+    }
+    if (event.sequence <= latestThreadSequence) {
+      return;
+    }
+    if (!policy.applyFencedThreadEvent(threadId, event)) {
+      return;
+    }
+    // Only delivery from the subscription itself proves it recovered; catch-up replay does not.
+    if (context.store.getState().threadDetailSyncById?.[threadId] === "failed") {
+      context.store.getState().clearThreadDetailSyncFailure(threadId);
+    }
+    if (
+      event.type === "thread.session-set" &&
+      isTerminalThreadSessionStatus(event.payload.session.status)
+    ) {
+      policy.armThreadProjectionTerminalFence(threadId, event.sequence);
+    } else {
+      if (event.type === "thread.session-set") {
+        policy.clearThreadProjectionTerminalFence(threadId);
+      }
+      state.nextThreadProjectionReconcileAtById.set(
+        threadId,
+        Date.now() + THREAD_DETAIL_PROJECTION_RECONCILE_INTERVAL_MS,
+      );
+    }
+  };
+
   const unsubThreadEvent = context.api.orchestration.onThreadEvent((item) => {
     if (item.kind === "snapshot") {
       const threadId = item.snapshot.thread.id;
@@ -208,50 +256,15 @@ export function subscribeStreamEvents(
       return;
     }
 
-    const threadId = ThreadId.makeUnsafe(String(item.event.aggregateId));
-    const latestThreadSequence = state.threadSnapshotSequenceById.get(threadId);
-    if (latestThreadSequence === undefined) {
-      const pendingThreadEvents =
-        state.pendingThreadEventsById.get(threadId) ?? createPendingThreadEventBuffer();
-      bufferPendingThreadEvent(pendingThreadEvents, item.event);
-      state.pendingThreadEventsById.set(threadId, pendingThreadEvents);
-      if (
-        item.event.type === "thread.session-set" &&
-        isTerminalThreadSessionStatus(item.event.payload.session.status)
-      ) {
-        policy.armThreadProjectionTerminalFence(threadId, item.event.sequence);
-      } else if (item.event.type === "thread.session-set") {
-        policy.clearThreadProjectionTerminalFence(threadId);
-      }
-      if (state.subscribedThreadIds.has(threadId)) {
-        void operations.reconcileThreadProjection(threadId).catch(() => undefined);
-      }
+    if (item.kind === "replay") {
+      // A cursor-resume gap: commit it as one store update so a stale cached turn jumps straight to its
+      // current state instead of flickering through each intermediate one.
+      batching.queueDomainEventBatch(() => {
+        for (const event of item.events) applyThreadStreamEvent(event);
+      });
       return;
     }
-    if (item.event.sequence <= latestThreadSequence) {
-      return;
-    }
-    if (!policy.applyFencedThreadEvent(threadId, item.event)) {
-      return;
-    }
-    // Only delivery from the subscription itself proves it recovered; catch-up replay does not.
-    if (context.store.getState().threadDetailSyncById?.[threadId] === "failed") {
-      context.store.getState().clearThreadDetailSyncFailure(threadId);
-    }
-    if (
-      item.event.type === "thread.session-set" &&
-      isTerminalThreadSessionStatus(item.event.payload.session.status)
-    ) {
-      policy.armThreadProjectionTerminalFence(threadId, item.event.sequence);
-    } else {
-      if (item.event.type === "thread.session-set") {
-        policy.clearThreadProjectionTerminalFence(threadId);
-      }
-      state.nextThreadProjectionReconcileAtById.set(
-        threadId,
-        Date.now() + THREAD_DETAIL_PROJECTION_RECONCILE_INTERVAL_MS,
-      );
-    }
+    applyThreadStreamEvent(item.event);
   });
 
   const unsubThreadStreamFailure = context.onThreadStreamFailure((failure) => {

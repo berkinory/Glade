@@ -225,6 +225,8 @@ export const OrchestrationSubscribeThreadInput = Schema.Struct({
   threadId: ThreadId,
 
   afterSequence: Schema.optional(NonNegativeInt),
+  // A newer server can serve an older client, which cannot decode the `replay` item, so it is opt-in.
+  batchReplay: Schema.optional(Schema.Boolean),
 });
 
 export type OrchestrationSubscribeThreadInput = typeof OrchestrationSubscribeThreadInput.Type;

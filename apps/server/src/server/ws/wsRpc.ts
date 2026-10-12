@@ -1103,7 +1103,10 @@ const makeWsRpcHandlersLayer = () =>
                         snapshot: item.snapshot,
                       }),
                     )
-                  : toShellStreamEvent(item.event),
+                  : item.kind === "event"
+                    ? toShellStreamEvent(item.event)
+                    : // The shell stream never asks for batched replay.
+                      Effect.succeed(Option.none<OrchestrationShellStreamItem>()),
               ),
               Stream.flatMap((item) =>
                 Option.isSome(item) ? Stream.succeed(item.value) : Stream.empty,
@@ -1125,6 +1128,7 @@ const makeWsRpcHandlersLayer = () =>
               },
 
               resumeFromSequence: input.afterSequence,
+              batchReplay: input.batchReplay,
 
               resumeSubjectExists: projectionReadModelQuery.getThreadShellById(input.threadId).pipe(
                 Effect.map(Option.isSome),
@@ -1184,6 +1188,12 @@ const makeWsRpcHandlersLayer = () =>
                   return Stream.succeed<OrchestrationThreadStreamItem>({
                     kind: "event",
                     event: item.event,
+                  });
+                }
+                if (item.kind === "replay") {
+                  return Stream.succeed<OrchestrationThreadStreamItem>({
+                    kind: "replay",
+                    events: item.events,
                   });
                 }
 

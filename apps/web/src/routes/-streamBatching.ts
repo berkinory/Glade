@@ -95,6 +95,18 @@ export function createStreamBatching(context: StreamContext, state: StreamState)
     flushPendingDomainEvents();
   };
 
+  // While a batch is queued, no event flushes on its own: the batch ends with one flush.
+  let queueingBatch = false;
+  const queueDomainEventBatch = (queueEvents: () => void) => {
+    queueingBatch = true;
+    try {
+      queueEvents();
+    } finally {
+      queueingBatch = false;
+    }
+    flushQueuedDomainEventsNow();
+  };
+
   const queueDomainEvent = (event: OrchestrationEvent) => {
     state.pendingDomainEvents.push(event);
     const checkpointDiffThreadId = getCheckpointDiffInvalidationThreadIdForEvent(event);
@@ -115,11 +127,14 @@ export function createStreamBatching(context: StreamContext, state: StreamState)
         state.pendingGitInvalidationThreadIds.add(threadId);
       }
     }
-    if (shouldFlushDomainEventImmediately(event, state.immediatelyFlushedAssistantMessageIds)) {
+    if (
+      shouldFlushDomainEventImmediately(event, state.immediatelyFlushedAssistantMessageIds) &&
+      !queueingBatch
+    ) {
       flushQueuedDomainEventsNow();
       return;
     }
-    domainEventFlushThrottler.maybeExecute();
+    if (!queueingBatch) domainEventFlushThrottler.maybeExecute();
   };
 
   const domainEventFlushThrottler = new Throttler(
@@ -136,6 +151,7 @@ export function createStreamBatching(context: StreamContext, state: StreamState)
     flushPendingDomainEvents,
     flushQueuedDomainEventsNow,
     queueDomainEvent,
+    queueDomainEventBatch,
     domainEventFlushThrottler,
   };
 }
