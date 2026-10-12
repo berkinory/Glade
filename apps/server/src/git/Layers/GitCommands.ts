@@ -14,7 +14,7 @@ import {
   Stream,
 } from "effect";
 import { ChildProcessSpawner } from "effect/unstable/process";
-import { makeEffectProcessCommand } from "../../platform/effectProcessRuntime.ts";
+import { spawnEffectProcess } from "../../platform/effectProcessRuntime.ts";
 import { decodeJsonResult } from "../../platform/schemaJson.ts";
 import { GitProcessQueue, type GitProcessClass } from "../gitProcessQueue";
 import { makeKeyedSingleFlightCache } from "../../pullRequests/KeyedSingleFlightCache";
@@ -494,22 +494,23 @@ const makeGitCommands = Effect.gen(function* () {
         ...input.env,
         ...trace2Monitor.env,
       };
-      const child = yield* commandSpawner
-        .spawn(makeEffectProcessCommand("git", commandInput.args, { cwd: commandInput.cwd, env }))
-        .pipe(
-          Effect.mapError((cause) =>
-            // A missing cwd also spawns as ENOENT, so only a failed lookup means Git is missing.
-            resolveExecutable("git", { env }) === null
-              ? createGitCommandError(
-                  commandInput.operation,
-                  commandInput.cwd,
-                  commandInput.args,
-                  GIT_NOT_FOUND_DETAIL,
-                  cause,
-                )
-              : toGitCommandError(commandInput, "failed to spawn.")(cause),
-          ),
-        );
+      const child = yield* spawnEffectProcess(commandSpawner, "git", commandInput.args, {
+        cwd: commandInput.cwd,
+        env,
+      }).pipe(
+        Effect.mapError((cause) =>
+          // A missing cwd also spawns as ENOENT, so only a failed lookup means Git is missing.
+          resolveExecutable("git", { env }) === null
+            ? createGitCommandError(
+                commandInput.operation,
+                commandInput.cwd,
+                commandInput.args,
+                GIT_NOT_FOUND_DETAIL,
+                cause,
+              )
+            : toGitCommandError(commandInput, "failed to spawn.")(cause),
+        ),
+      );
 
       yield* Effect.addFinalizer(() => child.kill().pipe(Effect.ignore));
 
