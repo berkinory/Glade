@@ -1,60 +1,40 @@
 # Glade Changelog
 
-## Unreleased
+## 0.2.5 - 2026-10-13
 
 ### New
 
-- Add a project from GitHub on an SSH host or a paired machine: the repository is cloned on that machine.
-- Rewind a chat to any of your messages: later messages are removed, the message returns to the composer, and you choose whether files changed since then stay or are restored.
+- Add a project from GitHub on an SSH host or a paired machine; the repository is cloned on that machine. ([b9e3ccd47](https://github.com/berkinory/Glade/commit/b9e3ccd47c929bffe1bff1b9ec132e9b1a9d4ca2))
+- Rewind a chat to any of your messages, or edit one, and choose whether the files changed since then are kept or restored. Glade warns when another chat worked in the same folder in the meantime. ([5feb95884](https://github.com/berkinory/Glade/commit/5feb95884f37d590807f6f1074971af98a2a156f))
 
 ### Improved
 
-- A new app icon with an ASCII-art background, a larger and exactly centered mark, and matching light, dark and dev versions.
-- Switching to another provider is instant: the chat switches right away, your next message carries the conversation over, and switching back before sending undoes it.
-- Returning to a provider you used earlier in a chat resumes its own session and only tells it what happened while another provider was working.
-- Everything that opens and closes in the chat uses the same motion, including tool details, subagent cards, pasted text, error details and long messages.
-- Icons of tool calls, tool groups, subagent cards and notices in the chat line up in one column.
-- Command details show the command and its output in separate boxes.
-- Details of a failed tool call read in the normal text color; the red icon marks the failure.
-- A subagent launch shows the subagent spinner from its first moment instead of a robot icon that turned into a spinner.
-- Shell commands are named by what they do: a leading change of folder is skipped, chained reads, searches and listings read as one step such as "Read 2 files" or "Explored the project", and in-place `sed` edits read as edits.
-- Thinking gets its own row that says how long the agent thought, instead of riding inside tool call groups, and opens to the full reasoning.
-- A turn's edited files list shows about six files and scrolls the rest, with each file's name followed by its folder.
-- While a finished turn still waits on a subagent or background command, the end of the chat shows what it is waiting for, and the reply marker takes its place when the agent picks the result up.
-- The pull request dialog says once that an empty title and description are generated, instead of repeating it in both fields.
-- Editing a message asks whether to keep or restore the files changed after it, lists them with their icons and folders, and warns when another chat worked in the same folder since then.
-- Loading indicators are easier to read at small sizes, with smoother motion and a distinct look for actions, loading content, a working agent, subagents and voice transcription.
+- Switching providers is instant: your next message carries the conversation over, switching back before sending undoes it, and returning to a provider resumes its own session. ([3f4a20981](https://github.com/berkinory/Glade/commit/3f4a209819665e3ee9be9b00306064457654f788), [11efe0c1d](https://github.com/berkinory/Glade/commit/11efe0c1d3b57375dbf26a1bec6dfa131d978f30))
+- The composer has separate model and settings pickers next to the add button, and number shortcuts pick the thinking effort. ([a23f8cea5](https://github.com/berkinory/Glade/commit/a23f8cea5993f9e1288b2b5e46eda0202b18fe90), [e68c0d8f3](https://github.com/berkinory/Glade/commit/e68c0d8f3eefec69dde6592a940503104cccab21), [09fce1006](https://github.com/berkinory/Glade/commit/09fce100619327e512f31d0572cac01f139e0edd))
+- A new app icon. ([a82e75efe](https://github.com/berkinory/Glade/commit/a82e75efec8979c20911fa3d2ef0b412b3423556))
+- Tool calls are easier to read: shell commands are named by what they do, commands and their output sit in separate boxes, and calls without details no longer open. ([388e34c7f](https://github.com/berkinory/Glade/commit/388e34c7f20d07e83fc9cb6730785223f39311ec), [b1373d376](https://github.com/berkinory/Glade/commit/b1373d376b207a4412ee218f54e14ec2947988be), [10aed864b](https://github.com/berkinory/Glade/commit/10aed864b7ef8abf0533d2b502cb0eb7b8958098), [46a8f0d4d](https://github.com/berkinory/Glade/commit/46a8f0d4d70fdb55cf585ee00e7b8cb238ad48b1))
+- Thinking gets its own row that shows how long the agent thought. ([fe278b4f1](https://github.com/berkinory/Glade/commit/fe278b4f1ab352d221cca38864d24acd79c49d75))
+- A turn's edited files list stays compact, scrolls when it is long, and remembers whether you keep it open. ([da52c2bb6](https://github.com/berkinory/Glade/commit/da52c2bb6ad7eaef2f43abbc08bb26e70b78dc46), [748f0161a](https://github.com/berkinory/Glade/commit/748f0161aaef0cad1d96b3a5e36a016571111baa), [4c235f254](https://github.com/berkinory/Glade/commit/4c235f2547d6ef721633e7a933313b38d0d18f3f))
+- When a finished turn still waits on a subagent or background command, the end of the chat shows what it is waiting for. ([d7b2af061](https://github.com/berkinory/Glade/commit/d7b2af061ad5eee509688b36e6e9bf89390b2c92))
+- Everything that opens and closes in the chat moves the same way, and loading indicators are clearer and differ by the kind of work. ([0e365e9bd](https://github.com/berkinory/Glade/commit/0e365e9bdcf85c7b6b703430c790b9300a0166e9), [ad75e1f05](https://github.com/berkinory/Glade/commit/ad75e1f05b4cf354e99c7b791a00b8b100da6536))
 
 ### Fixed
 
-- Opening a subagent's chat shows the loading state and then its whole conversation with its prompt, instead of the prompt alone with messages and code colours popping in afterwards.
-- Reading an image no longer shows an expand arrow that opens nothing.
-- Images in replies show on their own line at a readable size instead of as small thumbnails next to the text.
-- The chat stays scrolled to the end while a turn runs tools, opens tool groups or asks for approval, until you scroll away.
-- Actions in the commit and pull request dialogs have space between them, so a hovered action no longer merges with the highlighted one.
-- Starting a chat in a collapsed project expands the project, so a project's first chat no longer stays hidden.
-- Sending a message whose attached file was moved or deleted removes that attachment and tells you, instead of failing to send.
-- Sites without an icon show a globe that follows the theme instead of a black one that disappeared on dark themes.
-- Claude subagents no longer add a "Moved to background" row each; their card marks the ones running in the background.
-- When an agent looks up a chat that runs on an SSH host or a paired machine, Glade tells it the chat is only visible from that machine instead of saying it was not found.
-- Cloning a public GitHub repository works when a GitHub token is set but the GitHub CLI is not installed.
-- Chats no longer gain an empty turn and a missing file snapshot notice each time a background subagent finishes, or when the agent resumes on its own to read a background result.
-- A Claude Monitor update that arrives while the agent is working stays inside that turn instead of splitting it in two.
-- Archiving or deleting the open chat moves to the next chat in the project instead of one of its subagents or an archived chat.
-- A reply the agent starts after a background command finishes says the background task finished, instead of naming a subagent that never ran.
-- The finished sound and the done status no longer come early in the few seconds between background work finishing and the agent picking up its result.
-- Stopping a background task, such as a dev server the agent started, no longer marks the chat as failed in the sidebar, and a real background failure clears once you open the chat.
-- The model picker of a new chat lists Claude models instead of showing a launch error before the chat's folder exists.
-- Forked chats keep their visual replies, pinned messages and full history, and their attachments no longer break when the original chat is deleted or rewound.
-- Reverting changes in a forked chat no longer removes the conversation it was forked with.
+- The chat keeps following a running turn through tool activity and approvals until you scroll away. ([d4bcb4760](https://github.com/berkinory/Glade/commit/d4bcb47607143cec362a4420c0ef9b4ac9c364b6), [fd2b47336](https://github.com/berkinory/Glade/commit/fd2b47336665b1402b998f164437ddca9242be0f))
+- Background subagents and commands no longer add empty turns, split a turn in two, mislabel the reply that follows them, or mark a chat as done or failed too early. ([27166080a](https://github.com/berkinory/Glade/commit/27166080a555fde1bef3628f1d35b81dca32ebc2), [0c871f566](https://github.com/berkinory/Glade/commit/0c871f56674da09c1fdd1d6b442a99d4b228e189), [d7b2af061](https://github.com/berkinory/Glade/commit/d7b2af061ad5eee509688b36e6e9bf89390b2c92), [7b10ee145](https://github.com/berkinory/Glade/commit/7b10ee1454733cf4586425b6b120e77832956e69))
+- Opening a subagent's chat shows its whole conversation at once instead of the prompt first. ([7eabcae24](https://github.com/berkinory/Glade/commit/7eabcae24a4aedb84bd71205441f3a3ccf7b8fc8))
+- Forked chats keep their visual replies, pinned messages, attachments and full history, and resume their own session. ([6eb38d2a2](https://github.com/berkinory/Glade/commit/6eb38d2a2c100d0c03be795b2bb410e43c031521), [b20567f44](https://github.com/berkinory/Glade/commit/b20567f44693311a72d097e4fe816fc2814f6a7d), [03ee96c28](https://github.com/berkinory/Glade/commit/03ee96c284901a48b25f9d4a0cdfab87b2fc3564))
+- Archiving or deleting the open chat moves to the next chat in the project instead of a subagent or an archived chat. ([11912b95c](https://github.com/berkinory/Glade/commit/11912b95c65772e7b9989d72623fd9013ddf9de1))
+- A new chat's model picker lists Claude models instead of a launch error before the chat's folder exists. ([a270e624d](https://github.com/berkinory/Glade/commit/a270e624d3e0961d05fb222007ab4c8af4288d38), [a938cd012](https://github.com/berkinory/Glade/commit/a938cd012b15b752e5751f00ed256f3f4ce7e996))
+- Sending a message whose attached file was moved or deleted drops that attachment and tells you, instead of failing. ([4ffa5a567](https://github.com/berkinory/Glade/commit/4ffa5a56748713fabdcd7ff2ebbb2c85e0b68310))
+- Images in replies show on their own line at a readable size. ([bbb6c87a5](https://github.com/berkinory/Glade/commit/bbb6c87a51f36a95570a7a9ef1c17e71e1faf993))
 
 ### Removed
 
-- The confirmation dialog and context preparation step when switching providers.
-- The subagent list above the composer. Subagents show in their card in the chat, which can also stop them all, and in the Environment panel.
-- The large tooltip on tool calls. Their details open in place instead.
-- The Open PR in browser action in the pull request dialog. Create PR and Create draft PR remain.
-- The option to start a new worktree from the latest remote branch. New worktrees start from the local branch and can still copy uncommitted changes.
+- The subagent list above the composer. Subagents show in their card in the chat, which can stop them all, and in the Environment panel. ([742ab0f7c](https://github.com/berkinory/Glade/commit/742ab0f7cc300425022b764d9973ed218c5e3cc6))
+- The large tooltip on tool calls; their details open in place. ([fe278b4f1](https://github.com/berkinory/Glade/commit/fe278b4f1ab352d221cca38864d24acd79c49d75))
+- The Open PR in browser action in the pull request dialog. ([e9a8cdfd9](https://github.com/berkinory/Glade/commit/e9a8cdfd941877293bed259908e8a23e0fd07f1b))
+- Starting a new worktree from the latest remote branch. New worktrees start from the local branch and can still copy uncommitted changes. ([ac3b64bf0](https://github.com/berkinory/Glade/commit/ac3b64bf00fa21ef4f1b2f0074e17cff27aae825))
 
 ## 0.2.4 - 2026-10-12
 
