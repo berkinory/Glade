@@ -16,7 +16,7 @@ import {
   providerModelSupportsAutoRuntimeMode,
 } from "../lib/runtimeMode";
 import { useStore } from "../store";
-import { createProjectSelector, createThreadSelector } from "../storeSelectors";
+import { createProjectSelector, createThreadBranchContextSelector } from "../storeSelectors";
 import {
   EnvMode,
   resolveAssociatedWorktreeMetadataAfterWorkspacePatch,
@@ -230,7 +230,9 @@ export default function BranchToolbar({
   const setThreadWorkspaceAction = useStore((store) => store.setThreadWorkspace);
   const draftThread = useComposerDraftStore((store) => store.getDraftThread(threadId));
   const setDraftThreadContext = useComposerDraftStore((store) => store.setDraftThreadContext);
-  const serverThread = useStore(useMemo(() => createThreadSelector(threadId), [threadId]));
+  const serverThread = useStore(
+    useMemo(() => createThreadBranchContextSelector(threadId), [threadId]),
+  );
   const activeProjectId = serverThread?.projectId ?? draftThread?.projectId ?? null;
   const activeProject = useStore(
     useMemo(() => createProjectSelector(activeProjectId), [activeProjectId]),
@@ -297,7 +299,7 @@ export default function BranchToolbar({
           : {}),
       });
       const api = readNativeApi();
-      if (serverThread?.session && worktreePath !== activeWorktreePath && api) {
+      if (serverThread?.hasSession && worktreePath !== activeWorktreePath && api) {
         void api.orchestration
           .dispatchCommand({
             type: "thread.session.stop",
@@ -343,7 +345,7 @@ export default function BranchToolbar({
     [
       activeThreadId,
       activeThreadBranch,
-      serverThread?.session,
+      serverThread?.hasSession,
       activeWorktreePath,
       hasServerThread,
       setThreadWorkspaceAction,
@@ -396,7 +398,7 @@ export default function BranchToolbar({
             thread={{
               envLocked,
               hasServerThread,
-              isThreadSettled: serverThread?.settledAt != null || !threadDetailReady,
+              isThreadSettled: serverThread?.settled === true || !threadDetailReady,
             }}
             actions={{
               onSetThreadWorkspace: setThreadWorkspace,

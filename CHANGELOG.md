@@ -15,6 +15,7 @@
 - Diffs use less memory, and it is freed once diffs have been closed for a while.
 - Opening a busy chat or starting Glade no longer downloads the same data twice, and live chats stop polling while updates stream in.
 - Long chats stay smoother while a reply streams.
+- The branch picker and subagent list do less work while a reply streams.
 
 ### Fixed
 

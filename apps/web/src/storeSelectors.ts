@@ -326,6 +326,59 @@ export function createThreadGitActionsMetadataSelector(
   };
 }
 
+export interface ThreadBranchContext {
+  readonly id: ThreadId;
+  readonly projectId: ProjectId;
+  readonly envMode: ThreadEnvironmentMode | undefined;
+  readonly branch: string | null;
+  readonly worktreePath: string | null;
+  readonly workingDirectory: string | null;
+  readonly associatedWorktreePath: string | null;
+  readonly associatedWorktreeBranch: string | null;
+  readonly associatedWorktreeRef: string | null;
+  readonly settled: boolean;
+  readonly hasSession: boolean;
+}
+
+// Branch and environment controls only need these fields; selecting the whole thread re-rendered them
+// on every streamed delta.
+export function createThreadBranchContextSelector(
+  threadId: ThreadId | null | undefined,
+): (state: AppState) => ThreadBranchContext | undefined {
+  let previousResult: ThreadBranchContext | undefined;
+
+  return (state) => {
+    const source = threadId ? state.threadShellById?.[threadId] : undefined;
+    if (!source) {
+      previousResult = undefined;
+      return undefined;
+    }
+    const next: ThreadBranchContext = {
+      id: source.id,
+      projectId: source.projectId,
+      envMode: source.envMode,
+      branch: source.branch ?? null,
+      worktreePath: source.worktreePath ?? null,
+      workingDirectory: source.workingDirectory ?? null,
+      associatedWorktreePath: source.associatedWorktreePath ?? null,
+      associatedWorktreeBranch: source.associatedWorktreeBranch ?? null,
+      associatedWorktreeRef: source.associatedWorktreeRef ?? null,
+      settled: source.settledAt != null,
+      hasSession: Boolean(state.threadSessionById?.[source.id]),
+    };
+    if (
+      previousResult !== undefined &&
+      (Object.keys(next) as (keyof ThreadBranchContext)[]).every(
+        (key) => previousResult![key] === next[key],
+      )
+    ) {
+      return previousResult;
+    }
+    previousResult = next;
+    return next;
+  };
+}
+
 export function createThreadExistsSelector(
   threadId: ThreadId | null | undefined,
 ): (state: AppState) => boolean {

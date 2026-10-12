@@ -12,8 +12,8 @@ import {
 } from "~/lib/subagentPresentation";
 import { cn } from "~/lib/utils";
 import { useStore } from "~/store";
-import { createThreadSelector } from "~/storeSelectors";
-import type { ThreadShell } from "~/types";
+import { selectThreadActivities } from "~/threadDerivation";
+import type { Thread, ThreadShell } from "~/types";
 import { deriveWorkLogEntries } from "~/workLog.entries";
 import { type SubagentRosterItem, deriveSubagentRosterItems } from "../subagentRoster.logic";
 import { SubagentAvatar } from "../SubagentAvatar";
@@ -28,6 +28,7 @@ import {
 } from "./EnvironmentRow";
 
 const NO_BACKGROUND_IDS: ReadonlySet<string> = new Set();
+const NO_ACTIVITIES: Thread["activities"] = [];
 
 function NativeSubagentRow({
   thread,
@@ -40,7 +41,9 @@ function NativeSubagentRow({
   runtimeUnavailable: boolean;
   onOpen: (id: ThreadId) => void;
 }) {
-  const child = useStore(useMemo(() => createThreadSelector(thread.id), [thread.id]));
+  const state = useStore(
+    (store) => store.threadTurnStateById?.[thread.id]?.latestTurn?.state ?? null,
+  );
   const setError = useStore((store) => store.setError);
   const nativeControls = useQuery(
     providerComposerCapabilitiesQueryOptions(thread.modelSelection.provider),
@@ -51,7 +54,6 @@ function NativeSubagentRow({
     title: thread.title,
     fallbackId: thread.id,
   });
-  const state = child?.latestTurn?.state;
   const status =
     detail?.statusLabel ??
     (state === "running"
@@ -134,8 +136,14 @@ export function EnvironmentSubagentsSection({
     if (!parent) break;
     root = parent;
   }
-  const rootThread = useStore(useMemo(() => createThreadSelector(root?.id), [root?.id]));
-  const entries = deriveWorkLogEntries(rootThread?.activities ?? [], undefined);
+  const rootId = root?.id ?? null;
+  const rootActivities = useStore((state) =>
+    rootId ? selectThreadActivities(state, rootId) : NO_ACTIVITIES,
+  );
+  const rootSessionStatus = useStore((state) =>
+    rootId ? (state.threadSessionById?.[rootId]?.status ?? null) : null,
+  );
+  const entries = deriveWorkLogEntries(rootActivities, undefined);
   const relevantThreads = useStore(
     useMemo(
       () =>
@@ -155,7 +163,7 @@ export function EnvironmentSubagentsSection({
   const detailById = new Map(
     details.map((item) => [`subagent:${root.id}:${item.providerThreadId}`, item]),
   );
-  const omission = rootThread?.activities.findLast(
+  const omission = rootActivities.findLast(
     (activity) => activity.kind === "subagent.materialization.capped",
   );
   const descendants = new Set<ThreadId>([root.id]);
@@ -215,9 +223,9 @@ export function EnvironmentSubagentsSection({
               thread={thread}
               detail={detailById.get(thread.id)}
               runtimeUnavailable={
-                rootThread?.session?.status === "closed" ||
-                rootThread?.session?.status === "error" ||
-                rootThread?.session?.status === "disconnected"
+                rootSessionStatus === "closed" ||
+                rootSessionStatus === "error" ||
+                rootSessionStatus === "disconnected"
               }
               onOpen={(id) => {
                 void navigate({ to: "/$threadId", params: { threadId: id } });
