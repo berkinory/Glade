@@ -58,15 +58,22 @@ function compareActivityLifecycleRank(kind: string): number {
   return 1;
 }
 
+// Time first: `sequence` mixes the provider journal counter with the orchestration event counter, and
+// messages carry none. The timeline merge needs both lists sorted by the same key, so sequence only
+// breaks same-time ties; sequence-first let one server row with a low sequence lead its block's work
+// and pushed every message of the block above that work.
 export function compareTimelineEntries(left: TimelineEntry, right: TimelineEntry): number {
+  const createdAtComparison = left.createdAt.localeCompare(right.createdAt);
+  if (createdAtComparison !== 0) {
+    return createdAtComparison;
+  }
   if (
     "sequence" in left &&
     "sequence" in right &&
     left.sequence !== undefined &&
-    right.sequence !== undefined &&
-    left.sequence !== right.sequence
+    right.sequence !== undefined
   ) {
     return left.sequence - right.sequence;
   }
-  return left.createdAt.localeCompare(right.createdAt);
+  return 0;
 }
