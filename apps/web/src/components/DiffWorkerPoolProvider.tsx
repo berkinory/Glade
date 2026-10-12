@@ -5,11 +5,16 @@ import { createContext, useContext, useEffect, useRef, useState, type ReactNode 
 import { useTheme } from "../hooks/useTheme";
 import { resolveDiffThemeName, type DiffThemeName } from "../lib/diffRendering";
 
-const ActivateDiffWorkers = createContext<(() => void) | null>(null);
+// Each worker holds its own bundle, WASM and grammars, so the pool stays small and is torn down once no
+// diff has been mounted for a while. The next diff to mount starts it again.
+const DIFF_WORKER_POOL_SIZE = 2;
+const DIFF_WORKER_IDLE_TERMINATE_MS = 3 * 60_000;
+
+const AcquireDiffWorkers = createContext<(() => () => void) | null>(null);
 
 export function useActivateDiffWorkers() {
-  const activate = useContext(ActivateDiffWorkers);
-  useEffect(() => activate?.(), [activate]);
+  const acquire = useContext(AcquireDiffWorkers);
+  useEffect(() => acquire?.(), [acquire]);
 }
 
 function DiffWorkerThemeSync({ themeName }: { themeName: DiffThemeName }) {
@@ -36,7 +41,30 @@ export function DiffWorkerPoolProvider({ children }: { children?: ReactNode }) {
   }, [diffThemeName]);
   const [active, setActive] = useState(false);
   const [workerPool, setWorkerPool] = useState<WorkerPoolManager>();
-  const [activate] = useState(() => () => setActive(true));
+  const leaseCountRef = useRef(0);
+  const idleTimerRef = useRef<number | null>(null);
+  const [acquire] = useState(() => () => {
+    leaseCountRef.current += 1;
+    if (idleTimerRef.current !== null) {
+      window.clearTimeout(idleTimerRef.current);
+      idleTimerRef.current = null;
+    }
+    setActive(true);
+    return () => {
+      leaseCountRef.current -= 1;
+      if (leaseCountRef.current > 0) return;
+      idleTimerRef.current = window.setTimeout(() => {
+        idleTimerRef.current = null;
+        setActive(false);
+      }, DIFF_WORKER_IDLE_TERMINATE_MS);
+    };
+  });
+  useEffect(
+    () => () => {
+      if (idleTimerRef.current !== null) window.clearTimeout(idleTimerRef.current);
+    },
+    [],
+  );
 
   useEffect(() => {
     if (!active) return;
@@ -45,11 +73,10 @@ export function DiffWorkerPoolProvider({ children }: { children?: ReactNode }) {
     void import("@pierre/diffs/worker")
       .then(({ WorkerPoolManager }) => {
         if (disposed) return;
-        const cores = Math.max(1, navigator.hardwareConcurrency || 4);
         pool = new WorkerPoolManager(
           {
             workerFactory: () => new DiffsWorker(),
-            poolSize: Math.max(2, Math.min(6, Math.floor(cores / 2))),
+            poolSize: DIFF_WORKER_POOL_SIZE,
             totalASTLRUCacheSize: 240,
           },
           { theme: themeRef.current, tokenizeMaxLineLength: 1_000 },
@@ -62,15 +89,16 @@ export function DiffWorkerPoolProvider({ children }: { children?: ReactNode }) {
     return () => {
       disposed = true;
       pool?.terminate();
+      setWorkerPool(undefined);
     };
   }, [active]);
 
   return (
-    <ActivateDiffWorkers.Provider value={activate}>
+    <AcquireDiffWorkers.Provider value={acquire}>
       <WorkerPoolContext.Provider value={workerPool}>
         <DiffWorkerThemeSync themeName={diffThemeName} />
         {children}
       </WorkerPoolContext.Provider>
-    </ActivateDiffWorkers.Provider>
+    </AcquireDiffWorkers.Provider>
   );
 }

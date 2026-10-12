@@ -12,6 +12,7 @@
 - Glade opens faster: its local server now starts before other startup work.
 - The Dock icon uses less memory on macOS.
 - Live activity labels use less CPU while agents work.
+- Diffs use less memory, and it is freed once diffs have been closed for a while.
 
 ### Fixed
 
