@@ -6,7 +6,6 @@ import type { ClaudeRuntimeEventsShape } from "../../Services/ClaudeRuntimeEvent
 import { ClaudeQueryRuntime } from "./adapterConfiguration";
 import { Effect, FileSystem, Option, Random, Queue } from "effect";
 import { ProviderAdapterValidationError } from "../../core/Errors.ts";
-import { makeClaudeTaskPresentation } from "./taskPresentation";
 import { type ServerConfigShape } from "../../../server/config.ts";
 import { type ProviderSendTurnInput } from "@glade/contracts/provider/provider";
 
@@ -16,13 +15,12 @@ import { isClaudeCompactionCommand } from "./commandPresentation";
 import { CompactionAdmission } from "../../Services/CompactionAdmission";
 
 const COMPACTION_DISCOVERY_TIMEOUT_MS = 15_000;
-import { hasActiveClaudeCompactionWork } from "./sessionResume";
+import { hasActiveClaudeRuntimeWork } from "./sessionResume";
 import {
   normalizeClaudeModelOptions,
   resolveApiModelId,
   getEffectiveClaudeCodeEffort,
 } from "@glade/shared/provider/model";
-import { hasOnlyCompletedClaudeTasks, hasUnfinishedClaudeTasks } from "../claudeTaskTracker.ts";
 import { nativeProviderRefs, buildUserMessageEffect } from "./messageContent";
 import { resolveSelectedClaudeThinkingToggle, selectedClaudeModelInfo } from "./modelCapabilities";
 import type { EffortLevel } from "@anthropic-ai/claude-agent-sdk";
@@ -45,9 +43,6 @@ export function makeClaudeTurnDispatch(input: {
   readonly offerRuntimeEvent: ClaudeRuntimeEventsShape["offerRuntimeEvent"];
   readonly nowIso: Effect.Effect<string>;
   readonly emitCompactionProgress: ClaudeRuntimeEventsShape["emitCompactionProgress"];
-  readonly emitTrackedTasksUpdated: ReturnType<
-    typeof makeClaudeTaskPresentation
-  >["emitTrackedTasksUpdated"];
   readonly fileSystem: FileSystem.FileSystem;
   readonly serverConfig: ServerConfigShape;
   readonly getDisabledSkillNames: Effect.Effect<ReadonlyArray<string>, ServerSettingsError, never>;
@@ -63,7 +58,6 @@ export function makeClaudeTurnDispatch(input: {
     offerRuntimeEvent,
     nowIso,
     emitCompactionProgress,
-    emitTrackedTasksUpdated,
     fileSystem,
     serverConfig,
     getDisabledSkillNames,
@@ -167,11 +161,11 @@ export function makeClaudeTurnDispatch(input: {
           });
         }
       }
-      if (isCompaction && hasActiveClaudeCompactionWork(context)) {
+      if (isCompaction && hasActiveClaudeRuntimeWork(context)) {
         return yield* new ProviderAdapterValidationError({
           provider: PROVIDER,
           operation: "startClaudeCompaction",
-          issue: "Wait for Claude's active turn and shared tasks to finish before compacting.",
+          issue: "Wait for Claude's active turn and background work to finish before compacting.",
         });
       }
       if (isCompaction && !context.resumeSessionId) {
@@ -192,11 +186,6 @@ export function makeClaudeTurnDispatch(input: {
 
       if (context.turnState) {
         yield* completeTurn(context, "completed");
-      }
-
-      if (hasOnlyCompletedClaudeTasks(context.trackedTasks)) {
-        context.trackedTasks.clear();
-        yield* updateResumeCursor(context);
       }
 
       let apiModelChanged = false;
@@ -360,7 +349,7 @@ export function makeClaudeTurnDispatch(input: {
         isCompaction &&
         (context.stopped ||
           !sessions.isCurrent(input.threadId, context) ||
-          hasActiveClaudeCompactionWork(context))
+          hasActiveClaudeRuntimeWork(context))
       ) {
         return yield* new ProviderAdapterValidationError({
           provider: PROVIDER,
@@ -399,15 +388,6 @@ export function makeClaudeTurnDispatch(input: {
           });
 
           if (isCompaction) yield* emitCompactionProgress(context);
-
-          if (hasUnfinishedClaudeTasks(context.trackedTasks)) {
-            yield* emitTrackedTasksUpdated(context, {
-              rawPayload: {
-                source: "claude.resume-cursor",
-                trackedTaskCount: context.trackedTasks.size,
-              },
-            });
-          }
 
           if (Option.isSome(admission)) {
             yield* admission.value.check.pipe(

@@ -1,4 +1,4 @@
-import { ArrowUp02Icon, LayoutAlignRightIcon } from "~/lib/icons";
+import { ArrowUp02Icon } from "~/lib/icons";
 import { Spinner } from "~/components/ui/spinner";
 import { type ReactNode } from "react";
 import { cn } from "~/lib/utils";
@@ -13,11 +13,6 @@ interface ChatComposerFooterProps {
   leadingControls: ReactNode;
   composerPickerControls: ReactNode;
   contextMeter: ReactNode;
-  sidebarAction: {
-    title: string;
-    label: string;
-    onClick: () => void;
-  } | null;
   voice: {
     enabled: boolean;
     recording: boolean;
@@ -49,7 +44,6 @@ export function ChatComposerFooter({
   leadingControls,
   composerPickerControls,
   contextMeter,
-  sidebarAction,
   voice,
   pendingInput,
   submission,
@@ -75,25 +69,6 @@ export function ChatComposerFooter({
         )}
       >
         {leadingControls}
-
-        {!voice.recording && !voice.transcribing ? (
-          <>
-            {sidebarAction ? (
-              <Button
-                variant="ghost"
-                className="shrink-0 whitespace-nowrap px-2 text-ui-sm sm:text-ui-sm font-normal sm:px-3"
-                size="sm"
-                type="button"
-                onClick={sidebarAction.onClick}
-                title={sidebarAction.title}
-                aria-label={sidebarAction.title}
-              >
-                <LayoutAlignRightIcon />
-                <span className="sr-only sm:not-sr-only">{sidebarAction.label}</span>
-              </Button>
-            ) : null}
-          </>
-        ) : null}
       </div>
 
       <div

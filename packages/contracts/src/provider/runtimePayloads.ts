@@ -10,7 +10,6 @@ import {
   RuntimeSessionExitKind,
   RuntimeThreadState,
   RuntimeTurnState,
-  RuntimeTaskStatus,
   CanonicalItemType,
   RuntimeItemStatus,
   RuntimeContentStreamKind,
@@ -174,20 +173,6 @@ export const TurnAbortedPayload = Schema.Struct({
 });
 
 export type TurnAbortedPayload = typeof TurnAbortedPayload.Type;
-
-const RuntimeTaskListItem = Schema.Struct({
-  task: TrimmedNonEmptyStringSchema,
-  status: RuntimeTaskStatus,
-});
-
-export type RuntimeTaskListItem = typeof RuntimeTaskListItem.Type;
-
-export const TurnTasksUpdatedPayload = Schema.Struct({
-  explanation: Schema.optional(Schema.NullOr(TrimmedNonEmptyStringSchema)),
-  tasks: Schema.Array(RuntimeTaskListItem),
-});
-
-export type TurnTasksUpdatedPayload = typeof TurnTasksUpdatedPayload.Type;
 
 export const TurnProposedDeltaPayload = Schema.Struct({
   delta: Schema.String,

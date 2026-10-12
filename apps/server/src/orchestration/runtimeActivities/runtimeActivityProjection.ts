@@ -331,26 +331,6 @@ export function projectProviderRuntimeActivities(
       ];
     }
 
-    case "turn.tasks.updated": {
-      return [
-        {
-          id: event.eventId,
-          createdAt: event.createdAt,
-          tone: "info",
-          kind: "turn.tasks.updated",
-          summary: "Tasks updated",
-          payload: toActivityPayload({
-            tasks: event.payload.tasks,
-            ...(event.payload.explanation !== undefined
-              ? { explanation: event.payload.explanation }
-              : {}),
-          }),
-          turnId: toTurnId(event.turnId) ?? null,
-          ...maybeSequence,
-        },
-      ];
-    }
-
     case "user-input.requested":
     case "user-input.resolved": {
       return [

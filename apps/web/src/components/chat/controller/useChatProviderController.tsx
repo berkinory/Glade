@@ -9,14 +9,8 @@ import { useChatPendingInteractions } from "~/components/chat/useChatPendingInte
 import { useChatProviderModels } from "~/components/chat/useChatProviderModels";
 import { useChatWorkLog } from "~/components/chat/useChatWorkLog";
 import { useComposerReferences } from "~/components/chat/useComposerReferences";
-import { useFeatureFlags } from "~/featureFlags";
 import { serverSettingsQueryOptions } from "~/lib/serverReactQuery";
-import {
-  deriveActiveBackgroundTasksState,
-  deriveActiveTaskListState,
-  derivePhase,
-  type ActiveTaskListState,
-} from "~/session-logic";
+import { deriveActiveBackgroundTasksState, derivePhase } from "~/session-logic";
 
 import { useChatThreadContext } from "../ChatThreadContext";
 import type { useChatSessionController } from "./useChatSessionController";
@@ -104,10 +98,6 @@ export function useChatProviderController({
     composerMentions,
   });
 
-  const featureFlags = useFeatureFlags();
-
-  const showDebugTaskBanner = import.meta.env.DEV && featureFlags["show-debug-task-banner"];
-
   const serverSettingsQuery = useQuery(serverSettingsQueryOptions());
 
   const phase = derivePhase(activeThread?.session ?? null);
@@ -164,37 +154,6 @@ export function useChatProviderController({
     setComposerTrigger,
     setComposerHighlightedItemId,
   });
-
-  const activeTaskList = ((): ActiveTaskListState | null => {
-    if (showDebugTaskBanner) {
-      return {
-        createdAt: new Date().toISOString(),
-        turnId: activeLatestTurn?.turnId ?? null,
-        tasks: [
-          {
-            task: "Inspect banner layout without overlapping transcript text",
-            status: "inProgress",
-          },
-          {
-            task: "Confirm compact task banner width",
-            status: "pending",
-          },
-          {
-            task: "Verify sidebar task controls",
-            status: "completed",
-          },
-        ],
-      };
-    }
-
-    // Only while a turn is live: deriveActiveTaskListState falls back to the latest unfinished
-    // prior-turn list (follow-up turns, reloads mid-turn), but once the thread is idle the card must
-    // clear — providers routinely end a turn without marking every task completed, and an unfinished
-    // list must not linger forever.
-    return latestTurnSettled
-      ? null
-      : deriveActiveTaskListState(threadActivities, activeLatestTurn?.turnId);
-  })();
 
   const backgroundIds = activeThread?.backgroundWork?.taskIds;
   const activeBackgroundTasks =
@@ -330,7 +289,6 @@ export function useChatProviderController({
     onAdvanceActivePendingUserInput,
     onPreviousActivePendingUserInputQuestion,
 
-    activeTaskList,
     activeBackgroundTasks,
 
     localDispatch,

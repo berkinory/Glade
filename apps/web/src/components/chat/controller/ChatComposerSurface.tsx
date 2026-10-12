@@ -76,8 +76,6 @@ export function ChatComposerSurface({
   } = controller.transcript;
   const {
     composerFormRef,
-    taskListSidebarOpen,
-    setTaskListSidebarOpen,
     workflowRunCardCompact,
     setWorkflowRunCardCompact,
     queuedComposerTurns,
@@ -172,7 +170,6 @@ export function ChatComposerSurface({
     selectedComposerMentions,
     hasLiveTurn,
     phase,
-    activeTaskList,
 
     activePendingResolvedAnswers,
     isSendBusy,
@@ -208,8 +205,6 @@ export function ChatComposerSurface({
   };
   const {
     showComposerLiveChangesHeader,
-    renderActiveTaskListCard,
-    showComposerActiveTaskListCard,
     showComposerWorkflowRunCard,
 
     emptyLandingControls,
@@ -256,7 +251,6 @@ export function ChatComposerSurface({
                 }
               />
             ) : null}
-            {renderActiveTaskListCard(showComposerLiveChangesHeader)}
             {workflowRunState ? (
               <WorkflowRunCard
                 workflowRun={workflowRunState}
@@ -277,7 +271,7 @@ export function ChatComposerSurface({
                   void onResumeWorkflowRun(...args).catch(reportChatActionFailure);
                 }}
                 onDismiss={onDismissWorkflowRun}
-                attachedToPrevious={showComposerLiveChangesHeader || showComposerActiveTaskListCard}
+                attachedToPrevious={showComposerLiveChangesHeader}
               />
             ) : null}
             <ComposerQueuedHeader
@@ -291,18 +285,13 @@ export function ChatComposerSurface({
               onResume={onResumeQueuedComposerTurns}
               onEditPaused={onEditPausedQueuedComposerTurn}
               cwd={threadWorkspaceCwd ?? undefined}
-              attachedToPrevious={
-                showComposerLiveChangesHeader ||
-                showComposerActiveTaskListCard ||
-                showComposerWorkflowRunCard
-              }
+              attachedToPrevious={showComposerLiveChangesHeader || showComposerWorkflowRunCard}
             />
             {isNativeSubagent ? null : (
               <ComputerComposerPanel
                 threadId={threadId}
                 attachedToPrevious={
                   showComposerLiveChangesHeader ||
-                  showComposerActiveTaskListCard ||
                   showComposerWorkflowRunCard ||
                   queuedComposerTurns.length > 0
                 }
@@ -581,15 +570,6 @@ export function ChatComposerSurface({
                             : {})}
                         />
                       ) : null
-                    }
-                    sidebarAction={
-                      activeTaskList || taskListSidebarOpen
-                        ? {
-                            title: taskListSidebarOpen ? "Close task list" : "Open task list",
-                            label: "Tasks",
-                            onClick: () => setTaskListSidebarOpen(!taskListSidebarOpen),
-                          }
-                        : null
                     }
                     voice={{
                       enabled: showVoiceNotesControl,

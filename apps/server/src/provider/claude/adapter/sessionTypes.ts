@@ -15,7 +15,6 @@ import type {
   FastModeState,
 } from "@anthropic-ai/claude-agent-sdk";
 import { ThreadId, TurnId, ApprovalRequestId } from "@glade/contracts/core/baseSchemas";
-import { type ClaudeTrackedTask } from "../claudeTaskTracker.ts";
 import {
   type ProviderApprovalDecision,
   type ProviderUserInputAnswers,
@@ -57,7 +56,6 @@ export interface ClaudeResumeState {
   readonly resume?: string;
   readonly resumeSessionAt?: string;
   readonly turnCount?: number;
-  readonly trackedTasks?: ReadonlyArray<ClaudeTrackedTask>;
   readonly processedTokenTotal?: number;
   readonly tokenAccountingVersion?: 1;
 }
@@ -207,7 +205,6 @@ export interface ClaudeSessionTurn {
     items: Array<unknown>;
   }>;
   readonly inFlightTools: Map<number, ToolInFlight>;
-  readonly trackedTasks: Map<string, ClaudeTrackedTask>;
   turnState: ClaudeTurnState | undefined;
   lastTurnId: TurnId | undefined;
   interruptRequestedTurnId: TurnId | undefined;

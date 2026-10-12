@@ -3,7 +3,6 @@ import { makeClaudeReasoningBlocks } from "./reasoningBlocks";
 import { makeClaudeAssistantText } from "./assistantText";
 import { EventId, RuntimeTaskId } from "@glade/contracts/core/baseSchemas";
 import type { ClaudeRuntimeEventsShape } from "../../Services/ClaudeRuntimeEvents.ts";
-import { makeClaudeTaskPresentation } from "./taskPresentation";
 import { makeClaudeToolTracking } from "./toolTracking";
 import { makeClaudeWorkflowRuntime } from "./workflowRuntime";
 import { makeClaudeContextUsage } from "./contextUsage";
@@ -26,7 +25,6 @@ import {
   toolResultStreamKind,
 } from "./toolPresentation";
 import { stripDiagnosticImages } from "../../core/stripDiagnosticImages.ts";
-import { applyClaudeTaskToolResult } from "../claudeTaskTracker.ts";
 import {
   parseClaudeWorkflowLaunch,
   parseClaudeWorkflowLaunchFromText,
@@ -41,17 +39,11 @@ export function makeClaudeContentMessages(input: {
   >["ensureAssistantTextBlock"];
   readonly makeEventStamp: () => Effect.Effect<{ eventId: EventId; createdAt: string }>;
   readonly offerRuntimeEvent: ClaudeRuntimeEventsShape["offerRuntimeEvent"];
-  readonly emitTodoTasksUpdated: ReturnType<
-    typeof makeClaudeTaskPresentation
-  >["emitTodoTasksUpdated"];
   readonly openInFlightTool: ReturnType<typeof makeClaudeToolTracking>["openInFlightTool"];
   readonly completeAssistantTextBlock: ReturnType<
     typeof makeClaudeAssistantText
   >["completeAssistantTextBlock"];
   readonly updateResumeCursor: ClaudeRuntimeEventsShape["updateResumeCursor"];
-  readonly emitTrackedTasksUpdated: ReturnType<
-    typeof makeClaudeTaskPresentation
-  >["emitTrackedTasksUpdated"];
   readonly startWorkflowRuntimePoller: ReturnType<
     typeof makeClaudeWorkflowRuntime
   >["startWorkflowRuntimePoller"];
@@ -68,11 +60,9 @@ export function makeClaudeContentMessages(input: {
     ensureAssistantTextBlock,
     makeEventStamp,
     offerRuntimeEvent,
-    emitTodoTasksUpdated,
     openInFlightTool,
     completeAssistantTextBlock,
     updateResumeCursor,
-    emitTrackedTasksUpdated,
     startWorkflowRuntimePoller,
     ensureSyntheticTurn,
 
@@ -190,14 +180,6 @@ export function makeClaudeContentMessages(input: {
               payload: {},
             },
           });
-          if (nextTool.toolName === "TodoWrite") {
-            yield* emitTodoTasksUpdated(context, {
-              toolInput: nextTool.input,
-              toolUseId: nextTool.itemId,
-              rawMethod: "claude/stream_event/content_block_delta/input_json_delta",
-              rawPayload: message,
-            });
-          }
         }
         return;
       }
@@ -356,22 +338,6 @@ export function makeClaudeContentMessages(input: {
               method: "claude/user",
               payload: {},
             },
-          });
-        }
-
-        if (
-          applyClaudeTaskToolResult(
-            context.trackedTasks,
-            tool,
-            toolResult.block,
-            toolResult.structuredResult,
-            toolResult.isError,
-          )
-        ) {
-          yield* updateResumeCursor(context);
-          yield* emitTrackedTasksUpdated(context, {
-            toolUseId: tool.itemId,
-            rawPayload: message,
           });
         }
 

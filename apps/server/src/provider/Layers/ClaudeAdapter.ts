@@ -24,7 +24,6 @@ import { ClaudeProcessOwnership } from "../Services/ClaudeProcessOwnership.ts";
 import { makeClaudeProcessOwnershipLive } from "./ClaudeProcessOwnership.ts";
 import { makeClaudeAssistantText } from "../claude/adapter/assistantText";
 import { makeClaudeContextUsage } from "../claude/adapter/contextUsage";
-import { makeClaudeTaskPresentation } from "../claude/adapter/taskPresentation";
 import { makeClaudeInteractionSettlement } from "../claude/adapter/interactionSettlement";
 import { makeClaudeTurnCompletion } from "../claude/adapter/turnCompletion";
 import { makeClaudeWorkflowRuntime } from "../claude/adapter/workflowRuntime";
@@ -161,10 +160,6 @@ function makeClaudeAdapter(options?: ClaudeAdapterLiveOptions) {
     const { readClaudeContextUsage, maybeEmitContextUsageWarning } = makeClaudeContextUsage({
       emitRuntimeWarning,
     });
-    const { emitTodoTasksUpdated, emitTrackedTasksUpdated } = makeClaudeTaskPresentation({
-      makeEventStamp,
-      offerRuntimeEvent,
-    });
     const {
       settlePendingHumanInteractions,
       settlePendingHumanInteractionsForAgent,
@@ -195,7 +190,6 @@ function makeClaudeAdapter(options?: ClaudeAdapterLiveOptions) {
     const { openInFlightTool, ensureSyntheticTurn, ensureSubagentRun } = makeClaudeToolTracking({
       makeEventStamp,
       offerRuntimeEvent,
-      emitTodoTasksUpdated,
       nowIso,
       emitMonitorEvents,
     });
@@ -221,11 +215,9 @@ function makeClaudeAdapter(options?: ClaudeAdapterLiveOptions) {
         ensureAssistantTextBlock,
         makeEventStamp,
         offerRuntimeEvent,
-        emitTodoTasksUpdated,
         openInFlightTool,
         completeAssistantTextBlock,
         updateResumeCursor,
-        emitTrackedTasksUpdated,
         startWorkflowRuntimePoller,
         ensureSyntheticTurn,
 
@@ -264,7 +256,6 @@ function makeClaudeAdapter(options?: ClaudeAdapterLiveOptions) {
       handleSystemMessage,
       syncFastModeState,
       warnUnhandledSdkKind,
-      emitTrackedTasksUpdated,
       emitMonitorEvents,
     });
     const {
@@ -294,7 +285,6 @@ function makeClaudeAdapter(options?: ClaudeAdapterLiveOptions) {
       offerRuntimeEvent,
       nowIso,
       emitCompactionProgress,
-      emitTrackedTasksUpdated,
       fileSystem,
       serverConfig,
       getDisabledSkillNames,

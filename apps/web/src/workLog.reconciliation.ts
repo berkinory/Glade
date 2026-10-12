@@ -25,7 +25,6 @@ export function collapseDerivedWorkLogEntries(
 
   const seenRuntimeReconciliationKeys = new Set<string>();
 
-  const taskListIndexByKey = new Map<string, number>();
   for (const entry of entries) {
     const runtimeReconciliationKey = entry.collapseKey?.startsWith("provider-runtime-reconcile:")
       ? entry.collapseKey
@@ -35,17 +34,6 @@ export function collapseDerivedWorkLogEntries(
         continue;
       }
       seenRuntimeReconciliationKeys.add(runtimeReconciliationKey);
-    }
-    const taskListKey = entry.collapseKey?.startsWith("taskList:") ? entry.collapseKey : undefined;
-    if (taskListKey !== undefined) {
-      const existingIndex = taskListIndexByKey.get(taskListKey);
-      if (existingIndex !== undefined) {
-        collapsed[existingIndex] = mergeTaskListEntries(collapsed[existingIndex]!, entry);
-        continue;
-      }
-      taskListIndexByKey.set(taskListKey, collapsed.length);
-      collapsed.push(entry);
-      continue;
     }
     const previous = collapsed.at(-1);
     if (previous && shouldCollapseRuntimeWarningEntries(previous, entry)) {
@@ -129,27 +117,6 @@ function mergeRuntimeWarningEntries(
     ...(runtimeWarningMessage ? { runtimeWarningMessage } : {}),
     ...((next.detail ?? previous.detail) ? { detail: next.detail ?? previous.detail! } : {}),
     preview: repeatPreview,
-  };
-}
-
-// A later task-list snapshot supersedes the earlier one wholesale (providers resend the full
-// checklist), so keep the newest content while preserving the first row's id and createdAt: the id
-// keeps React rows stable across updates and the createdAt keeps the row anchored where the
-// checklist first appeared. A snapshot without readable tasks (explicit clear, or an unreadable
-// payload) carries no progress copy, so it must not overwrite a progressed row with the generic
-// "Tasks updated" label — keep the previous row's content instead.
-function mergeTaskListEntries(
-  previous: DerivedWorkLogEntry,
-  next: DerivedWorkLogEntry,
-): DerivedWorkLogEntry {
-  if (previous.taskListHasTasks && !next.taskListHasTasks) {
-    return previous;
-  }
-  return {
-    ...next,
-    id: previous.id,
-    createdAt: previous.createdAt,
-    ...(previous.sequence !== undefined ? { sequence: previous.sequence } : {}),
   };
 }
 

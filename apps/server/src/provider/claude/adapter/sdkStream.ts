@@ -1,7 +1,6 @@
 import type { ClaudeRuntimeEventsShape } from "../../Services/ClaudeRuntimeEvents.ts";
 import { makeClaudeTurnCompletion } from "./turnCompletion";
 import { makeClaudeToolTracking } from "./toolTracking";
-import { makeClaudeTaskPresentation } from "./taskPresentation";
 import { ClaudeSessionContext } from "./sessionTypes";
 import type { SDKMessage } from "@anthropic-ai/claude-agent-sdk";
 import { Effect, Stream, Exit, Cause } from "effect";
@@ -47,9 +46,6 @@ export function makeClaudeSdkStream(input: {
   readonly handleSystemMessage: ReturnType<typeof makeClaudeSystemMessages>["handleSystemMessage"];
   readonly syncFastModeState: ReturnType<typeof makeClaudeSystemMessages>["syncFastModeState"];
   readonly warnUnhandledSdkKind: ClaudeRuntimeEventsShape["warnUnhandledSdkKind"];
-  readonly emitTrackedTasksUpdated: ReturnType<
-    typeof makeClaudeTaskPresentation
-  >["emitTrackedTasksUpdated"];
   readonly emitMonitorEvents: ReturnType<typeof makeClaudeMonitorEvents>["emitMonitorEvents"];
 }) {
   const {
@@ -68,7 +64,6 @@ export function makeClaudeSdkStream(input: {
     handleSystemMessage,
     syncFastModeState,
     warnUnhandledSdkKind,
-    emitTrackedTasksUpdated,
     emitMonitorEvents,
   } = input;
   const handleResultMessage = (
@@ -267,13 +262,6 @@ export function makeClaudeSdkStream(input: {
             // transcript instead of replaying the same broken id forever.
             context.resumeSessionId = undefined;
             context.lastAssistantUuid = undefined;
-
-            if (context.trackedTasks.size > 0) {
-              context.trackedTasks.clear();
-              yield* emitTrackedTasksUpdated(context, {
-                rawPayload: { source: "claude.stale-resume-invalidated" },
-              });
-            }
             yield* Effect.logWarning("claude.session.stale_resume_invalidated", {
               threadId: context.session.threadId,
               detail: message,

@@ -82,10 +82,6 @@ export const RuntimeTurnState = Schema.Literals([
 
 export type RuntimeTurnState = typeof RuntimeTurnState.Type;
 
-export const RuntimeTaskStatus = Schema.Literals(["pending", "inProgress", "completed"]);
-
-export type RuntimeTaskStatus = typeof RuntimeTaskStatus.Type;
-
 export const RuntimeItemStatus = Schema.Literals(["inProgress", "completed", "failed", "declined"]);
 
 export type RuntimeItemStatus = typeof RuntimeItemStatus.Type;
@@ -183,7 +179,6 @@ const ProviderRuntimeEventType = Schema.Literals([
   "turn.started",
   "turn.completed",
   "turn.aborted",
-  "turn.tasks.updated",
   "turn.proposed.delta",
   "turn.proposed.completed",
   "turn.diff.updated",

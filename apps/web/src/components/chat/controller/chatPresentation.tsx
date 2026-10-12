@@ -1,7 +1,6 @@
 import { FolderIcon } from "~/lib/icons";
 import BranchToolbar, { RuntimeUsageControls } from "~/components/BranchToolbar";
 import { resolveActiveThreadTitle } from "../../ChatView.logic.worktree";
-import { ComposerActiveTaskListCard } from "~/components/chat/ComposerActiveTaskListCard";
 import { ComposerExtrasTrigger } from "~/components/chat/ComposerExtrasTrigger";
 import { ProjectPicker } from "~/components/chat/ProjectPicker";
 import {
@@ -27,13 +26,9 @@ export function createChatPresentation(
   activeThread: NonNullable<ChatController["session"]["activeThread"]>,
 ) {
   const {
-    taskListSidebarOpen,
-    setTaskListSidebarOpen,
     isComposerExtrasPanelOpen,
     setIsComposerExtrasPanelOpen,
     onRegisterCommitAndPushTrigger,
-    activeTaskListCompact,
-    setActiveTaskListCompact,
   } = controller.session;
   const {
     threadLineageThreads,
@@ -65,13 +60,7 @@ export function createChatPresentation(
     handleRenamePinnedMessage,
     handleNotesChange,
   } = controller.transcript;
-  const {
-    selectedProvider,
-    selectedRuntimeModel,
-    activeTaskList,
-    workflowRunState,
-    activeBackgroundTasks,
-  } = controller.provider;
+  const { selectedProvider, selectedRuntimeModel, workflowRunState } = controller.provider;
   const {
     activeProviderStatus,
     envLocked,
@@ -339,27 +328,9 @@ export function createChatPresentation(
         }
       : null;
   const showComposerLiveChangesHeader = latestTurnLive && activeTurnLiveDiffState.hasChanges;
-  const showComposerActiveTaskListCard = Boolean(activeTaskList && !taskListSidebarOpen);
   const showComposerWorkflowRunCard = workflowRunState !== null;
-  const composerBackgroundTaskCount = workflowRunState
-    ? (activeBackgroundTasks?.taskIds.filter((taskId) => !workflowRunState.taskIds.includes(taskId))
-        .length ?? 0)
-    : (activeBackgroundTasks?.activeCount ?? 0);
-  const renderActiveTaskListCard = (attachedToPrevious: boolean) =>
-    activeTaskList && showComposerActiveTaskListCard ? (
-      <ComposerActiveTaskListCard
-        activeTaskList={activeTaskList}
-        backgroundTaskCount={composerBackgroundTaskCount}
-        compact={activeTaskListCompact}
-        onCompactChange={setActiveTaskListCompact}
-        onOpenSidebar={() => setTaskListSidebarOpen(true)}
-        attachedToPrevious={attachedToPrevious}
-      />
-    ) : null;
   return {
     showComposerLiveChangesHeader,
-    renderActiveTaskListCard,
-    showComposerActiveTaskListCard,
     showComposerWorkflowRunCard,
     emptyLandingControls,
     relocateComposerLeadingControls,

@@ -272,10 +272,6 @@ export function useChatSessionController(props: ChatViewProps) {
 
   const [pendingFileUndo, setPendingFileUndo] = useState<PendingFileUndo | null>(null);
 
-  const [taskListSidebarOpen, setTaskListSidebarOpen] = useState(false);
-
-  const [activeTaskListCompact, setActiveTaskListCompact] = useState(false);
-
   const [workflowRunCardCompact, setWorkflowRunCardCompact] = useState(false);
 
   const [isComposerFooterCompact, setIsComposerFooterCompact] = useState(false);
@@ -403,8 +399,6 @@ export function useChatSessionController(props: ChatViewProps) {
   const activeThread = serverThread ?? localDraftThread;
 
   return {
-    taskListSidebarOpen,
-    setTaskListSidebarOpen,
     hideHeader,
     markThreadVisited,
     syncServerShellSnapshot,
@@ -515,8 +509,6 @@ export function useChatSessionController(props: ChatViewProps) {
     pendingFileUndo,
     setPendingFileUndo,
 
-    activeTaskListCompact,
-    setActiveTaskListCompact,
     workflowRunCardCompact,
     setWorkflowRunCardCompact,
     isComposerFooterCompact,

@@ -11,21 +11,16 @@ import {
 } from "./toolPresentation";
 import { asCanonicalTurnId, asRuntimeItemId, nativeProviderRefs } from "./messageContent";
 import type { ClaudeRuntimeEventsShape } from "../../Services/ClaudeRuntimeEvents.ts";
-import { makeClaudeTaskPresentation } from "./taskPresentation";
 import { makeClaudeMonitorEvents } from "./monitorEvents";
 import { markClaudeMonitorStarted } from "../claudeMonitorEvents.ts";
 
 export function makeClaudeToolTracking(input: {
   readonly makeEventStamp: () => Effect.Effect<{ eventId: EventId; createdAt: string }>;
   readonly offerRuntimeEvent: ClaudeRuntimeEventsShape["offerRuntimeEvent"];
-  readonly emitTodoTasksUpdated: ReturnType<
-    typeof makeClaudeTaskPresentation
-  >["emitTodoTasksUpdated"];
   readonly nowIso: Effect.Effect<string>;
   readonly emitMonitorEvents: ReturnType<typeof makeClaudeMonitorEvents>["emitMonitorEvents"];
 }) {
-  const { makeEventStamp, offerRuntimeEvent, emitTodoTasksUpdated, nowIso, emitMonitorEvents } =
-    input;
+  const { makeEventStamp, offerRuntimeEvent, nowIso, emitMonitorEvents } = input;
   const ensureSubagentRun = (
     context: ClaudeSessionContext,
     toolUseId: string,
@@ -67,7 +62,6 @@ export function makeClaudeToolTracking(input: {
         pendingUserInputs: new Map(),
         turns: [],
         inFlightTools: new Map(),
-        trackedTasks: new Map(),
         turnState: undefined,
         lastTurnId: undefined,
         interruptRequestedTurnId: undefined,
@@ -184,14 +178,6 @@ export function makeClaudeToolTracking(input: {
           payload: input.rawPayload,
         },
       });
-      if (tool.toolName === "TodoWrite") {
-        yield* emitTodoTasksUpdated(context, {
-          toolInput: input.toolInput,
-          toolUseId: tool.itemId,
-          rawMethod: input.rawMethod,
-          rawPayload: input.rawPayload,
-        });
-      }
     });
 
   const ensureSyntheticTurn = (context: ClaudeSessionContext): Effect.Effect<void> =>

@@ -16,7 +16,7 @@ import type {
 } from "@glade/contracts/orchestration/threadEntities";
 import type { TurnId } from "@glade/contracts/core/baseSchemas";
 import { summarizeToolRawOutput } from "./features/chat/timeline/toolOutputSummary";
-import { pluralize, stripTerminalControlSequences } from "@glade/shared/text/text";
+import { stripTerminalControlSequences } from "@glade/shared/text/text";
 import { PROVIDER_DESCRIPTORS } from "@glade/shared/provider/providerMetadata";
 import { deriveReadableToolTitle } from "./lib/toolCallLabel.commands";
 import { COMPUTER_ACCESS_REQUEST_PREFIX } from "@glade/contracts/computer/computerUse";
@@ -158,7 +158,6 @@ export function deriveWorkLogEntries(
         runtimeWarningMessage: _runtimeWarningMessage,
         runtimeWarningRepeatCount: _runtimeWarningRepeatCount,
         suppressStandaloneCommandStart: _suppressStandaloneCommandStart,
-        taskListHasTasks: _taskListHasTasks,
         ...entry
       }): WorkLogEntry => entry,
     );
@@ -315,38 +314,6 @@ function extractWorkLogGladeThreadCreation(
       ? payload.createdCount
       : threads.length;
   return { operationId, requestedCount, createdCount, threads };
-}
-
-export interface TaskListTaskSnapshot {
-  task: string;
-  status: "pending" | "inProgress" | "completed";
-}
-
-export function parseTaskListTasks(payload: unknown): TaskListTaskSnapshot[] | null {
-  const record =
-    payload && typeof payload === "object" ? (payload as Record<string, unknown>) : null;
-  const rawTasks = record?.tasks;
-  if (!Array.isArray(rawTasks)) {
-    return null;
-  }
-  const tasks = rawTasks
-    .map((entry): TaskListTaskSnapshot | null => {
-      if (!entry || typeof entry !== "object") return null;
-      const taskRecord = entry as Record<string, unknown>;
-      if (typeof taskRecord.task !== "string") {
-        return null;
-      }
-      const status =
-        taskRecord.status === "completed" || taskRecord.status === "inProgress"
-          ? taskRecord.status
-          : "pending";
-      return { task: taskRecord.task, status };
-    })
-    .filter((task): task is TaskListTaskSnapshot => task !== null);
-  if (rawTasks.length > 0 && tasks.length === 0) {
-    return null;
-  }
-  return tasks;
 }
 
 function isProviderContextLifecycleReason(value: unknown): value is ProviderContextLifecycleReason {
@@ -509,24 +476,6 @@ function normalizeWorkLogActivity(activity: OrchestrationThreadActivity): Derive
   }
   const monitorFields = monitorNotificationEntryFields(activity);
   if (monitorFields) Object.assign(entry, monitorFields);
-  if (activity.kind === "turn.tasks.updated") {
-    const tasks = parseTaskListTasks(payload);
-    if (tasks && tasks.length > 0) {
-      entry.taskListHasTasks = true;
-      const completedCount = tasks.filter((task) => task.status === "completed").length;
-      entry.label = `${completedCount} out of ${tasks.length} ${pluralize(tasks.length, "task")} completed`;
-      const inProgressTask = tasks.find((task) => task.status === "inProgress");
-      if (inProgressTask) {
-        entry.detail = inProgressTask.task;
-      } else {
-        delete entry.detail;
-      }
-    }
-
-    if (activity.turnId !== null) {
-      entry.collapseKey = `taskList:${activity.turnId}`;
-    }
-  }
   if (commandPreview.command) {
     entry.command = commandPreview.command;
   }
@@ -631,9 +580,9 @@ function normalizeWorkLogActivity(activity: OrchestrationThreadActivity): Derive
       payload,
       isRunning: activity.kind !== "tool.completed",
     });
-  // Task-list and Monitor rows derive their own heading above. A generic title would otherwise
-  // become toolTitle and take precedence over that label in TimelineWorkEntryRow.
-  if (readableTitle && activity.kind !== "turn.tasks.updated" && !monitorFields) {
+  // Monitor rows derive their own heading above. A generic title would otherwise become toolTitle
+  // and take precedence over that label in TimelineWorkEntryRow.
+  if (readableTitle && !monitorFields) {
     entry.toolTitle = readableTitle;
   }
   const liveActivity = deriveWorkLogLiveActivity(activity, payload, entry);

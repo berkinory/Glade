@@ -6,8 +6,6 @@ import {
 import { type ProviderKind, type TurnId } from "@glade/contracts/core/baseSchemas";
 import { PROVIDER_DESCRIPTORS as VISIBLE_PROVIDER_DESCRIPTORS } from "@glade/shared/provider/providerMetadata";
 
-import { orderedActivities, parseTaskListTasks } from "./workLog.entries";
-
 import type { ChatMessage, SessionPhase, ThreadSession, TurnDiffSummary } from "./types";
 
 export type ProviderPickerKind = ProviderKind;
@@ -21,16 +19,6 @@ export const PROVIDER_OPTIONS: Array<{
   label: descriptor.displayName,
   available: descriptor.available,
 }));
-
-export interface ActiveTaskListState {
-  createdAt: string;
-  turnId: TurnId | null;
-  explanation?: string | null;
-  tasks: Array<{
-    task: string;
-    status: "pending" | "inProgress" | "completed";
-  }>;
-}
 
 export interface ActiveBackgroundTasksState {
   activeCount: number;
@@ -122,60 +110,6 @@ export function isSessionRunningTurn<T extends RunningTurnSessionView>(
   session: T | null | undefined,
 ): session is T & { activeTurnId: TurnId } {
   return session != null && session.status === "running" && session.activeTurnId != null;
-}
-
-function toActiveTaskListState(activity: OrchestrationThreadActivity): ActiveTaskListState | null {
-  const payload =
-    activity.payload && typeof activity.payload === "object"
-      ? (activity.payload as Record<string, unknown>)
-      : null;
-  const tasks = parseTaskListTasks(payload);
-  if (!tasks) {
-    return null;
-  }
-  return {
-    createdAt: activity.createdAt,
-    turnId: activity.turnId,
-    ...(payload && "explanation" in payload
-      ? { explanation: payload.explanation as string | null }
-      : {}),
-    tasks,
-  };
-}
-
-export function deriveActiveTaskListState(
-  activities: ReadonlyArray<OrchestrationThreadActivity>,
-  latestTurnId: TurnId | undefined,
-): ActiveTaskListState | null {
-  const ordered = orderedActivities(activities);
-  const allTaskListActivities = ordered.filter(
-    (activity) => activity.kind === "turn.tasks.updated",
-  );
-
-  const currentTurnTaskList = latestTurnId
-    ? (allTaskListActivities
-        .filter((activity) => activity.turnId === latestTurnId)
-        .map(toActiveTaskListState)
-        .findLast((taskList) => taskList !== null) ?? null)
-    : null;
-  if (currentTurnTaskList) {
-    return currentTurnTaskList.tasks.length > 0 ? currentTurnTaskList : null;
-  }
-
-  const latestPriorTaskList =
-    allTaskListActivities.map(toActiveTaskListState).findLast((taskList) => taskList !== null) ??
-    null;
-  if (!latestPriorTaskList) {
-    return null;
-  }
-
-  if (latestPriorTaskList.tasks.length === 0) {
-    return null;
-  }
-
-  return latestPriorTaskList.tasks.some((task) => task.status !== "completed")
-    ? latestPriorTaskList
-    : null;
 }
 
 export function deriveActiveBackgroundTasksState(

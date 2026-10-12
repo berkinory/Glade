@@ -17,7 +17,6 @@ import {
   TurnStartedPayload,
   TurnCompletedPayload,
   TurnAbortedPayload,
-  TurnTasksUpdatedPayload,
   TurnProposedDeltaPayload,
   TurnProposedCompletedPayload,
   TurnDiffUpdatedPayload,
@@ -83,8 +82,6 @@ const TurnStartedType = Schema.Literal("turn.started");
 const TurnCompletedType = Schema.Literal("turn.completed");
 
 const TurnAbortedType = Schema.Literal("turn.aborted");
-
-const TurnTasksUpdatedType = Schema.Literal("turn.tasks.updated");
 
 const TurnProposedDeltaType = Schema.Literal("turn.proposed.delta");
 
@@ -291,14 +288,6 @@ const ProviderRuntimeTurnAbortedEvent = Schema.Struct({
 });
 
 export type ProviderRuntimeTurnAbortedEvent = typeof ProviderRuntimeTurnAbortedEvent.Type;
-
-const ProviderRuntimeTurnTasksUpdatedEvent = Schema.Struct({
-  ...ProviderRuntimeEventBase.fields,
-  type: TurnTasksUpdatedType,
-  payload: TurnTasksUpdatedPayload,
-});
-
-export type ProviderRuntimeTurnTasksUpdatedEvent = typeof ProviderRuntimeTurnTasksUpdatedEvent.Type;
 
 const ProviderRuntimeTurnProposedDeltaEvent = Schema.Struct({
   ...ProviderRuntimeEventBase.fields,
@@ -596,7 +585,6 @@ export const ProviderRuntimeEvent = Schema.Union([
   ProviderRuntimeTurnStartedEvent,
   ProviderRuntimeTurnCompletedEvent,
   ProviderRuntimeTurnAbortedEvent,
-  ProviderRuntimeTurnTasksUpdatedEvent,
   ProviderRuntimeTurnProposedDeltaEvent,
   ProviderRuntimeTurnProposedCompletedEvent,
   ProviderRuntimeTurnDiffUpdatedEvent,

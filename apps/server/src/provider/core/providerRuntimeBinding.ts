@@ -168,7 +168,6 @@ export function shouldRefreshResumeCursorForEvent(event: ProviderRuntimeEvent): 
     (event.type === "thread.state.changed" &&
       event.payload.state === "compacted" &&
       event.turnId === undefined) ||
-    event.type === "turn.tasks.updated" ||
     event.type === "turn.completed" ||
     event.type === "turn.aborted"
   );

@@ -216,7 +216,6 @@ export interface DerivedWorkLogEntry extends WorkLogEntry {
   runtimeWarningRepeatCount?: number;
   runtimeWarningMessage?: string;
   suppressStandaloneCommandStart?: boolean;
-  taskListHasTasks?: boolean;
 }
 
 export function isFileChangeWorkLogEntry(

@@ -26,7 +26,6 @@ import { makeKeyedLock } from "../../core/keyedLock.ts";
 import { type ClaudeAdapterShape } from "../../Services/ClaudeAdapter.ts";
 import { ProviderAdapterValidationError, ProviderAdapterProcessError } from "../../core/Errors.ts";
 import { readClaudeResumeState } from "./sessionResume";
-import { type ClaudeTrackedTask } from "../claudeTaskTracker.ts";
 import {
   trimOrNull,
   normalizeClaudeModelOptions,
@@ -146,9 +145,6 @@ export function makeClaudeSessionStartup(input: {
       const pendingUserInputs = new Map<ApprovalRequestId, PendingUserInput>();
       const pendingSubagentStops = new Set<string>();
       const inFlightTools = new Map<number, ToolInFlight>();
-      const trackedTasks = new Map<string, ClaudeTrackedTask>(
-        (resumeState?.trackedTasks ?? []).map((task) => [task.id, task]),
-      );
 
       const contextRef = yield* Ref.make<ClaudeSessionContext | undefined>(undefined);
 
@@ -405,7 +401,6 @@ export function makeClaudeSessionStartup(input: {
               ? { resumeSessionAt: resumeState.resumeSessionAt }
               : {}),
             turnCount: resumeState?.turnCount ?? 0,
-            ...(trackedTasks.size > 0 ? { trackedTasks: Array.from(trackedTasks.values()) } : {}),
             ...(processedTokenBaselineKnown
               ? {
                   processedTokenTotal: resumeState?.processedTokenTotal ?? 0,
@@ -448,7 +443,6 @@ export function makeClaudeSessionStartup(input: {
           pendingUserInputs,
           turns: [],
           inFlightTools,
-          trackedTasks,
           turnState: undefined,
           lastTurnId: undefined,
           interruptRequestedTurnId: undefined,

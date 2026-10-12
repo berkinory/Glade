@@ -140,9 +140,6 @@ export function makeClaudeRuntimeEventsLive(options?: ClaudeAdapterLiveOptions) 
             ...(context.resumeSessionId ? { resume: context.resumeSessionId } : {}),
             ...(context.lastAssistantUuid ? { resumeSessionAt: context.lastAssistantUuid } : {}),
             turnCount: context.turns.length,
-            ...(context.trackedTasks.size > 0
-              ? { trackedTasks: Array.from(context.trackedTasks.values()) }
-              : {}),
             ...(context.processedTokenBaselineKnown
               ? { processedTokenTotal: context.processedTokenTotal, tokenAccountingVersion: 1 }
               : {}),

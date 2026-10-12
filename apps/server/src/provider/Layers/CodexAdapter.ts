@@ -78,7 +78,6 @@ import { normalizeCodexFailure } from "../codex/codexFailures.ts";
 import { ServerConfig } from "../../server/config.ts";
 import { normalizeCodexSubagentActivity } from "../codex/subagentActivity.ts";
 import { resolveCodexServiceTier } from "../codex/codexServiceTier.ts";
-import { makeRuntimeTaskListItem } from "../core/runtimeTaskList.ts";
 
 import { appendFileAttachmentsPromptBlock } from "../core/attachmentProjection.ts";
 import { gladeSkillsDir } from "../core/skillsCatalog.ts";
@@ -1415,31 +1414,7 @@ function mapToRuntimeEvents(
     ];
   }
 
-  if (event.method === "turn/plan/updated") {
-    const steps = Array.isArray(payload?.plan) ? payload.plan : [];
-    return [
-      {
-        ...runtimeEventBase(event, canonicalThreadId),
-        type: "turn.tasks.updated",
-        payload: {
-          ...(asString(payload?.explanation)
-            ? { explanation: asString(payload?.explanation) }
-            : {}),
-          tasks: steps.flatMap((entry) => {
-            const taskEntry = asObjectRecord(entry) ?? undefined;
-            if (!taskEntry) {
-              return [];
-            }
-            const item = makeRuntimeTaskListItem(
-              asString(taskEntry.step) ?? "task",
-              taskEntry.status,
-            );
-            return item ? [item] : [];
-          }),
-        },
-      },
-    ];
-  }
+  if (event.method === "turn/plan/updated") return [];
 
   if (event.method === "turn/diff/updated") {
     return [

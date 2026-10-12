@@ -1,6 +1,5 @@
 import type { SDKMessage } from "@anthropic-ai/claude-agent-sdk";
 import { ThreadId } from "@glade/contracts/core/baseSchemas";
-import { parseClaudeTrackedTasks, hasUnfinishedClaudeTasks } from "../claudeTaskTracker.ts";
 import { type ThreadTokenUsageSnapshot } from "@glade/contracts/provider/runtimePayloads";
 import {
   type ClaudeResumeState,
@@ -46,7 +45,6 @@ export function readClaudeResumeState(resumeCursor: unknown): ClaudeResumeState 
     sessionId?: unknown;
     resumeSessionAt?: unknown;
     turnCount?: unknown;
-    trackedTasks?: unknown;
     processedTokenTotal?: unknown;
     tokenAccountingVersion?: unknown;
   };
@@ -66,7 +64,6 @@ export function readClaudeResumeState(resumeCursor: unknown): ClaudeResumeState 
   const resumeSessionAt =
     typeof cursor.resumeSessionAt === "string" ? cursor.resumeSessionAt : undefined;
   const turnCountValue = typeof cursor.turnCount === "number" ? cursor.turnCount : undefined;
-  const trackedTasks = parseClaudeTrackedTasks(cursor.trackedTasks);
   const processedTokenTotal =
     typeof cursor.processedTokenTotal === "number" &&
     Number.isSafeInteger(cursor.processedTokenTotal) &&
@@ -81,7 +78,6 @@ export function readClaudeResumeState(resumeCursor: unknown): ClaudeResumeState 
     ...(turnCountValue !== undefined && Number.isInteger(turnCountValue) && turnCountValue >= 0
       ? { turnCount: turnCountValue }
       : {}),
-    ...(trackedTasks.length > 0 ? { trackedTasks } : {}),
     ...(processedTokenTotal !== undefined && cursor.tokenAccountingVersion === 1
       ? { processedTokenTotal, tokenAccountingVersion: 1 as const }
       : {}),
@@ -95,7 +91,7 @@ export function withoutProcessedTokenTotal(
   return contextUsage;
 }
 
-export type ClaudeRuntimeWorkView = Pick<ClaudeSessionTurn, "turnState" | "trackedTasks"> &
+export type ClaudeRuntimeWorkView = Pick<ClaudeSessionTurn, "turnState"> &
   Pick<ClaudeSessionPendingInteractions, "pendingApprovals" | "pendingUserInputs"> &
   Pick<ClaudeSessionSubagents, "knownBackgroundTaskIds" | "liveWorkflowTaskIds" | "subagentRuns">;
 
@@ -108,8 +104,4 @@ export function hasActiveClaudeRuntimeWork(context: ClaudeRuntimeWorkView): bool
     context.pendingUserInputs.size > 0 ||
     Array.from(context.subagentRuns.values()).some((run) => run.context.turnState !== undefined)
   );
-}
-
-export function hasActiveClaudeCompactionWork(context: ClaudeRuntimeWorkView): boolean {
-  return hasActiveClaudeRuntimeWork(context) || hasUnfinishedClaudeTasks(context.trackedTasks);
 }

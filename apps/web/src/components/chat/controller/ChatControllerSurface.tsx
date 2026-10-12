@@ -4,7 +4,6 @@ import type { ThreadId, TurnId } from "@glade/contracts/core/baseSchemas";
 import BranchToolbar from "~/components/BranchToolbar";
 import { resolveWorkingLabel } from "../../ChatView.logic.dispatch";
 import { GladeLogo } from "~/components/GladeLogo";
-import TaskListSidebar from "~/components/TaskListSidebar";
 import { PullRequestThreadDialog } from "~/components/PullRequestThreadDialog";
 import { RenameThreadDialog } from "~/components/RenameThreadDialog";
 import { SidebarHeaderNavigationControls } from "~/components/SidebarHeaderNavigationControls";
@@ -69,8 +68,6 @@ export function ChatControllerSurface({ controller }: { controller: ChatControll
     composerOverlayBottomClearancePx,
     composerOverlayRef,
     pullRequestDialogState,
-    taskListSidebarOpen,
-    setTaskListSidebarOpen,
     handleNewThread,
     expandedImage,
     setExpandedImage,
@@ -211,7 +208,6 @@ export function ChatControllerSurface({ controller }: { controller: ChatControll
     editableUserMessageId,
     transcriptFollowsLiveTail,
     getAgentActivityDetail,
-    activeTaskList,
     selectedPromptEffort,
     selectedModelSelection,
     providerOptionsForDispatch,
@@ -637,14 +633,6 @@ export function ChatControllerSurface({ controller }: { controller: ChatControll
             />
           ) : null}
         </div>
-
-        {taskListSidebarOpen ? (
-          <TaskListSidebar
-            activeTaskList={activeTaskList}
-            timestampFormat={timestampFormat}
-            onClose={() => setTaskListSidebarOpen(false)}
-          />
-        ) : null}
       </div>
 
       {activeProject ? (

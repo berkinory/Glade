@@ -17,8 +17,7 @@ export type FeatureFlag =
 
 export type ToggleFeatureFlagId =
   | "persist-action-failed-debug-toasts"
-  | "pin-git-progress-toast-preview"
-  | "show-debug-task-banner";
+  | "pin-git-progress-toast-preview";
 
 type FeatureFlagState = Record<ToggleFeatureFlagId, boolean>;
 
@@ -27,7 +26,6 @@ const FEATURE_FLAG_STORAGE_KEY = "glade:feature-flags";
 const DEFAULT_FEATURE_FLAG_STATE: FeatureFlagState = {
   "persist-action-failed-debug-toasts": false,
   "pin-git-progress-toast-preview": false,
-  "show-debug-task-banner": false,
 };
 
 export const FEATURE_FLAGS: readonly FeatureFlag[] = [
@@ -50,13 +48,6 @@ export const FEATURE_FLAGS: readonly FeatureFlag[] = [
     label: "Pin git progress toast",
     description: "Keep a looping git progress toast visible for styling.",
     defaultEnabled: DEFAULT_FEATURE_FLAG_STATE["pin-git-progress-toast-preview"],
-  },
-  {
-    id: "show-debug-task-banner",
-    kind: "toggle",
-    label: "Show debug task banner",
-    description: "Render a local sample active task banner for UI testing.",
-    defaultEnabled: DEFAULT_FEATURE_FLAG_STATE["show-debug-task-banner"],
   },
 ];
 
@@ -84,10 +75,6 @@ function normalizeFeatureFlagState(value: unknown): FeatureFlagState {
       typeof record["pin-git-progress-toast-preview"] === "boolean"
         ? record["pin-git-progress-toast-preview"]
         : DEFAULT_FEATURE_FLAG_STATE["pin-git-progress-toast-preview"],
-    "show-debug-task-banner":
-      typeof record["show-debug-task-banner"] === "boolean"
-        ? record["show-debug-task-banner"]
-        : DEFAULT_FEATURE_FLAG_STATE["show-debug-task-banner"],
   };
 }
 

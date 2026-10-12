@@ -319,9 +319,9 @@ function toolWorkEntryHeading(
       classification.status,
     );
   }
-  // Task progress and Monitor outcomes are semantic copy; the compact tool-label normalizer would
-  // strip their trailing status.
-  if (workEntry.activityKind === "turn.tasks.updated" || workEntry.monitorNotification) {
+  // Monitor outcomes are semantic copy; the compact tool-label normalizer would strip their
+  // trailing status.
+  if (workEntry.monitorNotification) {
     return capitalizePhrase(workEntry.label);
   }
   if (workEntry.toolTitle && ownsToolTitle(workEntry)) {

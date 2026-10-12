@@ -375,7 +375,6 @@ export const ProviderRuntimeBindingsLive = Layer.effect(
         case "thread.started":
         case "thread.state.changed":
         case "turn.started":
-        case "turn.tasks.updated":
         case "model.rerouted":
         case "turn.completed":
         case "turn.aborted":
