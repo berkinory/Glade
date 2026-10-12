@@ -276,6 +276,72 @@ $$
   );
 });
 
+describe("authored HTML in file previews", () => {
+  function renderAuthoredHtml(text: string, findQuery?: string) {
+    return renderWithQueryClient(
+      <ChatMarkdown
+        text={text}
+        cwd="/repo"
+        isStreaming={false}
+        renderAuthoredHtml
+        {...(findQuery ? { findQuery } : {})}
+      />,
+    );
+  }
+
+  it("renders HTML only when the file preview opts in", () => {
+    const text = "<details><summary>More</summary>text</details>";
+    expect(renderMarkdown(text)).toContain("&lt;details&gt;");
+    expect(renderUserMarkdown(text)).toContain("&lt;details&gt;");
+    expect(renderAuthoredHtml(text)).toContain("<details><summary>More</summary>");
+  });
+
+  it("strips scripts, handlers, frames, forms and unsafe URLs", () => {
+    const markup = renderAuthoredHtml(
+      [
+        '<script>alert("x")</script>',
+        '<a href="javascript:alert(1)" onclick="alert(2)">label</a>',
+        '<img src="data:text/html,evil" onerror="alert(3)">',
+        '<iframe src="https://example.com"></iframe>',
+        '<form><input name="location"></form>',
+        '<p style="position:fixed">styled</p>',
+      ].join("\n"),
+    );
+    expect(markup).toContain("label");
+    for (const unsafe of [
+      "<script",
+      "alert(",
+      "javascript:",
+      "onclick",
+      "onerror",
+      "data:text/html",
+      "<iframe",
+      "<form",
+      'name="location"',
+      "position:fixed",
+    ]) {
+      expect(markup).not.toContain(unsafe);
+    }
+  });
+
+  it("keeps the markup Glade's Markdown plugins generate", () => {
+    const markup = renderAuthoredHtml(
+      [
+        "Inline $x^2$ math.",
+        "> [!NOTE]\n> Searchable alert",
+        "[notes](file:///repo/notes.md)",
+        "- [ ] Task",
+      ].join("\n\n"),
+      "Searchable",
+    );
+    expect(markup).toContain('class="katex"');
+    expect(markup).toContain('data-github-alert="note"');
+    expect(markup).toContain('data-chat-find-match="true"');
+    expect(markup).toContain('title="/repo/notes.md"');
+    expect(markup).toContain('type="checkbox"');
+  });
+});
+
 describe("ChatMarkdown user variant", () => {
   it("keeps dollars literal instead of parsing math", () => {
     const markup = renderUserMarkdown("It costs $5 and $x^2$ stays literal.");

@@ -88,11 +88,15 @@ import {
 import { IconButton } from "./ui/icon-button";
 import { applyActiveChatFindMatch, type ThreadFindRange } from "./chat/threadFind.logic";
 import {
+  CHAT_FIND_TEXT_START_ATTRIBUTE,
+  CHAT_FIND_TEXT_TAG_NAME,
   ChatFindRenderProvider,
   FindAwareCodeFallback,
   FindAwareMarkdownText,
   FindAwareShikiHtml,
+  remarkFindableText,
 } from "./ChatMarkdownFind";
+import { AUTHORED_HTML_REHYPE_PLUGINS } from "./ChatMarkdownHtml";
 import { IncrementalShikiCodeBlock } from "./IncrementalShikiCodeBlock";
 import { createIncrementalMarkdownPlugin } from "../markdownIncremental";
 const EXTERNAL_HTTP_HREF_PATTERN = /^https?:\/\//i;
@@ -148,6 +152,8 @@ interface ChatMarkdownProps {
   // newline-preserving).
   onTaskToggle?: ((input: { sourceLine: number; checked: boolean }) => void) | undefined;
   knownAbsoluteFilePaths?: ReadonlyArray<string> | undefined;
+  // Renders sanitized inline HTML. Only for files the user opened, never chat or provider text.
+  renderAuthoredHtml?: boolean | undefined;
 }
 const TaskItemSourceLineContext = React.createContext<number | null>(null);
 function MarkdownTaskCheckbox(props: {
@@ -249,57 +255,11 @@ const MARKDOWN_REHYPE_PLUGINS: MarkdownRehypePlugins = [
   ],
   rehypeRestoreLiteralDollars,
 ];
-type MarkdownTextNode = {
-  type: "text";
-  value: string;
-  position?: {
-    start?: {
-      offset?: number;
-    };
-    end?: {
-      offset?: number;
-    };
-  };
-};
-type MarkdownParentNode = {
-  type?: string;
-  children?: MarkdownNode[];
-};
-type MarkdownNode = MarkdownTextNode | MarkdownParentNode | Record<string, unknown>;
-const CHAT_FIND_TEXT_TAG_NAME = "chat-find-text";
-const CHAT_FIND_TEXT_START_ATTRIBUTE = "data-chat-find-text-start";
-function remarkFindableText() {
-  return (tree: MarkdownNode) => wrapFindableTextNodes(tree);
-}
-function wrapFindableTextNodes(node: MarkdownNode): void {
-  if (!node || typeof node !== "object" || !("children" in node) || !Array.isArray(node.children)) {
-    return;
-  }
-  const parent = node as MarkdownParentNode;
-  parent.children = (parent.children ?? []).map((child) => {
-    if (child && typeof child === "object" && "type" in child && child.type === "text") {
-      return wrapFindableTextNode(child as MarkdownTextNode);
-    }
-    wrapFindableTextNodes(child);
-    return child;
-  });
-}
-function wrapFindableTextNode(node: MarkdownTextNode): MarkdownNode {
-  const startOffset = node.position?.start?.offset;
-  if (startOffset === undefined || node.value.length === 0) {
-    return node;
-  }
-  return {
-    type: "chatFindText",
-    data: {
-      hName: CHAT_FIND_TEXT_TAG_NAME,
-      hProperties: {
-        [CHAT_FIND_TEXT_START_ATTRIBUTE]: String(startOffset),
-      },
-    },
-    children: [node],
-  };
-}
+// KaTeX runs after the sanitizer so its generated markup does not widen the allowlist.
+const AUTHORED_HTML_MARKDOWN_REHYPE_PLUGINS: MarkdownRehypePlugins = [
+  ...AUTHORED_HTML_REHYPE_PLUGINS,
+  ...MARKDOWN_REHYPE_PLUGINS,
+];
 function extractRawFenceInfo(className: string | undefined): string {
   const match = className?.match(CODE_FENCE_LANGUAGE_REGEX);
   return match?.[1] ?? "text";
@@ -927,6 +887,7 @@ function ChatMarkdown({
   mentionReferences,
   terminalContexts,
   codeBlockMeta,
+  renderAuthoredHtml,
 }: ChatMarkdownProps) {
   const isStreaming = isStreamingProp ?? false;
   const className = classNameProp ?? "text-chat leading-relaxed";
@@ -992,7 +953,11 @@ function ChatMarkdown({
       remarkFindableText,
     ];
   }, [composerChipsRemarkPlugin, incrementalMarkdownPlugin, wikiLinkRoot, cwd]);
-  const rehypePlugins = isUserVariant ? USER_MARKDOWN_REHYPE_PLUGINS : MARKDOWN_REHYPE_PLUGINS;
+  const rehypePlugins = isUserVariant
+    ? USER_MARKDOWN_REHYPE_PLUGINS
+    : renderAuthoredHtml
+      ? AUTHORED_HTML_MARKDOWN_REHYPE_PLUGINS
+      : MARKDOWN_REHYPE_PLUGINS;
   const rootRef = useRef<HTMLDivElement | null>(null);
   useLayoutEffect(() => {
     applyActiveChatFindMatch(rootRef.current, findActiveRange);

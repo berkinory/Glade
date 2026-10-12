@@ -9,6 +9,58 @@ import {
   type ThreadFindRange,
 } from "./chat/threadFind.logic";
 
+type MarkdownTextNode = {
+  type: "text";
+  value: string;
+  position?: {
+    start?: {
+      offset?: number;
+    };
+    end?: {
+      offset?: number;
+    };
+  };
+};
+type MarkdownParentNode = {
+  type?: string;
+  children?: MarkdownNode[];
+};
+type MarkdownNode = MarkdownTextNode | MarkdownParentNode | Record<string, unknown>;
+export const CHAT_FIND_TEXT_TAG_NAME = "chat-find-text";
+export const CHAT_FIND_TEXT_START_ATTRIBUTE = "data-chat-find-text-start";
+export function remarkFindableText() {
+  return (tree: MarkdownNode) => wrapFindableTextNodes(tree);
+}
+function wrapFindableTextNodes(node: MarkdownNode): void {
+  if (!node || typeof node !== "object" || !("children" in node) || !Array.isArray(node.children)) {
+    return;
+  }
+  const parent = node as MarkdownParentNode;
+  parent.children = (parent.children ?? []).map((child) => {
+    if (child && typeof child === "object" && "type" in child && child.type === "text") {
+      return wrapFindableTextNode(child as MarkdownTextNode);
+    }
+    wrapFindableTextNodes(child);
+    return child;
+  });
+}
+function wrapFindableTextNode(node: MarkdownTextNode): MarkdownNode {
+  const startOffset = node.position?.start?.offset;
+  if (startOffset === undefined || node.value.length === 0) {
+    return node;
+  }
+  return {
+    type: "chatFindText",
+    data: {
+      hName: CHAT_FIND_TEXT_TAG_NAME,
+      hProperties: {
+        [CHAT_FIND_TEXT_START_ATTRIBUTE]: String(startOffset),
+      },
+    },
+    children: [node],
+  };
+}
+
 interface ChatFindRenderState {
   query: string;
   ranges: readonly ThreadFindRange[];
