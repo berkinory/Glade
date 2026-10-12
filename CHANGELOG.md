@@ -24,6 +24,7 @@
 - Deleting a worktree from Settings keeps a snapshot of its state for 30 days.
 - Source Control history, pull request comments and the Publish to GitHub dialog show GitHub avatars.
 - Subagents launched together share one card in the chat that shows each one's live step, result, duration and token use, opens its chat with a click, and stops it from its row.
+- Subagents have new icons.
 - When Claude picks a finished subagent back up, the follow-up shows in that subagent's chat and on its own card.
 
 ### Fixed
