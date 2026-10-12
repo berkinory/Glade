@@ -35,7 +35,8 @@ export function sortThreadsForSidebar<T extends { id: Thread["id"] } & SidebarTh
 }
 
 export function getFallbackThreadIdAfterDelete<
-  T extends { id: Thread["id"]; projectId: Thread["projectId"] } & SidebarThreadSortInput,
+  T extends Pick<SidebarThreadSummary, "id" | "projectId" | "parentThreadId" | "archivedAt"> &
+    SidebarThreadSortInput,
 >(input: {
   threads: readonly T[];
   deletedThreadId: T["id"];
@@ -53,6 +54,8 @@ export function getFallbackThreadIdAfterDelete<
         (thread) =>
           thread.projectId === deletedThread.projectId &&
           thread.id !== deletedThreadId &&
+          !thread.parentThreadId &&
+          thread.archivedAt == null &&
           !deletedThreadIds?.has(thread.id),
       ),
     )[0]?.id ?? null

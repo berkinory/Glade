@@ -38,6 +38,7 @@
 - Cloning a public GitHub repository works when a GitHub token is set but the GitHub CLI is not installed.
 - Chats no longer gain an empty turn and a missing file snapshot notice each time a background subagent finishes, or when the agent resumes on its own to read a background result.
 - A Claude Monitor update that arrives while the agent is working stays inside that turn instead of splitting it in two.
+- Archiving or deleting the open chat moves to the next chat in the project instead of one of its subagents or an archived chat.
 - A reply the agent starts after a background command finishes says the background task finished, instead of naming a subagent that never ran.
 - The finished sound and the done status no longer come early in the few seconds between background work finishing and the agent picking up its result.
 - Stopping a background task, such as a dev server the agent started, no longer marks the chat as failed in the sidebar, and a real background failure clears once you open the chat.
