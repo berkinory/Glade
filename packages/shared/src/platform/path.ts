@@ -10,6 +10,11 @@ export function isWindowsAbsolutePath(value: string): boolean {
   return isUncPath(value) || isWindowsDrivePath(value);
 }
 
+// Opening a macOS `.app` directory launches it, so anything promising to show one must reveal it.
+export function isMacAppBundlePath(value: string): boolean {
+  return /[^/\\]\.app[/\\]?$/i.test(value);
+}
+
 export function isLocalAbsolutePath(
   value: string,
   options: { readonly allowWindowsPaths?: boolean } = {},

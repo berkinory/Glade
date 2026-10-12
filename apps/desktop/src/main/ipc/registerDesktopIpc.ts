@@ -21,6 +21,7 @@ import {
 } from "electron";
 import * as FS from "node:fs";
 import * as Path from "node:path";
+import { isMacAppBundlePath } from "@glade/shared/platform/path";
 import {
   DESKTOP_CUSTOM_TITLE_BAR_PATH,
   MAX_CLIPBOARD_IMAGE_DATA_URL_LENGTH,
@@ -310,7 +311,8 @@ export function createRegisterDesktopIpc({
         throw new Error(`Folder not found: ${resolvedPath}`);
       }
 
-      if (stats.isDirectory()) {
+      const isAppBundle = process.platform === "darwin" && isMacAppBundlePath(resolvedPath);
+      if (stats.isDirectory() && !isAppBundle) {
         const errorMessage = await shell.openPath(resolvedPath);
         if (errorMessage.trim().length > 0) {
           throw new Error(errorMessage);

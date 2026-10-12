@@ -8,6 +8,7 @@ import { dirname, extname } from "node:path";
 import pathWin32 from "node:path/win32";
 
 import { EDITORS, type EditorId } from "@glade/contracts/settings/editor";
+import { isMacAppBundlePath } from "@glade/shared/platform/path";
 import { resolveWindowsSystemRoot } from "@glade/shared/platform/platformEnvironment";
 import { ServiceMap, Schema, Effect, Layer } from "effect";
 import {
@@ -139,7 +140,8 @@ function fileManagerCommandForPlatform(platform: NodeJS.Platform): string {
 
 function shouldRevealInFinder(target: string): boolean {
   try {
-    return statSync(target, { throwIfNoEntry: false })?.isDirectory() === false;
+    const stat = statSync(target, { throwIfNoEntry: false });
+    return stat !== undefined && (!stat.isDirectory() || isMacAppBundlePath(target));
   } catch {
     return false;
   }
