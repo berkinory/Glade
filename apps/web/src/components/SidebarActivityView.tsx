@@ -615,6 +615,7 @@ export function SidebarActivityView({
     draftThreadIds,
     settledOverrideByThreadId,
     projectFilterIds,
+    activeThreadId,
   });
   const scopedPinnedThreads = model.pinned;
   const nowMs = Math.floor(Date.now() / 60_000) * 60_000;

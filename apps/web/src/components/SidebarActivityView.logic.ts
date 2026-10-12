@@ -78,7 +78,7 @@ export function buildActivityViewModel(input: {
   threads: readonly SidebarThreadSummary[];
   pinnedThreadIdSet: ReadonlySet<ThreadId>;
   draftThreadIds?: ReadonlySet<ThreadId>;
-  activeThreadId?: ThreadId | null;
+  activeThreadId: ThreadId | null;
   settledOverrideByThreadId?: ReadonlyMap<ThreadId, boolean>;
   projectFilterIds?: ReadonlySet<ProjectId> | null;
 }): ActivityViewModel {
@@ -99,7 +99,7 @@ export function buildActivityViewModel(input: {
       pinned.push(thread);
       continue;
     }
-    if (isParkedActivityDraft(thread, input.draftThreadIds, input.activeThreadId ?? null)) {
+    if (isParkedActivityDraft(thread, input.draftThreadIds, input.activeThreadId)) {
       drafts.push(thread);
       continue;
     }
