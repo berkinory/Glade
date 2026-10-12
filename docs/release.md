@@ -115,8 +115,11 @@ The composer draft legacy conversion remains for one release: UI state storage v
 ## Windows malware qualification
 
 The hosted Windows build scans the final `release-publish` installer with Microsoft
-Defender before uploading distributable assets. Qualification requires active protection,
-signatures updated within 24 hours, explicit clean scan output, unchanged SHA-256 hashes,
+Defender before uploading distributable assets. The signature update tries Microsoft Update
+first and falls back to Microsoft's direct MMPC source when that update fails or returns
+definitions that are older than 24 hours or that Defender reports as out of date.
+Qualification requires active protection, signatures updated within 24 hours and not
+reported out of date, explicit clean scan output, unchanged SHA-256 hashes,
 and no relevant detection or remediation. Missing or ambiguous evidence fails the build;
 publication already depends on every platform build succeeding. Diagnostic artifacts named
 `Defender-win-x64` are uploaded even when qualification fails and are separate from release

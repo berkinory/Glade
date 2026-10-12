@@ -16,10 +16,16 @@ function Assert-Protection {
   }
   if ($Status.AMRunningMode -ne 'Normal') { throw 'Defender must be in active Normal mode.' }
   if (-not $Status.AMEngineVersion -or -not $Status.AntivirusSignatureVersion) { throw 'Missing Defender version evidence.' }
-  $updated = $Status.AntivirusSignatureLastUpdated.ToUniversalTime()
-  if ($updated -gt [DateTime]::UtcNow -or ([DateTime]::UtcNow - $updated).TotalHours -gt 24) {
-    throw 'Defender signatures are missing, future-dated or older than 24 hours.'
+  if (-not (Test-SignaturesCurrent $Status)) {
+    throw 'Defender signatures are missing, reported out of date, future-dated or older than 24 hours.'
   }
+}
+
+function Test-SignaturesCurrent {
+  param($Status)
+  if ($Status.DefenderSignaturesOutOfDate -or -not $Status.AntivirusSignatureLastUpdated) { return $false }
+  $updated = $Status.AntivirusSignatureLastUpdated.ToUniversalTime()
+  return $updated -le [DateTime]::UtcNow -and ([DateTime]::UtcNow - $updated).TotalHours -le 24
 }
 
 try {
@@ -29,15 +35,21 @@ try {
   Get-MpComputerStatus | ConvertTo-Json -Depth 6 | Set-Content (Join-Path $evidenceRoot 'status-initial.json')
   # Hosted runner images may disable these modes; only strengthen the disposable CI machine.
   Set-MpPreference -DisableRealtimeMonitoring $false -DisableArchiveScanning $false -DisableIOAVProtection $false -DisableBehaviorMonitoring $false -DisableScriptScanning $false
-  # The update service fails intermittently on hosted runners. Retry across sources; if every attempt
-  # fails, Assert-Protection still refuses signatures older than 24 hours.
+  # The update service fails intermittently on hosted runners, and a configured source can succeed
+  # with stale staged definitions. Retry across sources; if every attempt fails or stays stale,
+  # Assert-Protection still refuses the signatures.
   $signatureUpdate = 'failed'
   :update foreach ($source in @('MicrosoftUpdateServer', 'MMPC')) {
     for ($attempt = 1; $attempt -le 3; $attempt++) {
       try {
         Update-MpSignature -UpdateSource $source
-        $signatureUpdate = "$source (attempt $attempt)"
-        break update
+        if (Test-SignaturesCurrent (Get-MpComputerStatus)) {
+          $signatureUpdate = "$source (attempt $attempt)"
+          break update
+        }
+        Write-Warning "Defender signature update from $source returned stale or out-of-date definitions."
+        $signatureUpdate = "stale after $source"
+        continue update
       } catch {
         Write-Warning "Defender signature update from $source failed (attempt $attempt): $($_.Exception.Message)"
         Start-Sleep -Seconds 15
