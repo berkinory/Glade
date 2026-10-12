@@ -714,4 +714,56 @@ retentionLayer("ProviderRuntimeEventRepository retention", (it) => {
       assert.strictEqual(yield* journalSize, sizeAfterAck);
     }),
   );
+
+  it.effect("drops a provider command receipt only together with its swept journal row", () =>
+    Effect.gen(function* () {
+      const repository = yield* ProviderRuntimeEventRepository;
+      const sql = yield* SqlClient.SqlClient;
+      const insertReceipt = (commandId: string) => sql`
+        INSERT INTO orchestration_command_receipts (
+          command_id, aggregate_kind, aggregate_id, accepted_at, result_sequence, status
+        )
+        VALUES (${commandId}, 'thread', ${threadId}, '2026-07-14T03:00:00.000Z', 1, 'accepted')
+      `;
+      const appendWithReceipt = (event: ProviderRuntimeEvent) =>
+        Effect.gen(function* () {
+          const persisted = yield* repository.append(event);
+          yield* insertReceipt(`provider:${event.eventId}:assistant-delta:message`);
+          return persisted.sequence;
+        });
+      const acknowledge = (sequence: number) =>
+        repository.advanceConsumerCursor({
+          consumerName: PROVIDER_RUNTIME_INGESTION_CONSUMER,
+          eventSequence: sequence,
+          updatedAt: "2026-07-14T03:00:00.000Z",
+        });
+
+      yield* insertReceipt("client-command");
+      yield* insertReceipt("provider:native-child-overflow:thread-retention:turn");
+      for (let index = 0; index < PROVIDER_RUNTIME_EVENT_RETAIN_ACCEPTED + 40; index += 1) {
+        assert.isTrue(yield* acknowledge(yield* appendWithReceipt(deltaEvent("r", index))));
+      }
+      assert.isTrue(yield* acknowledge(yield* appendWithReceipt(terminalEvent("r"))));
+      yield* appendWithReceipt(deltaEvent("s", 0));
+
+      const journalEventIds = (yield* sql<{ readonly eventId: string }>`
+        SELECT event_id AS "eventId" FROM provider_runtime_events
+        WHERE event_id LIKE 'retention-r-%' OR event_id LIKE 'retention-s-%'
+      `).map((row) => row.eventId);
+      const receiptIds = (yield* sql<{ readonly commandId: string }>`
+        SELECT command_id AS "commandId" FROM orchestration_command_receipts
+        WHERE command_id LIKE 'provider:retention-r-%'
+          OR command_id LIKE 'provider:retention-s-%'
+          OR command_id NOT LIKE 'provider:retention-%'
+      `).map((row) => row.commandId);
+
+      assert.isBelow(journalEventIds.length, PROVIDER_RUNTIME_EVENT_RETAIN_ACCEPTED + 42);
+      assert.include(journalEventIds, "retention-s-0");
+      assert.sameMembers(receiptIds, [
+        "client-command",
+        "provider:native-child-overflow:thread-retention:turn",
+        ...journalEventIds.map((eventId) => `provider:${eventId}:assistant-delta:message`),
+      ]);
+    }),
+  );
 });

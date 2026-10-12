@@ -27,6 +27,8 @@ type RuntimeSqliteLayerConfig = {
 type Loader = {
   layer: (config: RuntimeSqliteLayerConfig) => Layer.Layer<SqlClient.SqlClient>;
 };
+const WAL_SIZE_LIMIT_BYTES = 32 * 1024 * 1024;
+
 const defaultSqliteClientLoaders = {
   bun: () => import("@effect/sql-sqlite-bun/SqliteClient"),
   node: () => import("../NodeSqliteClient.ts"),
@@ -85,6 +87,9 @@ const makeSetup = (dbPath?: string) =>
         });
       }
 
+      // Checkpoints never shrink the WAL file on their own; without a limit it keeps its largest size
+      // (a migration or a long replay) until the connection closes.
+      yield* sql`PRAGMA journal_size_limit = ${sql.literal(String(WAL_SIZE_LIMIT_BYTES))};`;
       yield* sql`PRAGMA synchronous = NORMAL;`;
       yield* sql`PRAGMA foreign_keys = ON;`;
 

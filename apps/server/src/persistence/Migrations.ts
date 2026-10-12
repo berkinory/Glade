@@ -10,6 +10,7 @@ import VisualReplyAttachments from "./Migrations/006_VisualReplyAttachments.ts";
 import AuthPairingCredentialHashes from "./Migrations/007_AuthPairingCredentialHashes.ts";
 import SettleStalePendingInteractions from "./Migrations/008_SettleStalePendingInteractions.ts";
 import ParkedProviderSessions from "./Migrations/009_ParkedProviderSessions.ts";
+import PruneCommandReceipts from "./Migrations/010_PruneCommandReceipts.ts";
 
 import ProfileTurnLookup from "./Migrations/002_ProfileTurnLookup.ts";
 
@@ -25,6 +26,7 @@ export const migrationEntries = [
   [7, "AuthPairingCredentialHashes", AuthPairingCredentialHashes],
   [8, "SettleStalePendingInteractions", SettleStalePendingInteractions],
   [9, "ParkedProviderSessions", ParkedProviderSessions],
+  [10, "PruneCommandReceipts", PruneCommandReceipts],
 ] as const;
 
 const LATEST_MIGRATION_ID = Math.max(...migrationEntries.map(([id]) => id));

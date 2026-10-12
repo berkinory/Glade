@@ -462,24 +462,42 @@ const make = Effect.gen(function* () {
       return isTerminalTurnEvent || isThreadTerminalEvent;
     });
 
-  const sweepAcceptedHistoryThrough = (throughSequence: number) => sql`
-    DELETE FROM provider_runtime_events AS event
-    WHERE event.sequence <= ${throughSequence}
-      AND NOT EXISTS (
-        SELECT 1
-        FROM provider_runtime_open_turns AS open_turn
-        WHERE open_turn.thread_id = event.thread_id
-          AND open_turn.turn_id = event.turn_id
-          AND event.sequence >= open_turn.first_sequence
-      )
-      AND event.sequence NOT IN (
-        SELECT sequence
-        FROM provider_runtime_events
-        WHERE sequence <= ${throughSequence}
-        ORDER BY sequence DESC
-        LIMIT ${PROVIDER_RUNTIME_EVENT_RETAIN_ACCEPTED}
-      )
-  `;
+  // Ingestion replays only journal rows (unacknowledged ones and open turns), and a provider command
+  // id names its row's event (`provider:<eventId>:…`), so a swept row's receipts can never dedupe
+  // anything again. They go in the same transaction as the row, never earlier.
+  const sweepAcceptedHistoryThrough = (throughSequence: number) =>
+    Effect.gen(function* () {
+      const swept = yield* sql<{ readonly eventId: string }>`
+        DELETE FROM provider_runtime_events AS event
+        WHERE event.sequence <= ${throughSequence}
+          AND NOT EXISTS (
+            SELECT 1
+            FROM provider_runtime_open_turns AS open_turn
+            WHERE open_turn.thread_id = event.thread_id
+              AND open_turn.turn_id = event.turn_id
+              AND event.sequence >= open_turn.first_sequence
+          )
+          AND event.sequence NOT IN (
+            SELECT sequence
+            FROM provider_runtime_events
+            WHERE sequence <= ${throughSequence}
+            ORDER BY sequence DESC
+            LIMIT ${PROVIDER_RUNTIME_EVENT_RETAIN_ACCEPTED}
+          )
+        RETURNING event_id AS "eventId"
+      `;
+      if (swept.length === 0) return;
+      yield* sql`
+        DELETE FROM orchestration_command_receipts
+        WHERE rowid IN (
+          SELECT receipt.rowid
+          FROM json_each(${JSON.stringify(swept.map((row) => row.eventId))}) AS event
+          JOIN orchestration_command_receipts AS receipt
+            ON receipt.command_id >= 'provider:' || event.value || ':'
+           AND receipt.command_id < 'provider:' || event.value || ';'
+        )
+      `;
+    });
 
   let lastRetentionScanSequence = 0;
 

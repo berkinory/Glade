@@ -770,6 +770,11 @@ const makeProfileStatsArchive = Effect.gen(function* () {
         WHERE aggregate_kind = 'thread'
           AND stream_id = ${threadId}
       `;
+      yield* sql`
+        DELETE FROM orchestration_command_receipts
+        WHERE aggregate_kind = 'thread'
+          AND aggregate_id = ${threadId}
+      `;
       yield* sql`DELETE FROM provider_session_runtime WHERE thread_id = ${threadId}`;
       yield* sql`DELETE FROM projection_pending_interactions WHERE thread_id = ${threadId}`;
       yield* sql`DELETE FROM projection_thread_activities WHERE thread_id = ${threadId}`;
