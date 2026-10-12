@@ -100,6 +100,8 @@ export function useHandleNewThread() {
         model: "",
       });
     };
+    // Puts back a draft that the mapping change or route swap removed. A draft still present is
+    // newer than the snapshot (typed or sent while navigating) and must win.
     const restoreComposerDraft = (
       threadId: ThreadId,
       draftState: ComposerThreadDraftState | null,
@@ -108,7 +110,7 @@ export function useHandleNewThread() {
         return;
       }
       useComposerDraftStore.setState((state) => {
-        if (state.draftsByThreadId[threadId] === draftState) {
+        if (state.draftsByThreadId[threadId] !== undefined) {
           return state;
         }
         return {
@@ -241,7 +243,7 @@ export function useHandleNewThread() {
       })();
     }
 
-    return runDraftNavigationOnce(draftNavigationSlotKey(projectId), async () => {
+    return runDraftNavigationOnce(draftNavigationSlotKey(projectId), async (signal) => {
       const threadId = newThreadId();
       if (
         useStore
@@ -259,6 +261,7 @@ export function useHandleNewThread() {
         defaultEnvMode,
       });
       const committed = await stageDraftNavigation({
+        signal,
         stage: () => {
           registerDraftThread(threadId, { projectId, ...draftSeed });
           openChatThreadPage(threadId);
