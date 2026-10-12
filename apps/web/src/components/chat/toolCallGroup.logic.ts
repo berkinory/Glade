@@ -5,7 +5,6 @@ import {
   type WorkLogToolKind,
 } from "../../workLog.types";
 import { deriveReadableCommandDisplay } from "../../lib/toolCallLabel.commands";
-import { isReasoningUpdateWorkEntry } from "./agentActivity.logic";
 
 export const MIN_COLLAPSIBLE_TOOL_GROUP_SIZE = 2;
 
@@ -21,27 +20,23 @@ export interface ToolCallGroupSummary {
   // A group with in-flight work must never present itself as settled.
   hasRunningEntry: boolean;
 
-  // The group wears its activity's glyph; "mixed" when it spans several, null when it is only
-  // reasoning. Generic tool groups and reasoning keep the first entry's icon.
-  activity: ToolCallGroupActivity | "mixed" | null;
+  // The group wears its activity's glyph, or "mixed" when it spans several. Generic tool groups keep
+  // the first entry's icon.
+  activity: ToolCallGroupActivity | "mixed";
   iconEntry: WorkLogEntry;
   // A browser or computer run names its latest step, such as `Clicked "Sign in" · github.com`.
   latestStep: string | null;
 }
 
-function isSummarizableToolCallEntry(entry: WorkLogEntry): boolean {
+// Thinking is not a tool call: it splits the run and gets its own row.
+export function isGroupableWorkEntry(entry: WorkLogEntry): boolean {
   return (
     entry.tone === "tool" &&
-    !isReasoningUpdateWorkEntry(entry) &&
+    !entry.reasoning &&
     !entry.gladeThreadCreation &&
     !entry.subagentAction &&
     (entry.subagents?.length ?? 0) === 0
   );
-}
-
-// Reasoning rides in the same fold as the tool calls around it instead of splitting the run.
-export function isGroupableWorkEntry(entry: WorkLogEntry): boolean {
-  return isSummarizableToolCallEntry(entry) || isReasoningUpdateWorkEntry(entry);
 }
 
 function entryFileKeys(entry: WorkLogEntry): ReadonlyArray<string> {
@@ -169,13 +164,11 @@ export function summarizeToolCallGroup(
   if (rowCount < (options?.includeSingleEntry ? 1 : MIN_COLLAPSIBLE_TOOL_GROUP_SIZE)) {
     return null;
   }
-  const summarizable = groupable.filter(isSummarizableToolCallEntry);
-
   const countByCategory = new Map<ToolCallSummaryCategory, number>();
   const distinctFilesByCategory = new Map<ToolCallSummaryCategory, Set<string>>();
   let hasRunningEntry = false;
 
-  for (const entry of summarizable) {
+  for (const entry of groupable) {
     if (entry.toolStatus === "running") {
       hasRunningEntry = true;
     }
@@ -218,12 +211,12 @@ export function summarizeToolCallGroup(
     );
 
   return {
-    label: label ? capitalize(label) : "Thought",
+    label: capitalize(label),
     entryCount: groupable.length,
     hasRunningEntry,
-    activity: activities.length > 1 ? "mixed" : (activities[0] ?? null),
-    iconEntry: summarizable[0] ?? groupable[0]!,
-    latestStep: isStepRun ? latestStepText(summarizable) : null,
+    activity: activities.length > 1 ? "mixed" : activities[0]!,
+    iconEntry: groupable[0]!,
+    latestStep: isStepRun ? latestStepText(groupable) : null,
   };
 }
 

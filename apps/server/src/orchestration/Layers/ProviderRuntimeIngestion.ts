@@ -748,6 +748,19 @@ const make = Effect.gen(function* () {
     timeToLive: BUFFERED_REASONING_SUMMARY_BY_KEY_TTL,
     lookup: () => Effect.succeed(undefined),
   });
+  const reasoningStartedAtByKey = yield* Cache.make<string, string | undefined>({
+    capacity: BUFFERED_REASONING_SUMMARY_BY_KEY_CACHE_CAPACITY,
+    timeToLive: BUFFERED_REASONING_SUMMARY_BY_KEY_TTL,
+    lookup: () => Effect.succeed(undefined),
+  });
+  const rememberReasoningStart = (key: string, createdAt: string) =>
+    Cache.getOption(reasoningStartedAtByKey, key).pipe(
+      Effect.flatMap((started) =>
+        Option.isSome(started) ? Effect.void : Cache.set(reasoningStartedAtByKey, key, createdAt),
+      ),
+    );
+  const takeReasoningStart = (key: string) =>
+    takeCached(reasoningStartedAtByKey, key).pipe(Effect.map(Option.getOrUndefined));
 
   const pendingGeneratedImagesByTurnKey = yield* Cache.make<string, ReadonlyArray<string>>({
     capacity: PENDING_GENERATED_IMAGES_CACHE_CAPACITY,
@@ -1101,10 +1114,15 @@ const make = Effect.gen(function* () {
                     detail,
                   },
                 };
-                return Effect.forEach(
-                  projectProviderRuntimeActivities(completionEvent),
-                  (activity) => dispatchActivityUpdate(completionEvent, threadId, activity),
-                ).pipe(Effect.asVoid);
+                return takeReasoningStart(key).pipe(
+                  Effect.flatMap((startedAt) =>
+                    Effect.forEach(
+                      projectProviderRuntimeActivities(completionEvent, undefined, startedAt),
+                      (activity) => dispatchActivityUpdate(completionEvent, threadId, activity),
+                    ),
+                  ),
+                  Effect.asVoid,
+                );
               }),
             ),
         ).pipe(Effect.asVoid),
@@ -2013,6 +2031,9 @@ const make = Effect.gen(function* () {
       }
 
       const reasoningSummaryKey = reasoningSummaryBufferKey(event, thread.id);
+      if (reasoningSummaryKey && event.type !== "item.completed") {
+        yield* rememberReasoningStart(reasoningSummaryKey, event.createdAt);
+      }
       if (
         reasoningSummaryKey &&
         event.type === "content.delta" &&
@@ -2452,8 +2473,12 @@ const make = Effect.gen(function* () {
         (event.type === "runtime.error" || event.type === "runtime.warning" || isTerminalTurnEvent)
           ? { ...activityEvent, turnId: activityTurnId }
           : activityEvent;
+      const reasoningStartedAt =
+        event.type === "item.completed" && reasoningSummaryKey
+          ? yield* takeReasoningStart(reasoningSummaryKey)
+          : undefined;
       yield* Effect.forEach(
-        projectProviderRuntimeActivities(scopedActivityEvent, runtimeSequence),
+        projectProviderRuntimeActivities(scopedActivityEvent, runtimeSequence, reasoningStartedAt),
         (activity) => dispatchActivityUpdate(activityEvent, thread.id, activity),
       );
 

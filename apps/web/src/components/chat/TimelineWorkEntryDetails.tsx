@@ -1,5 +1,5 @@
 import { PROVIDER_DESCRIPTORS } from "@glade/shared/provider/providerMetadata";
-import { useState, type ReactElement, type ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 
 import type { TimestampFormat } from "../../appSettings";
 import { formatTimestamp } from "../../timestampFormat";
@@ -9,23 +9,8 @@ import { WORK_ROW_DETAILS_INSET_CLASS_NAME, WORK_ROW_GAP_CLASS_NAME } from "./wo
 import { ToolCallDetailsContent } from "./ToolCallDetailsDialog";
 import { DisclosureChevron } from "../ui/DisclosureChevron";
 import { DisclosureRegion } from "../ui/DisclosureRegion";
-import { Tooltip, TooltipPopup, TooltipTrigger } from "../ui/tooltip";
 
 type TimelineWorkEntry = WorkLogEntry;
-
-function ToolRowTooltip(props: { content: ReactNode; children: ReactElement }) {
-  if (!props.content) {
-    return props.children;
-  }
-  return (
-    <Tooltip>
-      <TooltipTrigger render={props.children} />
-      <TooltipPopup side="top" align="start" className="max-w-96 whitespace-normal">
-        {props.content}
-      </TooltipPopup>
-    </Tooltip>
-  );
-}
 
 export function AgentActivityOpenSurface(props: {
   canOpen: boolean;
@@ -34,8 +19,6 @@ export function AgentActivityOpenSurface(props: {
   onHover?: (() => void) | undefined;
   onOpen?: (() => void) | undefined;
   title?: string | undefined;
-
-  tooltip?: ReactNode;
   dataToolDetailTrigger?: boolean | undefined;
 }) {
   const className = cn(
@@ -44,7 +27,7 @@ export function AgentActivityOpenSurface(props: {
     props.canOpen ? "cursor-pointer focus-visible:outline-none" : "cursor-default",
   );
 
-  const surface = props.canOpen ? (
+  return props.canOpen ? (
     <button
       type="button"
       className={className}
@@ -60,8 +43,6 @@ export function AgentActivityOpenSurface(props: {
       {props.children}
     </div>
   );
-
-  return <ToolRowTooltip content={props.tooltip}>{surface}</ToolRowTooltip>;
 }
 
 function providerContextLifecycleReasonLabel(
@@ -155,7 +136,6 @@ export function ToolDetailsDisclosure(props: {
   toolKind?: TimelineWorkEntry["toolKind"] | undefined;
   detailContent?: ReactNode;
   summaryClassName?: string | undefined;
-  tooltip?: ReactNode;
 }) {
   const summaryClassName =
     props.summaryClassName ??
@@ -185,7 +165,7 @@ export function ToolDetailsDisclosure(props: {
 
   return (
     <div className="group/tool-details min-w-0">
-      <ToolRowTooltip content={props.tooltip}>{summaryButton}</ToolRowTooltip>
+      {summaryButton}
       <DisclosureRegion
         open={open}
         lazy

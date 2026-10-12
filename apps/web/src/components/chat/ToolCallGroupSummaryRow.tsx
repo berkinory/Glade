@@ -44,7 +44,7 @@ const ACTIVITY_ICONS: Record<Exclude<ToolCallGroupActivity, "tools">, IconCompon
 function renderGroupIcon(summary: ToolCallGroupSummary) {
   const { activity, iconEntry } = summary;
   if (activity === "mixed") return renderWorkEntryIcon(ToolsIcon, WORK_ROW_ICON_CLASS_NAME);
-  if (activity !== null && activity !== "tools") {
+  if (activity !== "tools") {
     return renderWorkEntryIcon(ACTIVITY_ICONS[activity], WORK_ROW_ICON_CLASS_NAME);
   }
   const webFetchUrl = workEntryLinkIconUrl(iconEntry);

@@ -13,6 +13,7 @@
 - Everything that opens and closes in the chat uses the same motion, including tool details, subagent cards, pasted text, error details and long messages.
 - Icons of tool calls, tool groups, subagent cards and notices in the chat line up in one column.
 - Command details show the command and its output in separate boxes.
+- Thinking gets its own row that says how long the agent thought, instead of riding inside tool call groups, and opens to the full reasoning.
 - A turn's edited files list shows about six files and scrolls the rest, with each file's name followed by its folder.
 - The pull request dialog says once that an empty title and description are generated, instead of repeating it in both fields.
 
@@ -33,6 +34,7 @@
 
 - The confirmation dialog and context preparation step when switching providers.
 - The subagent list above the composer. Subagents show in their card in the chat, which can also stop them all, and in the Environment panel.
+- The large tooltip on tool calls. Their details open in place instead.
 - The Open PR in browser action in the pull request dialog. Create PR and Create draft PR remain.
 - The option to start a new worktree from the latest remote branch. New worktrees start from the local branch and can still copy uncommitted changes.
 

@@ -450,6 +450,13 @@ function normalizeWorkLogActivity(activity: OrchestrationThreadActivity): Derive
     ...(toolCallId ? { toolCallId } : {}),
     ...(toolStatus ? { toolStatus } : {}),
   };
+  if (activity.kind === "task.progress" && activity.summary === "Reasoning trace") {
+    const durationMs = firstFiniteNumber(payload?.durationMs);
+    entry.reasoning = {
+      live: payload?.status === "inProgress",
+      ...(durationMs !== undefined ? { durationMs } : {}),
+    };
+  }
   if (activity.kind === "response.started") {
     const source = asObjectRecord(payload?.replySource);
     const threadId = nonEmptyTrimmed(source?.threadId);

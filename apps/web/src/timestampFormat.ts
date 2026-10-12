@@ -51,10 +51,6 @@ export function formatTimestamp(isoDate: string, timestampFormat: TimestampForma
   return getTimestampFormatter(timestampFormat, true).format(new Date(isoDate));
 }
 
-export function formatShortTimestamp(isoDate: string, timestampFormat: TimestampFormat): string {
-  return getTimestampFormatter(timestampFormat, false).format(new Date(isoDate));
-}
-
 const dayLabelFormatterCache = new Map<string, Intl.DateTimeFormat>();
 
 function getDayLabelFormatter(options: Intl.DateTimeFormatOptions): Intl.DateTimeFormat {

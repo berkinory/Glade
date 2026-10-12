@@ -4,6 +4,7 @@ import {
   WORK_ROW_GAP_CLASS_NAME,
   WORK_ROW_ICON_CLASS_NAME,
   WORK_ROW_ICON_SLOT_CLASS_NAME,
+  WORK_ROW_MUTED_HOVER_TONE,
 } from "./workRowStyles";
 import { FileNameChip } from "./FileNameChip";
 import { toolInputFilePath } from "./ToolIoDetails.logic";
@@ -43,7 +44,7 @@ import type { AgentActivityDetail } from "./agentActivity.logic";
 import { AgentActivityDetails } from "./AgentActivityDetails";
 import { hasToolCallDetailsContent } from "./ToolCallDetailsDialog.logic";
 import type { TurnId } from "@glade/contracts/core/baseSchemas";
-import { createElement, memo, useMemo, type ReactElement, type ReactNode } from "react";
+import { createElement, memo, useMemo, type ReactElement } from "react";
 import { basenameOfPath } from "~/file-icons";
 import {
   AgentActivityOpenSurface,
@@ -55,11 +56,10 @@ import { describeLinkChip } from "~/lib/linkChips";
 import { cn } from "~/lib/utils";
 import { isFileChangeWorkLogEntry, type WorkLogEntry } from "../../workLog.types";
 import {
-  formatAgentActivityEntryPreview,
   isCodexActivityStatusWorkEntry,
   isPlainRuntimeNoticeWorkEntry,
-  isReasoningUpdateWorkEntry,
 } from "./agentActivity.logic";
+import { ReasoningWorkRow } from "./ReasoningWorkRow";
 import { DiffStatLabel } from "./DiffStatLabel";
 import { type ExpandedImagePreview } from "./ExpandedImagePreview";
 import { LinkChipIcon } from "../LinkChipIcon";
@@ -86,11 +86,6 @@ import {
 } from "../../lib/toolCallLabel.presentations";
 import { formatLiveActivityMeta, useLiveActivityNow } from "../../lib/liveActivityPresentation";
 import { openWorkspaceFileReference, useWorkspaceFileOpener } from "../../lib/workspaceFileOpener";
-import { MUTED_LABEL_TEXT_CLASS_NAME } from "~/surfaceStyles";
-const WORK_ROW_MUTED_HOVER_TONE: Record<"tool-row" | "file-row", string> = {
-  "tool-row": `${MUTED_LABEL_TEXT_CLASS_NAME} transition-colors group-hover/tool-row:text-foreground group-focus-visible/tool-row:text-foreground`,
-  "file-row": `${MUTED_LABEL_TEXT_CLASS_NAME} transition-colors group-hover/file-row:text-foreground group-focus-visible/file-row:text-foreground`,
-};
 const EMPTY_FILE_DIFF_STATS: ReadonlyMap<
   string,
   {
@@ -146,9 +141,6 @@ function ownsToolTitle(workEntry: TimelineWorkEntry): boolean {
 }
 function workEntryPreview(workEntry: TimelineWorkEntry): string | null {
   if (workEntry.monitorNotification) return null;
-  if (isReasoningUpdateWorkEntry(workEntry)) {
-    return formatAgentActivityEntryPreview(workEntry);
-  }
   if (workEntry.itemType === "collab_agent_tool_call") {
     const task = workEntry.subagentAction?.prompt ?? workEntry.preview ?? workEntry.detail;
     return (
@@ -373,9 +365,7 @@ function workEntryDisplayParts(
       : rawPreview;
   const displayText = webFetchUrl
     ? describeLinkChip(webFetchUrl).label
-    : isReasoningUpdateWorkEntry(workEntry) && preview
-      ? preview
-      : combineWorkEntryDisplayText(heading, preview);
+    : combineWorkEntryDisplayText(heading, preview);
   return {
     heading,
     preview,
@@ -384,38 +374,6 @@ function workEntryDisplayParts(
 }
 function isFileChangeWorkEntry(workEntry: TimelineWorkEntry): boolean {
   return isFileChangeWorkLogEntry(workEntry);
-}
-function commandTooltipContent(command: string, displayText: string) {
-  return (
-    <div className="max-w-96 whitespace-pre-wrap leading-tight">
-      <div className="space-y-2">
-        <div className="space-y-0.5">
-          <div className="text-muted-foreground/70">Summary</div>
-          <div>{displayText}</div>
-        </div>
-        <div className="space-y-0.5">
-          <div className="text-muted-foreground/70">Raw call</div>
-          <code className="block whitespace-pre-wrap break-words font-chat-code text-chat-code text-foreground/92">
-            {command}
-          </code>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-// Hover content for a tool-call row: the rich command card when a raw command is present, otherwise
-// the plain label (used to reveal truncated text / file paths). Returns null when there's nothing
-// worth showing so the row renders untouched.
-function toolRowTooltipContent(
-  rawCommand: string | null | undefined,
-  displayText: string,
-  fallback: string | undefined,
-): ReactNode {
-  if (rawCommand) {
-    return commandTooltipContent(rawCommand, displayText);
-  }
-  return fallback ? <span className="whitespace-pre-wrap">{fallback}</span> : null;
 }
 type TimelineWorkEntryRowProps = {
   workEntry: TimelineWorkEntry;
@@ -440,14 +398,23 @@ type TimelineWorkEntryRowProps = {
 export const TimelineWorkEntryRow = memo(function TimelineWorkEntryRow(
   props: TimelineWorkEntryRowProps,
 ) {
-  return props.workEntry.subagentRun ? (
-    <SubagentRunCard
-      run={props.workEntry.subagentRun}
-      fontSizePx={props.textFontSizePx ?? props.chatMetaFontSizePx}
-    />
-  ) : (
-    <ToolWorkEntryRow {...props} />
-  );
+  const fontSizePx = props.textFontSizePx ?? props.chatMetaFontSizePx;
+  if (props.workEntry.subagentRun) {
+    return <SubagentRunCard run={props.workEntry.subagentRun} fontSizePx={fontSizePx} />;
+  }
+  if (props.workEntry.reasoning) {
+    return (
+      <ReasoningWorkRow
+        entry={props.workEntry}
+        reasoning={props.workEntry.reasoning}
+        fontSizePx={fontSizePx}
+        compact={props.density === "compact"}
+        markdownCwd={props.markdownCwd}
+        onImageExpand={props.onImageExpand}
+      />
+    );
+  }
+  return <ToolWorkEntryRow {...props} />;
 });
 
 function ToolWorkEntryRow(props: TimelineWorkEntryRowProps) {
@@ -470,7 +437,6 @@ function ToolWorkEntryRow(props: TimelineWorkEntryRowProps) {
   const isCodexStatusRow = isCodexActivityStatusWorkEntry(workEntry);
   const isPlainRuntimeNoticeRow = isPlainRuntimeNoticeWorkEntry(workEntry);
   const EntryIcon = workEntryIcon(workEntry);
-  const webFetchUrl = extractWebFetchUrl(workEntry);
   const linkIconUrl = workEntryLinkIconUrl(workEntry);
   const classification = classifyWorkEntryTool(workEntry);
   const isGitHubToolRow = classification.isGitHub;
@@ -493,8 +459,6 @@ function ToolWorkEntryRow(props: TimelineWorkEntryRowProps) {
       ? (toolInputFilePath(workEntry.toolDetails?.input) ??
         (workEntry.detail ? extractFilePathFromDetail(workEntry.detail) : null))
       : null;
-  const rawCommand = workEntry.rawCommand ?? workEntry.command;
-  const hoverText = rawCommand ?? webFetchUrl ?? displayText;
   const changedFiles = workEntry.changedFiles ?? [];
   const showEditedRows = isFileChangeWorkEntry(workEntry) && changedFiles.length > 0;
   const activityContent = activityDetail ? (
@@ -503,7 +467,6 @@ function ToolWorkEntryRow(props: TimelineWorkEntryRowProps) {
       fontSizePx={textFontSizePx}
       markdownCwd={markdownCwd}
       onImageExpand={onImageExpand}
-      timestampFormat={timestampFormat}
     />
   ) : undefined;
   const hasToolDetails = hasToolCallDetailsContent(workEntry.toolDetails, workEntry.liveActivity);
@@ -527,9 +490,7 @@ function ToolWorkEntryRow(props: TimelineWorkEntryRowProps) {
       : null;
   const canOpenReadFile = readFilePath !== null;
   const canOpenToolDetails =
-    !activityDetail &&
-    !isReasoningUpdateWorkEntry(workEntry) &&
-    Boolean(providerContextLifecycle || monitorNotification || hasToolDetails);
+    !activityDetail && Boolean(providerContextLifecycle || monitorNotification || hasToolDetails);
   const openReadFile = readFilePath
     ? () => openWorkspaceFileReference(opener, readFilePath)
     : undefined;
@@ -581,7 +542,6 @@ function ToolWorkEntryRow(props: TimelineWorkEntryRowProps) {
                   key={`${workEntry.id}:${changedFilePath}`}
                   details={workEntry.toolDetails}
                   activity={workEntry.liveActivity}
-                  tooltip={<span className="whitespace-pre-wrap">{changedFilePath}</span>}
                   summaryClassName={editedRowClassName}
                   dataFileChangeRow
                 >
@@ -682,7 +642,6 @@ function ToolWorkEntryRow(props: TimelineWorkEntryRowProps) {
                     <ProviderContextLifecycleDetails info={providerContextLifecycle} />
                   ) : undefined)
                 }
-                tooltip={toolRowTooltipContent(rawCommand, displayText, displayText)}
               >
                 {rowContentChildren}
               </ToolDetailsDisclosure>
@@ -693,11 +652,6 @@ function ToolWorkEntryRow(props: TimelineWorkEntryRowProps) {
               canOpen={canOpenReadFile}
               onOpen={openReadFile}
               onHover={prefetchReadFile}
-              tooltip={toolRowTooltipContent(
-                rawCommand,
-                displayText,
-                canOpenReadFile ? (readFilePath ?? hoverText) : hoverText,
-              )}
             >
               {rowContentChildren}
             </AgentActivityOpenSurface>

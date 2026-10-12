@@ -50,9 +50,21 @@ export function runtimeTurnState(
     : "completed";
 }
 
+// Thinking time runs from the reasoning item's first event to its completion; `reasoningStartedAt`
+// is that first event's time, which only the ingestion loop sees.
+function reasoningDurationMs(
+  event: ProviderRuntimeEvent,
+  reasoningStartedAt: string | undefined,
+): number | undefined {
+  if (event.type !== "item.completed" || !reasoningStartedAt) return undefined;
+  const durationMs = Date.parse(event.createdAt) - Date.parse(reasoningStartedAt);
+  return Number.isFinite(durationMs) && durationMs >= 0 ? durationMs : undefined;
+}
+
 export function projectProviderRuntimeActivities(
   event: ProviderRuntimeEvent,
   sessionSequence?: number,
+  reasoningStartedAt?: string,
 ): ReadonlyArray<OrchestrationThreadActivity> {
   const maybeSequence =
     typeof sessionSequence === "number" && Number.isInteger(sessionSequence) && sessionSequence >= 0
@@ -69,6 +81,7 @@ export function projectProviderRuntimeActivities(
   ) {
     const reasoningItemId = String(event.itemId);
     const reasoningDetail = readableReasoningDetail(event.payload.detail)!;
+    const durationMs = reasoningDurationMs(event, reasoningStartedAt);
     return [
       {
         id: EventId.makeUnsafe(`provider-reasoning:${event.threadId}:${reasoningItemId}`),
@@ -79,6 +92,7 @@ export function projectProviderRuntimeActivities(
         payload: toActivityPayload({
           ...(event.payload.status ? { status: event.payload.status } : {}),
           detail: truncateDetail(reasoningDetail, MAX_ACTIVITY_DATA_STRING_CHARS),
+          ...(durationMs !== undefined ? { durationMs } : {}),
           data: { toolCallId: reasoningItemId },
         }),
         turnId: toTurnId(event.turnId) ?? null,
