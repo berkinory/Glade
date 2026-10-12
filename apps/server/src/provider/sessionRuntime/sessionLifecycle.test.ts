@@ -20,6 +20,7 @@ import {
   asThreadId,
   asRequestId,
   asEventId,
+  asTurnId,
   sleep,
   waitUntil,
   makeProviderServiceLayer,
@@ -233,6 +234,60 @@ routing.layer("Provider service sessionLifecycle", (it) => {
           10,
           "delta from the re-adopted generation to be persisted",
         );
+      }),
+    );
+
+    it.effect("accepts stale settling events that no newer runtime owns", () =>
+      Effect.gen(function* () {
+        const provider = yield* ProviderService;
+        const directory = yield* ProviderSessionDirectory;
+        const threadId = asThreadId("thread-stale-owned-settlement");
+        yield* staleSettlementRouting.codex.waitForRuntimeSubscribers();
+        yield* provider.startSession(threadId, {
+          provider: "codex",
+          threadId,
+          cwd: "/tmp/project",
+          runtimeMode: "full-access",
+        });
+        // The lifecycle has a current generation, but the durable binding still belongs to the old one.
+        yield* directory.upsert({
+          threadId,
+          provider: "codex",
+          status: "running",
+          lifecycleGeneration: "old-generation",
+          runtimePayload: { activeTurnId: null },
+        });
+
+        staleSettlementRouting.codex.emit({
+          type: "turn.completed",
+          eventId: asEventId("stale-subagent-turn-completed"),
+          provider: "codex",
+          threadId,
+          turnId: asTurnId("subagent-turn"),
+          createdAt: "2026-07-14T14:00:00.000Z",
+          lifecycleGeneration: "older-generation",
+          providerRefs: { providerThreadId: "child", providerParentThreadId: "parent" },
+          payload: { state: "interrupted" },
+        });
+        staleSettlementRouting.codex.emit({
+          type: "session.exited",
+          eventId: asEventId("stale-owned-session-exited"),
+          provider: "codex",
+          threadId,
+          createdAt: "2026-07-14T14:00:01.000Z",
+          lifecycleGeneration: "old-generation",
+          payload: { exitKind: "error", reason: "start failed" },
+        });
+        yield* waitUntil(
+          () =>
+            staleSettlementPersistedEvents.has("stale-subagent-turn-completed") &&
+            staleSettlementPersistedEvents.has("stale-owned-session-exited"),
+          500,
+          10,
+          "stale settling events owned by no newer runtime to be persisted",
+        );
+        const binding = Option.getOrUndefined(yield* directory.getBinding(threadId));
+        assert.equal(binding?.status, "stopped");
       }),
     );
   });

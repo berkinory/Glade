@@ -23,7 +23,11 @@ import { type ProviderRuntimeEvent } from "@glade/contracts/provider/runtimeEven
 import { ProviderSessionDirectory } from "../Services/ProviderSessionDirectory.ts";
 import { type PersistedProviderRuntimeEvent } from "../../persistence/Services/ProviderRuntimeEvents.ts";
 import type { TaggedFailure } from "../../platform/operationError.ts";
-import { isStaleSettlingRuntimeEvent, runtimeActiveTurnId } from "../core/providerRuntimeBinding";
+import {
+  isStaleSettlingRuntimeEvent,
+  isTerminalRuntimeEvent,
+  runtimeActiveTurnId,
+} from "../core/providerRuntimeBinding";
 
 export function ProviderRuntimeEventsLive(options?: ProviderServiceLiveOptions) {
   return Layer.effect(
@@ -123,50 +127,51 @@ export function ProviderRuntimeEventsLive(options?: ProviderServiceLiveOptions) 
               lifecycle.currentGeneration(event.threadId) !== event.lifecycleGeneration
             ) {
               const currentGeneration = lifecycle.currentGeneration(event.threadId);
-              // Stale generations may still settle their active turn and matching durable interactions. Admit
-              // terminal events only without a newer generation or for the binding's active turn; projection
-              // generation checks prevent old resolutions from settling newer requests.
-              const staleEventIsSettling =
-                isStaleSettlingRuntimeEvent(event) &&
-                (currentGeneration === undefined || event.turnId !== undefined);
-              if (!staleEventIsSettling) {
-                return Effect.logWarning("provider.session.stale_generation_event_ignored", {
+              const ignoreStaleEvent = () =>
+                Effect.logWarning("provider.session.stale_generation_event_ignored", {
                   threadId: event.threadId,
                   provider: event.provider,
                   eventType: event.type,
                   eventLifecycleGeneration: event.lifecycleGeneration,
                   currentLifecycleGeneration: currentGeneration,
                 });
+              const acceptStaleEvent = () =>
+                Effect.logInfo("provider.session.stale_generation_terminal_event_accepted", {
+                  threadId: event.threadId,
+                  provider: event.provider,
+                  eventType: event.type,
+                  eventLifecycleGeneration: event.lifecycleGeneration,
+                  currentLifecycleGeneration: currentGeneration,
+                }).pipe(Effect.andThen(() => journalAndPublish(canonicalEvent)));
+              const isSubagentChildEvent = event.providerRefs?.providerParentThreadId !== undefined;
+              // Stale generations may still settle what they own. Tool rows a dying subagent turn
+              // force-closes are as final as its turn end.
+              const staleEventIsSettling =
+                isStaleSettlingRuntimeEvent(event) ||
+                (isSubagentChildEvent && event.type === "item.completed");
+              if (!staleEventIsSettling) {
+                return ignoreStaleEvent();
               }
-              if (currentGeneration !== undefined) {
-                return directory.getBinding(event.threadId).pipe(
-                  Effect.flatMap((maybeBinding) => {
-                    const binding = Option.getOrUndefined(maybeBinding);
-                    const boundActiveTurnId = binding
-                      ? runtimeActiveTurnId(binding.runtimePayload)
-                      : undefined;
-                    if (binding === undefined || boundActiveTurnId !== String(event.turnId)) {
-                      return Effect.logWarning("provider.session.stale_generation_event_ignored", {
-                        threadId: event.threadId,
-                        provider: event.provider,
-                        eventType: event.type,
-                        eventLifecycleGeneration: event.lifecycleGeneration,
-                        currentLifecycleGeneration: currentGeneration,
-                      });
-                    }
-                    return Effect.logInfo(
-                      "provider.session.stale_generation_terminal_event_accepted",
-                      {
-                        threadId: event.threadId,
-                        provider: event.provider,
-                        eventType: event.type,
-                        eventLifecycleGeneration: event.lifecycleGeneration,
-                        currentLifecycleGeneration: currentGeneration,
-                      },
-                    ).pipe(Effect.andThen(() => journalAndPublish(canonicalEvent)));
-                  }),
-                );
+              // A superseded session's subagent turns have no newer owner, and child events never touch
+              // the parent binding, so their settling events are the only thing that ends them.
+              if (currentGeneration === undefined || isSubagentChildEvent) {
+                return acceptStaleEvent();
               }
+              // A newer generation exists: settle only state the durable binding still attributes to
+              // this event, either its generation (the lifecycle rotated before the binding caught up)
+              // or its active turn. Projection generation checks keep old resolutions off newer requests.
+              return directory.getBinding(event.threadId).pipe(
+                Effect.flatMap((maybeBinding) => {
+                  const binding = Option.getOrUndefined(maybeBinding);
+                  const canSettleBinding =
+                    binding !== undefined &&
+                    ((isTerminalRuntimeEvent(event) &&
+                      binding.lifecycleGeneration === event.lifecycleGeneration) ||
+                      (event.turnId !== undefined &&
+                        runtimeActiveTurnId(binding.runtimePayload) === String(event.turnId)));
+                  return canSettleBinding ? acceptStaleEvent() : ignoreStaleEvent();
+                }),
+              );
             }
             return journalAndPublish(canonicalEvent);
           }),

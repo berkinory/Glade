@@ -17,6 +17,11 @@ export const DEFAULT_RUNTIME_RECONCILIATION_STALE_AFTER_MS = 15_000;
 // message, so a legitimately long-running turn keeps resetting this clock and is never affected.
 const RUNTIME_RECONCILIATION_MAX_TURN_AGE_MS = 45 * 60_000;
 
+// A lifecycle stranded in `starting` or `running` with no turn has no output to wait for, and every
+// path that could still produce one (turn-start delivery, adapter startup timeouts) is bounded well
+// below this. Generous because a legitimate start can queue behind provider-command delivery.
+const RUNTIME_RECONCILIATION_MAX_STALLED_START_AGE_MS = 10 * 60_000;
+
 export type ProviderRuntimeReconciliationPlan =
   | {
       readonly action: "align-running-turn";
@@ -171,6 +176,10 @@ export function planProviderRuntimeReconciliation(input: {
     staleAfterMs,
     input.maxTurnAgeMs ?? RUNTIME_RECONCILIATION_MAX_TURN_AGE_MS,
   );
+  const maxStalledStartAgeMs = Math.min(
+    maxTurnAgeMs,
+    Math.max(staleAfterMs, RUNTIME_RECONCILIATION_MAX_STALLED_START_AGE_MS),
+  );
   const bindingByThreadId = new Map(input.bindings.map((binding) => [binding.threadId, binding]));
   const liveSessionByThreadId = new Map(
     input.liveSessions.map((session) => [session.threadId, session]),
@@ -221,23 +230,32 @@ export function planProviderRuntimeReconciliation(input: {
     if (input.runtimeJournalLagging === true && !abandoned) continue;
     // The adapter can be idle before buffered terminal events have reached the journal.
     if ((pumpHealth?.pendingEventCount ?? 0) > 0 && !abandoned) continue;
+    // A connection the adapter still owns may be newer than this projection; its own startup timeout
+    // settles it, and the shorter stalled-start clock below is no evidence that it ended.
+    if (liveSession?.status === "connecting" && !abandoned) continue;
 
     if (projectedTurnId === null) {
       const session = thread.session;
-      if (!abandoned || session === null) continue;
+      if (session === null) continue;
       if (session.status !== "starting" && session.status !== "running") continue;
+      const stalledStart =
+        lifecycleAgeMs >= maxStalledStartAgeMs &&
+        threadActivityAgeMs(thread, input.nowMs) >= maxStalledStartAgeMs;
+      if (!abandoned && !stalledStart) continue;
       plans.push({
         action: "settle-interrupted",
         threadId: thread.id,
         provider,
         projectedTurnId: null,
         runtimeTurnId: null,
-        reason: `The session is stuck in '${session.status}' with no provider turn to settle.${abandonedDetail}`,
+        reason:
+          `The session is stuck in '${session.status}' with no provider turn to settle.` +
+          (abandoned
+            ? abandonedDetail
+            : ` The provider start has had no turn for over ${Math.round(maxStalledStartAgeMs / 60_000)} minutes.${detail}`),
       });
       continue;
     }
-
-    if (liveSession?.status === "connecting" && !abandoned) continue;
 
     const liveSessionSettled =
       liveSession !== undefined &&
