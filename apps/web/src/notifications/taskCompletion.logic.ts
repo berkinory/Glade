@@ -517,6 +517,16 @@ export function collectCompletedThreadCandidates(
     if (!previousThread) {
       continue;
     }
+    // With these inputs unchanged the previous-snapshot dedupe below always skips the thread, so avoid
+    // folding every loaded thread's activities on every store flush.
+    if (
+      previousThread.latestTurn === thread.latestTurn &&
+      previousThread.session === thread.session &&
+      previousThread.activities === thread.activities &&
+      previousThread.backgroundWork === thread.backgroundWork
+    ) {
+      continue;
+    }
 
     const latestTurn = thread.latestTurn;
     const completedAt = latestTurn?.completedAt;
