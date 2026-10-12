@@ -7,7 +7,6 @@
     "./*": "./src/*.ts"
   },
   "scripts": {
-    "prepare": "effect-language-service patch",
     "typecheck": "bun ../../node_modules/@typescript/native/bin/tsc --noEmit",
     "test": "vitest run"
   },
