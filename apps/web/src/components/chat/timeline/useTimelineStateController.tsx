@@ -10,6 +10,7 @@ import {
   useState,
   type CSSProperties,
 } from "react";
+import * as Schema from "effect/Schema";
 import { DEFAULT_CHAT_FONT_SIZE_PX, normalizeChatFontSizePx } from "~/appSettings";
 import {
   getChatMessageFooterTextStyle,
@@ -24,6 +25,7 @@ import { findLastLiveWorkGroupId } from "~/components/chat/MessagesTimeline.logi
 import { type ThreadFindMatch } from "~/components/chat/threadFind.logic";
 import { useTailAnchorScroll } from "~/components/chat/useTailAnchorScroll";
 import { useTimelineRowOverlapGuard } from "~/components/chat/useTimelineRowOverlapGuard";
+import { useLocalStorage } from "~/hooks/useLocalStorage";
 import { getAppTypographyScale } from "~/lib/appTypography";
 import { cn } from "~/lib/utils";
 import {
@@ -40,6 +42,8 @@ import {
 } from "./timelineTransitions";
 
 import type { MessagesTimelineProps } from "./timelineSupport";
+const FILE_CHANGES_EXPANDED_KEY = "glade:edited-files-expanded";
+
 export function useTimelineStateController(props: MessagesTimelineProps) {
   const {
     isWorking,
@@ -189,9 +193,12 @@ export function useTimelineStateController(props: MessagesTimelineProps) {
     [setToolGroupSummaryOverrides],
   );
 
-  const [expandedFileChangesByTurnId, setExpandedFileChangesByTurnId] = useState<
-    Record<string, boolean>
-  >({});
+  // One remembered choice for every turn's edited files card, across chats and restarts.
+  const [fileChangesExpanded, setFileChangesExpanded] = useLocalStorage(
+    FILE_CHANGES_EXPANDED_KEY,
+    true,
+    Schema.Boolean,
+  );
 
   const [expandedUserMessagesById, setExpandedUserMessagesById] = useState<Record<string, boolean>>(
     {},
@@ -374,8 +381,8 @@ export function useTimelineStateController(props: MessagesTimelineProps) {
       editingUserMessageId,
       enteringMessageRowIds,
       expandedCollapsedWork,
-      expandedFileChangesByTurnId,
       expandedUserMessagesById,
+      fileChangesExpanded,
       findHighlight,
       firstUserMessageId,
       highlightedMessageId,
@@ -390,8 +397,8 @@ export function useTimelineStateController(props: MessagesTimelineProps) {
       editingUserMessageId,
       enteringMessageRowIds,
       expandedCollapsedWork,
-      expandedFileChangesByTurnId,
       expandedUserMessagesById,
+      fileChangesExpanded,
       findHighlight,
       firstUserMessageId,
       highlightedMessageId,
@@ -423,8 +430,8 @@ export function useTimelineStateController(props: MessagesTimelineProps) {
     setCollapsedWorkExpanded,
     toolGroupSummaryOverrides,
     setToolGroupSummaryOpen,
-    expandedFileChangesByTurnId,
-    setExpandedFileChangesByTurnId,
+    fileChangesExpanded,
+    setFileChangesExpanded,
     expandedUserMessagesById,
     setExpandedUserMessagesById,
     editingUserMessageId,

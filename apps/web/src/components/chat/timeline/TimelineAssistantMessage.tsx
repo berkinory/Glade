@@ -62,7 +62,7 @@ export function renderTimelineAssistantMessage(
     chatTypographyStyle,
     findHighlight,
     setCollapsedWorkExpanded,
-    expandedFileChangesByTurnId,
+    fileChangesExpanded,
     editorKeybindings,
     installedEditors,
     chatMessageFooterStyle,
@@ -491,7 +491,6 @@ export function renderTimelineAssistantMessage(
             }
             const checkpointFiles = turnSummary.files;
             if (checkpointFiles.length === 0) return null;
-            const fileChangesExpanded = expandedFileChangesByTurnId[turnSummary.turnId] ?? true;
             const checkpointTurnCount = turnSummary.checkpointTurnCount;
             const checkpointTurnCounts =
               turnSummary.checkpointTurnCounts ??
@@ -608,7 +607,7 @@ export function renderTimelineAssistantMessage(
                         if (!fileChangesExpanded && isTailContentRow) {
                           scrollTailExpansionToEnd();
                         }
-                        toggleFileChangesExpanded(turnSummary.turnId);
+                        toggleFileChangesExpanded();
                       }}
                       data-scroll-anchor-ignore={isTailContentRow ? true : undefined}
                     >

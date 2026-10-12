@@ -1,4 +1,4 @@
-import { type MessageId, type TurnId } from "@glade/contracts/core/baseSchemas";
+import { type MessageId } from "@glade/contracts/core/baseSchemas";
 import { useCallback } from "react";
 
 import type { MessagesTimelineProps } from "./timelineSupport";
@@ -10,22 +10,13 @@ export function useTimelineActionsController({
   state: ReturnType<typeof useTimelineStateController>;
   props: MessagesTimelineProps;
 }) {
-  const {
-    setExpandedFileChangesByTurnId,
-    setEditingUserMessageId,
-    setSubmittingEditedUserMessageId,
-  } = state;
+  const { setFileChangesExpanded, setEditingUserMessageId, setSubmittingEditedUserMessageId } =
+    state;
   const { onEditUserMessage } = props;
 
-  const toggleFileChangesExpanded = useCallback(
-    (turnId: TurnId) => {
-      setExpandedFileChangesByTurnId((current) => ({
-        ...current,
-        [turnId]: !(current[turnId] ?? true),
-      }));
-    },
-    [setExpandedFileChangesByTurnId],
-  );
+  const toggleFileChangesExpanded = useCallback(() => {
+    setFileChangesExpanded((current) => !current);
+  }, [setFileChangesExpanded]);
 
   const cancelUserMessageEdit = useCallback(() => {
     setEditingUserMessageId(null);
