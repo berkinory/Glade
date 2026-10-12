@@ -78,7 +78,7 @@ function WhatsNewDialogContent({
       <DialogPanel className="max-h-[min(62vh,520px)] px-4 py-3">
         {view === "current" ? (
           <div className="py-1">
-            <ReleaseNotesSections features={currentEntry.features} />
+            <ReleaseNotesSections entry={currentEntry} />
           </div>
         ) : (
           <ChangelogAccordion entries={allEntries} defaultExpandedVersion={currentEntry.version} />

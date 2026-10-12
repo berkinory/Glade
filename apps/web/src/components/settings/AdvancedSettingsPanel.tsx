@@ -72,10 +72,10 @@ export function AdvancedSettingsPanel(props: {
         />
         <SettingsRow
           id="setting-release-history"
-          title="Release history"
+          title="Changelog"
           control={
             <Button size="sm" variant="outline" onClick={props.onOpenReleaseHistory}>
-              View release history
+              View changelog
             </Button>
           }
         />

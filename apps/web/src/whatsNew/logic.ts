@@ -62,9 +62,7 @@ function compareVersions(a: string, b: string): number {
   return patchA - patchB;
 }
 
-export function sortEntriesByVersionDesc(
-  entries: readonly WhatsNewEntry[],
-): readonly WhatsNewEntry[] {
+function sortEntriesByVersionDesc(entries: readonly WhatsNewEntry[]): readonly WhatsNewEntry[] {
   return entries.toSorted((left, right) => compareVersions(right.version, left.version));
 }
 

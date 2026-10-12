@@ -5,6 +5,7 @@ import {
   createReadStream,
   constants,
   copyFileSync,
+  existsSync,
   mkdirSync,
   readFileSync,
   readdirSync,
@@ -134,6 +135,14 @@ async function sha256(path: string): Promise<string> {
   return hash.digest("hex");
 }
 
+// GitHub release bodies need absolute image URLs; pinning them to the tag keeps them stable.
+function releaseVisual(): string {
+  const image = `apps/web/src/whatsNew/releases/${version}.avif`;
+  if (!existsSync(image)) return "";
+  const url = `https://raw.githubusercontent.com/berkinory/Glade/v${version}/${image}`;
+  return `![Overview of Glade ${version}](${url})\n\n`;
+}
+
 function releaseNotes(checksums: readonly string[]): string {
   const lines = readFileSync("CHANGELOG.md", "utf8").split(/\r?\n/);
   const start = lines.findIndex(
@@ -154,7 +163,7 @@ function releaseNotes(checksums: readonly string[]): string {
     ([label, file]) =>
       `- **${label}:** [${file}](https://github.com/berkinory/Glade/releases/download/v${version}/${file})`,
   );
-  return `## Downloads\n\n${links.join("\n")}\n\n${notes}\n\n## SHA-256\n\n\`\`\`text\n${checksums.join("\n")}\n\`\`\`\n`;
+  return `${releaseVisual()}## Downloads\n\n${links.join("\n")}\n\n${notes}\n\n## SHA-256\n\n\`\`\`text\n${checksums.join("\n")}\n\`\`\`\n`;
 }
 
 const rawEntries = readdirSync(raw).toSorted();

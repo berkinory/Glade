@@ -90,10 +90,11 @@ The local keychain does not transfer to GitHub runners. Missing Apple secrets st
 ## Cut a version
 
 1. Align package versions with `node scripts/update-release-package-versions.ts X.Y.Z`, then refresh `bun.lock` with `bun install --lockfile-only --ignore-scripts`.
-2. Update `CHANGELOG.md`; the in-app What's new and release history read it at build time. Use `New` for newly available capabilities, `Improved` for refinements, `Fixed` for corrected behavior, and `Removed` for retired functionality. Keep the `## X.Y.Z - date`, `### Category` and `- entry` layout, which the app parses. Mark a version released only when it really ships.
-3. Run `bun run check`, `bun run test`, `bun scripts/check-windows-runtime-boundary.ts`, and `bun scripts/check-migration-lineage.ts`. Check the packaged app with an isolated profile on each supported platform.
-4. Commit the reviewed source on `main` and push it to `origin`. Tag that commit `vX.Y.Z` and push the tag; the release builds while exact-commit CI finishes and publishes only after it passes. Do not push inherited upstream tags.
-5. Verify the GitHub Release notes link all four installers and list their SHA-256 checksums. The ten assets are four installers, two macOS update ZIPs, three platform update manifests, and the Windows blockmap. Verify both Homebrew architecture checksums.
+2. Update `CHANGELOG.md`; the in-app What's new and changelog read it at build time. Use `New` for newly available capabilities, `Improved` for refinements, `Fixed` for corrected behavior, and `Removed` for retired functionality. Keep the `## X.Y.Z - date`, `### Category` and `- entry` layout, which the app parses. Mark a version released only when it really ships.
+3. Optionally give the release a visual overview: write its tiles in `scripts/release-bento/releases/X.Y.Z.ts`, starting from the previous release's file, then run `node scripts/release-bento/render.ts X.Y.Z` on macOS with ImageMagick. It counts the New, Improved and Fixed entries from `CHANGELOG.md` and writes `apps/web/src/whatsNew/releases/X.Y.Z.avif`. The app shows it above that release's notes, and the GitHub Release notes embed it. Mockup content in the tiles is illustrative; keep labels and icons true to the app.
+4. Run `bun run check`, `bun run test`, `bun scripts/check-windows-runtime-boundary.ts`, and `bun scripts/check-migration-lineage.ts`. Check the packaged app with an isolated profile on each supported platform.
+5. Commit the reviewed source on `main` and push it to `origin`. Tag that commit `vX.Y.Z` and push the tag; the release builds while exact-commit CI finishes and publishes only after it passes. Do not push inherited upstream tags.
+6. Verify the GitHub Release notes link all four installers and list their SHA-256 checksums. The ten assets are four installers, two macOS update ZIPs, three platform update manifests, and the Windows blockmap. Verify both Homebrew architecture checksums.
 
 ## Development and production
 

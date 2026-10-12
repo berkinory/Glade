@@ -15,31 +15,26 @@ import {
 export interface ReleaseHistoryDialogProps {
   readonly open: boolean;
   readonly onOpenChange: (open: boolean) => void;
-
-  readonly defaultExpandedVersion?: string | null;
 }
 
-export default function ReleaseHistoryDialog({
-  open,
-  onOpenChange,
-  defaultExpandedVersion: defaultExpandedVersionProp,
-}: ReleaseHistoryDialogProps) {
-  const defaultExpandedVersion = defaultExpandedVersionProp ?? null;
-
+export default function ReleaseHistoryDialog({ open, onOpenChange }: ReleaseHistoryDialogProps) {
   const sorted = sortReleasedEntriesByVersionDesc(CHANGELOG_ENTRIES);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogPopup className="max-w-lg gap-0 p-0">
         <DialogHeader className="gap-1 p-4 pr-12">
-          <DialogTitle className="text-base">Release history</DialogTitle>
+          <DialogTitle className="text-base">Changelog</DialogTitle>
           <DialogDescription className="text-ui leading-snug">
             Every curated release, newest first.
           </DialogDescription>
         </DialogHeader>
 
         <DialogPanel className="max-h-[min(62vh,520px)] px-4 py-3">
-          <ChangelogAccordion entries={sorted} defaultExpandedVersion={defaultExpandedVersion} />
+          <ChangelogAccordion
+            entries={sorted}
+            defaultExpandedVersion={sorted[0]?.version ?? null}
+          />
         </DialogPanel>
 
         <DialogFooter>

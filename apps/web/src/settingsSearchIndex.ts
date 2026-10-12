@@ -448,7 +448,7 @@ const SETTINGS_SEARCH_ENTRIES: readonly SettingsSearchEntry[] = [
   {
     id: "advanced:release-history",
     section: "advanced",
-    title: "Release history",
+    title: "Changelog",
     target: "setting-release-history",
     keywords:
       "A running log of every update, newest first. changelog what's new about release notes",

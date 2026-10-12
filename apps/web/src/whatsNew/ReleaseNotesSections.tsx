@@ -1,5 +1,6 @@
 import { FeatureSection } from "./FeatureSection";
-import type { WhatsNewFeature } from "./logic";
+import type { WhatsNewEntry, WhatsNewFeature } from "./logic";
+import { ReleaseVisual } from "./ReleaseVisual";
 
 const CATEGORY_TONES: Record<string, { text: string; dot: string }> = {
   New: {
@@ -20,9 +21,9 @@ const CATEGORY_TONES: Record<string, { text: string; dot: string }> = {
   },
 };
 
-export function ReleaseNotesSections(props: { features: readonly WhatsNewFeature[] }) {
+export function ReleaseNotesSections({ entry }: { readonly entry: WhatsNewEntry }) {
   const groups = new Map<string, WhatsNewFeature[]>();
-  for (const feature of props.features) {
+  for (const feature of entry.features) {
     const group = groups.get(feature.category) ?? [];
     group.push(feature);
     groups.set(feature.category, group);
@@ -30,6 +31,7 @@ export function ReleaseNotesSections(props: { features: readonly WhatsNewFeature
 
   return (
     <div className="flex flex-col gap-6">
+      <ReleaseVisual version={entry.version} />
       {[...groups].map(([category, features]) => (
         <section key={category} aria-label={category}>
           <div className="mb-1 flex items-center gap-2 border-b border-border/60 pb-2">

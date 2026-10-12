@@ -35,7 +35,6 @@ import {
   type FollowUpBehavior,
   type UiDensity,
 } from "../appSettings";
-import { APP_VERSION } from "../branding";
 import {
   CHAT_SURFACE_HEADER_HEIGHT_CLASS,
   CHAT_SURFACE_HEADER_PADDING_X_CLASS,
@@ -958,11 +957,7 @@ function SettingsRouteView() {
           </div>
         </div>
 
-        <ReleaseHistoryDialog
-          open={releaseHistoryOpen}
-          onOpenChange={setReleaseHistoryOpen}
-          defaultExpandedVersion={APP_VERSION}
-        />
+        <ReleaseHistoryDialog open={releaseHistoryOpen} onOpenChange={setReleaseHistoryOpen} />
       </RouteInsetSurface>
     </div>
   );

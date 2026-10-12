@@ -72,7 +72,7 @@ function ChangelogAccordionRow({
         </CollapsibleTrigger>
         <CollapsiblePanel>
           <div className="pb-5 pl-6 pr-1">
-            <ReleaseNotesSections features={entry.features} />
+            <ReleaseNotesSections entry={entry} />
           </div>
         </CollapsiblePanel>
       </Collapsible>

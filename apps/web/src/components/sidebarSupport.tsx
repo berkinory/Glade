@@ -23,17 +23,7 @@ import { SidebarIconButton, sidebarIconButtonSlotClass } from "./SidebarIconButt
 import { SidebarGlyph, sidebarGlyphClass } from "./sidebarGlyphs";
 import { type SidebarThreadTerminalStatus } from "./SidebarThreadRowContent";
 import ReleaseHistoryDialog from "./ReleaseHistoryDialog";
-import { CHANGELOG_ENTRIES } from "../whatsNew/changelog";
-import { sortEntriesByVersionDesc } from "../whatsNew/logic";
-import {
-  Menu,
-  MenuGroup,
-  MenuItem,
-  MenuRadioGroup,
-  MenuRadioItem,
-  MenuSeparator,
-  MenuTrigger,
-} from "./ui/menu";
+import { Menu, MenuGroup, MenuItem, MenuRadioGroup, MenuRadioItem, MenuTrigger } from "./ui/menu";
 import { Tooltip, TooltipPopup, TooltipTrigger } from "./ui/tooltip";
 import {
   DEBUG_FEATURE_FLAGS_MENU_STORAGE_KEY,
@@ -291,7 +281,6 @@ export function ProjectSortMenu({
     </Menu>
   );
 }
-const HELP_MENU_RELEASE_ENTRIES = sortEntriesByVersionDesc(CHANGELOG_ENTRIES).slice(0, 3);
 export function SidebarHelpMenu({
   onOpenShortcuts,
   onOpenFeedback,
@@ -299,22 +288,7 @@ export function SidebarHelpMenu({
   onOpenShortcuts: () => void;
   onOpenFeedback: () => void;
 }) {
-  const [releaseHistory, setReleaseHistory] = useState<{
-    readonly open: boolean;
-    readonly version: string | null;
-    readonly openCount: number;
-  }>({
-    open: false,
-    version: null,
-    openCount: 0,
-  });
-  const openReleaseHistory = (version: string | null) => {
-    setReleaseHistory((prev) => ({
-      open: true,
-      version,
-      openCount: prev.openCount + 1,
-    }));
-  };
+  const [changelogOpen, setChangelogOpen] = useState(false);
   return (
     <>
       <Menu>
@@ -326,31 +300,13 @@ export function SidebarHelpMenu({
         />
         <ComposerPickerMenuPopup align="end" side="top" className="w-64 min-w-64">
           <MenuGroup>
-            <div className="px-2 py-1 sm:text-ui leading-snug font-medium text-muted-foreground">
-              What’s new
-            </div>
-            {HELP_MENU_RELEASE_ENTRIES.map((entry) => (
-              <MenuItem
-                key={entry.version}
-                className={SIDEBAR_CONTEXT_MENU_ITEM_CLASS_NAME}
-                onClick={() => openReleaseHistory(entry.version)}
-              >
-                <span className="min-w-0 flex-1 truncate">Version {entry.version}</span>
-                <span className="shrink-0 text-[var(--color-text-foreground-secondary)] tabular-nums">
-                  {entry.date}
-                </span>
-              </MenuItem>
-            ))}
             <MenuItem
               className={SIDEBAR_CONTEXT_MENU_ITEM_CLASS_NAME}
-              onClick={() => openReleaseHistory(null)}
+              onClick={() => setChangelogOpen(true)}
             >
               <SidebarContextMenuIcon icon={GiftIcon} />
-              <span>Full changelog</span>
+              <span>Changelog</span>
             </MenuItem>
-          </MenuGroup>
-          <MenuSeparator />
-          <MenuGroup>
             <MenuItem className={SIDEBAR_CONTEXT_MENU_ITEM_CLASS_NAME} onClick={onOpenShortcuts}>
               <SidebarContextMenuIcon icon={KeyboardIcon} />
               <span>Keyboard shortcuts</span>
@@ -362,17 +318,7 @@ export function SidebarHelpMenu({
           </MenuGroup>
         </ComposerPickerMenuPopup>
       </Menu>
-      <ReleaseHistoryDialog
-        key={releaseHistory.openCount}
-        open={releaseHistory.open}
-        onOpenChange={(open) => {
-          setReleaseHistory((prev) => ({
-            ...prev,
-            open,
-          }));
-        }}
-        defaultExpandedVersion={releaseHistory.version}
-      />
+      <ReleaseHistoryDialog open={changelogOpen} onOpenChange={setChangelogOpen} />
     </>
   );
 }

@@ -2,7 +2,7 @@
   "$schema": "https://unpkg.com/knip@6.38.0/schema.json",
   "cycles": { "dynamicImports": true },
   // Host tools and Electron's built-in filesystem are not npm dependencies.
-  "ignoreBinaries": ["pkill", "pgrep"],
+  "ignoreBinaries": ["pkill", "pgrep", "magick"],
   "ignoreDependencies": ["original-fs"],
   "ignore": ["apps/server/src/provider/codex/protocol/generated/**"],
   "ignoreIssues": {
@@ -25,10 +25,15 @@
       "entry": ["scripts/source-desktop-bootstrap.cjs"],
     },
     "scripts": {
-      // Artwork generation is documented in docs/release.md; notarization is a builder hook.
-      "entry": ["generate-brand-assets.ts", "notarize-mac-app.ts"],
-      // The packaging CLI resolves this module through createRequire.
-      "ignoreDependencies": ["electron-builder"],
+      // Artwork and release visuals are documented in docs/release.md; notarization is a builder hook.
+      "entry": [
+        "generate-brand-assets.ts",
+        "release-bento/render.ts",
+        "release-bento/releases/*.ts",
+        "notarize-mac-app.ts",
+      ],
+      // The packaging CLI and the release visuals resolve these through createRequire.
+      "ignoreDependencies": ["electron-builder", "@fontsource-variable/jetbrains-mono"],
     },
   },
 }
