@@ -215,6 +215,19 @@ export function makeClaudeToolTracking(input: {
         activeTurnId: turnId,
         updatedAt: startedAt,
       };
+      const payload =
+        context.backgroundReplySourceTurnId && !context.subagentRefs
+          ? {
+              backgroundParentTurnId: context.backgroundReplySourceTurnId,
+              ...(context.backgroundReplySource
+                ? { backgroundReplySource: context.backgroundReplySource }
+                : {}),
+            }
+          : {};
+      // A task notification attributes only the wake it caused; a later promptless turn in the
+      // same idle stretch (a Monitor wake, for example) has another source.
+      delete context.backgroundReplySourceTurnId;
+      delete context.backgroundReplySource;
       const turnStartedStamp = yield* makeEventStamp();
       yield* offerRuntimeEvent(context, {
         type: "turn.started",
@@ -223,15 +236,7 @@ export function makeClaudeToolTracking(input: {
         createdAt: turnStartedStamp.createdAt,
         threadId: context.session.threadId,
         turnId,
-        payload:
-          context.backgroundReplySourceTurnId && !context.subagentRefs
-            ? {
-                backgroundParentTurnId: context.backgroundReplySourceTurnId,
-                ...(context.backgroundReplySource
-                  ? { backgroundReplySource: context.backgroundReplySource }
-                  : {}),
-              }
-            : {},
+        payload,
         providerRefs: {
           ...nativeProviderRefs(context),
           providerTurnId: turnId,
@@ -239,15 +244,7 @@ export function makeClaudeToolTracking(input: {
         raw: {
           source: "claude.sdk.message",
           method: "claude/synthetic-turn-start",
-          payload:
-            context.backgroundReplySourceTurnId && !context.subagentRefs
-              ? {
-                  backgroundParentTurnId: context.backgroundReplySourceTurnId,
-                  ...(context.backgroundReplySource
-                    ? { backgroundReplySource: context.backgroundReplySource }
-                    : {}),
-                }
-              : {},
+          payload,
         },
       });
     });
