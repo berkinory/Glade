@@ -74,7 +74,7 @@ export function ToolCallGroupSummaryRow(props: {
         <DisclosureChevron open={open} className="text-muted-foreground/70" />
       </button>
       <DisclosureRegion open={open}>
-        {shouldRenderChildren ? renderChildren() : null}
+        {shouldRenderChildren ? <div className="tool-group-tree">{renderChildren()}</div> : null}
       </DisclosureRegion>
     </div>
   );

@@ -31,6 +31,7 @@
 - A subagent's chat labels its first message as the brief from its parent chat.
 - Subagents in the sidebar sit indented under their chat.
 - Tool calls open to show what the agent passed in and what came back: file reads as highlighted code, web pages as text, JSON formatted and errors in plain words. Files appear as chips with their icon.
+- Groups of tool calls have a shorter title that names what the agent did, such as "Explored 3 files · ran 2 commands", and hang their calls off a rail when opened.
 - Tool output in the chat keeps much more of a long result before it is shortened.
 - Opening a file from the chat, the file search or Source Control opens it in the main view without switching the right sidebar to the Explorer.
 

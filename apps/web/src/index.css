@@ -680,6 +680,52 @@ input {
   background-color: rgba(255, 255, 255, 0.14);
 }
 
+/* An expanded tool group hangs its rows off a rail under the group's icon. Each row draws its own
+   piece of the rail, so rows that open their details keep the rail continuous; the last row ends
+   it with a rounded elbow. */
+.tool-group-tree {
+  --tool-group-rail-inset: 0.875rem;
+  --tool-group-rail-tick: 0.8rem;
+  margin-left: 0.5rem;
+  padding-left: var(--tool-group-rail-inset);
+}
+
+.tool-group-tree > * > * {
+  position: relative;
+}
+
+.tool-group-tree > * > *::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: calc(-1 * var(--tool-group-rail-inset));
+  border-left: 1px solid var(--color-border);
+  pointer-events: none;
+}
+
+.tool-group-tree > * > *::after {
+  content: "";
+  position: absolute;
+  top: var(--tool-group-rail-tick);
+  left: calc(-1 * var(--tool-group-rail-inset));
+  width: calc(var(--tool-group-rail-inset) - 0.25rem);
+  border-top: 1px solid var(--color-border);
+  pointer-events: none;
+}
+
+.tool-group-tree > * > *:last-child::before {
+  bottom: auto;
+  height: var(--tool-group-rail-tick);
+  width: calc(var(--tool-group-rail-inset) - 0.25rem);
+  border-bottom: 1px solid var(--color-border);
+  border-bottom-left-radius: 0.375rem;
+}
+
+.tool-group-tree > * > *:last-child::after {
+  content: none;
+}
+
 .turn-chip-strip {
   scrollbar-width: none;
   -ms-overflow-style: none;

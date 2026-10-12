@@ -15,15 +15,8 @@ export function workEntryRowCount(entry: WorkLogEntry): number {
 
 type ToolCallSummaryCategory = WorkLogToolKind | "other";
 
-interface ToolCallGroupSummaryPart {
-  category: ToolCallSummaryCategory;
-  count: number;
-  label: string;
-}
-
 export interface ToolCallGroupSummary {
   label: string;
-  parts: ReadonlyArray<ToolCallGroupSummaryPart>;
   entryCount: number;
   // A group with in-flight work must never present itself as settled.
   hasRunningEntry: boolean;
@@ -72,65 +65,92 @@ function entryFileKeys(entry: WorkLogEntry): ReadonlyArray<string> {
 
 const FILE_COUNTED_CATEGORIES: ReadonlySet<ToolCallSummaryCategory> = new Set(["edit", "read"]);
 
-const CATEGORY_ORDER: ReadonlyArray<ToolCallSummaryCategory> = [
-  "command",
+// The title names what the agent did, not every tool it touched: reading, listing and searching are
+// all exploring, and fetching and web search are both browsing.
+type SummaryActivity =
+  | "edit"
+  | "command"
+  | "explore"
+  | "browse"
+  | "computer"
+  | "agent"
+  | "image_view"
+  | "image_generation"
+  | "tools";
+
+const ACTIVITY_OF: Record<ToolCallSummaryCategory, SummaryActivity> = {
+  edit: "edit",
+  command: "command",
+  read: "explore",
+  list: "explore",
+  search: "explore",
+  fetch: "browse",
+  web_search: "browse",
+  browser: "browse",
+  computer: "computer",
+  agent: "agent",
+  image_view: "image_view",
+  image_generation: "image_generation",
+  mcp: "tools",
+  tool: "tools",
+  other: "tools",
+};
+
+const ACTIVITY_ORDER: ReadonlyArray<SummaryActivity> = [
   "edit",
-  "read",
-  "list",
-  "search",
-  "fetch",
-  "web_search",
-  "browser",
+  "command",
+  "explore",
+  "browse",
   "computer",
   "agent",
   "image_view",
   "image_generation",
-  "mcp",
-  "tool",
-  "other",
+  "tools",
 ];
+
+const MAX_TITLE_PARTS = 2;
 
 function timesLabel(verb: string, count: number): string {
   return count === 1 ? `${verb} once` : `${verb} ${count} times`;
 }
 
-function summaryPartLabel(
-  category: ToolCallSummaryCategory,
-  count: number,
-  isSolePart: boolean,
+function activityLabel(
+  activity: SummaryActivity,
+  counts: ReadonlyMap<ToolCallSummaryCategory, number>,
 ): string {
-  switch (category) {
-    case "command":
-      return `ran ${count} ${pluralize(count, "command")}`;
+  const count = (category: ToolCallSummaryCategory) => counts.get(category) ?? 0;
+  switch (activity) {
     case "edit":
-      return `edited ${count} ${pluralize(count, "file")}`;
-    case "read":
-      return `read ${count} ${pluralize(count, "file")}`;
-    case "list":
-      return `listed ${count} ${pluralize(count, "folder")}`;
-    case "search":
-      return timesLabel("searched", count);
-    case "fetch":
-      return `fetched ${count} ${pluralize(count, "page")}`;
-    case "web_search":
-      return timesLabel("searched the web", count);
-    case "browser":
-      return timesLabel("used the browser", count);
+      return `edited ${count("edit")} ${pluralize(count("edit"), "file")}`;
+    case "command":
+      return `ran ${count("command")} ${pluralize(count("command"), "command")}`;
+    case "explore": {
+      if (count("read") > 0) return `explored ${count("read")} ${pluralize(count("read"), "file")}`;
+      if (count("list") === 0) return timesLabel("searched", count("search"));
+      if (count("search") === 0) {
+        return `listed ${count("list")} ${pluralize(count("list"), "folder")}`;
+      }
+      return "explored the project";
+    }
+    case "browse": {
+      const fetched = count("fetch");
+      const total = fetched + count("web_search") + count("browser");
+      return fetched === total
+        ? `fetched ${fetched} ${pluralize(fetched, "page")}`
+        : timesLabel("browsed the web", total);
+    }
     case "computer":
-      return timesLabel("used the computer", count);
+      return timesLabel("used the computer", count("computer"));
     case "agent":
-      return `ran ${count} agent ${pluralize(count, "task")}`;
+      return `ran ${count("agent")} agent ${pluralize(count("agent"), "task")}`;
     case "image_view":
-      return `viewed ${count} ${pluralize(count, "image")}`;
+      return `viewed ${count("image_view")} ${pluralize(count("image_view"), "image")}`;
     case "image_generation":
-      return `generated ${count} ${pluralize(count, "image")}`;
-    case "mcp":
-    case "tool":
-      return `used ${count} ${pluralize(count, "tool")}`;
-    case "other":
-      return isSolePart
-        ? `ran ${count} tool ${pluralize(count, "call")}`
-        : `${count} other tool ${pluralize(count, "call")}`;
+      return `generated ${count("image_generation")} ${pluralize(count("image_generation"), "image")}`;
+    case "tools": {
+      const total = count("mcp") + count("tool") + count("other");
+      return `used ${total} ${pluralize(total, "tool")}`;
+    }
   }
 }
 
@@ -179,23 +199,28 @@ export function summarizeToolCallGroup(
     countByCategory.set(category, (countByCategory.get(category) ?? 0) + distinctFiles.size);
   }
 
-  const populated = CATEGORY_ORDER.filter((category) => (countByCategory.get(category) ?? 0) > 0);
-  const parts = populated.map((category) => {
-    const count = countByCategory.get(category)!;
-    return {
-      category,
-      count,
-      label: summaryPartLabel(category, count, populated.length === 1),
-    };
-  });
-  const label = parts.map((part) => part.label).join(", ");
+  const callsByActivity = new Map<SummaryActivity, number>();
+  for (const [category, count] of countByCategory) {
+    const activity = ACTIVITY_OF[category];
+    callsByActivity.set(activity, (callsByActivity.get(activity) ?? 0) + count);
+  }
+  const activities = ACTIVITY_ORDER.filter((activity) => callsByActivity.has(activity));
+  const shown = activities.slice(0, MAX_TITLE_PARTS);
+  const hiddenCalls = activities
+    .slice(MAX_TITLE_PARTS)
+    .reduce((total, activity) => total + (callsByActivity.get(activity) ?? 0), 0);
+  const label = [
+    ...shown.map((activity) => activityLabel(activity, countByCategory)),
+    ...(hiddenCalls > 0 ? [`+${hiddenCalls} more`] : []),
+  ].join(" · ");
   const isStepRun =
-    populated.length > 0 &&
-    populated.every((category) => category === "browser" || category === "computer");
+    countByCategory.size > 0 &&
+    [...countByCategory.keys()].every(
+      (category) => category === "browser" || category === "computer",
+    );
 
   return {
     label: label ? capitalize(label) : "Thought",
-    parts,
     entryCount: groupable.length,
     hasRunningEntry,
     failedCount,
