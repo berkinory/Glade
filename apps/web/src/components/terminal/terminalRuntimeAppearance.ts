@@ -94,6 +94,12 @@ export function getTerminalBoldFontWeight(): number {
   return TERMINAL_BOLD_FONT_WEIGHT;
 }
 
+// Light themes lift dim ANSI colors (gray prompts, faint output) to WCAG AA against the
+// background. Dark themes keep the palette exact.
+export function getTerminalMinimumContrastRatio(): number {
+  return document.documentElement.classList.contains("dark") ? 1 : 4.5;
+}
+
 function getColorNormalizationContext(): CanvasRenderingContext2D | null {
   if (colorNormalizationContext !== undefined) {
     return colorNormalizationContext;

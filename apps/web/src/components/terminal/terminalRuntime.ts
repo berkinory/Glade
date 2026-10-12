@@ -25,6 +25,7 @@ import {
   getTerminalFontFamily,
   getTerminalFontSizePx,
   getTerminalFontWeight,
+  getTerminalMinimumContrastRatio,
   terminalThemeFromApp,
   writeSystemMessage,
 } from "./terminalRuntimeAppearance";
@@ -378,6 +379,7 @@ function syncTheme(entry: TerminalRuntimeEntry): void {
   const nextFontSize = getTerminalFontSizePx();
   const nextFontWeight = getTerminalFontWeight();
   const nextBoldFontWeight = getTerminalBoldFontWeight();
+  const nextMinimumContrastRatio = getTerminalMinimumContrastRatio();
   const nextFontKey = JSON.stringify({
     fontFamily: nextFontFamily,
     fontSize: nextFontSize,
@@ -392,6 +394,7 @@ function syncTheme(entry: TerminalRuntimeEntry): void {
     cursorStyle: TERMINAL_CURSOR_STYLE,
     cursorInactiveStyle: TERMINAL_INACTIVE_CURSOR_STYLE,
     cursorWidth: TERMINAL_CURSOR_WIDTH,
+    minimumContrastRatio: nextMinimumContrastRatio,
     theme: nextTheme,
   });
   const previousAppearanceKey = (entry.wrapper.dataset.themeKey ?? "") as string;
@@ -410,6 +413,7 @@ function syncTheme(entry: TerminalRuntimeEntry): void {
   terminalOptions.cursorStyle = TERMINAL_CURSOR_STYLE;
   terminalOptions.cursorInactiveStyle = TERMINAL_INACTIVE_CURSOR_STYLE;
   terminalOptions.cursorWidth = TERMINAL_CURSOR_WIDTH;
+  terminalOptions.minimumContrastRatio = nextMinimumContrastRatio;
   if (shouldClearTextureAtlas) {
     scheduleFontSettleRefit(entry);
   }
@@ -665,6 +669,7 @@ export function createRuntimeEntry(config: TerminalRuntimeConfig): TerminalRunti
     scrollback: 5_000,
     fontFamily: getTerminalFontFamily(),
     theme: terminalThemeFromApp(),
+    minimumContrastRatio: getTerminalMinimumContrastRatio(),
     allowProposedApi: true,
     customGlyphs: true,
     macOptionIsMeta: false,
