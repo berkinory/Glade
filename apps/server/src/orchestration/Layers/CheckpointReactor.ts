@@ -37,6 +37,7 @@ import { CheckpointStore } from "../../checkpointing/Services/CheckpointStore.ts
 import { ProjectionTurnRepository } from "../../persistence/Services/ProjectionTurns.ts";
 import { ProjectionTurnRepositoryLive } from "../../persistence/Layers/ProjectionTurns.ts";
 import { ProviderService } from "../../provider/Services/ProviderService.ts";
+import { isNativeChildRuntimeEvent } from "../../provider/core/providerRuntimeBinding.ts";
 import { CheckpointReactor, type CheckpointReactorShape } from "../Services/CheckpointReactor.ts";
 import { OrchestrationEngineService } from "../Services/OrchestrationEngine.ts";
 import { ProjectionSnapshotQuery } from "../Services/ProjectionSnapshotQuery.ts";
@@ -284,18 +285,19 @@ const make = Effect.gen(function* () {
       createdAt: input.createdAt,
     });
 
-  // The pre-send owner may already have reported this turn's skipped snapshot. Native children
-  // share their parent's workspace without a pre-send owner, so their missing baseline is expected.
+  // Only a turn started by a sent message has a pre-send snapshot to miss. A turn the provider started
+  // on its own, such as a background wake, never had one. The pre-send owner may already have reported
+  // this turn's skipped snapshot.
   const appendBaselineUnavailableActivity = Effect.fnUntraced(function* (input: {
     readonly threadId: ThreadId;
     readonly turnId: TurnId;
+    readonly thread: Pick<OrchestrationThread, "activities">;
     readonly createdAt: string;
   }) {
-    const thread = yield* getThreadDetail(input.threadId);
     const messageId = yield* persistedTurnMessageId(input.threadId, input.turnId);
-    if (thread?.parentThreadId && messageId === undefined) return;
+    if (messageId === undefined) return;
     if (
-      thread?.activities.some(
+      input.thread.activities.some(
         (activity) =>
           activity.kind === CHECKPOINT_BASELINE_SKIPPED_ACTIVITY_KIND &&
           activity.turnId === input.turnId,
@@ -316,7 +318,7 @@ const make = Effect.gen(function* () {
         payload: {
           detail:
             "The workspace state from before this turn is unavailable, so its diff and file undo are unavailable. The end-of-turn checkpoint was captured.",
-          ...(messageId !== undefined ? { messageId } : {}),
+          messageId,
         },
         turnId: input.turnId,
         createdAt: input.createdAt,
@@ -414,13 +416,7 @@ const make = Effect.gen(function* () {
   const captureAndDispatchCheckpoint = Effect.fnUntraced(function* (input: {
     readonly threadId: ThreadId;
     readonly turnId: TurnId;
-    readonly thread: {
-      readonly messages: ReadonlyArray<{
-        readonly id: MessageId;
-        readonly role: string;
-        readonly turnId: TurnId | null;
-      }>;
-    };
+    readonly thread: Pick<OrchestrationThread, "messages" | "activities">;
     readonly cwd: string;
     readonly turnCount: number;
     readonly status: "ready" | "missing" | "error";
@@ -503,6 +499,7 @@ const make = Effect.gen(function* () {
         : yield* appendBaselineUnavailableActivity({
             threadId: input.threadId,
             turnId: input.turnId,
+            thread: input.thread,
             createdAt: input.createdAt,
           }).pipe(Effect.as([]));
 
@@ -1507,6 +1504,10 @@ const make = Effect.gen(function* () {
 
       yield* Effect.forkScoped(
         Stream.runForEach(providerService.streamEvents, (event) => {
+          // A native child edits its parent's workspace, which the parent's own turn checkpoints. Its
+          // events carry the parent thread id, so handling them would checkpoint the parent under the
+          // child's turn.
+          if (isNativeChildRuntimeEvent(event)) return Effect.void;
           if (event.type === "turn.started" || event.type === "turn.completed") {
             return worker.enqueue({ source: "runtime", event });
           }

@@ -4,7 +4,7 @@ import { ProviderSessionDirectory } from "../Services/ProviderSessionDirectory";
 import { ProviderAdapterRegistry } from "../Services/ProviderAdapterRegistry";
 import { asRecord } from "@glade/shared/transport/payloadValues";
 import { decodeSubagentAgentStates } from "@glade/shared/threads/subagents";
-import { hasResumeCursor } from "../core/providerRuntimeBinding";
+import { hasResumeCursor, isNativeChildRuntimeEvent } from "../core/providerRuntimeBinding";
 import { ThreadId } from "@glade/contracts/core/baseSchemas";
 import { Ref } from "effect";
 import { Effect, Exit, Layer, Option, Cause } from "effect";
@@ -184,8 +184,8 @@ export function ProviderIdleRuntimeLive(runtimeIdleStopMs: number) {
         });
 
       const reconcileRuntimeIdleTimer = (event: ProviderRuntimeEvent) => {
-        if (event.providerRefs?.providerParentThreadId !== undefined) {
-          const childId = event.providerRefs.providerThreadId;
+        if (isNativeChildRuntimeEvent(event)) {
+          const childId = event.providerRefs?.providerThreadId;
           if (childId) {
             const taskId = `native-child:${childId}`;
             if (event.type === "turn.started") markRuntimeTaskLive(event.threadId, taskId);

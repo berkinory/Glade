@@ -126,6 +126,12 @@ export function isStaleSettlingRuntimeEvent(event: ProviderRuntimeEvent): boolea
   return isTerminalRuntimeEvent(event) || isInteractionResolutionRuntimeEvent(event);
 }
 
+// Providers publish a native child's events under the parent thread that owns the session. Only this
+// ref says the event belongs to the child.
+export function isNativeChildRuntimeEvent(event: ProviderRuntimeEvent): boolean {
+  return event.providerRefs?.providerParentThreadId !== undefined;
+}
+
 export function runtimeStatusForEvent(
   event: ProviderRuntimeEvent,
   activeTurnId?: unknown,

@@ -24,6 +24,7 @@ import { ProviderSessionDirectory } from "../Services/ProviderSessionDirectory.t
 import { type PersistedProviderRuntimeEvent } from "../../persistence/Services/ProviderRuntimeEvents.ts";
 import type { TaggedFailure } from "../../platform/operationError.ts";
 import {
+  isNativeChildRuntimeEvent,
   isStaleSettlingRuntimeEvent,
   isTerminalRuntimeEvent,
   runtimeActiveTurnId,
@@ -143,7 +144,7 @@ export function ProviderRuntimeEventsLive(options?: ProviderServiceLiveOptions) 
                   eventLifecycleGeneration: event.lifecycleGeneration,
                   currentLifecycleGeneration: currentGeneration,
                 }).pipe(Effect.andThen(() => journalAndPublish(canonicalEvent)));
-              const isSubagentChildEvent = event.providerRefs?.providerParentThreadId !== undefined;
+              const isSubagentChildEvent = isNativeChildRuntimeEvent(event);
               // Stale generations may still settle what they own. Tool rows a dying subagent turn
               // force-closes are as final as its turn end.
               const staleEventIsSettling =

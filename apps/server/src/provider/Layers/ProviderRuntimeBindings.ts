@@ -14,6 +14,7 @@ import {
   toRuntimeStatus,
   toRuntimePayloadFromSession,
   shouldRefreshResumeCursorForEvent,
+  isNativeChildRuntimeEvent,
   isTerminalRuntimeEvent,
   runtimeActiveTurnId,
   runtimeLastErrorForEvent,
@@ -365,7 +366,7 @@ export const ProviderRuntimeBindingsLive = Layer.effect(
       // Their turn/session lifecycle belongs to the child thread and must not touch the parent binding —
       // a stopped subagent would otherwise clear the parent's active turn and break main-thread
       // interrupts for the rest of the turn.
-      if (event.providerRefs?.providerParentThreadId !== undefined) {
+      if (isNativeChildRuntimeEvent(event)) {
         return Effect.sync(() => idle.reconcileRuntimeIdleTimer(event));
       }
       switch (event.type) {

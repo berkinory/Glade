@@ -60,6 +60,7 @@ import {
 } from "../../provider/codex/codexGeneratedImages.ts";
 import { parseCheckpointFilesFromUnifiedDiff } from "../../checkpointing/Diffs.ts";
 import { ProviderService } from "../../provider/Services/ProviderService.ts";
+import { isNativeChildRuntimeEvent } from "../../provider/core/providerRuntimeBinding.ts";
 
 import {
   classifyTerminalTurnApplicability,
@@ -1941,7 +1942,7 @@ const make = Effect.gen(function* () {
       // callback ended.
       if (
         event.provider !== "claudeAgent" &&
-        !event.providerRefs?.providerParentThreadId &&
+        !isNativeChildRuntimeEvent(event) &&
         isTerminalTurnEvent &&
         eventTurnId !== undefined
       ) {
