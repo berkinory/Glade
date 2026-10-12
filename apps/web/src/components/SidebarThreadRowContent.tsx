@@ -50,20 +50,9 @@ function ProviderAvatarWithTerminal({
             render={
               <span
                 aria-label={badgeTooltip}
-                className="sidebar-icon-chip absolute -top-1.5 -right-1.5 inline-flex size-3 min-w-3 items-center justify-center rounded-full px-px"
+                className="sidebar-icon-chip absolute -top-1.5 -right-1.5 inline-flex size-3 items-center justify-center rounded-full"
               >
-                {terminalCount > 1 ? (
-                  <span
-                    className={cn(
-                      "text-[8px] font-semibold leading-none tabular-nums",
-                      badgeColorClass,
-                    )}
-                  >
-                    {terminalCount}
-                  </span>
-                ) : (
-                  <ComputerTerminal01Icon className={cn("size-2.5", badgeColorClass)} />
-                )}
+                <ComputerTerminal01Icon className={cn("size-2.5", badgeColorClass)} />
               </span>
             }
           />
