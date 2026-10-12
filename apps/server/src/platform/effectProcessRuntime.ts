@@ -1,5 +1,6 @@
 import { prepareProcess, type ProcessLaunchInput } from "@glade/shared/platform/platformProcess";
-import { ChildProcess } from "effect/unstable/process";
+import { Effect, PlatformError } from "effect";
+import { ChildProcess, type ChildProcessSpawner } from "effect/unstable/process";
 
 type ProcessPlanningOptions = Pick<ProcessLaunchInput, "platform">;
 
@@ -48,4 +49,26 @@ export function makeEffectProcessCommand(
   };
 
   return ChildProcess.make(plan.command, plan.args, effectOptions);
+}
+
+type ChildProcessSpawnerService = ChildProcessSpawner.ChildProcessSpawner["Service"];
+
+// Planning a Windows batch launch throws on arguments cmd.exe cannot carry safely; that is a
+// rejected launch, not a defect.
+export function spawnEffectProcess(
+  spawner: Pick<ChildProcessSpawnerService, "spawn">,
+  command: string,
+  args: ReadonlyArray<string>,
+  options: EffectProcessRuntimeOptions = {},
+): ReturnType<ChildProcessSpawnerService["spawn"]> {
+  return Effect.try({
+    try: () => makeEffectProcessCommand(command, args, options),
+    catch: (cause) =>
+      PlatformError.badArgument({
+        module: "ChildProcess",
+        method: "spawn",
+        description: cause instanceof Error ? cause.message : "Invalid process launch arguments.",
+        cause,
+      }),
+  }).pipe(Effect.flatMap((prepared) => spawner.spawn(prepared)));
 }

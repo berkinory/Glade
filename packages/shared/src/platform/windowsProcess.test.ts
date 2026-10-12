@@ -39,18 +39,21 @@ describe("windowsProcess", () => {
     ).toEqual({ command: "codex", args: ["app-server"], shell: false });
   });
 
-  it("does not search the working directory unless it is on PATH", () => {
+  it.each([
+    { name: "is not on PATH", pathFor: (_cwd: string, bin: string) => bin },
+    { name: "is first on PATH", pathFor: (cwd: string, bin: string) => `${cwd};${bin}` },
+  ])("never resolves a bare command from the working directory when it $name", ({ pathFor }) => {
     const workingDirectory = Path.join(root, "working");
     const pathDirectory = Path.join(root, "bin");
     mkdirSync(workingDirectory);
     mkdirSync(pathDirectory);
-    writeFileSync(Path.join(workingDirectory, "codex.CMD"), "@echo off\r\n");
+    writeFileSync(Path.join(workingDirectory, "codex.EXE"), "planted");
     const commandPath = Path.join(pathDirectory, "codex.CMD");
     writeFileSync(commandPath, "@echo off\r\n");
     expect(
       prepareOnWindows("codex", [], {
         cwd: workingDirectory,
-        env: { PATH: pathDirectory, PATHEXT: ".CMD" },
+        env: { PATH: pathFor(workingDirectory, pathDirectory), PATHEXT: ".EXE;.CMD" },
       }).args,
     ).toEqual(["/d", "/s", "/v:off", "/c", `call "${commandPath}"`]);
   });

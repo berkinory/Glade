@@ -2,7 +2,7 @@ import * as fs from "node:fs/promises";
 import * as path from "node:path";
 import { Effect, Stream } from "effect";
 import { ChildProcessSpawner } from "effect/unstable/process";
-import { makeEffectProcessCommand } from "../platform/effectProcessRuntime";
+import { spawnEffectProcess } from "../platform/effectProcessRuntime";
 import { GitCommandError } from "./Errors";
 
 export const GIT_MEDIA_MAX_BYTES = 16_000_000;
@@ -11,9 +11,10 @@ export function readGitMedia(cwd: string, blob: string, size: number) {
   return Effect.scoped(
     Effect.gen(function* () {
       const spawner = yield* ChildProcessSpawner.ChildProcessSpawner;
-      const child = yield* spawner.spawn(
-        makeEffectProcessCommand("git", ["cat-file", "blob", blob], { cwd, env: process.env }),
-      );
+      const child = yield* spawnEffectProcess(spawner, "git", ["cat-file", "blob", blob], {
+        cwd,
+        env: process.env,
+      });
       yield* Effect.addFinalizer(() => child.kill().pipe(Effect.ignore));
       const chunks: Uint8Array[] = [];
       let bytes = 0;

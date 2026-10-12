@@ -4,7 +4,7 @@ import { randomUUID } from "node:crypto";
 
 import { Effect, FileSystem, Layer, Option, Path, Schema, Stream } from "effect";
 import { ChildProcessSpawner } from "effect/unstable/process";
-import { makeEffectProcessCommand } from "../../platform/effectProcessRuntime.ts";
+import { spawnEffectProcess } from "../../platform/effectProcessRuntime.ts";
 
 import { resolveCodexHome } from "../../provider/codex/codexConfig";
 import { sanitizeBranchFragment, sanitizeFeatureBranchName } from "@glade/shared/git/git";
@@ -419,34 +419,30 @@ const makeCodexTextGeneration = Effect.gen(function* () {
           ...imagePaths.flatMap((imagePath) => ["--image", imagePath]),
           "-",
         ];
-        const command = makeEffectProcessCommand(codexBinaryPath, args, {
+        const child = yield* spawnEffectProcess(commandSpawner, codexBinaryPath, args, {
           cwd,
           env,
           stdin: {
             stream: Stream.make(new TextEncoder().encode(prompt)),
           },
-        });
-
-        const child = yield* commandSpawner
-          .spawn(command)
-          .pipe(
-            Effect.catch((cause) =>
-              workingDirectoryExists.pipe(
-                Effect.flatMap((exists) =>
-                  Effect.fail(
-                    exists
-                      ? normalizeCodexError(
-                          codexBinaryPath,
-                          operation,
-                          cause,
-                          "Failed to spawn Codex CLI process",
-                        )
-                      : missingWorkingDirectoryError(),
-                  ),
+        }).pipe(
+          Effect.catch((cause) =>
+            workingDirectoryExists.pipe(
+              Effect.flatMap((exists) =>
+                Effect.fail(
+                  exists
+                    ? normalizeCodexError(
+                        codexBinaryPath,
+                        operation,
+                        cause,
+                        "Failed to spawn Codex CLI process",
+                      )
+                    : missingWorkingDirectoryError(),
                 ),
               ),
             ),
-          );
+          ),
+        );
 
         const [, stderr, exitCode] = yield* Effect.all(
           [

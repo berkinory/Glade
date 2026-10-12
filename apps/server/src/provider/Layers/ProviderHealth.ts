@@ -36,7 +36,7 @@ import {
   Stream,
 } from "effect";
 import { ChildProcessSpawner } from "effect/unstable/process";
-import { makeEffectProcessCommand } from "../../platform/effectProcessRuntime.ts";
+import { spawnEffectProcess } from "../../platform/effectProcessRuntime.ts";
 
 import { isCodexCliVersionSupported, parseCodexCliVersion } from "../codex/codexCliVersion";
 import { ServerConfig } from "../../server/config";
@@ -514,12 +514,10 @@ const runProviderCommand = (
 ) =>
   Effect.gen(function* () {
     const spawner = yield* ChildProcessSpawner.ChildProcessSpawner;
-    const command = makeEffectProcessCommand(executable, args, {
+    const child = yield* spawnEffectProcess(spawner, executable, args, {
       ...options,
       stdin: "ignore",
     });
-
-    const child = yield* spawner.spawn(command);
 
     const [stdout, stderr, exitCode] = yield* Effect.all(
       [
@@ -1591,12 +1589,10 @@ function makeProviderHealthLive(options?: { readonly providerUpdateTimeoutMs?: n
             .filter((entry): entry is string => Boolean(entry))
             .join(windows ? ";" : ":");
         }
-        const child = yield* spawner.spawn(
-          makeEffectProcessCommand(input.command, input.args, {
-            env: updateEnv,
-            stdin: "ignore",
-          }),
-        );
+        const child = yield* spawnEffectProcess(spawner, input.command, input.args, {
+          env: updateEnv,
+          stdin: "ignore",
+        });
         yield* Effect.addFinalizer(() => child.kill().pipe(Effect.ignore));
         const [stdout, stderr, exitCode] = yield* Effect.all(
           [

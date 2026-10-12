@@ -126,6 +126,15 @@ function candidateStatPath(filePath: string, context: ExecutableLookupContext): 
   return pathModule.resolve(context.cwd ?? process.cwd(), filePath);
 }
 
+// A bare Windows command must not pick up a repository-controlled file from the launch cwd, even
+// when PATH lists it; a qualified path still states the caller's intent to run a local file.
+function lookupPathEntries(context: ExecutableLookupContext): string[] {
+  const directories = pathEntries(context.env, context.platform);
+  if (context.platform !== "win32") return directories;
+  const cwd = win32.resolve(context.cwd ?? process.cwd()).toLowerCase();
+  return directories.filter((directory) => win32.resolve(cwd, directory).toLowerCase() !== cwd);
+}
+
 function* candidatesIn(
   command: string,
   context: ExecutableLookupContext,
@@ -145,7 +154,7 @@ function* candidatesIn(
     return;
   }
 
-  for (const directory of pathEntries(context.env, context.platform)) {
+  for (const directory of lookupPathEntries(context)) {
     for (const name of names) {
       yield { directory, path: join(directory, name) };
     }
@@ -246,7 +255,7 @@ export function createBatchExecutableResolver(
       allowExtensionless,
     );
 
-    for (const directory of pathEntries(context.env, context.platform)) {
+    for (const directory of lookupPathEntries(context)) {
       const listing = listingFor(directory);
       for (const name of names) {
         if (listing !== null && isListingFilterable(name) && !listing.has(name.toLowerCase())) {

@@ -4,7 +4,7 @@ import { parse } from "toml";
 import { asRecord } from "@glade/shared/transport/payloadValues";
 import { resolveApiModelId } from "@glade/shared/provider/model";
 import { HandoffRecord } from "@glade/contracts/orchestration/threadEntities";
-import { makeEffectProcessCommand } from "../../platform/effectProcessRuntime";
+import { spawnEffectProcess } from "../../platform/effectProcessRuntime";
 import { buildCodexProcessEnv } from "../codex/codexProcessEnv";
 import { resolveBaseCodexHomePath } from "../codex/codexHomePaths";
 import { ProviderValidationError } from "../core/Errors";
@@ -107,26 +107,25 @@ export const generateCodexHandoff = Effect.fnUntraced(function* (input: HandoffG
       : {}),
   };
   const env = yield* Effect.promise(() => buildCodexProcessEnv({ homePath: home }));
-  const child = yield* spawner.spawn(
-    makeEffectProcessCommand(
-      input.providerOptions.codex?.binaryPath || "codex",
-      [
-        "exec",
-        "--ephemeral",
-        "--skip-git-repo-check",
-        "--json",
-        "-s",
-        "read-only",
-        ...(resolveApiModelId(selection) ? ["--model", resolveApiModelId(selection)!] : []),
-        ...Object.entries(config).flatMap(([key, value]) => ["-c", `${key}=${tomlValue(value)}`]),
-        "--output-schema",
-        schemaPath,
-        "--output-last-message",
-        outputPath,
-        "-",
-      ],
-      { cwd, env, stdin: { stream: Stream.make(new TextEncoder().encode(input.prompt)) } },
-    ),
+  const child = yield* spawnEffectProcess(
+    spawner,
+    input.providerOptions.codex?.binaryPath || "codex",
+    [
+      "exec",
+      "--ephemeral",
+      "--skip-git-repo-check",
+      "--json",
+      "-s",
+      "read-only",
+      ...(resolveApiModelId(selection) ? ["--model", resolveApiModelId(selection)!] : []),
+      ...Object.entries(config).flatMap(([key, value]) => ["-c", `${key}=${tomlValue(value)}`]),
+      "--output-schema",
+      schemaPath,
+      "--output-last-message",
+      outputPath,
+      "-",
+    ],
+    { cwd, env, stdin: { stream: Stream.make(new TextEncoder().encode(input.prompt)) } },
   );
   let usage: { input_tokens: number; output_tokens: number } | undefined;
   yield* Effect.all(

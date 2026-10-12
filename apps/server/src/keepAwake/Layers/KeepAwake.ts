@@ -21,7 +21,7 @@ import { ChildProcessSpawner } from "effect/unstable/process";
 import { OrchestrationEngineService } from "../../orchestration/Services/OrchestrationEngine";
 import { ProjectionSnapshotQuery } from "../../orchestration/Services/ProjectionSnapshotQuery";
 import { shouldPublishThreadShellForEvent } from "../../orchestration/threadShellEvents";
-import { makeEffectProcessCommand } from "../../platform/effectProcessRuntime";
+import { spawnEffectProcess } from "../../platform/effectProcessRuntime";
 import { ServerSettingsService } from "../../settings/serverSettings";
 import { KeepAwake, type KeepAwakeShape } from "../Services/KeepAwake";
 
@@ -71,12 +71,11 @@ const make = Effect.gen(function* () {
   // this server process, so the kernel releases it even when the server dies without cleanup.
   const runCaffeinate = Effect.scoped(
     Effect.gen(function* () {
-      const child = yield* spawner.spawn(
-        makeEffectProcessCommand(CAFFEINATE_PATH, ["-i", "-w", String(process.pid)], {
-          stdin: "ignore",
-          stdout: "ignore",
-          stderr: "ignore",
-        }),
+      const child = yield* spawnEffectProcess(
+        spawner,
+        CAFFEINATE_PATH,
+        ["-i", "-w", String(process.pid)],
+        { stdin: "ignore", stdout: "ignore", stderr: "ignore" },
       );
       yield* setActive(true);
       return yield* child.exitCode;
