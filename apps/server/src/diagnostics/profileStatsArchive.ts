@@ -17,7 +17,7 @@ import {
   resolveProjectCwdForKind,
 } from "../checkpointing/Utils";
 import { aggregateProfileSkillUsageRows } from "./profileSkillUsage";
-import { turnModelSelectionCte } from "./profileQueryValues";
+import { tokenUsageSessionIdSql, turnModelSelectionCte } from "./profileQueryValues";
 import { PROVIDER_COMMAND_REACTOR_CONSUMER } from "../persistence/Services/OrchestrationEventDeliveries";
 import { isProviderIntentEventType } from "../orchestration/providerIntentClassification";
 import { THREAD_RETENTION_COMMAND_ID_PREFIX } from "../orchestration/threadRetention";
@@ -45,6 +45,7 @@ interface TokenActivityRow {
 
   readonly provider: string | null;
   readonly model: string | null;
+  readonly usageSessionId: string;
   readonly dispatchOrigin?: string | null;
   readonly createdAt: string | null;
 }
@@ -258,8 +259,8 @@ function addTokenSnapshotRow(
   }
 }
 
-// Cumulative rows stay thread-wide; usedTokens rows are counted only for provider/model groups that
-// never emit cumulative totals. Deltas keep the original activity timestamp (raw, unparsed) so
+// Counters are diffed per native usage session (see tokenUsageSessionIdSql); usedTokens rows are
+// counted only for provider/model groups that never emit cumulative totals. Deltas keep the original activity timestamp (raw, unparsed) so
 // read-time DATETIME(created_at, tz) bucketing stays identical to the live query for any client UTC
 // offset, and are keyed by the row's per-turn provider/model (the thread's own selection fills in
 // rows without turn attribution).
@@ -280,20 +281,23 @@ function aggregateThreadTokenRows(
       continue;
     }
     const { provider, model } = resolveTokenProviderModel(row, fallbackSelection);
-    cumulativeProviderModels.add(tokenProviderModelKey(provider, model));
+    cumulativeProviderModels.add(
+      `${row.usageSessionId}\u0000${tokenProviderModelKey(provider, model)}`,
+    );
   }
 
-  let previousCumulativeTotal: number | null = null;
+  const previousCumulativeTotals = new Map<string, number>();
   for (const row of nonClaudeRows) {
     const total = tokenCounterValue(row.totalProcessedTokens);
     if (total === null) {
       continue;
     }
+    const previousCumulativeTotal = previousCumulativeTotals.get(row.usageSessionId);
     const delta =
-      previousCumulativeTotal === null || total < previousCumulativeTotal
+      previousCumulativeTotal === undefined || total < previousCumulativeTotal
         ? total
         : Math.max(0, total - previousCumulativeTotal);
-    previousCumulativeTotal = total;
+    previousCumulativeTotals.set(row.usageSessionId, total);
     if (
       delta <= 0 ||
       row.createdAt === null ||
@@ -310,25 +314,27 @@ function aggregateThreadTokenRows(
     });
   }
 
-  let previousUsedTotal: number | null = null;
-  let previousUsedProviderModelKey: string | null = null;
+  const previousUsedTotals = new Map<
+    string,
+    { readonly total: number; readonly providerModelKey: string }
+  >();
   for (const row of nonClaudeRows) {
     const { provider, model } = resolveTokenProviderModel(row, fallbackSelection);
     const providerModelKey = tokenProviderModelKey(provider, model);
-    if (cumulativeProviderModels.has(providerModelKey)) {
+    if (cumulativeProviderModels.has(`${row.usageSessionId}\u0000${providerModelKey}`)) {
       continue;
     }
     const total = tokenCounterValue(row.usedTokens);
     if (total === null) {
       continue;
     }
+    const previousUsed = previousUsedTotals.get(row.usageSessionId);
     const delta =
-      previousUsedTotal === null ||
-      (total < previousUsedTotal && providerModelKey !== previousUsedProviderModelKey)
+      previousUsed === undefined ||
+      (total < previousUsed.total && providerModelKey !== previousUsed.providerModelKey)
         ? total
-        : Math.max(0, total - previousUsedTotal);
-    previousUsedTotal = total;
-    previousUsedProviderModelKey = providerModelKey;
+        : Math.max(0, total - previousUsed.total);
+    previousUsedTotals.set(row.usageSessionId, { total, providerModelKey });
     if (
       delta <= 0 ||
       row.createdAt === null ||
@@ -590,6 +596,7 @@ const makeProfileStatsArchive = Effect.gen(function* () {
           CAST(json_extract(a.payload_json, '$.usedTokens') AS INTEGER) AS usedTokens,
           COALESCE(tm.provider, json_extract(a.payload_json, '$.provider')) AS provider,
           tm.model AS model,
+          ${tokenUsageSessionIdSql(sql)} AS usageSessionId,
           pm.dispatch_origin AS dispatchOrigin,
           a.created_at AS createdAt
         FROM projection_thread_activities a

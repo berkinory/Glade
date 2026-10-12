@@ -21,6 +21,7 @@ import {
   TurnInsightRow,
   MostWorkedProjectRow,
   sqliteModifierFromUtcOffsetMinutes,
+  tokenUsageSessionIdSql,
   num,
 } from "../profileQueryValues";
 import {
@@ -109,6 +110,7 @@ const makeProfileStatsQuery = Effect.gen(function* () {
               'unknown'
             ) AS provider,
             COALESCE(tm.model, 'unknown') AS model,
+            ${tokenUsageSessionIdSql(sql)} AS usage_session_id,
             CAST(json_extract(a.payload_json, '$.totalProcessedTokens') AS INTEGER) AS tp,
             CAST(json_extract(a.payload_json, '$.usedTokens') AS INTEGER) AS ut,
             pm.dispatch_origin AS dispatch_origin,
@@ -139,9 +141,9 @@ const makeProfileStatsQuery = Effect.gen(function* () {
           SELECT * FROM token_activity WHERE provider != 'claudeAgent'
         ),
         provider_model_scale AS (
-          SELECT thread_id, provider, model, MAX(tp IS NOT NULL) AS has_cumulative
+          SELECT thread_id, usage_session_id, provider, model, MAX(tp IS NOT NULL) AS has_cumulative
           FROM ev
-          GROUP BY thread_id, provider, model
+          GROUP BY thread_id, usage_session_id, provider, model
         ),
         cumulative_kept AS (
           SELECT
@@ -149,6 +151,7 @@ const makeProfileStatsQuery = Effect.gen(function* () {
             provider,
             model,
             thread_id,
+            usage_session_id,
             tp AS tot,
             dispatch_origin,
             sequence,
@@ -175,7 +178,7 @@ const makeProfileStatsQuery = Effect.gen(function* () {
               dispatch_origin,
               tot,
               LAG(tot) OVER (
-                PARTITION BY thread_id
+                PARTITION BY thread_id, usage_session_id
                 ORDER BY
                   CASE WHEN sequence IS NULL THEN 0 ELSE 1 END ASC,
                   sequence ASC,
@@ -191,6 +194,7 @@ const makeProfileStatsQuery = Effect.gen(function* () {
             ev.provider AS provider,
             ev.model AS model,
             ev.thread_id AS thread_id,
+            ev.usage_session_id AS usage_session_id,
             ev.ut AS tot,
             ev.dispatch_origin AS dispatch_origin,
             ev.sequence AS sequence,
@@ -199,6 +203,7 @@ const makeProfileStatsQuery = Effect.gen(function* () {
           FROM ev
           JOIN provider_model_scale pms
             ON pms.thread_id = ev.thread_id
+           AND pms.usage_session_id = ev.usage_session_id
            AND pms.provider = ev.provider
            AND pms.model = ev.model
           WHERE ev.tp IS NULL
@@ -226,7 +231,7 @@ const makeProfileStatsQuery = Effect.gen(function* () {
               dispatch_origin,
               tot,
               LAG(tot) OVER (
-                PARTITION BY thread_id
+                PARTITION BY thread_id, usage_session_id
                 ORDER BY
                   CASE WHEN sequence IS NULL THEN 0 ELSE 1 END ASC,
                   sequence ASC,
@@ -234,7 +239,7 @@ const makeProfileStatsQuery = Effect.gen(function* () {
                   activity_id ASC
               ) AS previous_tot,
               LAG(provider) OVER (
-                PARTITION BY thread_id
+                PARTITION BY thread_id, usage_session_id
                 ORDER BY
                   CASE WHEN sequence IS NULL THEN 0 ELSE 1 END ASC,
                   sequence ASC,
@@ -242,7 +247,7 @@ const makeProfileStatsQuery = Effect.gen(function* () {
                   activity_id ASC
               ) AS previous_provider,
               LAG(model) OVER (
-                PARTITION BY thread_id
+                PARTITION BY thread_id, usage_session_id
                 ORDER BY
                   CASE WHEN sequence IS NULL THEN 0 ELSE 1 END ASC,
                   sequence ASC,

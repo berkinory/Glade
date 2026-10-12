@@ -93,3 +93,16 @@ export function turnModelSelectionCte(
     GROUP BY pt.thread_id, pt.turn_id
   `;
 }
+
+// Cumulative token counters belong to one native provider session, so token deltas are partitioned by
+// it. The stored id appends the runtime generation, but Codex restores a native thread's lifetime
+// counter when it resumes, so only the native id may start a new baseline. Rows without an id share
+// one legacy series.
+export function tokenUsageSessionIdSql(sql: SqlClient.SqlClient) {
+  return sql.literal(`COALESCE(
+    CASE WHEN INSTR(json_extract(a.payload_json, '$.usageSessionId'), ':') > 0
+      THEN SUBSTR(json_extract(a.payload_json, '$.usageSessionId'), 1,
+        INSTR(json_extract(a.payload_json, '$.usageSessionId'), ':') - 1)
+      ELSE json_extract(a.payload_json, '$.usageSessionId')
+    END, '')`);
+}

@@ -31,9 +31,23 @@ export function claudeTokenActivityCtes(
       LEFT JOIN projection_turns pt ON pt.thread_id = a.thread_id AND pt.turn_id = a.turn_id
       LEFT JOIN projection_thread_messages pm
         ON pm.thread_id = pt.thread_id AND pm.message_id = pt.pending_message_id
-      -- Provider-native children mirror usage that the parent result already
-      -- includes. Other child threads are independent work and must count.
-      WHERE COALESCE(th.creation_source, '') != 'provider_native'
+      -- Provider-native children mirror usage that the parent's turn result
+      -- includes, but a stopped parent turn has no result usage. Count a child
+      -- unless its source turn has a versioned result breakdown that covers it.
+      -- Other child threads are independent work and always count.
+      WHERE (
+        COALESCE(th.creation_source, '') != 'provider_native'
+        OR NOT EXISTS (
+          SELECT 1
+          FROM projection_thread_activities parent
+          WHERE parent.thread_id = th.parent_thread_id
+            AND parent.turn_id = th.source_turn_id
+            AND parent.kind = 'turn.completed'
+            AND json_valid(parent.payload_json)
+            AND json_extract(parent.payload_json, '$.tokenAccountingVersion') = 1
+            AND json_type(parent.payload_json, '$.modelUsage') = 'object'
+        )
+      )
         AND COALESCE(
           json_extract(a.payload_json, '$.provider'), tm.provider,
           CASE WHEN json_valid(th.model_selection_json)
