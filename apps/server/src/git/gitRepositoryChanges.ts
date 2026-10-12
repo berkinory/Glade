@@ -1,4 +1,4 @@
-import { watch } from "node:fs";
+import { type FSWatcher, watch } from "node:fs";
 import * as path from "node:path";
 import * as fs from "node:fs/promises";
 import { Cause, Duration, Effect, Queue, Schedule, Stream } from "effect";
@@ -19,11 +19,15 @@ const METADATA_FILES = new Set([
   "glade-push.json",
 ]);
 const WORKTREE_BATCH_MAX_PATHS = 20_000;
-// Recursive watches can exhaust inotify limits on Linux; back off instead of rescanning every 5s.
-const WORKTREE_WATCH_RETRY = Schedule.either(
+// Failed watches back off instead of rescanning every 5s; recursive watches can exhaust inotify
+// limits on Linux.
+export const WATCH_RETRY = Schedule.either(
   Schedule.exponential("5 seconds"),
   Schedule.spaced("5 minutes"),
 );
+// `git init` or `git clone` in place is seen at once through `.git` appearing; a repository created
+// in a parent directory is only found by this slower recheck.
+const NON_REPOSITORY_RECHECK = Duration.minutes(5);
 
 /** Resolves true only when Git would ignore every listed worktree path. */
 export type WorktreeIgnoreCheck = (
@@ -177,11 +181,37 @@ async function metadataFingerprint(
   };
 }
 
+function awaitRepositoryCandidate(cwd: string): Effect.Effect<void> {
+  const appeared = Effect.callback<void>((resume) => {
+    let watcher: FSWatcher | undefined;
+    const close = () => watcher?.close();
+    try {
+      watcher = watch(cwd, (_event, name) => {
+        if (name?.toString() !== ".git") return;
+        close();
+        resume(Effect.void);
+      });
+      // A failed watch leaves the timed recheck in charge.
+      watcher.on("error", close);
+    } catch {
+      return;
+    }
+    return Effect.sync(close);
+  });
+  return appeared.pipe(
+    Effect.timeoutOrElse({ duration: NON_REPOSITORY_RECHECK, onTimeout: () => Effect.void }),
+  );
+}
+
+function isNotRepositoryError(error: GitCommandError): boolean {
+  return error.detail.toLowerCase().includes("not a git repository");
+}
+
 export function watchGitRepository(
   cwd: string,
   execute: GitCoreShape["execute"],
   isEveryPathIgnored: WorktreeIgnoreCheck,
-) {
+): Stream.Stream<{ readonly repositoryChanged: boolean }, GitCommandError> {
   return Stream.unwrap(
     execute({
       operation: "watch repository",
@@ -225,11 +255,16 @@ export function watchGitRepository(
               error,
             ),
           ),
-          Stream.retry(WORKTREE_WATCH_RETRY),
+          Stream.retry(WATCH_RETRY),
           Stream.map(() => ({ repositoryChanged: false })),
         );
         return Stream.merge(metadata, worktree);
       }),
+      Effect.catchIf(isNotRepositoryError, () =>
+        awaitRepositoryCandidate(cwd).pipe(
+          Effect.as(watchGitRepository(cwd, execute, isEveryPathIgnored)),
+        ),
+      ),
     ),
   );
 }

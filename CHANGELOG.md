@@ -11,6 +11,7 @@
 ### Fixed
 
 - Live change counts no longer touch the Git index while an agent works, which could make the agent's own Git commands fail.
+- Chats in folders that are not Git repositories no longer retry Git every few seconds, and running git init in one is picked up right away.
 
 ## 0.2.5 - 2026-10-13
 

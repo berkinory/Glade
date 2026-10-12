@@ -1,6 +1,6 @@
 import { realpathSync } from "node:fs";
 
-import { Effect, Layer, PubSub, RcMap, Ref, Schedule, Stream } from "effect";
+import { Effect, Layer, PubSub, RcMap, Ref, Stream } from "effect";
 import type {
   GitStatusLocalResult,
   GitStatusRemoteResult,
@@ -30,7 +30,7 @@ import {
   splitRemoteStatusDetails,
 } from "../gitStatusCache";
 
-import { watchGitRepository, type WorktreeIgnoreCheck } from "../gitRepositoryChanges";
+import { WATCH_RETRY, watchGitRepository, type WorktreeIgnoreCheck } from "../gitRepositoryChanges";
 
 interface GitStatusChange {
   readonly cwd: string;
@@ -211,7 +211,7 @@ export const GitStatusBroadcasterLive = Layer.effect(
           Stream.tapError((error) =>
             Effect.logWarning("Repository watcher failed; retrying", error),
           ),
-          Stream.retry(Schedule.spaced("5 seconds")),
+          Stream.retry(WATCH_RETRY),
           Stream.runForEach(({ repositoryChanged }) =>
             Effect.gen(function* () {
               // Started together so both reads share one in-flight `git status` process.
