@@ -291,11 +291,18 @@ export function resolveThreadDetailSubscriptionLeaseIds(input: {
 
     threadIds.add(threadId);
   }
-  for (const threadId of input.retainedThreadIds) {
+  // Leases are capped below the retention cache, so retained threads compete for the slots left after
+  // visible ones. Live work goes first: a running thread that loses its lease freezes mid-turn, and
+  // reopening it has to replay the whole gap.
+  const leasableThreadIds = input.retainedThreadIds.filter((threadId) =>
+    input.serverThreadIds.has(threadId),
+  );
+  for (const threadId of [
+    ...leasableThreadIds.filter(isThreadDetailEvictionUnsafe),
+    ...leasableThreadIds,
+  ]) {
     if (threadIds.size >= WS_STREAM_LIMITS.threadPerClient) break;
-    if (input.serverThreadIds.has(threadId)) {
-      threadIds.add(threadId);
-    }
+    threadIds.add(threadId);
   }
   return [...threadIds];
 }
