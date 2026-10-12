@@ -1,5 +1,6 @@
 import type { OrchestrationCommand } from "@glade/contracts/orchestration/commands";
 import type {
+  OrchestrationMessage,
   OrchestrationPendingInteraction,
   OrchestrationThreadActivity,
   OrchestrationSession,
@@ -33,7 +34,14 @@ type ThreadSessionSetCommand = Extract<
   OrchestrationCommand,
   { readonly type: "thread.session.set" }
 >;
-type RestartReconciliationCommand = ThreadSessionSetCommand | ThreadActivityAppendCommand;
+type AssistantMessageCompleteCommand = Extract<
+  OrchestrationCommand,
+  { readonly type: "thread.message.assistant.complete" }
+>;
+type RestartReconciliationCommand =
+  | ThreadSessionSetCommand
+  | ThreadActivityAppendCommand
+  | AssistantMessageCompleteCommand;
 
 export type ReconcilablePendingInteraction = Pick<
   ProjectionPendingInteraction,
@@ -47,6 +55,9 @@ export interface ReconcilableThread {
   readonly latestTurn: { readonly state: "running" | "interrupted" | "completed" | "error" } | null;
   readonly activities?: ReadonlyArray<
     Pick<OrchestrationThreadActivity, "createdAt" | "id" | "kind" | "payload" | "sequence">
+  >;
+  readonly messages?: ReadonlyArray<
+    Pick<OrchestrationMessage, "id" | "role" | "streaming" | "turnId">
   >;
   readonly pendingInteractions?:
     | ReadonlyArray<
@@ -160,6 +171,26 @@ function planStaleCheckpointRevertCommand(input: {
   };
 }
 
+// Only live ingestion completes assistant messages, so a reply cut off by the dead runtime would
+// stay streaming forever. The decider reloads the stored row, which keeps the text already persisted.
+function planStreamingMessageCompleteCommands(input: {
+  readonly thread: ReconcilableThread;
+  readonly now: string;
+}): ReadonlyArray<AssistantMessageCompleteCommand> {
+  return (input.thread.messages ?? [])
+    .filter((message) => message.role === "assistant" && message.streaming)
+    .map((message) => ({
+      type: "thread.message.assistant.complete",
+      commandId: CommandId.makeUnsafe(
+        `restart-reconcile-message:${input.thread.id}:${message.id}:${input.now}`,
+      ),
+      threadId: input.thread.id,
+      messageId: message.id,
+      ...(message.turnId !== null ? { turnId: message.turnId } : {}),
+      createdAt: input.now,
+    }));
+}
+
 function buildStalePendingRequestCommand(input: {
   readonly threadId: ThreadId;
   readonly now: string;
@@ -217,11 +248,11 @@ export function planRestartTurnReconciliation(input: {
     if (staleCheckpointRevertCommand !== null) {
       commands.push(staleCheckpointRevertCommand);
     }
+    if (!hasInFlightTurn && !hasDanglingActiveTurn(thread)) {
+      continue;
+    }
+    commands.push(...planStreamingMessageCompleteCommands({ thread, now: input.now }));
     if (!hasInFlightTurn) {
-      if (!hasDanglingActiveTurn(thread)) {
-        continue;
-      }
-
       commands.push({
         type: "thread.session.set",
         commandId: CommandId.makeUnsafe(`restart-reconcile-active-turn:${thread.id}:${input.now}`),

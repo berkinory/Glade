@@ -2,7 +2,13 @@ import { Effect, Option } from "effect";
 import { OrchestrationEngineService } from "./Services/OrchestrationEngine.ts";
 import { ProjectionSnapshotQuery } from "./Services/ProjectionSnapshotQuery.ts";
 import { ProjectionPendingInteractionRepository } from "../persistence/Services/ProjectionPendingInteractions.ts";
-import { ApprovalRequestId, EventId, ThreadId, TurnId } from "@glade/contracts/core/baseSchemas";
+import {
+  ApprovalRequestId,
+  EventId,
+  MessageId,
+  ThreadId,
+  TurnId,
+} from "@glade/contracts/core/baseSchemas";
 import { describe, expect, it, vi } from "vitest";
 
 import {
@@ -371,6 +377,33 @@ describe("planRestartTurnReconciliation", () => {
         lastError: "runtime exploded",
         updatedAt: NOW,
       },
+    });
+  });
+
+  it("completes assistant messages the dead runtime left streaming before interrupting", () => {
+    const turnId = TurnId.makeUnsafe("streaming-turn");
+    const thread = makeThread("streaming", {
+      session: makeSession("streaming", { activeTurnId: turnId }),
+      latestTurn: { state: "running" },
+      messages: [
+        { id: MessageId.makeUnsafe("user"), role: "user", streaming: false, turnId },
+        { id: MessageId.makeUnsafe("done"), role: "assistant", streaming: false, turnId },
+        { id: MessageId.makeUnsafe("cut-off"), role: "assistant", streaming: true, turnId },
+      ],
+    });
+
+    const commands = planRestartTurnReconciliation({ threads: [thread], now: NOW });
+    expect(commands.map((command) => command.type)).toEqual([
+      "thread.message.assistant.complete",
+      "thread.session.set",
+    ]);
+    expect(commands[0]).toEqual({
+      type: "thread.message.assistant.complete",
+      commandId: `restart-reconcile-message:streaming:cut-off:${NOW}`,
+      threadId: "streaming",
+      messageId: "cut-off",
+      turnId,
+      createdAt: NOW,
     });
   });
 

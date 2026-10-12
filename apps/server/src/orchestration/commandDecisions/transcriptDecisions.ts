@@ -39,33 +39,51 @@ export function decideTranscriptCommand({
           threadId: command.threadId,
         });
         const existingMessage = thread.messages.find((message) => message.id === command.messageId);
-        return {
-          ...withEventBase({
+        const eventBase = () =>
+          withEventBase({
             aggregateKind: "thread",
             aggregateId: command.threadId,
             occurredAt: command.createdAt,
             commandId: command.commandId,
+          });
+        const payload = {
+          threadId: command.threadId,
+          messageId: command.messageId,
+          modelSelection: existingMessage?.modelSelection ?? thread.modelSelection,
+          role: "assistant" as const,
+          turnId: resolveStableMessageTurnId({
+            existingTurnId: existingMessage?.turnId,
+            incomingTurnId: command.turnId,
           }),
+          createdAt: command.createdAt,
+          updatedAt: command.createdAt,
+        };
+        const deltaEvent: Omit<OrchestrationEvent, "sequence"> = {
+          ...eventBase(),
           type: "thread.message-sent",
           payload: {
-            threadId: command.threadId,
-            messageId: command.messageId,
-            modelSelection: existingMessage?.modelSelection ?? thread.modelSelection,
-            role: "assistant",
+            ...payload,
             text: command.delta,
             ...(command.segmentStartedAt ? { segmentStartedAt: command.segmentStartedAt } : {}),
             ...(command.segmentSequence !== undefined
               ? { segmentSequence: command.segmentSequence }
               : {}),
-            turnId: resolveStableMessageTurnId({
-              existingTurnId: existingMessage?.turnId,
-              incomingTurnId: command.turnId,
-            }),
             streaming: true,
-            createdAt: command.createdAt,
-            updatedAt: command.createdAt,
           },
         };
+        if (existingMessage?.role !== "assistant" || existingMessage.streaming) {
+          return deltaEvent;
+        }
+        // A delta that arrives after completion keeps its text but must not reopen the finished
+        // message; empty text settles it again with the stored text.
+        return [
+          deltaEvent,
+          {
+            ...eventBase(),
+            type: "thread.message-sent",
+            payload: { ...payload, text: "", streaming: false },
+          },
+        ];
       }
       case "thread.message.assistant.complete": {
         const thread = yield* requireThread({

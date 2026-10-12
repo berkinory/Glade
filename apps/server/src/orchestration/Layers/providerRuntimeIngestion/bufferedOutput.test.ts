@@ -1,3 +1,5 @@
+import { CommandId } from "@glade/contracts/core/baseSchemas";
+import { Effect } from "effect";
 import { describe, expect, it } from "vitest";
 
 import {
@@ -144,62 +146,85 @@ describe("ProviderRuntimeIngestion buffered output", () => {
     });
   });
 
-  it("flushes buffered assistant text before session exit clears turn state", async () => {
-    const harness = await createHarness();
-    const now = new Date().toISOString();
+  it.each([
+    ["while the turn is active", false],
+    ["after a stop cleared the active turn", true],
+  ] as const)(
+    "flushes buffered assistant text on a turnless session exit %s",
+    async (_label, stopFirst) => {
+      const harness = await createHarness();
+      const now = new Date().toISOString();
+      const key = stopFirst ? "stopped-session-exit" : "buffered-session-exit";
 
-    harness.emit({
-      type: "turn.started",
-      eventId: asEventId("evt-turn-started-buffered-session-exit"),
-      provider: "codex",
-      createdAt: now,
-      threadId: asThreadId("thread-1"),
-      turnId: asTurnId("turn-buffered-session-exit"),
-    });
-    await waitForThread(
-      harness.engine,
-      (thread) =>
-        thread.session?.status === "running" &&
-        thread.session?.activeTurnId === "turn-buffered-session-exit",
-    );
+      harness.emit({
+        type: "turn.started",
+        eventId: asEventId(`evt-turn-started-${key}`),
+        provider: "codex",
+        createdAt: now,
+        threadId: asThreadId("thread-1"),
+        turnId: asTurnId(`turn-${key}`),
+      });
+      await waitForThread(
+        harness.engine,
+        (thread) =>
+          thread.session?.status === "running" && thread.session?.activeTurnId === `turn-${key}`,
+      );
 
-    harness.emit({
-      type: "content.delta",
-      eventId: asEventId("evt-message-delta-buffered-session-exit"),
-      provider: "codex",
-      createdAt: now,
-      threadId: asThreadId("thread-1"),
-      turnId: asTurnId("turn-buffered-session-exit"),
-      itemId: asItemId("item-buffered-session-exit"),
-      payload: {
-        streamKind: "assistant_text",
-        delta: "persist me before exit",
-      },
-    });
-    await harness.drain();
+      harness.emit({
+        type: "content.delta",
+        eventId: asEventId(`evt-message-delta-${key}`),
+        provider: "codex",
+        createdAt: now,
+        threadId: asThreadId("thread-1"),
+        turnId: asTurnId(`turn-${key}`),
+        itemId: asItemId(`item-${key}`),
+        payload: {
+          streamKind: "assistant_text",
+          delta: "persist me before exit",
+        },
+      });
+      await harness.drain();
 
-    harness.emit({
-      type: "session.exited",
-      eventId: asEventId("evt-session-exited-buffered-session-exit"),
-      provider: "codex",
-      createdAt: now,
-      threadId: asThreadId("thread-1"),
-    });
+      if (stopFirst) {
+        await Effect.runPromise(
+          harness.engine.dispatch({
+            type: "thread.session.set",
+            commandId: CommandId.makeUnsafe(`cmd-session-stopped-${key}`),
+            threadId: asThreadId("thread-1"),
+            session: {
+              threadId: asThreadId("thread-1"),
+              status: "stopped",
+              providerName: "codex",
+              runtimeMode: "approval-required",
+              activeTurnId: null,
+              updatedAt: now,
+              lastError: null,
+            },
+            createdAt: now,
+          }),
+        );
+      }
 
-    const thread = await waitForThread(harness.engine, (entry) =>
-      entry.messages.some(
-        (message: ProviderRuntimeTestMessage) =>
-          message.id === "assistant:item-buffered-session-exit" &&
-          message.text === "persist me before exit" &&
-          message.streaming === false,
-      ),
-    );
-    const message = thread.messages.find(
-      (entry: ProviderRuntimeTestMessage) => entry.id === "assistant:item-buffered-session-exit",
-    );
-    expect(message?.text).toBe("persist me before exit");
-    expect(message?.streaming).toBe(false);
-  });
+      harness.emit({
+        type: "session.exited",
+        eventId: asEventId(`evt-session-exited-${key}`),
+        provider: "codex",
+        createdAt: now,
+        threadId: asThreadId("thread-1"),
+      });
+
+      const thread = await waitForThread(harness.engine, (entry) =>
+        entry.messages.some(
+          (message: ProviderRuntimeTestMessage) =>
+            message.id === `assistant:item-${key}` && message.streaming === false,
+        ),
+      );
+      const message = thread.messages.find(
+        (entry: ProviderRuntimeTestMessage) => entry.id === `assistant:item-${key}`,
+      );
+      expect(message?.text).toBe("persist me before exit");
+    },
+  );
 
   it("spills oversized buffered deltas and still finalizes full assistant text", async () => {
     const harness = await createHarness();
