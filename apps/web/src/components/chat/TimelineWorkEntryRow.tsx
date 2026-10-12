@@ -1,5 +1,10 @@
 import { subagentToolHeading } from "./SubagentToolPresentation";
 import { SubagentRunCard } from "./SubagentRunCard";
+import {
+  WORK_ROW_GAP_CLASS_NAME,
+  WORK_ROW_ICON_CLASS_NAME,
+  WORK_ROW_ICON_SLOT_CLASS_NAME,
+} from "./workRowStyles";
 import { FileNameChip } from "./FileNameChip";
 import { toolInputFilePath } from "./ToolIoDetails.logic";
 import { resolveMcpToolIcon } from "~/lib/mcpToolIcon";
@@ -559,7 +564,7 @@ function ToolWorkEntryRow(props: TimelineWorkEntryRowProps) {
             const canOpenEditedRow = canOpenToolDetails || canOpenEditedDiff;
             const editedRowClassName = cn(
               "group/file-row flex w-full max-w-full items-center text-left transition-colors duration-100",
-              compact ? "gap-1.5" : "gap-2",
+              WORK_ROW_GAP_CLASS_NAME,
               canOpenEditedRow ? "cursor-pointer focus-visible:outline-none" : "cursor-default",
             );
             const editedRowChildren = (
@@ -568,7 +573,6 @@ function ToolWorkEntryRow(props: TimelineWorkEntryRowProps) {
                 additions={changedFileStat?.additions}
                 deletions={changedFileStat?.deletions}
                 fontSizePx={rowFontSizePx}
-                compact={compact}
               />
             );
             if (hasToolDetails || (canOpenToolDetails && !canOpenEditedDiff)) {
@@ -577,7 +581,6 @@ function ToolWorkEntryRow(props: TimelineWorkEntryRowProps) {
                   key={`${workEntry.id}:${changedFilePath}`}
                   details={workEntry.toolDetails}
                   activity={workEntry.liveActivity}
-                  compact={compact}
                   tooltip={<span className="whitespace-pre-wrap">{changedFilePath}</span>}
                   summaryClassName={editedRowClassName}
                   dataFileChangeRow
@@ -613,20 +616,19 @@ function ToolWorkEntryRow(props: TimelineWorkEntryRowProps) {
               {!isCodexStatusRow && !isPlainRuntimeNoticeRow ? (
                 <span
                   className={cn(
-                    "flex shrink-0 items-center justify-center",
+                    WORK_ROW_ICON_SLOT_CLASS_NAME,
                     WORK_ROW_MUTED_HOVER_TONE["tool-row"],
                     (workEntry.toolStatus === "failed" ||
                       monitorNotification?.outcome === "failed") &&
                       "text-destructive/85",
-                    compact ? "size-4" : "size-5",
                   )}
                   data-tool-icon={leftIconKind}
                   data-work-entry-icon="true"
                 >
                   {linkIconUrl ? (
-                    <LinkChipIcon url={linkIconUrl} className={compact ? "size-3.5" : "size-4"} />
+                    <LinkChipIcon url={linkIconUrl} className={WORK_ROW_ICON_CLASS_NAME} />
                   ) : (
-                    renderWorkEntryIcon(LeftIcon, compact ? "size-3.5" : "size-4")
+                    renderWorkEntryIcon(LeftIcon, WORK_ROW_ICON_CLASS_NAME)
                   )}
                 </span>
               ) : null}
@@ -680,7 +682,6 @@ function ToolWorkEntryRow(props: TimelineWorkEntryRowProps) {
                     <ProviderContextLifecycleDetails info={providerContextLifecycle} />
                   ) : undefined)
                 }
-                compact={compact}
                 tooltip={toolRowTooltipContent(rawCommand, displayText, displayText)}
               >
                 {rowContentChildren}
@@ -690,7 +691,6 @@ function ToolWorkEntryRow(props: TimelineWorkEntryRowProps) {
           const rowContent = (
             <AgentActivityOpenSurface
               canOpen={canOpenReadFile}
-              compact={compact}
               onOpen={openReadFile}
               onHover={prefetchReadFile}
               tooltip={toolRowTooltipContent(
@@ -719,21 +719,16 @@ export function EditedFileRowContent(props: {
   additions: number | undefined;
   deletions: number | undefined;
   fontSizePx: number;
-  compact: boolean;
 }) {
-  const { filePath, additions, deletions, fontSizePx, compact } = props;
+  const { filePath, additions, deletions, fontSizePx } = props;
   const hasStat = (additions ?? 0) + (deletions ?? 0) > 0;
   return (
     <>
       <span
-        className={cn(
-          "flex shrink-0 items-center justify-center",
-          WORK_ROW_MUTED_HOVER_TONE["file-row"],
-          compact ? "size-4" : "size-5",
-        )}
+        className={cn(WORK_ROW_ICON_SLOT_CLASS_NAME, WORK_ROW_MUTED_HOVER_TONE["file-row"])}
         data-tool-icon="edit"
       >
-        <PencilEdit02Icon className={compact ? "size-3.5" : "size-4"} />
+        <PencilEdit02Icon className={WORK_ROW_ICON_CLASS_NAME} />
       </span>
       <span
         className={cn("font-system-ui shrink-0", WORK_ROW_MUTED_HOVER_TONE["file-row"])}

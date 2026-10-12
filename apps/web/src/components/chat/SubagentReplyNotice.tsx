@@ -1,3 +1,4 @@
+import { cn } from "~/lib/utils";
 import { ThreadId } from "@glade/contracts/core/baseSchemas";
 import { useNavigate } from "@tanstack/react-router";
 import type { WorkLogEntry } from "~/workLog.types";
@@ -5,6 +6,11 @@ import { useStore } from "~/store";
 import { resolveSubagentPresentation } from "~/lib/subagentPresentation";
 import { BotIcon } from "~/lib/icons";
 import { SubagentAvatar } from "./SubagentAvatar";
+import {
+  WORK_ROW_GAP_CLASS_NAME,
+  WORK_ROW_ICON_CLASS_NAME,
+  WORK_ROW_ICON_SLOT_CLASS_NAME,
+} from "./workRowStyles";
 
 export function SubagentReplyNotice({ entry }: { entry: WorkLogEntry }) {
   const navigate = useNavigate();
@@ -20,15 +26,20 @@ export function SubagentReplyNotice({ entry }: { entry: WorkLogEntry }) {
     : null;
   const content = (
     <>
-      {source ? (
-        <SubagentAvatar threadId={source.threadId} className="size-[1.143em]" />
-      ) : (
-        <BotIcon className="size-[1.143em] shrink-0" />
-      )}
+      <span className={WORK_ROW_ICON_SLOT_CLASS_NAME}>
+        {source ? (
+          <SubagentAvatar threadId={source.threadId} className="size-4" />
+        ) : (
+          <BotIcon className={WORK_ROW_ICON_CLASS_NAME} />
+        )}
+      </span>
       <span className="truncate">{name ? `Reply from ${name}` : "Subagent reply"}</span>
     </>
   );
-  const className = "flex min-w-0 items-center gap-2 py-1 text-chat text-muted-foreground";
+  const className = cn(
+    "flex min-w-0 items-center py-1 text-chat text-muted-foreground",
+    WORK_ROW_GAP_CLASS_NAME,
+  );
   if (!thread || thread.archivedAt) return <div className={className}>{content}</div>;
   return (
     <button

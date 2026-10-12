@@ -460,7 +460,6 @@ export function renderTimelineAssistantMessage(
                     additions={file.additions}
                     deletions={file.deletions}
                     fontSizePx={normalizedChatFontSizePx}
-                    compact={false}
                   />
                 </button>
               ))}

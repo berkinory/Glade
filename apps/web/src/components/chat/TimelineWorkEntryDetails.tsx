@@ -1,11 +1,11 @@
 import { PROVIDER_DESCRIPTORS } from "@glade/shared/provider/providerMetadata";
-import { useCallback, useEffect, useRef, useState, type ReactElement, type ReactNode } from "react";
+import { useState, type ReactElement, type ReactNode } from "react";
 
 import type { TimestampFormat } from "../../appSettings";
 import { formatTimestamp } from "../../timestampFormat";
 import type { WorkLogEntry, WorkLogMonitorNotification } from "../../workLog.types";
-import { DISCLOSURE_CLEANUP_BUFFER_MS, DISCLOSURE_TRANSITION_MS } from "~/lib/disclosureMotion";
 import { cn } from "~/lib/utils";
+import { WORK_ROW_DETAILS_INSET_CLASS_NAME, WORK_ROW_GAP_CLASS_NAME } from "./workRowStyles";
 import { ToolCallDetailsContent } from "./ToolCallDetailsDialog";
 import { DisclosureChevron } from "../ui/DisclosureChevron";
 import { DisclosureRegion } from "../ui/DisclosureRegion";
@@ -30,7 +30,6 @@ function ToolRowTooltip(props: { content: ReactNode; children: ReactElement }) {
 export function AgentActivityOpenSurface(props: {
   canOpen: boolean;
   children: ReactNode;
-  compact: boolean;
 
   onHover?: (() => void) | undefined;
   onOpen?: (() => void) | undefined;
@@ -41,7 +40,7 @@ export function AgentActivityOpenSurface(props: {
 }) {
   const className = cn(
     "group/tool-row flex w-full items-center text-left transition-[opacity,translate] duration-120",
-    props.compact ? "gap-1.5" : "gap-2",
+    WORK_ROW_GAP_CLASS_NAME,
     props.canOpen ? "cursor-pointer focus-visible:outline-none" : "cursor-default",
   );
 
@@ -150,7 +149,6 @@ export function MonitorEventDetails(props: {
 
 export function ToolDetailsDisclosure(props: {
   children: ReactNode;
-  compact: boolean;
   dataFileChangeRow?: boolean | undefined;
   details?: TimelineWorkEntry["toolDetails"] | undefined;
   activity?: TimelineWorkEntry["liveActivity"] | undefined;
@@ -163,51 +161,10 @@ export function ToolDetailsDisclosure(props: {
     props.summaryClassName ??
     cn(
       "group/tool-row flex w-full items-center text-left transition-[opacity,translate] duration-120",
-      props.compact ? "gap-1.5" : "gap-2",
+      WORK_ROW_GAP_CLASS_NAME,
       "cursor-pointer focus-visible:outline-none",
     );
   const [open, setOpen] = useState(false);
-  const [renderDetails, setRenderDetails] = useState(false);
-  const [motionOpen, setMotionOpen] = useState(false);
-  const openFrameRef = useRef<number | null>(null);
-  const cleanupTimeoutRef = useRef<number | null>(null);
-
-  const clearMotionTimers = useCallback(() => {
-    if (openFrameRef.current !== null) {
-      window.cancelAnimationFrame(openFrameRef.current);
-      openFrameRef.current = null;
-    }
-    if (cleanupTimeoutRef.current !== null) {
-      window.clearTimeout(cleanupTimeoutRef.current);
-      cleanupTimeoutRef.current = null;
-    }
-  }, []);
-
-  const setDetailsOpen = useCallback(
-    (nextOpen: boolean) => {
-      clearMotionTimers();
-      setOpen(nextOpen);
-
-      if (nextOpen) {
-        setRenderDetails(true);
-        setMotionOpen(false);
-        openFrameRef.current = window.requestAnimationFrame(() => {
-          openFrameRef.current = null;
-          setMotionOpen(true);
-        });
-        return;
-      }
-
-      setMotionOpen(false);
-      cleanupTimeoutRef.current = window.setTimeout(() => {
-        cleanupTimeoutRef.current = null;
-        setRenderDetails(false);
-      }, DISCLOSURE_TRANSITION_MS + DISCLOSURE_CLEANUP_BUFFER_MS);
-    },
-    [clearMotionTimers],
-  );
-
-  useEffect(() => () => clearMotionTimers(), [clearMotionTimers]);
 
   const summaryButton = (
     <button
@@ -216,9 +173,7 @@ export function ToolDetailsDisclosure(props: {
       aria-expanded={open}
       data-file-change-row={props.dataFileChangeRow ? "true" : undefined}
       data-tool-detail-trigger="true"
-      onClick={() => {
-        setDetailsOpen(!open);
-      }}
+      onClick={() => setOpen(!open)}
     >
       {props.children}
       <DisclosureChevron
@@ -231,22 +186,21 @@ export function ToolDetailsDisclosure(props: {
   return (
     <div className="group/tool-details min-w-0">
       <ToolRowTooltip content={props.tooltip}>{summaryButton}</ToolRowTooltip>
-      {renderDetails ? (
-        <DisclosureRegion
-          open={motionOpen}
-          contentClassName={cn("min-w-0 pt-2", props.compact ? "ml-5" : "ml-7")}
-        >
-          <div data-tool-details-inline="true">
-            {props.detailContent ?? (
-              <ToolCallDetailsContent
-                details={props.details}
-                activity={props.activity}
-                toolKind={props.toolKind}
-              />
-            )}
-          </div>
-        </DisclosureRegion>
-      ) : null}
+      <DisclosureRegion
+        open={open}
+        lazy
+        contentClassName={cn("min-w-0 pt-2", WORK_ROW_DETAILS_INSET_CLASS_NAME)}
+      >
+        <div data-tool-details-inline="true">
+          {props.detailContent ?? (
+            <ToolCallDetailsContent
+              details={props.details}
+              activity={props.activity}
+              toolKind={props.toolKind}
+            />
+          )}
+        </div>
+      </DisclosureRegion>
     </div>
   );
 }

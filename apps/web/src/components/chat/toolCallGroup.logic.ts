@@ -20,7 +20,6 @@ export interface ToolCallGroupSummary {
   entryCount: number;
   // A group with in-flight work must never present itself as settled.
   hasRunningEntry: boolean;
-  failedCount: number;
 
   // The group wears its activity's glyph; "mixed" when it spans several, null when it is only
   // reasoning. Generic tool groups and reasoning keep the first entry's icon.
@@ -175,14 +174,10 @@ export function summarizeToolCallGroup(
   const countByCategory = new Map<ToolCallSummaryCategory, number>();
   const distinctFilesByCategory = new Map<ToolCallSummaryCategory, Set<string>>();
   let hasRunningEntry = false;
-  let failedCount = 0;
 
   for (const entry of summarizable) {
     if (entry.toolStatus === "running") {
       hasRunningEntry = true;
-    }
-    if (entry.toolStatus === "failed") {
-      failedCount += 1;
     }
     const category: ToolCallSummaryCategory = entry.toolKind ?? "other";
     const fileKeys = FILE_COUNTED_CATEGORIES.has(category) ? entryFileKeys(entry) : [];
@@ -226,7 +221,6 @@ export function summarizeToolCallGroup(
     label: label ? capitalize(label) : "Thought",
     entryCount: groupable.length,
     hasRunningEntry,
-    failedCount,
     activity: activities.length > 1 ? "mixed" : (activities[0] ?? null),
     iconEntry: summarizable[0] ?? groupable[0]!,
     latestStep: isStepRun ? latestStepText(summarizable) : null,
