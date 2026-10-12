@@ -148,70 +148,116 @@ export function splitToolAndArgs(command: string): [tool: string, args: string] 
   return [tool, args];
 }
 
-export function unwrapShellCommandIfPresent(rawCommand: string): string {
-  let value = rawCommand.trim();
-  if (!value) {
+// Strips a shell invocation such as `/bin/zsh -lc "..."` down to the script it runs.
+function unwrapShellInvocation(rawCommand: string): string {
+  const value = rawCommand.trim();
+  const lowered = value.toLowerCase();
+  const prefix = SHELL_INVOCATION_PREFIXES.find((candidate) => lowered.startsWith(candidate));
+  if (!prefix) {
     return value;
   }
-
-  const shellPrefixes = [
-    "/usr/bin/bash -lc ",
-    "/usr/bin/bash -c ",
-    "/bin/bash -lc ",
-    "/bin/bash -c ",
-    "/usr/bin/zsh -lc ",
-    "/usr/bin/zsh -c ",
-    "/bin/zsh -lc ",
-    "/bin/zsh -c ",
-    "/bin/sh -lc ",
-    "/bin/sh -c ",
-    "bash -lc ",
-    "bash -c ",
-    "zsh -lc ",
-    "zsh -c ",
-    "sh -lc ",
-    "sh -c ",
-  ];
-
-  const lowered = value.toLowerCase();
-  for (const prefix of shellPrefixes) {
-    if (!lowered.startsWith(prefix)) {
-      continue;
-    }
-    value = value.slice(prefix.length).trim();
-    if (
-      value.length >= 2 &&
-      ((value.startsWith('"') && value.endsWith('"')) ||
-        (value.startsWith("'") && value.endsWith("'")))
-    ) {
-      value = value.slice(1, -1).trim();
-    }
-    value = stripLeadingShellPreambles(value);
-    break;
-  }
-
-  const pipeIndex = value.indexOf("|");
-  if (pipeIndex > 0) {
-    value = value.slice(0, pipeIndex).trim();
-  }
-
-  return value;
+  const script = value.slice(prefix.length).trim();
+  const quoted =
+    script.length >= 2 &&
+    ((script.startsWith('"') && script.endsWith('"')) ||
+      (script.startsWith("'") && script.endsWith("'")));
+  return quoted ? script.slice(1, -1).trim() : script;
 }
 
-function stripLeadingShellPreambles(value: string): string {
-  let current = value.trim();
-  for (let attempts = 0; attempts < 4; attempts += 1) {
-    const chain = findShellChain(current);
-    if (!chain) {
-      return current;
+const SHELL_INVOCATION_PREFIXES = ["/usr/bin/", "/bin/", ""].flatMap((directory) =>
+  ["bash", "zsh", "sh"].flatMap((shell) =>
+    ["-lc ", "-c "].map((flag) => `${directory}${shell} ${flag}`),
+  ),
+);
+
+// The commands a shell script runs, in order. `&&`, `||`, `;` and newlines separate commands, a
+// pipe keeps only the command that produces its input, and setup (cd, exports, assignments) and
+// control-flow keywords are dropped. A heredoc's body is text rather than commands, so parsing
+// stops at the end of the line that opens it.
+export function commandSegments(rawCommand: string): string[] {
+  const command = unwrapShellInvocation(rawCommand);
+  const segments: string[] = [];
+  let current = "";
+  let quote: '"' | "'" | null = null;
+  let inPipeConsumer = false;
+  let opensHeredoc = false;
+  const flush = () => {
+    const segment = normalizeCommandSegment(current);
+    if (segment) segments.push(segment);
+    current = "";
+    inPipeConsumer = false;
+  };
+  const keep = (text: string) => {
+    if (!inPipeConsumer) current += text;
+  };
+
+  for (let index = 0; index < command.length; index += 1) {
+    const char = command[index]!;
+    const next = command[index + 1];
+    if (char === "\\" && next !== undefined) {
+      keep(char + next);
+      index += 1;
+      continue;
     }
-    const head = current.slice(0, chain.operatorStart).trim();
-    if (!isShellSetupPreamble(head)) {
-      return current;
+    if (quote) {
+      keep(char);
+      if (char === quote) quote = null;
+      continue;
     }
-    current = current.slice(chain.commandStart).trim();
+    if (char === '"' || char === "'") {
+      quote = char;
+      keep(char);
+      continue;
+    }
+    if (char === "<" && next === "<") {
+      opensHeredoc = true;
+    }
+    if (char === "\n") {
+      flush();
+      if (opensHeredoc) return segments;
+      continue;
+    }
+    if ((char === "&" && next === "&") || (char === "|" && next === "|")) {
+      flush();
+      index += 1;
+      continue;
+    }
+    if (char === ";") {
+      flush();
+      continue;
+    }
+    if (char === "|") {
+      inPipeConsumer = true;
+      continue;
+    }
+    keep(char);
   }
-  return current;
+  flush();
+  return segments;
+}
+
+const CONTROL_FLOW_PREFIX = /^(?:do|then|else)\s+/;
+const CONTROL_FLOW_STATEMENT = /^(?:for|while|until|if|elif|case|select)\b|^(?:done|fi|esac|[{}])$/;
+
+function normalizeCommandSegment(segment: string): string | null {
+  let current = segment
+    .trim()
+    .replace(/^\(\s*/, "")
+    .replace(/\s*\)$/, "");
+  while (CONTROL_FLOW_PREFIX.test(current)) {
+    current = current.replace(CONTROL_FLOW_PREFIX, "");
+  }
+  if (!current || CONTROL_FLOW_STATEMENT.test(current) || isShellSetupPreamble(current)) {
+    return null;
+  }
+  return stripCommandDisplayWrappers(current.replace(OUTPUT_REDIRECTION, "")) || null;
+}
+
+// `2>/dev/null`, `> out.txt`, `2>&1`: where output goes is not what the command works on.
+const OUTPUT_REDIRECTION = /(^|\s)(?:\d*|&)>>?\s*\S+/g;
+
+export function containsHeredoc(command: string): boolean {
+  return /(^|\s)<<-?\s*['"]?[A-Za-z0-9_]+/.test(command);
 }
 
 function isShellSetupPreamble(value: string): boolean {
@@ -219,7 +265,7 @@ function isShellSetupPreamble(value: string): boolean {
   if (!normalized) {
     return false;
   }
-  if (/^(?:builtin\s+)?cd\s+/.test(normalized)) {
+  if (/^(?:builtin\s+)?cd(?:\s+|$)/.test(normalized)) {
     return true;
   }
   if (/^(?:source|\.)\s+/.test(normalized)) {
@@ -238,40 +284,7 @@ function isShellSetupPreamble(value: string): boolean {
   return false;
 }
 
-export function findShellChain(
-  value: string,
-): { operatorStart: number; commandStart: number } | null {
-  let quote: '"' | "'" | null = null;
-
-  for (let index = 0; index < value.length - 1; index += 1) {
-    const char = value[index];
-    if (char === "\\" && index + 1 < value.length) {
-      index += 1;
-      continue;
-    }
-    if (quote) {
-      if (char === quote) {
-        quote = null;
-      }
-      continue;
-    }
-    if (char === '"' || char === "'") {
-      quote = char;
-      continue;
-    }
-    const next = value[index + 1];
-    if (char === "&" && next === "&") {
-      return { operatorStart: index, commandStart: index + 2 };
-    }
-    if (char === ";") {
-      return { operatorStart: index, commandStart: index + 1 };
-    }
-  }
-
-  return null;
-}
-
-export function stripCommandDisplayWrappers(command: string): string {
+function stripCommandDisplayWrappers(command: string): string {
   let current = command.replace(/\s+/g, " ").trim();
   for (let attempts = 0; attempts < 4; attempts += 1) {
     const [tool, args] = splitToolAndArgs(current);

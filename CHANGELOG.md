@@ -17,6 +17,7 @@
 - Command details show the command and its output in separate boxes.
 - Details of a failed tool call read in the normal text color; the red icon marks the failure.
 - A subagent launch shows the subagent spinner from its first moment instead of a robot icon that turned into a spinner.
+- Shell commands are named by what they do: a leading change of folder is skipped, chained reads, searches and listings read as one step such as "Read 2 files" or "Explored the project", and in-place `sed` edits read as edits.
 - Thinking gets its own row that says how long the agent thought, instead of riding inside tool call groups, and opens to the full reasoning.
 - A turn's edited files list shows about six files and scrolls the rest, with each file's name followed by its folder.
 - While a finished turn still waits on a subagent or background command, the end of the chat shows what it is waiting for, and the reply marker takes its place when the agent picks the result up.

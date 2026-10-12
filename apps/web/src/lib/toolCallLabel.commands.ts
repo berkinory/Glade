@@ -8,13 +8,12 @@ import {
 } from "./toolCallLabel.descriptors";
 import type { CommandVisualKind, ReadableCommandDisplay } from "./toolCallLabel.descriptors";
 import {
+  commandSegments,
   compactPath,
+  containsHeredoc,
   extractSearchPatternAndPath,
-  findShellChain,
   splitToolAndArgs,
-  stripCommandDisplayWrappers,
   tokenizeCommandArgs,
-  unwrapShellCommandIfPresent,
 } from "./toolCallLabel.shell";
 
 export function deriveReadableToolTitle(input: ReadableToolTitleInput): string | null {
@@ -63,11 +62,23 @@ export function deriveReadableCommandDisplay(
   rawCommand: string,
   isRunning = false,
 ): ReadableCommandDisplay {
-  const command = stripCommandDisplayWrappers(unwrapShellCommandIfPresent(rawCommand));
-  const primaryCommand = firstShellCommandSegment(command);
-  const [tool, args] = splitToolAndArgs(primaryCommand);
+  const segments = meaningfulSegments(rawCommand);
+  const inspections = segments.map(inspectPresentation);
+  if (segments.length > 1 && inspections.every(Boolean)) {
+    return combinedInspectDisplay(segments, rawCommand, isRunning);
+  }
+  // A chain that does more than look around is named by the first thing it does.
+  const primary = segments.find((_, index) => !inspections[index]) ?? segments[0] ?? rawCommand;
+  return segmentDisplay(primary, rawCommand, isRunning);
+}
 
-  const inspect = inspectPresentation(primaryCommand);
+function segmentDisplay(
+  segment: string,
+  rawCommand: string,
+  isRunning: boolean,
+): ReadableCommandDisplay {
+  const [tool, args] = splitToolAndArgs(segment);
+  const inspect = inspectPresentation(segment);
   if (inspect) {
     const [running, completed, targetKind] = inspect;
     const target =
@@ -80,6 +91,10 @@ export function deriveReadableCommandDisplay(
   }
 
   switch (tool) {
+    case "sed":
+      return isInPlaceSed(args)
+        ? commandDisplay("Editing", "Edited", inPlaceSedTarget(args), rawCommand, isRunning)
+        : commandDisplay("Running", "Ran", compactInlineCommand(segment), rawCommand, isRunning);
     case "mkdir":
       return commandDisplay(
         "Creating",
@@ -117,15 +132,94 @@ export function deriveReadableCommandDisplay(
       return commandDisplay(
         "Running",
         "Ran",
-        inlineScriptTarget(tool, command, args) ?? compactInlineCommand(command),
+        inlineScriptTarget(tool, segment, args) ?? compactInlineCommand(segment),
         rawCommand,
         isRunning,
       );
     case "osascript":
       return commandDisplay("Running", "Ran", "AppleScript", rawCommand, isRunning);
     default:
-      return commandDisplay("Running", "Ran", compactInlineCommand(command), rawCommand, isRunning);
+      return commandDisplay("Running", "Ran", compactInlineCommand(segment), rawCommand, isRunning);
   }
+}
+
+// Several reads, searches and listings chained together read as one look around the project.
+function combinedInspectDisplay(
+  segments: readonly string[],
+  rawCommand: string,
+  isRunning: boolean,
+): ReadableCommandDisplay {
+  const kinds = new Set(segments.map((segment) => inspectPresentation(segment)![2]));
+  const files = [
+    ...new Set(
+      segments
+        .filter((segment) => inspectPresentation(segment)![2] === "file")
+        .map((segment) => lastPathComponents(splitToolAndArgs(segment)[1], "file")),
+    ),
+  ];
+  const fileTarget = files.length === 1 ? files[0]! : `${files.length} files`;
+  if (kinds.size === 1 && kinds.has("file")) {
+    return commandDisplay("Reading", "Read", fileTarget, rawCommand, isRunning);
+  }
+  if ([...kinds].every((kind) => kind === "search" || kind === "find")) {
+    return commandDisplay(
+      "Searching",
+      "Searched",
+      `${segments.length} times`,
+      rawCommand,
+      isRunning,
+    );
+  }
+  if (kinds.size === 1 && kinds.has("directory")) {
+    return commandDisplay("Listing", "Listed", `${segments.length} folders`, rawCommand, isRunning);
+  }
+  return commandDisplay(
+    "Exploring",
+    "Explored",
+    files.length > 0 ? fileTarget : "the project",
+    rawCommand,
+    isRunning,
+  );
+}
+
+// Output plumbing that only shapes what another command printed.
+const PASSTHROUGH_TOOLS: ReadonlySet<string> = new Set([
+  "echo",
+  "printf",
+  "true",
+  "wc",
+  "sort",
+  "uniq",
+  "cut",
+  "tr",
+]);
+
+function meaningfulSegments(rawCommand: string): string[] {
+  const segments = commandSegments(rawCommand);
+  const meaningful = segments.filter(
+    (segment) => !PASSTHROUGH_TOOLS.has(splitToolAndArgs(segment)[0]),
+  );
+  return meaningful.length > 0 ? meaningful : segments;
+}
+
+// The file is the last argument that is not the sed script itself (`s/old/new/`, `s#a#b#g`).
+function inPlaceSedTarget(args: string): string {
+  const file = tokenizeCommandArgs(args)
+    .toReversed()
+    .find(
+      (token) =>
+        token.length > 0 &&
+        !token.startsWith("-") &&
+        !/\s/.test(token) &&
+        !/^s(.).*\1.*\1[a-zA-Z0-9]*$/.test(token),
+    );
+  return file ? compactPath(file) : "file";
+}
+
+function isInPlaceSed(args: string): boolean {
+  return tokenizeCommandArgs(args).some(
+    (token) => token === "-i" || token.startsWith("-i") || token === "--in-place",
+  );
 }
 
 function commandDisplay(
@@ -157,10 +251,14 @@ const INSPECT_COMMAND_PRESENTATIONS: Record<string, InspectPresentation> = Objec
   ),
 );
 
-// `cat <<'EOF' | wc -l` feeds text it writes inline; it reads no file.
-function inspectPresentation(primaryCommand: string): InspectPresentation | undefined {
-  const [tool] = splitToolAndArgs(primaryCommand);
-  if (!Object.hasOwn(INSPECT_COMMAND_PRESENTATIONS, tool) || containsHeredoc(primaryCommand)) {
+// `cat <<'EOF' | wc -l` feeds text it writes inline and `sed -i` edits; neither only reads.
+function inspectPresentation(segment: string): InspectPresentation | undefined {
+  const [tool, args] = splitToolAndArgs(segment);
+  if (
+    !Object.hasOwn(INSPECT_COMMAND_PRESENTATIONS, tool) ||
+    containsHeredoc(segment) ||
+    (tool === "sed" && isInPlaceSed(args))
+  ) {
     return undefined;
   }
   return INSPECT_COMMAND_PRESENTATIONS[tool];
@@ -192,27 +290,25 @@ export function deriveFriendlyCommandTarget(rawCommand: string): string {
 }
 
 export function classifyInspectCommand(rawCommand: string): "read" | "search" | "list" | null {
-  const command = stripCommandDisplayWrappers(unwrapShellCommandIfPresent(rawCommand));
-  const inspect = inspectPresentation(firstShellCommandSegment(command));
-  if (!inspect) return null;
-  switch (inspect[2]) {
-    case "file":
-      return "read";
-    case "directory":
-      return "list";
-    case "search":
-    case "find":
-      return "search";
+  const kinds = new Set<InspectPresentation[2]>();
+  for (const segment of meaningfulSegments(rawCommand)) {
+    const inspect = inspectPresentation(segment);
+    if (!inspect) return null;
+    kinds.add(inspect[2]);
   }
+  if (kinds.size === 0) return null;
+  if (kinds.size === 1 && kinds.has("file")) return "read";
+  if (kinds.size === 1 && kinds.has("directory")) return "list";
+  return "search";
 }
 
 export function resolveCommandVisualKind(rawCommand: string): CommandVisualKind {
-  const command = stripCommandDisplayWrappers(unwrapShellCommandIfPresent(rawCommand));
-  const primaryCommand = firstShellCommandSegment(command);
-  const [tool] = splitToolAndArgs(primaryCommand);
-  if (inspectPresentation(primaryCommand)) {
-    return "inspect";
+  const segments = meaningfulSegments(rawCommand);
+  const primary = segments.find((segment) => !inspectPresentation(segment));
+  if (!primary) {
+    return segments.length > 0 ? "inspect" : "terminal";
   }
+  const [tool] = splitToolAndArgs(primary);
   if (tool === "git") {
     return "git";
   }
@@ -340,21 +436,12 @@ function compactInlineCommand(command: string): string {
   return `${normalized.slice(0, 137).trimEnd()}...`;
 }
 
-function firstShellCommandSegment(command: string): string {
-  const chain = findShellChain(command);
-  return chain ? command.slice(0, chain.operatorStart).trim() : command;
-}
-
 function inlineScriptTarget(tool: string, command: string, args: string): string | null {
   const normalizedTool = tool === "python3" ? "python" : tool;
   if (containsHeredoc(command) || hasInlineScriptFlag(args)) {
     return `${normalizedTool} script`;
   }
   return null;
-}
-
-function containsHeredoc(command: string): boolean {
-  return /(^|\s)<<-?\s*['"]?[A-Za-z0-9_]+/.test(command);
 }
 
 function hasInlineScriptFlag(args: string): boolean {
