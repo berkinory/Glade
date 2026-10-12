@@ -49,4 +49,5 @@ export interface StreamOperations {
     options?: { readonly queueIfInFlight?: boolean },
   ) => Promise<void>;
   removeOrphanedTerminalsForCurrentState: () => void;
+  refreshThreadSnapshot: (id: ThreadId) => Promise<void>;
 }

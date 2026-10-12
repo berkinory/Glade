@@ -12,6 +12,7 @@ export function createStreamRuntime(context: StreamContext) {
     reconcileThreadProjection: (id, options) => projection.reconcileThreadProjection(id, options),
     removeOrphanedTerminalsForCurrentState: () =>
       subscriptions.removeOrphanedTerminalsForCurrentState(),
+    refreshThreadSnapshot: (id) => subscriptions.refreshThreadSnapshot(id),
   };
   const policy = createStreamPolicy(state, operations);
   const subscriptions = createStreamSubscriptions(context, state, operations, policy);

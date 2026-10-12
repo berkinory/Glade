@@ -42,12 +42,29 @@ export function reconcilePromotedDraftFromThreadDetail(thread: OrchestrationThre
     finalizePromotedDraftThreads(new Set([thread.id]));
   }
 }
-export function appendBounded<T>(items: T[], item: T, limit: number): void {
+export function appendBounded<T>(items: T[], item: T, limit: number): T[] {
   const normalizedLimit = Math.max(1, Math.floor(limit));
-  if (items.length >= normalizedLimit) {
-    items.splice(0, items.length - normalizedLimit + 1);
-  }
+  const dropped =
+    items.length >= normalizedLimit ? items.splice(0, items.length - normalizedLimit + 1) : [];
   items.push(item);
+  return dropped;
+}
+export interface PendingThreadEventBuffer {
+  readonly events: OrchestrationEvent[];
+  // Overflow drops the oldest events. A snapshot below the highest dropped sequence cannot be followed by
+  // the remaining events without a hole.
+  droppedThroughSequence: number;
+}
+export function createPendingThreadEventBuffer(): PendingThreadEventBuffer {
+  return { events: [], droppedThroughSequence: -1 };
+}
+export function bufferPendingThreadEvent(
+  buffer: PendingThreadEventBuffer,
+  event: OrchestrationEvent,
+): void {
+  for (const dropped of appendBounded(buffer.events, event, PENDING_THREAD_EVENT_BUFFER_LIMIT)) {
+    buffer.droppedThroughSequence = Math.max(buffer.droppedThroughSequence, dropped.sequence);
+  }
 }
 function addBoundedSetValue<T>(set: Set<T>, value: T, limit: number): void {
   const normalizedLimit = Math.max(1, Math.floor(limit));

@@ -15,6 +15,7 @@ import {
   THREAD_DETAIL_PROJECTION_RECONCILE_MAX_NOOP_STREAK,
   THREAD_DETAIL_REPLAY_MAX_NOOP_STREAK,
   THREAD_DETAIL_TERMINAL_FENCE_RECONCILE_DELAY_MS,
+  createPendingThreadEventBuffer,
 } from "./-rootStreamPolicy";
 import type { StreamOperations } from "./-streamContracts";
 import type { StreamState, ThreadCatchupBackoff } from "./-streamState";
@@ -122,7 +123,7 @@ export function createStreamPolicy(state: StreamState, operations: StreamOperati
       state.threadSnapshotSequenceById.set(threadId, resumeCursor);
       state.threadResumeSeedSequenceById.set(threadId, resumeCursor);
     }
-    state.pendingThreadEventsById.set(threadId, []);
+    state.pendingThreadEventsById.set(threadId, createPendingThreadEventBuffer());
     state.threadSnapshotRequestInFlight.delete(threadId);
     state.threadSnapshotRefreshPending.delete(threadId);
     state.threadSnapshotNotFoundRetryAttempted.delete(threadId);
@@ -167,10 +168,20 @@ export function createStreamPolicy(state: StreamState, operations: StreamOperati
   };
 
   const flushThreadBuffer = (threadId: ThreadId, snapshotSequence: number) => {
-    const pendingEvents = state.pendingThreadEventsById.get(threadId) ?? [];
+    const buffer = state.pendingThreadEventsById.get(threadId);
     state.pendingThreadEventsById.delete(threadId);
     let latestThreadSequence = state.threadSnapshotSequenceById.get(threadId) ?? snapshotSequence;
-    for (const event of pendingEvents.toSorted((left, right) => left.sequence - right.sequence)) {
+    if (buffer !== undefined && buffer.droppedThroughSequence > latestThreadSequence) {
+      // Applying the remaining events would skip the dropped ones for good: the cursor would pass them and
+      // the stream's own replay of them would be ignored. Buffer again and resync from a fresh snapshot.
+      state.threadSnapshotSequenceById.delete(threadId);
+      state.pendingThreadEventsById.set(threadId, createPendingThreadEventBuffer());
+      void operations.refreshThreadSnapshot(threadId);
+      return;
+    }
+    for (const event of (buffer?.events ?? []).toSorted(
+      (left, right) => left.sequence - right.sequence,
+    )) {
       if (event.sequence > latestThreadSequence) {
         latestThreadSequence = event.sequence;
         if (!applyFencedThreadEvent(threadId, event)) {

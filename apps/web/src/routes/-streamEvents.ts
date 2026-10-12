@@ -39,13 +39,14 @@ import {
 import { addWsTransportStateListener } from "../wsTransportEvents";
 import {
   PENDING_SHELL_EVENT_BUFFER_LIMIT,
-  PENDING_THREAD_EVENT_BUFFER_LIMIT,
   THREAD_DETAIL_CATCHUP_INTERVAL_MS,
   THREAD_DETAIL_PROJECTION_RECONCILE_INTERVAL_MS,
   THREAD_DETAIL_PROJECTION_RECONCILE_MAX_CONCURRENCY,
   THREAD_DETAIL_PROJECTION_RECONCILE_MAX_INTERVAL_MS,
   THREAD_DETAIL_PROJECTION_RECONCILE_MAX_NOOP_STREAK,
   appendBounded,
+  bufferPendingThreadEvent,
+  createPendingThreadEventBuffer,
   isPendingInteractionDetailMissing,
   reconcilePromotedDraftFromThreadDetail,
   reconcilePromotedDraftsFromShellThreads,
@@ -210,8 +211,9 @@ export function subscribeStreamEvents(
     const threadId = ThreadId.makeUnsafe(String(item.event.aggregateId));
     const latestThreadSequence = state.threadSnapshotSequenceById.get(threadId);
     if (latestThreadSequence === undefined) {
-      const pendingThreadEvents = state.pendingThreadEventsById.get(threadId) ?? [];
-      appendBounded(pendingThreadEvents, item.event, PENDING_THREAD_EVENT_BUFFER_LIMIT);
+      const pendingThreadEvents =
+        state.pendingThreadEventsById.get(threadId) ?? createPendingThreadEventBuffer();
+      bufferPendingThreadEvent(pendingThreadEvents, item.event);
       state.pendingThreadEventsById.set(threadId, pendingThreadEvents);
       if (
         item.event.type === "thread.session-set" &&
@@ -292,7 +294,7 @@ export function subscribeStreamEvents(
       return;
     }
     state.threadSnapshotSequenceById.delete(threadId);
-    state.pendingThreadEventsById.set(threadId, []);
+    state.pendingThreadEventsById.set(threadId, createPendingThreadEventBuffer());
     void subscriptions.refreshThreadSnapshot(threadId);
   });
 

@@ -1,6 +1,7 @@
 import { ThreadId } from "@glade/contracts/core/baseSchemas";
 import { type OrchestrationEvent } from "@glade/contracts/orchestration/events";
 import { type OrchestrationShellStreamEvent } from "@glade/contracts/orchestration/snapshots";
+import type { PendingThreadEventBuffer } from "./-rootStreamPolicy";
 export interface ThreadCatchupBackoff {
   turnId: string | null;
   replayNoopStreak: number;
@@ -33,7 +34,7 @@ export function createStreamState() {
     // The cached resume cursor a subscription started from, until a snapshot confirms it. Only then can a
     // lower snapshot be legitimate: a server reset restarts sequences.
     threadResumeSeedSequenceById: new Map<ThreadId, number>(),
-    pendingThreadEventsById: new Map<ThreadId, OrchestrationEvent[]>(),
+    pendingThreadEventsById: new Map<ThreadId, PendingThreadEventBuffer>(),
     threadSnapshotRequestInFlight: new Set<ThreadId>(),
     threadSnapshotRefreshPending: new Set<ThreadId>(),
     threadSnapshotNotFoundRetryAttempted: new Set<ThreadId>(),
