@@ -1,5 +1,7 @@
 import { subagentToolHeading } from "./SubagentToolPresentation";
 import { SubagentRunCard } from "./SubagentRunCard";
+import { FileNameChip } from "./FileNameChip";
+import { toolInputFilePath } from "./ToolIoDetails.logic";
 import { resolveMcpToolIcon } from "~/lib/mcpToolIcon";
 import { GitHubIcon } from "~/lib/brandIcons";
 import {
@@ -473,7 +475,12 @@ function ToolWorkEntryRow(props: TimelineWorkEntryRowProps) {
         : isMcpToolRow
           ? "mcp"
           : undefined;
-  const { displayText } = workEntryDisplayParts(workEntry, classification);
+  const { heading, displayText } = workEntryDisplayParts(workEntry, classification);
+  const rowFilePath =
+    workEntry.toolKind === "read"
+      ? (toolInputFilePath(workEntry.toolDetails?.input) ??
+        (workEntry.detail ? extractFilePathFromDetail(workEntry.detail) : null))
+      : null;
   const rawCommand = workEntry.rawCommand ?? workEntry.command;
   const hoverText = rawCommand ?? webFetchUrl ?? displayText;
   const changedFiles = workEntry.changedFiles ?? [];
@@ -509,7 +516,7 @@ function ToolWorkEntryRow(props: TimelineWorkEntryRowProps) {
   const canOpenToolDetails =
     !activityDetail &&
     !isReasoningUpdateWorkEntry(workEntry) &&
-    Boolean(providerContextLifecycle || (hasToolDetails && !canOpenReadFile));
+    Boolean(providerContextLifecycle || hasToolDetails);
   const openReadFile = readFilePath
     ? () => openWorkspaceFileReference(opener, readFilePath)
     : undefined;
@@ -630,7 +637,13 @@ function ToolWorkEntryRow(props: TimelineWorkEntryRowProps) {
                     className={workEntry.toolStatus === "running" ? "work-text-shimmer" : undefined}
                     data-work-entry-display-text="true"
                   >
-                    {displayText}
+                    {rowFilePath ? (
+                      <>
+                        {heading} <FileNameChip path={rowFilePath} />
+                      </>
+                    ) : (
+                      displayText
+                    )}
                   </span>
                   {liveActivityMetaText ? (
                     <span data-live-activity-meta="true"> · {liveActivityMetaText}</span>
@@ -644,6 +657,7 @@ function ToolWorkEntryRow(props: TimelineWorkEntryRowProps) {
               <ToolDetailsDisclosure
                 details={workEntry.toolDetails}
                 activity={workEntry.liveActivity}
+                toolKind={workEntry.toolKind}
                 detailContent={
                   activityContent ??
                   (providerContextLifecycle ? (
@@ -715,15 +729,14 @@ export function EditedFileRowContent(props: {
       </span>
       <span
         className={cn(
-          "font-system-ui max-w-[28rem] truncate underline-offset-2",
+          "font-system-ui min-w-0 max-w-[28rem]",
           WORK_ROW_MUTED_HOVER_TONE["file-row"],
-          "group-hover/file-row:underline group-focus-visible/file-row:underline",
         )}
         style={{
           fontSize: `${fontSizePx}px`,
         }}
       >
-        {basenameOfPath(filePath)}
+        <FileNameChip path={filePath} />
       </span>
       {hasStat ? (
         <span

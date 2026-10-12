@@ -133,6 +133,7 @@ export function ToolDetailsDisclosure(props: {
   dataFileChangeRow?: boolean | undefined;
   details?: TimelineWorkEntry["toolDetails"] | undefined;
   activity?: TimelineWorkEntry["liveActivity"] | undefined;
+  toolKind?: TimelineWorkEntry["toolKind"] | undefined;
   detailContent?: ReactNode;
   summaryClassName?: string | undefined;
   tooltip?: ReactNode;
@@ -216,7 +217,11 @@ export function ToolDetailsDisclosure(props: {
         >
           <div data-tool-details-inline="true">
             {props.detailContent ?? (
-              <ToolCallDetailsContent details={props.details} activity={props.activity} />
+              <ToolCallDetailsContent
+                details={props.details}
+                activity={props.activity}
+                toolKind={props.toolKind}
+              />
             )}
           </div>
         </DisclosureRegion>

@@ -1,11 +1,12 @@
-import { lazy, Suspense, type ReactNode } from "react";
-import { createMarkdownCodeFence, formatShellTranscript } from "~/lib/toolCallDetailsFormatting";
+import { lazy, Suspense } from "react";
+import { formatShellTranscript } from "~/lib/toolCallDetailsFormatting";
 import { cn } from "~/lib/utils";
 import type { WorkLogToolDetails, WorkLogToolOutputDetails } from "../../lib/toolCallDetails";
-import type { WorkLogLiveActivity } from "../../workLog.types";
+import type { WorkLogLiveActivity, WorkLogToolKind } from "../../workLog.types";
 import { formatLiveActivityElapsed, useLiveActivityNow } from "../../lib/liveActivityPresentation";
-import ChatMarkdown from "../ChatMarkdown";
+import { MarkdownToolCodeBlock, ToolDetailSection } from "./ToolDetailBlocks";
 import { hasToolCallDetailsContent } from "./ToolCallDetailsDialog.logic";
+import { ToolIoDetails } from "./ToolIoDetails";
 
 // The diff renderer pulls in its worker pool, so it loads only once a tool's details are opened.
 const ToolPatchDiff = lazy(() =>
@@ -18,20 +19,21 @@ const ToolEditsDiff = lazy(() =>
 const DETAIL_HEADER_CLASS_NAME = "border-b border-border/45 px-3 py-2 text-ui-xs font-medium";
 const DETAIL_CODE_BLOCK_CLASS_NAME =
   "max-h-[min(12lh,32vh)] overflow-auto whitespace-pre-wrap break-words font-chat-code text-chat-code leading-relaxed text-foreground/88";
-const TOOL_DETAILS_MARKDOWN_CLASS_NAME =
-  "text-ui leading-relaxed [&_pre]:max-h-[min(12lh,32vh)] [&_pre]:overflow-auto [&_pre]:leading-normal";
 
 export function ToolCallDetailsContent({
   details,
   activity,
+  toolKind,
 }: {
   details: WorkLogToolDetails | undefined;
   activity?: WorkLogLiveActivity | undefined;
+  toolKind?: WorkLogToolKind | undefined;
 }) {
   const nowMs = useLiveActivityNow(activity);
   const elapsed = activity ? formatLiveActivityElapsed(activity, nowMs) : null;
 
   if (!hasToolCallDetailsContent(details, activity)) return null;
+  if (details?.kind === "tool") return <ToolIoDetails details={details} toolKind={toolKind} />;
 
   return (
     <>
@@ -98,30 +100,6 @@ export function ToolCallDetailsContent({
         <p className="text-ui-xs tabular-nums text-muted-foreground/68">{elapsed}</p>
       ) : null}
     </>
-  );
-}
-
-function MarkdownToolCodeBlock(props: {
-  language: string;
-  children: string;
-  elapsed?: string | null;
-}) {
-  return (
-    <ChatMarkdown
-      text={createMarkdownCodeFence(props.language, props.children)}
-      cwd={undefined}
-      className={TOOL_DETAILS_MARKDOWN_CLASS_NAME}
-      codeBlockMeta={props.elapsed ?? undefined}
-    />
-  );
-}
-
-function ToolDetailSection(props: { title: string; children: ReactNode }) {
-  return (
-    <section className="space-y-2">
-      <h3 className="text-ui-sm font-medium text-muted-foreground/56">{props.title}</h3>
-      {props.children}
-    </section>
   );
 }
 

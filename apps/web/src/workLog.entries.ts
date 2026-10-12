@@ -642,6 +642,7 @@ function normalizeWorkLogActivity(activity: OrchestrationThreadActivity): Derive
     changedFiles: entry.changedFiles ?? changedFiles,
     label: entry.label,
     toolTitle: entry.toolTitle,
+    isToolCall: activity.kind.startsWith("tool."),
   });
   if (toolDetails) {
     entry.toolDetails = toolDetails;

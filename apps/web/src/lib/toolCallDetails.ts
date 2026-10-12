@@ -21,8 +21,11 @@ interface WorkLogToolEditDetails {
 }
 
 export interface WorkLogToolDetails {
-  kind: "command" | "file-change";
+  kind: "command" | "file-change" | "tool";
   title: string;
+  // Arguments the agent passed, for tools that have no dedicated presentation.
+  input?: Readonly<Record<string, unknown>>;
+  isError?: boolean;
   command?: string;
   output?: WorkLogToolOutputDetails;
   diff?: string;
@@ -41,6 +44,8 @@ export interface DeriveWorkLogToolDetailsInput {
   changedFiles?: ReadonlyArray<string> | undefined;
   label: string;
   toolTitle?: string | undefined;
+  // Only tool lifecycle activities describe a call with arguments and a result.
+  isToolCall?: boolean | undefined;
 }
 
 function firstString(...values: unknown[]): string | undefined {
@@ -139,6 +144,7 @@ function extractToolOutputDetails(input: {
       rawOutput?.output,
       rawOutput?.content,
       data?.output,
+      item?.aggregatedOutput,
       itemResult?.output,
       itemResult?.content,
       result?.output,
@@ -161,6 +167,7 @@ function extractToolOutputDetails(input: {
     rawOutput?.exitCode,
     rawOutput?.code,
     data?.exitCode,
+    item?.exitCode,
     itemResult?.exitCode,
     result?.exitCode,
     outputExitCode(input.detail),
@@ -307,6 +314,58 @@ function extractEditEntries(payload: Record<string, unknown> | null): WorkLogToo
   return dedupeEditEntries(edits);
 }
 
+// Tool results arrive as a string or as content blocks (Claude tool_result, MCP content arrays).
+function textFromContent(value: unknown): string | undefined {
+  if (typeof value === "string") return value.trim() ? value : undefined;
+  if (!Array.isArray(value)) return undefined;
+  const parts = value.flatMap((part) => {
+    const record = asRecord(part);
+    return typeof record?.text === "string" && record.text.trim() ? [record.text] : [];
+  });
+  return parts.length > 0 ? parts.join("\n") : undefined;
+}
+
+function extractToolInput(
+  payload: Record<string, unknown> | null,
+): Readonly<Record<string, unknown>> | undefined {
+  const data = asRecord(payload?.data);
+  const item = asRecord(data?.item);
+  for (const candidate of [data?.input, data?.rawInput, item?.arguments, item?.input]) {
+    const record = asRecord(candidate);
+    if (record && Object.keys(record).length > 0) return record;
+  }
+  const query = nonEmptyTrimmed(item?.query);
+  return query ? { query } : undefined;
+}
+
+function extractToolResult(payload: Record<string, unknown> | null): {
+  text?: string;
+  isError: boolean;
+} {
+  const data = asRecord(payload?.data);
+  const result = asRecord(data?.result);
+  const item = asRecord(data?.item);
+  const itemResult = asRecord(item?.result);
+  const itemError = asRecord(item?.error);
+  const structured = itemResult?.structuredContent ?? result?.structuredContent;
+  const text =
+    textFromContent(result?.content) ??
+    textFromContent(itemResult?.content) ??
+    textFromContent(item?.contentItems) ??
+    (structured !== undefined && structured !== null
+      ? JSON.stringify(structured, null, 2)
+      : undefined) ??
+    nonEmptyTrimmed(itemError?.message);
+  return {
+    ...(text ? { text } : {}),
+    isError:
+      result?.is_error === true ||
+      itemError !== null ||
+      payload?.status === "failed" ||
+      item?.status === "failed",
+  };
+}
+
 function detailsTitle(input: DeriveWorkLogToolDetailsInput): string {
   return input.toolTitle ?? input.label;
 }
@@ -345,7 +404,7 @@ export function deriveWorkLogToolDetails(
   }
 
   if (!shouldBuildFileChangeDetails(input)) {
-    return undefined;
+    return input.isToolCall ? deriveGenericToolDetails(input) : undefined;
   }
   const diff = extractUnifiedDiff(input.payload);
   const content = extractWriteContent(input.payload);
@@ -366,6 +425,30 @@ export function deriveWorkLogToolDetails(
     ...(edits.length > 0 ? { edits } : {}),
     ...(files ? { files } : {}),
     ...(output ? { output } : {}),
+  };
+}
+
+function deriveGenericToolDetails(
+  input: DeriveWorkLogToolDetailsInput,
+): WorkLogToolDetails | undefined {
+  if (input.itemType === "collab_agent_tool_call") return undefined;
+  const toolInput = extractToolInput(input.payload);
+  const result = extractToolResult(input.payload);
+  const truncated = asRecord(input.payload?.data)?.__gladeTruncated === true;
+  if (!toolInput && !result.text) return undefined;
+  return {
+    kind: "tool",
+    title: detailsTitle(input),
+    ...(toolInput ? { input: toolInput } : {}),
+    ...(result.text || truncated
+      ? {
+          output: {
+            ...(result.text ? { output: result.text } : {}),
+            ...(truncated ? { truncated } : {}),
+          },
+        }
+      : {}),
+    ...(result.isError ? { isError: true } : {}),
   };
 }
 
@@ -412,5 +495,7 @@ export function mergeWorkLogToolDetails(
     ...((right.content ?? left.content) ? { content: right.content ?? left.content } : {}),
     ...((right.edits ?? left.edits) ? { edits: right.edits ?? left.edits } : {}),
     ...(files ? { files } : {}),
+    ...((right.input ?? left.input) ? { input: right.input ?? left.input } : {}),
+    ...((right.isError ?? left.isError) ? { isError: true } : {}),
   };
 }

@@ -9,6 +9,7 @@ export function hasToolCallDetailsContent(
   const output = details.output;
   return Boolean(
     details.command?.trim() ||
+    (details.input !== undefined && Object.keys(details.input).length > 0) ||
     details.diff?.trim() ||
     details.content?.trim() ||
     details.files?.some((file) => file.trim()) ||

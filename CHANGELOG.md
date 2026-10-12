@@ -30,6 +30,7 @@
 - When Claude picks a finished subagent back up, the follow-up shows in that subagent's chat and on its own card.
 - A subagent's chat labels its first message as the brief from its parent chat.
 - Subagents in the sidebar sit indented under their chat.
+- Tool calls open to show what the agent passed in and what came back: file reads as highlighted code, web pages as text, JSON formatted and errors in plain words. Files appear as chips with their icon.
 - Tool output in the chat keeps much more of a long result before it is shortened.
 - Opening a file from the chat, the file search or Source Control opens it in the main view without switching the right sidebar to the Explorer.
 
@@ -39,6 +40,7 @@
 - Committing selected files from the Environment panel no longer discards changes you staged in Source Control, and keeps partially staged files as staged.
 - Claude MCP tools whose names mention "agent" are no longer shown as subagents.
 - Stopping a single Codex subagent no longer fails with a turn mismatch.
+- Codex commands that finish quickly show their output.
 - Claude fast mode warns when Claude serves requests at standard speed, for example without usage credits or during a rate-limit cooldown, and notes that fast mode is billed from usage credits.
 
 ## 0.2.3 - 2026-10-10
