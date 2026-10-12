@@ -57,6 +57,7 @@ import {
 } from "./workLog.reconciliation";
 import { classifyWorkLogToolKind } from "./workLog.toolKind";
 import { deriveTurnFailureEntries, isTurnFailureActivity } from "./workLog.turnFailures";
+import { deriveTurnStopEntries } from "./workLog.turnStops";
 import { pairAnsweredUserInputs } from "./workLog.userInput";
 import {
   collabPayloadItem,
@@ -157,8 +158,15 @@ export function deriveWorkLogEntries(
         ...entry
       }): WorkLogEntry => entry,
     );
-  const failures = deriveTurnFailureEntries(ordered, isVisible);
-  return failures.length > 0 ? [...derived, ...failures] : derived;
+  const outcomes = [
+    ...deriveTurnFailureEntries(ordered, isVisible),
+    ...deriveTurnStopEntries(ordered, isVisible, {
+      turnId: latestTurnId,
+      state: options.latestTurnState,
+      completedAt: options.latestTurnCompletedAt,
+    }),
+  ];
+  return outcomes.length > 0 ? [...derived, ...outcomes] : derived;
 }
 
 function shouldKeepActivityForWorkLog(

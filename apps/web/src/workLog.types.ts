@@ -83,6 +83,8 @@ export interface WorkLogEntry {
   visualReply?: VisualReply;
   // Durable provider failure of this entry's turn; session readiness never clears it.
   turnFailure?: { message: string };
+  // Marks where a stopped turn ended; the transcript folds it into that turn's header.
+  turnStopped?: true;
   // An answered agent question with the user's answers; it stays visible outside a settled turn's fold.
   userInputExchange?: ReadonlyArray<WorkLogUserInputExchangeItem>;
 

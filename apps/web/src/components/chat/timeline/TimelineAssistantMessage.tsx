@@ -397,9 +397,7 @@ export function renderTimelineAssistantMessage(
                   fontSize: chatTypographyStyle.fontSize,
                 }}
               >
-                <span>
-                  {row.collapsedWorkElapsed ? `Worked for ${row.collapsedWorkElapsed}` : "Details"}
-                </span>
+                <span>{collapsedTurnHeader(row.turnOutcome, row.collapsedWorkElapsed)}</span>
                 <DisclosureChevron
                   open={isCollapsedWorkExpanded}
                   className="text-muted-foreground/70"
@@ -665,4 +663,13 @@ export function renderTimelineAssistantMessage(
       </>
     );
   })();
+}
+
+function collapsedTurnHeader(
+  outcome: "stopped" | "failed" | undefined,
+  elapsed: string | null | undefined,
+): string {
+  if (outcome === "stopped") return elapsed ? `Stopped after ${elapsed}` : "Stopped";
+  if (outcome === "failed") return elapsed ? `Failed after ${elapsed}` : "Failed";
+  return elapsed ? `Worked for ${elapsed}` : "Details";
 }

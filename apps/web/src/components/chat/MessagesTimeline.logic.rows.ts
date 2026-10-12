@@ -33,6 +33,7 @@ export function deriveMessagesTimelineRows(input: {
   const durationStartByMessageId = computeMessageDurationStart(timelineMessages);
   const terminalAssistantMessageIds = deriveTerminalAssistantMessageIds(timelineMessages);
   let pendingWorkGroup: Extract<MessagesTimelineRow, { kind: "work" }> | null = null;
+  let turnStartedAt: string | null = null;
 
   const groupedEntriesEqual = (
     left: ReadonlyArray<WorkLogEntry>,
@@ -108,6 +109,19 @@ export function deriveMessagesTimelineRows(input: {
       });
       continue;
     }
+    if (timelineEntry.kind === "work" && timelineEntry.entry.turnStopped) {
+      flushPendingWorkGroup();
+      nextRows.push({
+        kind: "turn-stop",
+        id: timelineEntry.entry.id,
+        createdAt: timelineEntry.createdAt,
+        turnId: timelineEntry.entry.turnId ?? null,
+        elapsed: turnStartedAt
+          ? (formatElapsed(turnStartedAt, timelineEntry.createdAt) ?? null)
+          : null,
+      });
+      continue;
+    }
     if (timelineEntry.kind === "work" && timelineEntry.entry.turnFailure) {
       flushPendingWorkGroup();
       nextRows.push({
@@ -142,6 +156,7 @@ export function deriveMessagesTimelineRows(input: {
           nextEntry.entry.visualReply !== undefined ||
           nextEntry.entry.turnFailure !== undefined ||
           nextEntry.entry.userInputExchange !== undefined ||
+          nextEntry.entry.turnStopped !== undefined ||
           ["response.started", "provider.transition"].includes(nextEntry.entry.activityKind ?? "")
         )
           break;
@@ -172,6 +187,8 @@ export function deriveMessagesTimelineRows(input: {
     }
 
     const message = timelineEntry.message;
+    if (message.role === "user" && message.dispatchMode !== "steer")
+      turnStartedAt = message.createdAt;
     // Moving a live tool from the previous message into the next one invalidates both row heights.
     if (pendingWorkGroup && isLiveWorkGroup(pendingWorkGroup.groupedEntries)) {
       flushPendingWorkGroup({ attachToPreviousAssistant: false });
@@ -287,6 +304,23 @@ function findTailTerminalAssistantMessageId(
     return row.message.role === "assistant" && terminalAssistantMessageIds.has(row.message.id)
       ? row.message.id
       : null;
+  }
+  return null;
+}
+
+// The stop or failure row that closes this turn, found before the next message.
+function findTurnOutcome(
+  rows: ReadonlyArray<MessagesTimelineRow>,
+  messageIndex: number,
+  turnId: TurnId | null,
+): { kind: "turn-stop" | "turn-failure"; index: number } | null {
+  if (turnId === null) return null;
+  for (let index = messageIndex + 1; index < rows.length; index += 1) {
+    const row = rows[index]!;
+    if (row.kind === "message" || row.kind === "message-segment") return null;
+    if ((row.kind === "turn-stop" || row.kind === "turn-failure") && row.turnId === turnId) {
+      return { kind: row.kind, index };
+    }
   }
   return null;
 }
@@ -414,6 +448,13 @@ function collapseSettledTurns(
       const elapsed = formatElapsed(collapsedStart, message.completedAt);
       row.collapsedTurnItems = collapsedItems;
       row.collapsedWorkElapsed = elapsed ?? null;
+      const outcome = findTurnOutcome(rows, pass, turnId);
+      if (outcome?.kind === "turn-stop") {
+        row.turnOutcome = "stopped";
+        rows.splice(outcome.index, 1);
+      } else if (outcome?.kind === "turn-failure") {
+        row.turnOutcome = "failed";
+      }
       delete row.leadingWorkEntries;
       delete row.leadingWorkGroupId;
       delete row.inlineWorkEntries;

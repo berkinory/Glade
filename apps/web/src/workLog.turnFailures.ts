@@ -23,7 +23,7 @@ function payloadText(activity: OrchestrationThreadActivity, key: string): string
 
 // The last terminal state the provider reported for each turn. A turn that later completed or was
 // cancelled is no longer failed, even though its earlier error activity remains stored.
-function finalTurnStates(
+export function finalTurnStates(
   activities: ReadonlyArray<OrchestrationThreadActivity>,
 ): Map<string, unknown> {
   const states = new Map<string, unknown>();

@@ -119,6 +119,15 @@ export function TimelineControllerSurface({ controller }: { controller: Timeline
     >
       {forkDividerBeforeRowId === row.id ? forkSourceDivider : null}
       {row.kind === "visual-reply" && <VisualReplyCard reply={row.reply} activityId={row.id} />}
+      {row.kind === "turn-stop" && (
+        <div
+          className={cn("pl-[2px]", MUTED_LABEL_TEXT_CLASS_NAME)}
+          style={{ fontSize: chatTypographyStyle.fontSize }}
+          data-turn-stop={row.turnId ?? undefined}
+        >
+          {row.elapsed ? `Stopped after ${row.elapsed}` : "Stopped"}
+        </div>
+      )}
       {row.kind === "user-input" && (
         <div className="space-y-1.5 py-1">
           <div className={cn("flex items-center gap-1.5 text-ui", MUTED_LABEL_TEXT_CLASS_NAME)}>

@@ -230,6 +230,12 @@ function isRowUnchanged(a: MessagesTimelineRow, b: MessagesTimelineRow): boolean
         a.message === failure.message
       );
     }
+    case "turn-stop": {
+      const stop = b as typeof a;
+      return (
+        a.createdAt === stop.createdAt && a.turnId === stop.turnId && a.elapsed === stop.elapsed
+      );
+    }
     case "user-input": {
       const exchange = b as typeof a;
       return a.createdAt === exchange.createdAt && deepEqualJson(a.items, exchange.items);
@@ -265,6 +271,7 @@ function isRowUnchanged(a: MessagesTimelineRow, b: MessagesTimelineRow): boolean
         a.inlineWorkGroupId === bm.inlineWorkGroupId &&
         collapsedTurnItemsEqual(a.collapsedTurnItems, bm.collapsedTurnItems) &&
         a.collapsedWorkElapsed === bm.collapsedWorkElapsed &&
+        a.turnOutcome === bm.turnOutcome &&
         a.durationStart === bm.durationStart &&
         a.showAssistantCopyButton === bm.showAssistantCopyButton &&
         a.assistantCopyStreaming === bm.assistantCopyStreaming &&

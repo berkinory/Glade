@@ -150,6 +150,13 @@ export type MessagesTimelineRow =
   | { kind: "visual-reply"; id: string; createdAt: string; reply: VisualReply }
   | { kind: "turn-failure"; id: string; createdAt: string; turnId: TurnId | null; message: string }
   | {
+      kind: "turn-stop";
+      id: string;
+      createdAt: string;
+      turnId: TurnId | null;
+      elapsed: string | null;
+    }
+  | {
       kind: "user-input";
       id: string;
       createdAt: string;
@@ -172,6 +179,8 @@ export type MessagesTimelineRow =
       inlineWorkGroupId?: string;
       collapsedTurnItems?: CollapsedTurnItem[];
       collapsedWorkElapsed?: string | null;
+      // How the collapsed turn ended when it did not finish normally.
+      turnOutcome?: "stopped" | "failed";
       durationStart: string;
       showAssistantCopyButton: boolean;
       assistantCopyStreaming: boolean;
