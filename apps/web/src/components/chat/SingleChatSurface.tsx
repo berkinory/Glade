@@ -85,6 +85,7 @@ export function SingleChatSurface(props: {
   const toggleView = useWorkspaceSidebarStore((store) => store.toggle);
   const setSidebarOpen = useWorkspaceSidebarStore((store) => store.setOpen);
   const setSourceControlView = useWorkspaceFileTabsStore((store) => store.setSourceControlView);
+  const openFile = useWorkspaceFileTabsStore((store) => store.openFile);
   const activeProject = useStore(
     useMemo(() => createProjectSelector(props.projectId), [props.projectId]),
   );
@@ -108,12 +109,6 @@ export function SingleChatSurface(props: {
   const lastAppliedRoutePanelSearchKeyRef = useRef<string | null>(null);
   const [searchPaletteOpen, setSearchPaletteOpen] = useState(false);
   const [searchPaletteMode, setSearchPaletteMode] = useState<WorkspaceSearchPaletteMode>("files");
-  const [revealPosition, setRevealPosition] = useState<{
-    filePath: string;
-    lineNumber: number;
-    column?: number;
-    requestId: number;
-  }>();
   const diffPanelOpen = sidebarOpen && sidebarView === "git";
   const handleToggleDiff = () => toggleView("git");
   const handleOpenTurnDiff = (turnId: TurnId, filePath?: string) =>
@@ -124,12 +119,20 @@ export function SingleChatSurface(props: {
       filePath: filePath ?? null,
     });
 
-  const handleOpenWorkspaceSearchFile = useCallback(
-    (relativePath: string) => {
-      showView("explorer");
-      requestExplorerFileReveal(props.threadId, relativePath, undefined, { preview: true });
+  const openWorkspaceFile = useCallback(
+    (
+      relativePath: string,
+      options?: { preview?: boolean; position?: { lineNumber: number; column?: number } },
+    ) => {
+      openFile(props.threadId, relativePath, options);
+      requestExplorerFileReveal(props.threadId, relativePath);
     },
-    [showView, props.threadId],
+    [openFile, props.threadId],
+  );
+
+  const handleOpenWorkspaceSearchFile = useCallback(
+    (relativePath: string) => openWorkspaceFile(relativePath, { preview: true }),
+    [openWorkspaceFile],
   );
 
   const handleOpenWorkspaceSearchDirectory = useCallback(
@@ -197,20 +200,20 @@ export function SingleChatSurface(props: {
         if (!targetPath) {
           return false;
         }
-        showView("explorer");
         const position = /:(\d+)(?::(\d+))?$/.exec(path);
-        requestExplorerFileReveal(
-          props.threadId,
+        openWorkspaceFile(
           targetPath,
           position
-            ? { lineNumber: Number(position[1]), column: Number(position[2] ?? 1) }
+            ? {
+                position: { lineNumber: Number(position[1]), column: Number(position[2] ?? 1) },
+              }
             : undefined,
         );
         return true;
       },
       prefetchFile: prefetchOpenerFile,
     }),
-    [workspaceRoot, showView, props.threadId, prefetchOpenerFile],
+    [workspaceRoot, showView, props.threadId, prefetchOpenerFile, openWorkspaceFile],
   );
   useEffect(() => {
     const { nextAppliedSearchKey, panelPatch } = resolveRoutePanelBootstrap({
@@ -308,10 +311,7 @@ export function SingleChatSurface(props: {
                   preview,
                 )
               }
-              onOpenFile={(filePath) => {
-                showView("explorer");
-                requestExplorerFileReveal(props.threadId, filePath);
-              }}
+              onOpenFile={(filePath) => openWorkspaceFile(filePath)}
               view={fileTabs.sourceControlView}
               onViewChange={(view) => setSourceControlView(props.threadId, view)}
               visible={visible}
@@ -322,8 +322,6 @@ export function SingleChatSurface(props: {
         return (
           <Suspense fallback={<PanelStateMessage loadingLabel="Loading explorer" />}>
             <DockExplorerPane
-              navigationOnly
-              onRevealPosition={setRevealPosition}
               threadId={props.threadId}
               workspaceRoot={workspaceRoot}
               isVisible={visible}
@@ -346,7 +344,6 @@ export function SingleChatSurface(props: {
               threadId={props.threadId}
               projectId={props.projectId}
               workspaceRoot={workspaceRoot}
-              revealPosition={revealPosition}
               onReferenceInChat={handleReferenceInChat}
             >
               <DeferredChatView

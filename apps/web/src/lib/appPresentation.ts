@@ -4,7 +4,7 @@ import { useWorkspaceFileTabsStore } from "../workspaceFileTabsStore";
 import { useMainWorkspaceStore } from "../mainWorkspaceStore";
 import { useTerminalStateStore } from "../terminalStateStore";
 import { useWorkspaceSidebarStore } from "../workspaceSidebarStore";
-import { useExplorerRevealRequestStore } from "../explorerRevealRequestStore";
+import { requestExplorerFileReveal } from "../explorerRevealRequestStore";
 import { acknowledgeAppPresentation } from "../wsNativeApi";
 
 export async function presentAppRequest(
@@ -17,15 +17,12 @@ export async function presentAppRequest(
     const fileTabs = useWorkspaceFileTabsStore.getState();
     const target = request.target;
     if (target.kind === "file") {
-      fileTabs.openFile(request.threadId, target.path);
-      useExplorerRevealRequestStore
-        .getState()
-        .requestReveal(
-          request.threadId,
-          target.path,
-          target.path,
-          target.line === undefined ? undefined : { lineNumber: target.line, column: 1 },
-        );
+      fileTabs.openFile(
+        request.threadId,
+        target.path,
+        target.line === undefined ? undefined : { position: { lineNumber: target.line } },
+      );
+      requestExplorerFileReveal(request.threadId, target.path);
     } else if (target.kind === "diff") {
       if (target.turnId)
         useMainWorkspaceStore.getState().openReview(request.threadId, {

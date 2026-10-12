@@ -20,10 +20,22 @@ interface WorkspaceFileTabs {
   sourceControlView: SourceControlView;
 }
 
+interface WorkspaceFileRevealPosition {
+  filePath: string;
+  lineNumber: number;
+  column?: number;
+  requestId: number;
+}
+
 interface WorkspaceFileTabsStore {
   tabsByThreadId: Record<string, WorkspaceFileTabs | undefined>;
+  revealByThreadId: Record<string, WorkspaceFileRevealPosition | undefined>;
   setSourceControlView: (threadId: ThreadId, view: SourceControlView) => void;
-  openFile: (threadId: ThreadId, path: string, options?: { preview?: boolean }) => void;
+  openFile: (
+    threadId: ThreadId,
+    path: string,
+    options?: { preview?: boolean; position?: { lineNumber: number; column?: number } },
+  ) => void;
   pinFile: (threadId: ThreadId, path: string) => void;
   closeFile: (threadId: ThreadId, path: string) => void;
 }
@@ -87,10 +99,13 @@ function commit(
   });
 }
 
+let nextRevealRequestId = 0;
+
 export const useWorkspaceFileTabsStore = create<WorkspaceFileTabsStore>()(
   persist(
     (set) => ({
       tabsByThreadId: {},
+      revealByThreadId: {},
       setSourceControlView: (threadId, sourceControlView) =>
         commit(set, threadId, (state) =>
           state.sourceControlView === sourceControlView ? state : { ...state, sourceControlView },
@@ -122,6 +137,15 @@ export const useWorkspaceFileTabsStore = create<WorkspaceFileTabsStore>()(
             ...(state.previewFilePath === path ? { previewFilePath: null } : {}),
           };
         });
+        const position = options?.position;
+        set((store) => ({
+          revealByThreadId: {
+            ...store.revealByThreadId,
+            [threadId]: position
+              ? { ...position, filePath: path, requestId: ++nextRevealRequestId }
+              : undefined,
+          },
+        }));
         useMainWorkspaceStore.getState().selectTab(threadId, `file:${path}`);
       },
       pinFile: (threadId, path) =>
@@ -162,4 +186,8 @@ export const useWorkspaceFileTabsStore = create<WorkspaceFileTabsStore>()(
 export function selectWorkspaceFileTabs(threadId: ThreadId | null) {
   return (store: WorkspaceFileTabsStore) =>
     (threadId ? store.tabsByThreadId[threadId] : undefined) ?? DEFAULT_WORKSPACE_FILE_TABS;
+}
+
+export function selectWorkspaceFileReveal(threadId: ThreadId) {
+  return (store: WorkspaceFileTabsStore) => store.revealByThreadId[threadId];
 }

@@ -15,7 +15,11 @@ import {
   subscribeDirtyWorkspaceEditors,
 } from "~/lib/workspaceEditorSession";
 import { selectMainWorkspace, useMainWorkspaceStore } from "~/mainWorkspaceStore";
-import { selectWorkspaceFileTabs, useWorkspaceFileTabsStore } from "~/workspaceFileTabsStore";
+import {
+  selectWorkspaceFileReveal,
+  selectWorkspaceFileTabs,
+  useWorkspaceFileTabsStore,
+} from "~/workspaceFileTabsStore";
 import { useStore } from "~/store";
 import { cn } from "~/lib/utils";
 import { WorkspaceFilePreview } from "../WorkspaceFilePreview";
@@ -33,14 +37,6 @@ export function MainWorkspace(props: {
   threadId: ThreadId;
   projectId: ProjectId | null;
   workspaceRoot: string | null;
-  revealPosition?:
-    | {
-        filePath: string;
-        lineNumber: number;
-        column?: number;
-        requestId: number;
-      }
-    | undefined;
   onReferenceInChat: (reference: ChatFileReference) => void;
   children: ReactNode;
 }) {
@@ -50,6 +46,7 @@ export function MainWorkspace(props: {
   const pinReview = useMainWorkspaceStore((store) => store.pinReview);
   const closeReview = useMainWorkspaceStore((store) => store.closeReview);
   const fileTabs = useWorkspaceFileTabsStore(selectWorkspaceFileTabs(props.threadId));
+  const revealPosition = useWorkspaceFileTabsStore(selectWorkspaceFileReveal(props.threadId));
   const closeFile = useWorkspaceFileTabsStore((store) => store.closeFile);
   const openFile = useWorkspaceFileTabsStore((store) => store.openFile);
   const pinFile = useWorkspaceFileTabsStore((store) => store.pinFile);
@@ -192,9 +189,7 @@ export function MainWorkspace(props: {
               editable
               onEdit={() => pinFile(props.threadId, filePath)}
               liveRevalidationEnabled
-              revealPosition={
-                props.revealPosition?.filePath === filePath ? props.revealPosition : undefined
-              }
+              revealPosition={revealPosition?.filePath === filePath ? revealPosition : undefined}
               onReferenceInChat={props.onReferenceInChat}
             />
           ) : null}

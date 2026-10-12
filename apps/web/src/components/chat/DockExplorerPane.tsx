@@ -1,54 +1,29 @@
-import { LayoutAlignLeftIcon } from "~/lib/icons";
-import { useEffect, useId, useState, useCallback, useSyncExternalStore } from "react";
+import { useEffect, useState, useCallback, useSyncExternalStore } from "react";
 import type { ThreadId } from "@glade/contracts/core/baseSchemas";
 import { isNormalizedWindowsAbsolutePath } from "@glade/shared/platform/path";
 import { useQueryClient } from "@tanstack/react-query";
 import { directoryChain, useExplorerRevealRequestStore } from "~/explorerRevealRequestStore";
 import type { ChatFileReference } from "~/lib/chatReferences";
-import { basenameOfPath } from "~/file-icons";
 import { selectWorkspaceFileTabs, useWorkspaceFileTabsStore } from "~/workspaceFileTabsStore";
 import {
   dirtyWorkspaceEditorPaths,
   dirtyWorkspaceEditorRevision,
   subscribeDirtyWorkspaceEditors,
 } from "~/lib/workspaceEditorSession";
-import { PanelTabBar } from "./PanelTabBar";
-import { FileEntryIcon } from "./FileEntryIcon";
 import { projectListDirectoriesQueryOptions } from "~/lib/projectReactQuery";
-import { WorkspaceFilePreview } from "../WorkspaceFilePreview";
-import { PanelStateMessage } from "./PanelStateMessage";
-import { IconButton } from "../ui/icon-button";
-import { disclosureWidthClassName } from "~/lib/disclosureMotion";
-import { cn } from "~/lib/utils";
 import { WorkspaceExplorerSidebar } from "./workspaceExplorer";
-const DOCK_EXPLORER_SIDEBAR_CLASS = "h-full min-h-0 shrink-0 bg-[var(--app-content-surface)]";
 export const DockExplorerPane = function DockExplorerPane(props: {
-  navigationOnly?: boolean;
-  onRevealPosition?: (
-    position:
-      | {
-          filePath: string;
-          lineNumber: number;
-          column?: number;
-          requestId: number;
-        }
-      | undefined,
-  ) => void;
   threadId: ThreadId;
   workspaceRoot: string | null;
   isVisible: boolean;
   onReferenceInChat?: ((reference: ChatFileReference) => void) | undefined;
 }) {
-  const { onRevealPosition } = props;
   const queryClient = useQueryClient();
-  const sidebarId = useId();
-  const [sidebarOpen, setSidebarOpen] = useState(true);
   const fileTabs = useWorkspaceFileTabsStore((state) =>
     selectWorkspaceFileTabs(props.threadId)(state),
   );
   const openFile = useWorkspaceFileTabsStore((state) => state.openFile);
   const closeFile = useWorkspaceFileTabsStore((state) => state.closeFile);
-  const selectedFilePath = fileTabs.activeFilePath;
   const subscribeDirty = useCallback(
     (listener: () => void) => subscribeDirtyWorkspaceEditors(queryClient, listener),
     [queryClient],
@@ -62,11 +37,6 @@ export const DockExplorerPane = function DockExplorerPane(props: {
     () => new Set<string>(),
   );
   const [codeQuery, setCodeQuery] = useState("");
-  const [revealPosition, setRevealPosition] = useState<{
-    lineNumber: number;
-    column?: number;
-    requestId: number;
-  }>();
   const revealRequest = useExplorerRevealRequestStore(
     (state) => state.requestsByThreadId[props.threadId],
   );
@@ -74,25 +44,6 @@ export const DockExplorerPane = function DockExplorerPane(props: {
   useEffect(() => {
     if (!revealRequest) return;
     setCodeQuery("");
-    const nextPosition = revealRequest.position
-      ? {
-          ...revealRequest.position,
-          requestId: revealRequest.nonce,
-        }
-      : undefined;
-    setRevealPosition(nextPosition);
-    onRevealPosition?.(
-      nextPosition && revealRequest.filePath
-        ? {
-            ...nextPosition,
-            filePath: revealRequest.filePath,
-          }
-        : undefined,
-    );
-    if (revealRequest.filePath)
-      openFile(props.threadId, revealRequest.filePath, {
-        preview: props.navigationOnly === true && revealRequest.preview === true,
-      });
     const workspaceRoot = props.workspaceRoot;
     let cancelled = false;
     const expand = (paths: string[]) => {
@@ -131,29 +82,17 @@ export const DockExplorerPane = function DockExplorerPane(props: {
     return () => {
       cancelled = true;
     };
-  }, [
-    revealRequest,
-    props.workspaceRoot,
-    props.navigationOnly,
-    props.threadId,
-    queryClient,
-    openFile,
-    acknowledgeRequest,
-    onRevealPosition,
-  ]);
+  }, [revealRequest, props.workspaceRoot, props.threadId, queryClient, acknowledgeRequest]);
   const handleSelectFile = (
     path: string,
-    options?: {
-      preview?: boolean;
-    },
+    options?: { preview?: boolean; position?: { lineNumber: number } },
   ) => {
     openFile(props.threadId, path, {
-      preview: props.navigationOnly === true && options?.preview === true && !dirtyPaths.has(path),
+      preview: options?.preview === true && !dirtyPaths.has(path),
+      ...(options?.position ? { position: options.position } : {}),
     });
     const parent = path.includes("/") ? path.slice(0, path.lastIndexOf("/")) : "";
     setExpandedDirectories((current) => new Set([...current, ...directoryChain(parent)]));
-    setRevealPosition(undefined);
-    onRevealPosition?.(undefined);
   };
   const handleToggleDirectory = (path: string) => {
     setExpandedDirectories((current) => {
@@ -167,105 +106,32 @@ export const DockExplorerPane = function DockExplorerPane(props: {
     });
   };
   return (
-    <div className="flex h-full min-h-0 w-full flex-col">
-      {!props.navigationOnly ? (
-        <PanelTabBar
-          label="Explorer files"
-          activeId={selectedFilePath}
-          onSelect={(path) => {
-            openFile(props.threadId, path);
-            setRevealPosition(undefined);
-          }}
-          tabs={fileTabs.filePaths.map((path) => ({
-            id: path,
-            label: basenameOfPath(path),
-            icon: <FileEntryIcon pathValue={path} kind="file" className="size-3.5" />,
-            trailing: dirtyPaths.has(path) ? <span aria-label="Unsaved changes">●</span> : null,
-            onClose: () => closeFile(props.threadId, path),
-          }))}
-        />
-      ) : null}
-      <div className="flex min-h-0 min-w-0 flex-1">
-        <div
-          id={sidebarId}
-          className={cn(
-            props.navigationOnly ? "w-full" : disclosureWidthClassName(sidebarOpen, "w-44"),
-            DOCK_EXPLORER_SIDEBAR_CLASS,
-          )}
-          inert={!sidebarOpen}
-          aria-hidden={!sidebarOpen}
-        >
-          <div
-            className={cn(
-              "flex h-full min-h-0 flex-col",
-              props.navigationOnly ? "w-full" : "w-44 border-r border-border/65",
-            )}
-          >
-            <WorkspaceExplorerSidebar
-              key={props.workspaceRoot}
-              isVisible={props.isVisible && sidebarOpen}
-              workspaceRoot={props.workspaceRoot}
-              selectedFilePath={selectedFilePath}
-              expandedDirectories={expandedDirectories}
-              query={codeQuery}
-              onQueryChange={setCodeQuery}
-              onSelectMatch={(match) => {
-                handleSelectFile(match.path, {
-                  preview: true,
-                });
-                const position = {
-                  lineNumber: match.lineNumber,
-                  requestId: Date.now(),
-                };
-                setRevealPosition(position);
-                onRevealPosition?.({
-                  ...position,
-                  filePath: match.path,
-                });
-              }}
-              containerClassName="flex min-h-0 flex-1 flex-col"
-              onSelectFile={handleSelectFile}
-              onDeleted={(path) => {
-                for (const file of fileTabs.filePaths) {
-                  if ((file === path || file.startsWith(`${path}/`)) && !dirtyPaths.has(file))
-                    closeFile(props.threadId, file);
-                }
-              }}
-              onToggleDirectory={handleToggleDirectory}
-              onReferenceInChat={props.onReferenceInChat}
-            />
-          </div>
-        </div>
-        {!props.navigationOnly ? (
-          <div className="flex min-h-0 min-w-0 flex-1">
-            <WorkspaceFilePreview
-              headerLeading={
-                <IconButton
-                  label={sidebarOpen ? "Hide Explorer sidebar" : "Show Explorer sidebar"}
-                  tooltip={sidebarOpen ? "Hide Explorer sidebar" : "Show Explorer sidebar"}
-                  aria-expanded={sidebarOpen}
-                  aria-controls={sidebarId}
-                  onClick={() => setSidebarOpen((open) => !open)}
-                  className="shrink-0"
-                >
-                  <LayoutAlignLeftIcon className="size-3.5" />
-                </IconButton>
-              }
-              workspaceRoot={props.workspaceRoot}
-              filePath={selectedFilePath}
-              revealPosition={revealPosition}
-              liveRevalidationEnabled={props.isVisible}
-              editable
-              emptyState={
-                <PanelStateMessage density="compact" fill="flex">
-                  <p>Select a file from the tree to view it.</p>
-                </PanelStateMessage>
-              }
-              onReferenceInChat={props.onReferenceInChat}
-            />
-          </div>
-        ) : null}
-      </div>
+    <div className="flex h-full min-h-0 w-full flex-col bg-[var(--app-content-surface)]">
+      <WorkspaceExplorerSidebar
+        key={props.workspaceRoot}
+        isVisible={props.isVisible}
+        workspaceRoot={props.workspaceRoot}
+        selectedFilePath={fileTabs.activeFilePath}
+        expandedDirectories={expandedDirectories}
+        query={codeQuery}
+        onQueryChange={setCodeQuery}
+        onSelectMatch={(match) =>
+          handleSelectFile(match.path, {
+            preview: true,
+            position: { lineNumber: match.lineNumber },
+          })
+        }
+        containerClassName="flex min-h-0 flex-1 flex-col"
+        onSelectFile={handleSelectFile}
+        onDeleted={(path) => {
+          for (const file of fileTabs.filePaths) {
+            if ((file === path || file.startsWith(`${path}/`)) && !dirtyPaths.has(file))
+              closeFile(props.threadId, file);
+          }
+        }}
+        onToggleDirectory={handleToggleDirectory}
+        onReferenceInChat={props.onReferenceInChat}
+      />
     </div>
   );
 };

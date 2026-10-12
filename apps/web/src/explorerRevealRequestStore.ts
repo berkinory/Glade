@@ -3,24 +3,13 @@ import { create } from "zustand";
 
 interface ExplorerRevealRequest {
   path: string;
-
-  filePath?: string;
-  preview?: boolean;
-
-  position?: { lineNumber: number; column: number };
   nonce: number;
 }
 
 interface ExplorerRevealRequestState {
   acknowledgeRequest: (threadId: ThreadId, nonce: number) => void;
   requestsByThreadId: Record<string, ExplorerRevealRequest>;
-  requestReveal: (
-    threadId: ThreadId,
-    path: string,
-    filePath?: string,
-    position?: { lineNumber: number; column: number },
-    preview?: boolean,
-  ) => void;
+  requestReveal: (threadId: ThreadId, path: string) => void;
 }
 
 let nextRevealNonce = 0;
@@ -34,17 +23,11 @@ export const useExplorerRevealRequestStore = create<ExplorerRevealRequestState>(
       delete requestsByThreadId[threadId];
       return { requestsByThreadId };
     }),
-  requestReveal: (threadId, path, filePath, position, preview) => {
+  requestReveal: (threadId, path) => {
     set((state) => ({
       requestsByThreadId: {
         ...state.requestsByThreadId,
-        [threadId]: {
-          path,
-          ...(position ? { position } : {}),
-          ...(filePath ? { filePath } : {}),
-          ...(preview ? { preview } : {}),
-          nonce: ++nextRevealNonce,
-        },
+        [threadId]: { path, nonce: ++nextRevealNonce },
       },
     }));
   },
@@ -54,16 +37,10 @@ export function requestExplorerReveal(threadId: ThreadId, path: string): void {
   useExplorerRevealRequestStore.getState().requestReveal(threadId, path);
 }
 
-export function requestExplorerFileReveal(
-  threadId: ThreadId,
-  filePath: string,
-  position?: { lineNumber: number; column: number },
-  options?: { preview?: boolean },
-): void {
+// Expands the tree down to a file's folder without opening it or showing the explorer.
+export function requestExplorerFileReveal(threadId: ThreadId, filePath: string): void {
   const parent = filePath.includes("/") ? filePath.slice(0, filePath.lastIndexOf("/")) : "";
-  useExplorerRevealRequestStore
-    .getState()
-    .requestReveal(threadId, parent, filePath, position, options?.preview);
+  useExplorerRevealRequestStore.getState().requestReveal(threadId, parent);
 }
 
 export function directoryChain(path: string): string[] {
