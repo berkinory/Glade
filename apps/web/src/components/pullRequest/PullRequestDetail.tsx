@@ -3,6 +3,7 @@ import type { GitPullRequestDetail } from "@glade/contracts/git/pullRequests";
 import type { GitPullRequestReviewResult } from "@glade/contracts/git/pullRequestReview";
 import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
+import { useAppSettings } from "~/appSettings";
 import { GitHubIcon } from "~/lib/brandIcons";
 import { copyTextToClipboard } from "~/lib/clipboard";
 import {
@@ -202,7 +203,7 @@ export function PullRequestDetail(props: {
   onOpenFile: (path: string) => void;
 }) {
   const [section, setSection] = useState<Section>("summary");
-  const [diffStyle, setDiffStyle] = useState<"unified" | "split">("unified");
+  const diffStyle = useAppSettings().settings.diffLayout;
   const [confirmingMerge, setConfirmingMerge] = useState(false);
   const detail = useQuery(gitPullRequestDetailQueryOptions(props.cwd, props.number));
   const isOpen = detail.data?.state === "open";
@@ -237,9 +238,7 @@ export function PullRequestDetail(props: {
         actions={
           ready ? (
             <span className="flex items-center gap-1">
-              {section === "changes" ? (
-                <DiffLayoutToggle value={diffStyle} onChange={setDiffStyle} />
-              ) : null}
+              {section === "changes" ? <DiffLayoutToggle /> : null}
               <IconButton
                 size="icon-xs"
                 label="Open on GitHub"

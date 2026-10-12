@@ -215,6 +215,7 @@ const AppSettingsSchema = Schema.Struct({
   confirmThreadArchive: Schema.Boolean.pipe(withDefaults(() => false)),
   confirmTerminalTabClose: Schema.Boolean.pipe(withDefaults(() => true)),
   diffWordWrap: Schema.Boolean.pipe(withDefaults(() => false)),
+  diffLayout: Schema.Literals(["unified", "split"]).pipe(withDefaults(() => "unified" as const)),
   hideIgnoredFiles: Schema.Boolean.pipe(withDefaults(() => false)),
   editorCaretStyle: EditorCaretStyle.pipe(withDefaults(() => DEFAULT_EDITOR_CARET_STYLE)),
   showPullRequestDiffColors: Schema.Boolean.pipe(withDefaults(() => true)),

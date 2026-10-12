@@ -1,6 +1,7 @@
 import type { ThreadId, TurnId } from "@glade/contracts/core/baseSchemas";
 import { useQuery } from "@tanstack/react-query";
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
+import { useAppSettings } from "~/appSettings";
 import { useStore } from "~/store";
 import { createThreadSelector } from "~/storeSelectors";
 import { inferCheckpointTurnCountByTurnId } from "~/session-logic";
@@ -40,7 +41,7 @@ export function SourceControlTurnChanges(props: {
   );
   const patch = getRenderablePatch(query.data?.diff, `turn:${props.turnId}`);
   const { resolvedTheme } = useTheme();
-  const [diffStyle, setDiffStyle] = useState<"unified" | "split">("unified");
+  const diffStyle = useAppSettings().settings.diffLayout;
   const currentChanges = (
     <Button size="sm" variant="outline" onClick={props.onCurrentChanges}>
       Current changes
@@ -65,7 +66,7 @@ export function SourceControlTurnChanges(props: {
     <div className="flex h-full min-h-0 flex-col">
       <div className="flex flex-wrap items-center gap-2 border-b border-border/70 p-2">
         <span className="min-w-0 flex-1 text-ui-sm">Turn changes · {count ?? "unavailable"}</span>
-        <DiffLayoutToggle value={diffStyle} onChange={setDiffStyle} />
+        <DiffLayoutToggle />
         {currentChanges}
       </div>
       {query.error || !turn || count === undefined ? (
