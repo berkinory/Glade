@@ -10,13 +10,8 @@ export function useTimelineActionsController({
   state: ReturnType<typeof useTimelineStateController>;
   props: MessagesTimelineProps;
 }) {
-  const { setFileChangesExpanded, setEditingUserMessageId, setSubmittingEditedUserMessageId } =
-    state;
+  const { setEditingUserMessageId, setSubmittingEditedUserMessageId } = state;
   const { onEditUserMessage } = props;
-
-  const toggleFileChangesExpanded = useCallback(() => {
-    setFileChangesExpanded((current) => !current);
-  }, [setFileChangesExpanded]);
 
   const cancelUserMessageEdit = useCallback(() => {
     setEditingUserMessageId(null);
@@ -53,7 +48,6 @@ export function useTimelineActionsController({
     [cancelUserMessageEdit, onEditUserMessage, setSubmittingEditedUserMessageId],
   );
   return {
-    toggleFileChangesExpanded,
     cancelUserMessageEdit,
     startUserMessageEdit,
     submitUserMessageEdit,

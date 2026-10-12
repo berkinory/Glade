@@ -10,7 +10,6 @@ import {
   useState,
   type CSSProperties,
 } from "react";
-import * as Schema from "effect/Schema";
 import { DEFAULT_CHAT_FONT_SIZE_PX, normalizeChatFontSizePx } from "~/appSettings";
 import {
   getChatMessageFooterTextStyle,
@@ -25,7 +24,6 @@ import { findLastLiveWorkGroupId } from "~/components/chat/MessagesTimeline.logi
 import { type ThreadFindMatch } from "~/components/chat/threadFind.logic";
 import { useTailAnchorScroll } from "~/components/chat/useTailAnchorScroll";
 import { useTimelineRowOverlapGuard } from "~/components/chat/useTimelineRowOverlapGuard";
-import { useLocalStorage } from "~/hooks/useLocalStorage";
 import { getAppTypographyScale } from "~/lib/appTypography";
 import { cn } from "~/lib/utils";
 import {
@@ -42,8 +40,6 @@ import {
 } from "./timelineTransitions";
 
 import type { MessagesTimelineProps } from "./timelineSupport";
-const FILE_CHANGES_EXPANDED_KEY = "glade:edited-files-expanded";
-
 export function useTimelineStateController(props: MessagesTimelineProps) {
   const {
     isWorking,
@@ -193,12 +189,17 @@ export function useTimelineStateController(props: MessagesTimelineProps) {
     [setToolGroupSummaryOverrides],
   );
 
-  // One remembered choice for every turn's edited files card, across chats and restarts.
-  const [fileChangesExpanded, setFileChangesExpanded] = useLocalStorage(
-    FILE_CHANGES_EXPANDED_KEY,
-    true,
-    Schema.Boolean,
+  // Only the latest turn's edited files card starts open; a card the user toggled keeps that choice.
+  const [fileChangesOpenOverrides, setFileChangesOpenOverrides] = useState<Record<string, boolean>>(
+    {},
   );
+
+  const setFileChangesOpen = (turnId: string, open: boolean) => {
+    setFileChangesOpenOverrides((current) => ({
+      ...current,
+      [turnId]: open,
+    }));
+  };
 
   const [expandedUserMessagesById, setExpandedUserMessagesById] = useState<Record<string, boolean>>(
     {},
@@ -261,6 +262,16 @@ export function useTimelineStateController(props: MessagesTimelineProps) {
   );
 
   const rows = useStableRows(rawRows);
+
+  const latestFileChangesTurnId = useMemo(() => {
+    for (let index = rows.length - 1; index >= 0; index -= 1) {
+      const row = rows[index]!;
+      if (row.kind === "message" && (row.assistantTurnDiffSummary?.files.length ?? 0) > 0) {
+        return row.assistantTurnDiffSummary!.turnId;
+      }
+    }
+    return null;
+  }, [rows]);
 
   const canRenderForkSourceDivider = forkSource !== null && onOpenThread !== undefined;
 
@@ -382,11 +393,12 @@ export function useTimelineStateController(props: MessagesTimelineProps) {
       enteringMessageRowIds,
       expandedCollapsedWork,
       expandedUserMessagesById,
-      fileChangesExpanded,
+      fileChangesOpenOverrides,
       findHighlight,
       firstUserMessageId,
       highlightedMessageId,
       lastLiveWorkGroupId,
+      latestFileChangesTurnId,
       pinnedMessageIds,
       settledTurnCollapseTransitions,
       submittingEditedUserMessageId,
@@ -398,11 +410,12 @@ export function useTimelineStateController(props: MessagesTimelineProps) {
       enteringMessageRowIds,
       expandedCollapsedWork,
       expandedUserMessagesById,
-      fileChangesExpanded,
+      fileChangesOpenOverrides,
       findHighlight,
       firstUserMessageId,
       highlightedMessageId,
       lastLiveWorkGroupId,
+      latestFileChangesTurnId,
       pinnedMessageIds,
       settledTurnCollapseTransitions,
       submittingEditedUserMessageId,
@@ -430,8 +443,9 @@ export function useTimelineStateController(props: MessagesTimelineProps) {
     setCollapsedWorkExpanded,
     toolGroupSummaryOverrides,
     setToolGroupSummaryOpen,
-    fileChangesExpanded,
-    setFileChangesExpanded,
+    fileChangesOpenOverrides,
+    setFileChangesOpen,
+    latestFileChangesTurnId,
     expandedUserMessagesById,
     setExpandedUserMessagesById,
     editingUserMessageId,

@@ -41,7 +41,7 @@ import { formatDayAwareTimestamp } from "~/timestampFormat";
 import { isFileChangeWorkLogEntry, type WorkLogEntry } from "~/workLog.types";
 import { collectAbsoluteFilePathsFromWorkEntries } from "./timelineTransitions";
 import type { TimelineController } from "./useTimelineController";
-const EDITED_FILE_LIST_VISIBLE_ROWS = 6.5;
+const EDITED_FILE_LIST_VISIBLE_ROWS = 5.5;
 export function renderTimelineAssistantMessage(
   controller: TimelineController,
   row: Extract<
@@ -62,7 +62,9 @@ export function renderTimelineAssistantMessage(
     chatTypographyStyle,
     findHighlight,
     setCollapsedWorkExpanded,
-    fileChangesExpanded,
+    fileChangesOpenOverrides,
+    setFileChangesOpen,
+    latestFileChangesTurnId,
     editorKeybindings,
     installedEditors,
     chatMessageFooterStyle,
@@ -85,7 +87,6 @@ export function renderTimelineAssistantMessage(
     resolvedTheme,
   } = controller.props;
   const { tailContentRowId, scrollTailExpansionToEnd } = controller.navigation;
-  const { toggleFileChangesExpanded } = controller.actions;
   return (() => {
     const messageText = resolveAssistantMessageDisplayText(row);
     const buildWorkDisplay = (workEntries: WorkLogEntry[], workGroupId: string | null) => {
@@ -491,6 +492,9 @@ export function renderTimelineAssistantMessage(
             }
             const checkpointFiles = turnSummary.files;
             if (checkpointFiles.length === 0) return null;
+            const fileChangesExpanded =
+              fileChangesOpenOverrides[turnSummary.turnId] ??
+              turnSummary.turnId === latestFileChangesTurnId;
             const checkpointTurnCount = turnSummary.checkpointTurnCount;
             const checkpointTurnCounts =
               turnSummary.checkpointTurnCounts ??
@@ -607,7 +611,7 @@ export function renderTimelineAssistantMessage(
                         if (!fileChangesExpanded && isTailContentRow) {
                           scrollTailExpansionToEnd();
                         }
-                        toggleFileChangesExpanded();
+                        setFileChangesOpen(turnSummary.turnId, !fileChangesExpanded);
                       }}
                       data-scroll-anchor-ignore={isTailContentRow ? true : undefined}
                     >
@@ -619,7 +623,7 @@ export function renderTimelineAssistantMessage(
                   </div>
                 </div>
                 <DisclosureRegion open={fileChangesExpanded}>
-                  {/* Six rows and a sliver of the seventh, so a long list reads as scrollable. */}
+                  {/* A half row at the bottom shows that a long list scrolls. */}
                   <div
                     className="scroll-fade-y overflow-y-auto"
                     style={{
