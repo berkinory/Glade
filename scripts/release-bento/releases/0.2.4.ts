@@ -1,13 +1,12 @@
 import {
-  actionSpinner,
   avatar,
   brand,
   copy,
   fileIcon,
-  githubIcon,
   icon,
+  loader,
+  logo,
   stats,
-  subagentSpinner,
   toggle,
   type ReleaseBento,
 } from "../kit.ts";
@@ -16,7 +15,7 @@ const pullRequests = `
 <section class="tile pr">
   ${copy("Pull requests, start to merge", "Checks, review comments and failing logs next to your chat. Fix hands the log to the agent.")}
   <div class="panel pr-panel">
-    <div class="pr-title"><span class="ok">${icon("GitPullRequest", 16)}</span><span><span class="dim">#482</span> Pair devices over Tailscale</span><span class="grow"></span><span class="dim">${githubIcon()}</span></div>
+    <div class="pr-title"><span class="ok">${icon("GitPullRequest", 16)}</span><span><span class="dim">#482</span> Pair devices over Tailscale</span><span class="grow"></span><span class="dim">${logo("github")}</span></div>
     <div class="pills">
       <span class="pill"><span class="ok">+412</span><span class="bad">−86</span></span>
       <span class="pill"><span class="bad">${icon("X", 13)}</span>2 failing</span>
@@ -62,7 +61,7 @@ const subagents = `
 <section class="tile subagents">
   ${copy("Subagents on one card", "Live step, time and tokens for every subagent. Click one to open its chat.")}
   <div class="panel sa-panel">
-    <div class="sa-head">${subagentSpinner()}<span>3 subagents · 2 running · 1 done · 1m 12s</span>${icon("ChevronDown", 14, "faint")}</div>
+    <div class="sa-head">${loader("subagent", 14)}<span>3 subagents · 2 running · 1 done · 1m 12s</span>${icon("ChevronDown", 14, "faint")}</div>
     <div class="tree">
       ${subagentRow("rose", "Trace pairing flow", "Sonnet 5.5 · High", "Read pairingTokens.ts", "Running · 1m 12s", "18k tokens · 12 tool calls")}
       ${subagentRow("amber", "Audit token expiry", "Haiku 5.5 · Medium", "Searched for expiresAt", "Running · 48s", "9.4k tokens · 7 tool calls")}
@@ -100,7 +99,7 @@ const git = `
   ${copy("Always the next Git step", "What comes next, why it can't run yet, and live progress.")}
   <div class="panel git-panel">
     <div class="ga"><span class="dim">${icon("GitCommitHorizontal", 16)}</span><div><div>Commit &amp; push</div><div class="xs dim">3 files changed · 1 to push</div></div><span class="grow"></span>${icon("ChevronDown", 13, "faint")}</div>
-    <div class="ga live">${actionSpinner()}<div><div>Pushing to origin/feat/remote-pairing…</div><div class="xs dim">Running for 4s</div></div><span class="grow"></span>${icon("ChevronDown", 13, "faint")}</div>
+    <div class="ga live">${loader("action")}<div><div>Pushing to origin/feat/remote-pairing…</div><div class="xs dim">Running for 4s</div></div><span class="grow"></span>${icon("ChevronDown", 13, "faint")}</div>
     <div class="sc"><span class="iconbtn">${icon("CloudDownload", 15)}</span><span class="btn sm">${icon("ArrowDown02", 12)}2 ${icon("ArrowUp02", 12)}1 Sync</span></div>
   </div>
 </section>`;

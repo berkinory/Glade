@@ -1,4 +1,5 @@
-// Renders a release's bento overview to the WebP image the app and the GitHub release show. Usage: node scripts/release-bento/render.ts X.Y.Z
+// Renders a release's bento overview to the AVIF image the app and the GitHub release show.
+// Usage on macOS with ImageMagick: node scripts/release-bento/render.ts X.Y.Z
 // The layout and copy come from releases/X.Y.Z.ts; the counts come from CHANGELOG.md.
 import { spawnSync } from "node:child_process";
 import { mkdirSync, mkdtempSync, readFileSync, rmSync } from "node:fs";

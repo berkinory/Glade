@@ -6,6 +6,7 @@ import ArrowRight02Glyph from "@hugeicons/core-free-icons/ArrowRight02Icon";
 import ArrowUp02Glyph from "@hugeicons/core-free-icons/ArrowUp02Icon";
 import ArrowUpRightGlyph from "@hugeicons/core-free-icons/ArrowUpRight01Icon";
 import BotGlyph from "@hugeicons/core-free-icons/BotIcon";
+import Brain03Glyph from "@hugeicons/core-free-icons/Brain03Icon";
 import Bug01Glyph from "@hugeicons/core-free-icons/Bug01Icon";
 import ChevronDownGlyph from "@hugeicons/core-free-icons/ChevronDownIcon";
 import ChevronRightGlyph from "@hugeicons/core-free-icons/ChevronRightIcon";
@@ -14,16 +15,23 @@ import CloudDownloadGlyph from "@hugeicons/core-free-icons/CloudDownloadIcon";
 import CloudUploadGlyph from "@hugeicons/core-free-icons/CloudUploadIcon";
 import Comment01Glyph from "@hugeicons/core-free-icons/Comment01Icon";
 import ComputerTerminal01Glyph from "@hugeicons/core-free-icons/ComputerTerminal01Icon";
+import Copy01Glyph from "@hugeicons/core-free-icons/Copy01Icon";
 import File02Glyph from "@hugeicons/core-free-icons/File02Icon";
+import Folder01Glyph from "@hugeicons/core-free-icons/Folder01Icon";
 import GitCommitHorizontalGlyph from "@hugeicons/core-free-icons/GitCommitHorizontalIcon";
 import GitPullRequestGlyph from "@hugeicons/core-free-icons/GitPullRequestIcon";
 import LayoutAlignLeftGlyph from "@hugeicons/core-free-icons/LayoutAlignLeftIcon";
 import MagicWand01Glyph from "@hugeicons/core-free-icons/MagicWand01Icon";
 import PencilEdit02Glyph from "@hugeicons/core-free-icons/PencilEdit02Icon";
+import PlusMinusSquare01Glyph from "@hugeicons/core-free-icons/PlusMinusSquare01Icon";
 import RefreshCwGlyph from "@hugeicons/core-free-icons/RefreshCwIcon";
 import Search01Glyph from "@hugeicons/core-free-icons/Search01Icon";
+import ServerStack01Glyph from "@hugeicons/core-free-icons/ServerStack01Icon";
 import SparklesGlyph from "@hugeicons/core-free-icons/SparklesIcon";
+import SquarePenGlyph from "@hugeicons/core-free-icons/SquarePenIcon";
 import ToolsGlyph from "@hugeicons/core-free-icons/ToolsIcon";
+import TriangleAlertGlyph from "@hugeicons/core-free-icons/TriangleAlertIcon";
+import UndoGlyph from "@hugeicons/core-free-icons/UndoIcon";
 import XGlyph from "@hugeicons/core-free-icons/XIcon";
 import { GLADE_MARK_PATH, GLADE_MARK_VIEWBOX } from "../../apps/web/src/assets/gladeMark.ts";
 
@@ -52,6 +60,7 @@ const GLYPHS = {
   ArrowUp02: ArrowUp02Glyph,
   ArrowUpRight: ArrowUpRightGlyph,
   Bot: BotGlyph,
+  Brain: Brain03Glyph,
   Bug: Bug01Glyph,
   ChevronDown: ChevronDownGlyph,
   ChevronRight: ChevronRightGlyph,
@@ -60,16 +69,23 @@ const GLYPHS = {
   CloudUpload: CloudUploadGlyph,
   Comment: Comment01Glyph,
   ComputerTerminal: ComputerTerminal01Glyph,
+  Copy: Copy01Glyph,
   File02: File02Glyph,
+  Folder: Folder01Glyph,
   GitCommitHorizontal: GitCommitHorizontalGlyph,
   GitPullRequest: GitPullRequestGlyph,
   LayoutAlignLeft: LayoutAlignLeftGlyph,
   MagicWand: MagicWand01Glyph,
   PencilEdit02: PencilEdit02Glyph,
+  PlusMinusSquare: PlusMinusSquare01Glyph,
   RefreshCw: RefreshCwGlyph,
   Search: Search01Glyph,
+  ServerStack: ServerStack01Glyph,
   Sparkles: SparklesGlyph,
+  SquarePen: SquarePenGlyph,
   Tools: ToolsGlyph,
+  TriangleAlert: TriangleAlertGlyph,
+  Undo: UndoGlyph,
   X: XGlyph,
 } as const;
 
@@ -103,30 +119,62 @@ export function fileIcon(symbol: string, size = 14): string {
   return `<img src="${dataUri(join(WEB_PUBLIC, "symbols/files", `${symbol}.svg`))}" width="${size}" height="${size}" alt="">`;
 }
 
-export function githubIcon(size = 15): string {
-  const svg = readFileSync(join(WEB_PUBLIC, "brands/github_light.svg"), "utf8")
+const LOGOS = {
+  github: join(WEB_PUBLIC, "brands/github_light.svg"),
+  claude: join(WEB_PUBLIC, "brands/claude-ai-icon.svg"),
+  openai: join(import.meta.dirname, "../../apps/web/src/assets/brands/openai.svg"),
+} as const;
+
+/** A brand logo as the app shows it; GitHub and OpenAI take the text color. */
+export function logo(name: keyof typeof LOGOS, size = 15): string {
+  const svg = readFileSync(LOGOS[name], "utf8")
     .replace(/fill="#1b1f23"/g, 'fill="currentColor"')
-    .replace(/width="1024" height="1024"/, `width="${size}" height="${size}" class="ic"`);
-  return svg;
+    .replace(/<svg([^>]*?) fill="none"/, '<svg$1 fill="currentColor"')
+    .replace(/ width="\d+" height="\d+"/, "");
+  return svg.replace("<svg", `<svg class="ic" width="${size}" height="${size}"`);
 }
 
-// A still frame of the app's dot-matrix Spinner (apps/web/src/components/ui/spinner).
-function spinner(size: number, opacity: (row: number, col: number) => number): string {
-  const dots = Array.from({ length: 25 }, (_, index) => {
-    const row = Math.floor(index / 5);
-    const col = index % 5;
-    return `<circle cx="${2 + col * 4}" cy="${2 + row * 4}" r="1.35" opacity="${opacity(row, col).toFixed(2)}"/>`;
-  }).join("");
-  return `<svg class="ic" width="${size}" height="${size}" viewBox="0 0 20 20" fill="currentColor">${dots}</svg>`;
+/** The macOS app icon, rendered by scripts/generate-brand-assets.ts. */
+export function appIcon(appearance: "light" | "dark", size: number): string {
+  const file = appearance === "dark" ? "icon-dark.png" : "icon.png";
+  const png = readFileSync(join(import.meta.dirname, "../../apps/desktop/resources", file));
+  return `<img src="data:image/png;base64,${png.toString("base64")}" width="${size}" height="${size}" alt="">`;
 }
 
-export const subagentSpinner = (size = 14) =>
-  spinner(size, (row, col) => 0.2 + (1 - (Math.abs(row - 2) + Math.abs(col - 2)) / 4) * 0.72);
+// Still frames of the app's loaders (apps/web/src/components/ui/spinner.tsx).
+const ARC = 2 * Math.PI * 9;
+const LOADERS = {
+  action: `<g fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><circle r="9" stroke-opacity="0.14"/><circle r="9" stroke-dasharray="${ARC / 4} ${ARC}"/></g>`,
+  loading: [
+    [-9, -9, 1],
+    [1, -9, 0.7],
+    [-9, 1, 0.7],
+    [1, 1, 0.45],
+  ]
+    .map(
+      ([x, y, opacity]) =>
+        `<rect x="${x}" y="${y}" width="8" height="8" rx="1.4" fill="currentColor" opacity="${opacity}"/>`,
+    )
+    .join(""),
+  working:
+    '<rect x="-7" y="-7" width="14" height="14" rx="1.5" fill="none" stroke="currentColor" stroke-width="2.5"/>',
+  subagent: [
+    [0, 1],
+    [120, 0.68],
+    [240, 0.42],
+  ]
+    .map(
+      ([angle, opacity]) =>
+        `<circle cy="-7" r="3.4" fill="currentColor" opacity="${opacity}" transform="rotate(${angle})"/>`,
+    )
+    .join(""),
+  voice:
+    '<rect x="-10.5" y="-2.75" width="5.5" height="5.5" rx="2.75" fill="currentColor" opacity="0.38"/><rect x="-2.75" y="-7.5" width="5.5" height="15" rx="2.75" fill="currentColor"/><rect x="5" y="-2.75" width="5.5" height="5.5" rx="2.75" fill="currentColor" opacity="0.38"/>',
+} as const;
 
-export const actionSpinner = (size = 16) =>
-  spinner(size, (row, col) =>
-    row === 0 || row === 4 || col === 0 || col === 4 ? 0.2 + (((row + col) % 8) / 8) * 0.8 : 0.15,
-  );
+export function loader(variant: keyof typeof LOADERS, size = 16): string {
+  return `<svg class="ic" width="${size}" height="${size}" viewBox="-12 -12 24 24">${LOADERS[variant]}</svg>`;
+}
 
 // Glyphs and tones from apps/web/src/components/chat/SubagentAvatar.tsx.
 const AVATARS = {
