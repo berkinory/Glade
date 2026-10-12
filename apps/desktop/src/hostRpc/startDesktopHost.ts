@@ -14,7 +14,7 @@ import { BrowserViewSurface } from "../browser/browserViewSurface";
 import { dispatchComputerHost } from "../computer/computerHostDispatch";
 import { createComputerKillSwitch } from "../computer/computerKillSwitch";
 import type { CuaBinary } from "../computer/cuaBinary";
-import { startCuaHost, type CuaHost } from "../computer/cuaHost";
+import { createCuaHost, type CuaHost } from "../computer/cuaHost";
 import type { ComputerPermissions } from "../computer/cuaPermissions";
 import { startDesktopHostRpcServer } from "./desktopHostRpcServer";
 
@@ -29,7 +29,9 @@ export interface DesktopHost {
 }
 
 // Must run after Electron is ready: tabs create WebContentsViews on the browser partition, and the
-// macOS permission probes need the app's identity.
+// macOS permission probes need the app's identity. The backend waits only for the RPC path and
+// token, so nothing heavy runs here: the computer host waits for `computer.start()` and the
+// content blocker for the first tab.
 export async function startDesktopHost(input: {
   readonly gladePorts: () => ReadonlySet<number>;
   readonly mainWindow: () => BrowserWindow | null;
@@ -49,7 +51,6 @@ export async function startDesktopHost(input: {
     input.contentBlocker,
     input.log,
   );
-  blocker.start();
   const parking = createBrowserViewParking(process.platform, input.mainWindow);
   const tabs = new BrowserTabs({
     gladePorts: input.gladePorts,
@@ -68,7 +69,7 @@ export async function startDesktopHost(input: {
     onPressed: () => notify(COMPUTER_KILL_SWITCH_NOTIFICATION, {}),
     log: input.computer.log,
   });
-  const computer = startCuaHost({
+  const computer = createCuaHost({
     ...input.computer,
     publish: (connection) => {
       killSwitch.setEnabled(connection.state === "ready");

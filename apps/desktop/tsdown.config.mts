@@ -20,7 +20,11 @@ export default defineConfig([
     define: {
       __GLADE_WINDOWS_UPDATER_PUBLISHER__: JSON.stringify(windowsUpdaterPublisher),
     },
-    noExternal: (id) => id.startsWith("@glade/"),
+    // Effect is bundled so the host loads only the modules it uses instead of its whole barrel.
+    noExternal: (id) => id.startsWith("@glade/") || id === "effect" || id.startsWith("effect/"),
+    inlineOnly: ["effect"],
+    // Effect reads `import.meta.env` only as an optional source next to `process.env`.
+    checks: { emptyImportMeta: false },
   },
   {
     ...shared,

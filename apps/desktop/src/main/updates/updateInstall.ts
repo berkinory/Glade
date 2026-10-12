@@ -1,5 +1,5 @@
 import { app } from "electron";
-import { autoUpdater } from "electron-updater";
+import type { AppUpdater } from "electron-updater";
 import type { DesktopUpdateState } from "@glade/contracts/ipc/ipc";
 import { formatErrorMessage } from "../lifecycle/desktopLogging";
 import type { UpdateStatus, UpdateDownloadState, UpdateInstallState } from "./updateDomainState";
@@ -56,6 +56,7 @@ export function createUpdateInstall(input: {
 }) {
   const { status, download, install, activity, cache, recovery, lifecycle, version } = input;
   async function runDownloadedUpdateInstall(
+    autoUpdater: AppUpdater,
     preparationAttempt: UpdateInstallPreparationAttempt,
   ): Promise<{
     accepted: boolean;
@@ -158,7 +159,8 @@ export function createUpdateInstall(input: {
     accepted: boolean;
     completed: boolean;
   }> {
-    if (lifecycle.isQuitting() || !status.configured || status.state.status !== "downloaded") {
+    const { updater } = status;
+    if (lifecycle.isQuitting() || !updater || status.state.status !== "downloaded") {
       return { accepted: false, completed: false };
     }
     const preparationAttempt = install.preparation.begin();
@@ -169,7 +171,7 @@ export function createUpdateInstall(input: {
     try {
       // A retry must not retain the last failure while the new handoff is pending.
       activity.setUpdateState(reduceDesktopUpdateStateOnInstallStart(status.state));
-      return await runDownloadedUpdateInstall(preparationAttempt);
+      return await runDownloadedUpdateInstall(updater.autoUpdater, preparationAttempt);
     } finally {
       if (!install.handoffInFlight && install.preparing) {
         recovery.clearUpdaterInstallInFlightAfterError();

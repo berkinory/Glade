@@ -1,5 +1,5 @@
 import type { DesktopUpdateState } from "@glade/contracts/ipc/ipc";
-import type { CancellationToken } from "electron-updater";
+import type * as ElectronUpdater from "electron-updater";
 import type { UpdateArtifactIdentity } from "./updateArtifactIdentity";
 import type { UpdateInstallHandoffExpectation } from "./updateInstallMarker";
 
@@ -7,7 +7,8 @@ import { PendingUpdateCacheClearQueue } from "./updatePendingCache";
 import type { DownloadProgressSample } from "./updateState";
 
 export interface UpdateStatus {
-  configured: boolean;
+  // Loaded once auto-updates are configured and enabled; null until then.
+  updater: typeof ElectronUpdater | null;
   state: DesktopUpdateState;
   automaticActivitySuppressed: boolean;
   cacheDirectoryName: string | null;
@@ -27,7 +28,7 @@ export interface UpdateActivityState {
 export interface UpdateDownloadState {
   inFlight: boolean;
   stallTimer: NodeJS.Timeout | null;
-  cancellationToken: CancellationToken | null;
+  cancellationToken: ElectronUpdater.CancellationToken | null;
   rejectStall: ((error: Error) => void) | null;
   lastProgressSample: DownloadProgressSample | null;
   artifact: { readonly version: string; readonly identity: UpdateArtifactIdentity } | null;
@@ -54,7 +55,7 @@ export interface UpdateCancellationState {
 
 export function createUpdateDomainState(initialState: DesktopUpdateState) {
   const status: UpdateStatus = {
-    configured: false,
+    updater: null,
     state: initialState,
     automaticActivitySuppressed: false,
     cacheDirectoryName: null,

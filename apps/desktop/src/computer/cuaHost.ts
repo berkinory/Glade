@@ -9,6 +9,8 @@ import { createWindowsCuaDaemon, type CuaDaemon } from "./cuaWindowsDaemon";
 
 export interface CuaHost {
   readonly connection: () => ComputerConnection;
+  // Starts watching the OS grants and runs the driver while they are present.
+  readonly start: () => void;
   // Re-reads the OS grants now instead of waiting for the next poll.
   readonly refresh: () => void;
   readonly stop: () => Promise<void>;
@@ -38,7 +40,7 @@ const errorMessage = (error: unknown) => {
 // Owns the embedded Cua daemon for the app's lifetime. Only this (permission-owning) process may
 // start it; the server receives the MCP launch spec of each generation and runs the proxy itself.
 // Every transition runs on one promise chain so a poll, a crash restart and quit never interleave.
-export function startCuaHost(input: {
+export function createCuaHost(input: {
   readonly binary: Promise<CuaBinary>;
   readonly permissions: ComputerPermissions;
   readonly hostBundleId: string;
@@ -175,16 +177,20 @@ export function startCuaHost(input: {
     await launch(false);
   };
 
-  void serialize(checkPermissions);
-  const poll = setInterval(() => void serialize(checkPermissions), PERMISSION_POLL_MS);
+  let poll: NodeJS.Timeout | null = null;
 
   return {
     connection: () => current,
+    start: () => {
+      if (stopped || poll) return;
+      poll = setInterval(() => void serialize(checkPermissions), PERMISSION_POLL_MS);
+      void serialize(checkPermissions);
+    },
     refresh: () => void serialize(checkPermissions),
     stop: async () => {
       if (stopped) return chain;
       stopped = true;
-      clearInterval(poll);
+      if (poll) clearInterval(poll);
       if (restartTimer) clearTimeout(restartTimer);
       await serialize(async () => {
         const driver = host;

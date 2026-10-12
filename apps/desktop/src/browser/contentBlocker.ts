@@ -1,4 +1,4 @@
-import { ElectronBlocker } from "@ghostery/adblocker-electron";
+import type { ElectronBlocker } from "@ghostery/adblocker-electron";
 import {
   ipcMain,
   type IpcMainInvokeEvent,
@@ -8,7 +8,7 @@ import {
 } from "electron";
 import * as FS from "node:fs";
 import * as Path from "node:path";
-import { siteOf } from "./browserSite";
+import { blockerEngine, siteOf } from "./browserSite";
 
 type BeforeRequestCallback = (response: Electron.CallbackResponse) => void;
 type HeadersReceivedCallback = (response: Electron.HeadersReceivedResponse) => void;
@@ -33,9 +33,12 @@ const RETRY_AFTER_MS = 60 * 60 * 1000;
 // of a page on such a site is let through, including its third-party ones.
 //
 // The serialized engine is cached on disk and rebuilt from the lists in the background once a
-// day. Startup never waits for the network: until an engine is loaded, nothing is blocked.
+// day. Nothing loads until the first tab needs it, and no tab waits for the network: until an
+// engine is loaded, nothing is blocked.
 export class ContentBlocker {
   private engine: ElectronBlocker | null = null;
+  private loaded = false;
+  private stopped = false;
   private preloadId: string | null = null;
   private timer: NodeJS.Timeout | null = null;
   private on: boolean;
@@ -51,13 +54,18 @@ export class ContentBlocker {
     this.allowedSites = new Set(setting.allowedSites);
   }
 
-  start(): void {
-    this.applyCosmetics();
-    this.loadCached();
+  // Loads the cached engine and starts the daily refresh. Tabs call this before their first page
+  // so blocking and element hiding apply from its first request.
+  load(): void {
+    if (this.loaded || this.stopped) return;
+    const { ElectronBlocker: Engine } = blockerEngine();
+    this.loaded = true;
+    this.loadCached(Engine);
     void this.refreshWhenStale();
   }
 
   stop(): void {
+    this.stopped = true;
     if (this.timer) clearTimeout(this.timer);
     this.timer = null;
     this.engine = null;
@@ -131,9 +139,9 @@ export class ContentBlocker {
     return this.on ? this.engine : null;
   }
 
-  private loadCached(): void {
+  private loadCached(Engine: typeof ElectronBlocker): void {
     try {
-      this.use(ElectronBlocker.deserialize(new Uint8Array(FS.readFileSync(this.files.cache))));
+      this.use(Engine.deserialize(new Uint8Array(FS.readFileSync(this.files.cache))));
     } catch {
       // Missing, or written by another library version; the refresh rebuilds it.
     }
@@ -149,9 +157,8 @@ export class ContentBlocker {
     })();
     if (this.engine && age < REFRESH_AFTER_MS) return this.schedule(REFRESH_AFTER_MS - age);
     try {
-      const engine = await ElectronBlocker.fromPrebuiltFull((url: string) =>
-        this.session.fetch(url),
-      );
+      const { ElectronBlocker: Engine } = blockerEngine();
+      const engine = await Engine.fromPrebuiltFull((url: string) => this.session.fetch(url));
       const temporary = `${this.files.cache}.${process.pid}.tmp`;
       FS.mkdirSync(Path.dirname(this.files.cache), { recursive: true });
       FS.writeFileSync(temporary, engine.serialize());

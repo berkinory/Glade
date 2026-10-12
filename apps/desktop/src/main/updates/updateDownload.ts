@@ -1,4 +1,4 @@
-import { autoUpdater, CancellationToken, type UpdateDownloadedEvent } from "electron-updater";
+import type { UpdateDownloadedEvent } from "electron-updater";
 import type { DesktopUpdateState } from "@glade/contracts/ipc/ipc";
 import { AUTO_UPDATE_DOWNLOAD_SETTLE_TIMEOUT_MS } from "../desktopEnvironment";
 import { formatErrorMessage } from "../lifecycle/desktopLogging";
@@ -43,8 +43,8 @@ export function createUpdateDownload(input: {
 }) {
   const { status, download, install, lifecycle, activity, timing, version, cache } = input;
   async function checkForUpdates(reason: string): Promise<void> {
-    if (lifecycle.isQuitting() || install.preparing || !status.configured || status.checkInFlight)
-      return;
+    const { updater } = status;
+    if (lifecycle.isQuitting() || install.preparing || !updater || status.checkInFlight) return;
     if (status.automaticActivitySuppressed) {
       if (!activity.isExplicitUpdateCheckReason(reason)) {
         console.info(
@@ -77,7 +77,7 @@ export function createUpdateDownload(input: {
     console.info(`[desktop-updater] Checking for updates (${reason})...`);
 
     try {
-      await autoUpdater.checkForUpdates();
+      await updater.autoUpdater.checkForUpdates();
     } catch (error: unknown) {
       activity.clearUpdateCheckTimeoutTimer();
       const message = error instanceof Error ? error.message : String(error);
@@ -101,8 +101,9 @@ export function createUpdateDownload(input: {
     accepted: boolean;
     completed: boolean;
   }> {
+    const { updater } = status;
     if (
-      status.configured &&
+      updater &&
       status.state.status === "error" &&
       status.state.errorContext === "install" &&
       status.state.downloadedVersion === null &&
@@ -111,7 +112,7 @@ export function createUpdateDownload(input: {
       await checkForUpdates("renderer");
       return { accepted: true, completed: false };
     }
-    if (!status.configured || download.inFlight || status.state.status !== "available") {
+    if (!updater || download.inFlight || status.state.status !== "available") {
       return { accepted: false, completed: false };
     }
     if (!version.isAcceptableUpdateVersion(status.state.availableVersion)) {
@@ -132,7 +133,7 @@ export function createUpdateDownload(input: {
     activity.setUpdateState(reduceDesktopUpdateStateOnDownloadStart(status.state));
 
     download.lastProgressSample = null;
-    const cancellationToken = new CancellationToken();
+    const cancellationToken = new updater.CancellationToken();
     download.cancellationToken = cancellationToken;
     const downloadStalled = new Promise<never>((_, reject) => {
       download.rejectStall = reject;
@@ -145,7 +146,7 @@ export function createUpdateDownload(input: {
     // set until that cancellation unwinds. We observe its settlement here (so a late rejection can't
     // surface as an unhandled rejection) and wait on it before releasing the in-flight flag below.
     let updaterDownloadSettled = false;
-    const updaterDownloadPromise = autoUpdater.downloadUpdate(cancellationToken);
+    const updaterDownloadPromise = updater.autoUpdater.downloadUpdate(cancellationToken);
     const updaterDownloadSettledPromise = updaterDownloadPromise.then(
       () => {
         updaterDownloadSettled = true;

@@ -155,8 +155,6 @@ export function createDesktopRuntime(): void {
   else app.on("second-instance", () => windows.focusMainWindow());
   async function bootstrap(): Promise<void> {
     log.writeDesktopLogHeader("bootstrap start");
-    updates.configure();
-
     await backend.reserveBackendEndpoint("bootstrap");
     if (lifecycle.isQuitting()) return;
     try {
@@ -200,7 +198,14 @@ export function createDesktopRuntime(): void {
     log.writeDesktopLogHeader("bootstrap ipc handlers registered");
     backend.startBackend();
     log.writeDesktopLogHeader("bootstrap backend start requested");
+    openInitialWindow();
 
+    // The server is the slowest part of startup, so everything it does not need starts after it.
+    desktopHost?.computer.start();
+    updates.configure();
+    identity.applyInitialMacDockIcon();
+  }
+  function openInitialWindow(): void {
     if (isDevelopment) {
       void backend
         .waitForBackendWindowReady(backend.getHttpUrl())
@@ -247,7 +252,6 @@ export function createDesktopRuntime(): void {
         log.writeDesktopLogHeader("app ready");
         if (lifecycle.isQuitting()) return;
         identity.configureAppIdentity();
-        identity.applyInitialMacDockIcon();
         identity.refreshMacIconCacheOnVersionChange();
         configureMediaPermissions(windows.getMainWindow);
         windows.configureApplicationMenu();

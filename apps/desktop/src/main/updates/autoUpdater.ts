@@ -1,7 +1,8 @@
 import type { DesktopRuntimeInfo, DesktopUpdateState } from "@glade/contracts/ipc/ipc";
 import { desktopUpdateChannel } from "@glade/shared/platform/desktopIdentity";
 import { app } from "electron";
-import { autoUpdater, BaseUpdater, type UpdateDownloadedEvent } from "electron-updater";
+import type * as ElectronUpdater from "electron-updater";
+import { createRequire } from "node:module";
 import {
   desktopFlavor,
   DESKTOP_UPDATE_ALLOW_PRERELEASE,
@@ -36,6 +37,8 @@ import {
   type DownloadProgressSample,
 } from "./updateState";
 
+const requireOnFirstUse = createRequire(__filename);
+
 export function createAutoUpdater(input: {
   status: UpdateStatus;
   activityState: UpdateActivityState;
@@ -60,7 +63,7 @@ export function createAutoUpdater(input: {
   };
   downloadActions: {
     prepareAvailableUpdateInBackground: (reason: string) => void;
-    recordDownloadedUpdateIdentity: (info: UpdateDownloadedEvent) => Promise<void>;
+    recordDownloadedUpdateIdentity: (info: ElectronUpdater.UpdateDownloadedEvent) => Promise<void>;
     updateDownloadStallTimerOnProgress: (progress: DownloadProgressSample) => void;
   };
   recovery: {
@@ -109,9 +112,11 @@ export function createAutoUpdater(input: {
       status.cacheDirectoryName = null;
       return;
     }
-    status.configured = true;
+    // Loaded here rather than with the app, where it delayed the window and the server.
+    const updater: typeof ElectronUpdater = requireOnFirstUse("electron-updater");
+    const { autoUpdater } = updater;
     hardenElectronUpdater(
-      { BaseUpdater },
+      updater,
       autoUpdater,
       process.platform,
       app.isPackaged ? resources.resolveEmbeddedWindowsPublisherSubjects() : null,
@@ -254,6 +259,7 @@ export function createAutoUpdater(input: {
       void task.then(clearTask, clearTask);
     });
 
+    status.updater = updater;
     activity.clearUpdatePollTimer();
 
     if (status.automaticActivitySuppressed) {

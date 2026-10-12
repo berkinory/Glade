@@ -106,7 +106,9 @@ export class BrowserTabs {
 
   // A WebContents has no renderer until its first load, and CDP commands sent before that fail with
   // "target closed"; about:blank gives the debugger a live target to attach to.
+  // Every other tab is a restore or popup of one opened here, so this is where the blocker loads.
   async open(threadId: ThreadId, downloadDir: string | null): Promise<BrowserTab> {
+    this.options.blocker.load();
     const view = new WebContentsView({ webPreferences: BROWSER_WEB_PREFERENCES });
     const tab = this.adopt(view, threadId, downloadDir);
     await view.webContents.loadURL("about:blank");

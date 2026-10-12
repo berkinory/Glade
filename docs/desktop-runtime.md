@@ -35,6 +35,11 @@ services are constructed. Profile repair and privileged protocol registration ru
 before `app.whenReady()`. Constructors must not call dependencies while composition
 is still being assembled; callbacks become usable after all domains are connected.
 
+The backend is the slowest part of startup, so bootstrap spawns it as soon as the host RPC
+server listens and opens the window next. The computer host, updater configuration and Dock
+icon start after that, and the agent browser's content blocker loads with its first tab.
+electron-updater and Ghostery are required at first use rather than when the main bundle loads.
+
 IPC channel values, preload methods, environment variables, stored paths and data
 formats are unchanged. Moving a source file does not authorize changing one of
 those contracts.

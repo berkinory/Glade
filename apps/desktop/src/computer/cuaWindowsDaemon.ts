@@ -15,7 +15,7 @@ interface CuaDaemonConnection {
   readonly mcp: McpLaunch;
 }
 
-// The lifecycle `startCuaHost` drives; Cua's embedded SDK host satisfies it structurally.
+// The lifecycle `createCuaHost` drives; Cua's embedded SDK host satisfies it structurally.
 export interface CuaDaemon {
   readonly start: () => Promise<CuaDaemonConnection>;
   readonly restart: () => Promise<CuaDaemonConnection>;
@@ -86,7 +86,7 @@ function requestMetadata(pipe: string): Promise<Record<string, unknown> | null> 
 // CREATE_NO_WINDOW and so gives it a visible console. It runs the same `serve --embedded` contract
 // (parent liveness on stdin, private pipe, host pid) through the shared runtime, which hides the
 // window; macOS needs the SDK host for TCC responsibility, Windows has no such constraint.
-// `startCuaHost` serializes every call, so this keeps no state machine of its own.
+// `createCuaHost` serializes every call, so this keeps no state machine of its own.
 export function createWindowsCuaDaemon(input: {
   readonly binaryPath: string;
   readonly hostBundleId: string;
