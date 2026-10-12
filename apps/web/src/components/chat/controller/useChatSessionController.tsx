@@ -212,15 +212,21 @@ export function useChatSessionController(props: ChatViewProps) {
     useMemo(() => createThreadSelector(crossTaskSourceThreadId), [crossTaskSourceThreadId]),
   );
 
+  const subagentParentTitle =
+    serverThread?.creationSource === "provider_native" &&
+    serverThread.parentThreadId === crossTaskSourceThreadId
+      ? (crossTaskSourceThread?.title ?? "parent chat")
+      : null;
   const crossTaskOrigin = useMemo(
     () =>
       crossTaskSourceThreadId
         ? {
             sourceThreadId: crossTaskSourceThreadId,
             sourceProvider: crossTaskSourceThread?.modelSelection.provider ?? null,
+            subagentParentTitle,
           }
         : null,
-    [crossTaskSourceThread?.modelSelection.provider, crossTaskSourceThreadId],
+    [crossTaskSourceThread?.modelSelection.provider, crossTaskSourceThreadId, subagentParentTitle],
   );
 
   const forkSourceThreadId = serverThread?.forkSourceThreadId ?? null;
@@ -300,8 +306,6 @@ export function useChatSessionController(props: ChatViewProps) {
   const [taskListSidebarOpen, setTaskListSidebarOpen] = useState(false);
 
   const [activeTaskListCompact, setActiveTaskListCompact] = useState(false);
-
-  const [subagentStripCompact, setSubagentStripCompact] = useState(false);
 
   const [workflowRunCardCompact, setWorkflowRunCardCompact] = useState(false);
 
@@ -547,8 +551,6 @@ export function useChatSessionController(props: ChatViewProps) {
 
     activeTaskListCompact,
     setActiveTaskListCompact,
-    subagentStripCompact,
-    setSubagentStripCompact,
     workflowRunCardCompact,
     setWorkflowRunCardCompact,
     isComposerFooterCompact,

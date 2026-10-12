@@ -1,15 +1,26 @@
 import { type ProviderKind, type ThreadId } from "@glade/contracts/core/baseSchemas";
 import { memo, type ReactNode } from "react";
 
+import { BotIcon } from "~/lib/icons";
 import { GladeLogo } from "../GladeLogo";
 import { cn } from "~/lib/utils";
 
 export interface CrossTaskOrigin {
   readonly sourceThreadId: ThreadId;
   readonly sourceProvider: ProviderKind | null;
+  // A provider's own subagent was briefed by its parent agent, not sent over by Glade.
+  readonly subagentParentTitle: string | null;
 }
 
-function OriginContent(): ReactNode {
+function OriginContent({ origin }: { origin: CrossTaskOrigin }): ReactNode {
+  if (origin.subagentParentTitle !== null) {
+    return (
+      <>
+        <BotIcon className="size-3.5 shrink-0 text-muted-foreground/70" />
+        <span className="truncate">Brief from {origin.subagentParentTitle}</span>
+      </>
+    );
+  }
   return (
     <>
       <span className="flex size-4 shrink-0 items-center justify-center text-muted-foreground/70">
@@ -43,14 +54,14 @@ export const CrossTaskOriginLabel = memo(function CrossTaskOriginLabel({
         aria-label="Open source chat"
         onClick={() => onOpenSourceThread(origin.sourceThreadId)}
       >
-        <OriginContent />
+        <OriginContent origin={origin} />
       </button>
     );
   }
 
   return (
     <div className={className} data-cross-task-origin="true">
-      <OriginContent />
+      <OriginContent origin={origin} />
     </div>
   );
 });
