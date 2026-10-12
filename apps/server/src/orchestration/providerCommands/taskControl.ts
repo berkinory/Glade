@@ -167,6 +167,15 @@ export function makeProviderTaskControl(input: {
     });
     if (result._tag === "ok") {
       yield* settleStoppedNativeChildren(children, input.createdAt);
+      // A turn the provider had already ended has nothing left to interrupt, and its terminal event
+      // may never apply to a retired runtime. Settle now instead of waiting for reconciliation; a
+      // terminal event still in flight applies on top.
+      if (!(yield* hasLiveProviderTurn(input.threadId))) {
+        yield* settleInterruptedProviderTurn({
+          threadId: input.threadId,
+          createdAt: input.createdAt,
+        });
+      }
       return;
     }
 

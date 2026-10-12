@@ -1140,6 +1140,12 @@ const make = Effect.gen(function* () {
           if (knownAssistantMessageIds.has(eventMessageId)) {
             return eventMessageId;
           }
+          // Any other live message belongs to a different provider item; only the turn-scoped
+          // message built from item-less deltas can be this item's text.
+          const turnScopedMessageId = MessageId.makeUnsafe(`assistant:${input.turnId}`);
+          return knownAssistantMessageIds.has(turnScopedMessageId)
+            ? turnScopedMessageId
+            : eventMessageId;
         }
         if (knownAssistantMessageIds.size === 1) {
           const [onlyMessageId] = knownAssistantMessageIds;
@@ -1172,9 +1178,7 @@ const make = Effect.gen(function* () {
             return preferredKnownMessage.id;
           }
         }
-        return input.event.itemId
-          ? MessageId.makeUnsafe(`assistant:${input.event.itemId}`)
-          : MessageId.makeUnsafe(`assistant:${input.turnId}`);
+        return MessageId.makeUnsafe(`assistant:${input.turnId}`);
       }
 
       if (input.event.itemId) {
@@ -2222,7 +2226,9 @@ const make = Effect.gen(function* () {
       }
 
       if (isTerminalTurnEvent) {
-        const finalizedTurnId = eventTurnId ?? activeTurnId ?? undefined;
+        // Applicability already resolved an implicit active turn; an ambiguous turnless terminal event
+        // resolves to none and must not finish whichever turn happens to be active.
+        const finalizedTurnId = eventTurnId;
         if (finalizedTurnId) {
           const assistantMessageIds = yield* getAssistantMessageIdsForTurn(
             thread.id,
@@ -2451,7 +2457,9 @@ const make = Effect.gen(function* () {
       );
 
       if (isTerminalTurnEvent) {
-        yield* settleBufferedReasoningSummaries(thread.id, event, toTurnId(event.turnId));
+        if (terminalApplicability?.reason !== "ambiguous-missing-turn-id") {
+          yield* settleBufferedReasoningSummaries(thread.id, event, toTurnId(event.turnId));
+        }
       } else if (event.type === "session.exited") {
         yield* settleBufferedReasoningSummaries(thread.id, event);
       } else if (event.type === "runtime.error") {

@@ -717,4 +717,56 @@ describe("ProviderRuntimeIngestion assistant streaming", () => {
       | undefined;
     expect(completionEvent?.payload.text).toBe("done");
   });
+
+  it("finalizes only the completed item when another item of the turn is still streaming", async () => {
+    const harness = await createHarness();
+    const now = new Date().toISOString();
+    const turnId = asTurnId("turn-item-identity");
+    const base = { provider: "codex" as const, createdAt: now, threadId: asThreadId("thread-1") };
+
+    harness.emit({
+      ...base,
+      type: "turn.started",
+      eventId: asEventId("evt-identity-start"),
+      turnId,
+    });
+    await waitForThread(harness.engine, (thread) => thread.session?.activeTurnId === turnId);
+    harness.emit({
+      ...base,
+      type: "content.delta",
+      eventId: asEventId("evt-identity-delta-a"),
+      turnId,
+      itemId: asItemId("item-identity-a"),
+      payload: { streamKind: "assistant_text", delta: "first part" },
+    });
+    harness.emit({
+      ...base,
+      type: "item.completed",
+      eventId: asEventId("evt-identity-complete-b"),
+      turnId,
+      itemId: asItemId("item-identity-b"),
+      payload: { itemType: "assistant_message", status: "completed", detail: "second part" },
+    });
+    harness.emit({
+      ...base,
+      type: "turn.completed",
+      eventId: asEventId("evt-identity-turn-completed"),
+      turnId,
+      payload: { state: "completed" },
+    });
+
+    const thread = await waitForThread(
+      harness.engine,
+      (entry) => entry.session?.activeTurnId === null && entry.session?.status === "ready",
+    );
+    const texts = Object.fromEntries(
+      thread.messages
+        .filter((message: ProviderRuntimeTestMessage) => message.turnId === turnId)
+        .map((message: ProviderRuntimeTestMessage) => [message.id, message.text]),
+    );
+    expect(texts).toEqual({
+      "assistant:item-identity-a": "first part",
+      "assistant:item-identity-b": "second part",
+    });
+  });
 });

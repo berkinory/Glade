@@ -64,4 +64,57 @@ describe("native child runtime teardown", () => {
       activeTurnId: null,
     });
   });
+
+  it.each([
+    { runtimeStatus: "ready", settles: true },
+    { runtimeStatus: "running", settles: false },
+  ] as const)(
+    "settles an accepted Stop at once only when no provider turn is live ($runtimeStatus)",
+    async ({ runtimeStatus, settles }) => {
+      const harness = await createHarness();
+      const threadId = ThreadId.makeUnsafe("thread-1");
+      const turnId = asTurnId("turn-stop-after-provider-end");
+      const now = new Date().toISOString();
+      await Effect.runPromise(
+        harness.engine.dispatch({
+          type: "thread.session.set",
+          commandId: CommandId.makeUnsafe("running-stop-after-provider-end"),
+          threadId,
+          session: {
+            threadId,
+            status: "running",
+            providerName: "codex",
+            runtimeMode: "approval-required",
+            activeTurnId: turnId,
+            lastError: null,
+            updatedAt: now,
+          },
+          createdAt: now,
+        }),
+      );
+      harness.setRuntimeSessionTurnState({
+        threadId: "thread-1",
+        status: runtimeStatus,
+        ...(runtimeStatus === "running" ? { activeTurnId: turnId } : {}),
+      });
+
+      await Effect.runPromise(
+        harness.engine.dispatch({
+          type: "thread.turn.interrupt",
+          commandId: CommandId.makeUnsafe("interrupt-stop-after-provider-end"),
+          threadId,
+          turnId,
+          createdAt: new Date().toISOString(),
+        }),
+      );
+      await waitFor(() => harness.interruptTurn.mock.calls.length === 1);
+      await harness.drain();
+
+      expect((await readHarnessThread(harness, threadId))?.session).toMatchObject(
+        settles
+          ? { status: "interrupted", activeTurnId: null }
+          : { status: "running", activeTurnId: turnId },
+      );
+    },
+  );
 });
