@@ -171,6 +171,27 @@ export function readFileAsDataUrl(file: File): Promise<string> {
   });
 }
 
+// A picked File is read from disk lazily, so a source moved, deleted or changed after attaching
+// only fails once the upload reads it.
+export async function findUnreadableComposerAttachments(
+  attachments: ReadonlyArray<ComposerImageAttachment | ComposerFileAttachment>,
+): Promise<Array<ComposerImageAttachment | ComposerFileAttachment>> {
+  const unreadable = await Promise.all(
+    attachments.map(async (attachment) => {
+      try {
+        await attachment.file.slice(0, 1).arrayBuffer();
+        return null;
+      } catch (error) {
+        const isMissingSource =
+          error instanceof DOMException &&
+          (error.name === "NotFoundError" || error.name === "NotReadableError");
+        return isMissingSource ? attachment : null;
+      }
+    }),
+  );
+  return unreadable.filter((attachment) => attachment !== null);
+}
+
 export interface StagedComposerAttachments {
   readonly attachments: UploadChatAttachment[];
 

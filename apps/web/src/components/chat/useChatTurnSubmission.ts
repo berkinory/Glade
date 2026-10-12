@@ -16,6 +16,7 @@ import { appendAssistantSelectionsToPrompt } from "../../lib/assistantSelections
 import { appendPastedTextsToPrompt } from "../../lib/composerPastedText";
 import {
   findPendingBlobComposerAttachments,
+  findUnreadableComposerAttachments,
   hydratePendingBlobComposerAttachments,
   readFileAsDataUrl,
   stageUploadComposerAttachments,
@@ -309,6 +310,30 @@ export function useChatTurnSubmission({
           }
         }
         const composerFilesForSend = queuedChatTurn?.files ?? composerFiles;
+        if (queuedChatTurn === null) {
+          const unreadableAttachments = await findUnreadableComposerAttachments([
+            ...composerImagesForSend,
+            ...composerFilesForSend,
+          ]);
+          if (unreadableAttachments.length > 0) {
+            const draftStore = useComposerDraftStore.getState();
+            for (const attachment of unreadableAttachments) {
+              if (attachment.type === "image")
+                draftStore.removeImage(activeThread.id, attachment.id);
+              else draftStore.removeFile(activeThread.id, attachment.id);
+            }
+            toastManager.add({
+              type: "warning",
+              title:
+                unreadableAttachments.length === 1
+                  ? `Removed '${unreadableAttachments[0]?.name}'`
+                  : `Removed ${unreadableAttachments.length} attachments`,
+              description:
+                "The source was moved, deleted or changed after attaching. Check your message and send again.",
+            });
+            return false;
+          }
+        }
         const composerAssistantSelectionsForSend =
           queuedChatTurn?.assistantSelections ?? composerAssistantSelections;
         const composerFileCommentsForSend = queuedChatTurn?.fileComments ?? composerFileComments;
