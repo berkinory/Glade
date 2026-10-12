@@ -80,7 +80,8 @@ export function createStreamProjection(
     if (
       state.disposed ||
       !state.subscribedThreadIds.has(threadId) ||
-      subscriptionGeneration === undefined
+      subscriptionGeneration === undefined ||
+      policy.isAwaitingStreamSnapshot(threadId)
     ) {
       return;
     }

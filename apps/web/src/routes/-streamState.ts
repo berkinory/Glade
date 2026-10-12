@@ -36,6 +36,8 @@ export function createStreamState() {
     threadResumeSeedSequenceById: new Map<ThreadId, number>(),
     pendingThreadEventsById: new Map<ThreadId, PendingThreadEventBuffer>(),
     threadSnapshotRequestInFlight: new Set<ThreadId>(),
+    // When a subscription started waiting for its stream snapshot, keyed by thread.
+    threadStreamSnapshotPendingSinceById: new Map<ThreadId, number>(),
     threadSnapshotRefreshPending: new Set<ThreadId>(),
     threadSnapshotNotFoundRetryAttempted: new Set<ThreadId>(),
     threadsAwaitingCreation: new Set<ThreadId>(),

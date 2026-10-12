@@ -57,6 +57,7 @@ export function createStreamSubscriptions(
       state.pendingThreadEventsById.delete(threadId);
       state.threadSnapshotRequestInFlight.delete(threadId);
       state.threadSnapshotRefreshPending.delete(threadId);
+      policy.settleStreamSnapshot(threadId);
       state.threadSnapshotNotFoundRetryAttempted.delete(threadId);
       state.threadsAwaitingCreation.delete(threadId);
       state.threadReplayRequestInFlight.delete(threadId);
@@ -112,6 +113,7 @@ export function createStreamSubscriptions(
       return Promise.resolve();
     }
     state.threadSnapshotRequestInFlight.add(threadId);
+    policy.awaitStreamSnapshot(threadId);
     return enqueueThreadSubscriptionOperation(async () => {
       if (state.disposed || !state.subscribedThreadIds.has(threadId)) {
         return;
@@ -264,6 +266,7 @@ export function createStreamSubscriptions(
         state.pendingThreadEventsById.clear();
         state.threadSnapshotRequestInFlight.clear();
         state.threadSnapshotRefreshPending.clear();
+        state.threadStreamSnapshotPendingSinceById.clear();
         state.threadReplayRequestInFlight.clear();
         state.threadProjectionReconcileInFlight.clear();
         state.threadProjectionTerminalFencePending.clear();

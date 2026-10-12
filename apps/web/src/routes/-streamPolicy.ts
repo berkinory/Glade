@@ -14,6 +14,7 @@ import {
   THREAD_DETAIL_PROJECTION_RECONCILE_INTERVAL_MS,
   THREAD_DETAIL_PROJECTION_RECONCILE_MAX_NOOP_STREAK,
   THREAD_DETAIL_REPLAY_MAX_NOOP_STREAK,
+  THREAD_DETAIL_STREAM_SNAPSHOT_TIMEOUT_MS,
   THREAD_DETAIL_TERMINAL_FENCE_RECONCILE_DELAY_MS,
   createPendingThreadEventBuffer,
 } from "./-rootStreamPolicy";
@@ -42,6 +43,26 @@ export function createStreamPolicy(state: StreamState, operations: StreamOperati
     state.threadProjectionTerminalFencePending.delete(threadId);
     state.threadProjectionTerminalFenceSequenceById.delete(threadId);
     state.threadProjectionTerminalFenceArmedAtById.delete(threadId);
+  };
+
+  const awaitStreamSnapshot = (threadId: ThreadId): void => {
+    state.threadStreamSnapshotPendingSinceById.set(threadId, Date.now());
+  };
+
+  const settleStreamSnapshot = (threadId: ThreadId): void => {
+    state.threadStreamSnapshotPendingSinceById.delete(threadId);
+  };
+
+  const isAwaitingStreamSnapshot = (threadId: ThreadId): boolean => {
+    const pendingSince = state.threadStreamSnapshotPendingSinceById.get(threadId);
+    if (pendingSince === undefined) {
+      return false;
+    }
+    if (Date.now() - pendingSince < THREAD_DETAIL_STREAM_SNAPSHOT_TIMEOUT_MS) {
+      return true;
+    }
+    state.threadStreamSnapshotPendingSinceById.delete(threadId);
+    return false;
   };
 
   const isDraftThreadAwaitingProjection = (threadId: ThreadId): boolean => {
@@ -119,9 +140,11 @@ export function createStreamPolicy(state: StreamState, operations: StreamOperati
     if (resumeCursor === undefined) {
       state.threadSnapshotSequenceById.delete(threadId);
       state.threadResumeSeedSequenceById.delete(threadId);
+      awaitStreamSnapshot(threadId);
     } else {
       state.threadSnapshotSequenceById.set(threadId, resumeCursor);
       state.threadResumeSeedSequenceById.set(threadId, resumeCursor);
+      settleStreamSnapshot(threadId);
     }
     state.pendingThreadEventsById.set(threadId, createPendingThreadEventBuffer());
     state.threadSnapshotRequestInFlight.delete(threadId);
@@ -158,10 +181,12 @@ export function createStreamPolicy(state: StreamState, operations: StreamOperati
     advanceThreadDetailResumeCursor(threadId, event.sequence);
     operations.queueDomainEvent(event);
 
+    // The replay poll only recovers a lost tail: it reads from the cursor these events just advanced. While
+    // events keep landing there is no tail to recover, so poll once the thread has been quiet for an interval.
     const backoff = state.threadCatchupBackoffById.get(threadId);
     if (backoff !== undefined) {
       backoff.replayNoopStreak = 0;
-      backoff.nextReplayAt = 0;
+      backoff.nextReplayAt = Date.now() + THREAD_DETAIL_CATCHUP_INTERVAL_MS;
       backoff.appliedEventSerial += 1;
     }
     return true;
@@ -193,6 +218,9 @@ export function createStreamPolicy(state: StreamState, operations: StreamOperati
   return {
     armThreadProjectionTerminalFence,
     clearThreadProjectionTerminalFence,
+    awaitStreamSnapshot,
+    settleStreamSnapshot,
+    isAwaitingStreamSnapshot,
     isDraftThreadAwaitingProjection,
     resolveThreadCatchupBackoff,
     noteThreadReplayResult,

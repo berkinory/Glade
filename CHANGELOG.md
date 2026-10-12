@@ -13,6 +13,7 @@
 - The Dock icon uses less memory on macOS.
 - Live activity labels use less CPU while agents work.
 - Diffs use less memory, and it is freed once diffs have been closed for a while.
+- Opening a busy chat or starting Glade no longer downloads the same data twice, and live chats stop polling while updates stream in.
 
 ### Fixed
 

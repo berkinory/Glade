@@ -11,8 +11,13 @@ import { getThreadFromState } from "../threadDerivation";
 import { isThreadDetailRetained } from "../threadDetailSubscriptionRetention";
 import { selectOrphanedThreadDetailIds } from "./-threadDetailOwnership";
 
-export const SHELL_SNAPSHOT_BOOTSTRAP_FALLBACK_DELAY_MS = 1_500;
+// The shell stream normally delivers its own snapshot; this read only rescues a stream that never does.
+// A short delay duplicates the full shell read whenever startup is merely slow.
+export const SHELL_SNAPSHOT_BOOTSTRAP_FALLBACK_DELAY_MS = 10_000;
 export const THREAD_DETAIL_CATCHUP_INTERVAL_MS = 1_500;
+// While a fresh thread stream owes its snapshot, a projection read would ship the same full detail
+// twice. Past this deadline the stream is presumed stuck and projection repair resumes.
+export const THREAD_DETAIL_STREAM_SNAPSHOT_TIMEOUT_MS = 10_000;
 export const THREAD_DETAIL_PROJECTION_RECONCILE_INTERVAL_MS = 4_500;
 export const THREAD_DETAIL_TERMINAL_FENCE_RECONCILE_DELAY_MS = 500;
 export const THREAD_DETAIL_PROJECTION_RECONCILE_MAX_CONCURRENCY = 2;

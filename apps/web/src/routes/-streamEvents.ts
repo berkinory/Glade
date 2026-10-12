@@ -213,6 +213,7 @@ export function subscribeStreamEvents(
     if (item.kind === "snapshot") {
       const threadId = item.snapshot.thread.id;
       state.threadSnapshotRequestInFlight.delete(threadId);
+      policy.settleStreamSnapshot(threadId);
 
       if (!canApplyThreadSnapshot({ threadId, leasedThreadIds: state.subscribedThreadIds })) {
         state.threadSnapshotSequenceById.delete(threadId);
@@ -281,6 +282,7 @@ export function subscribeStreamEvents(
     }
     state.threadSnapshotRequestInFlight.delete(threadId);
     state.threadSnapshotRefreshPending.delete(threadId);
+    policy.settleStreamSnapshot(threadId);
     // A draft's thread does not exist until its first send outlasts the server's bootstrap wait. That
     // is not a failed sync: the stream subscribes again once the thread appears in the shell.
     if (
@@ -575,6 +577,7 @@ export function subscribeStreamEvents(
     state.pendingGitInvalidationThreadIds = new Set();
     state.pendingToolGitInvalidationThreadIds = new Set();
     state.threadProjectionReconcileInFlight.clear();
+    state.threadStreamSnapshotPendingSinceById.clear();
     state.threadProjectionTerminalFencePending.clear();
     state.threadProjectionTerminalFenceSequenceById.clear();
     state.threadProjectionTerminalFenceArmedAtById.clear();
