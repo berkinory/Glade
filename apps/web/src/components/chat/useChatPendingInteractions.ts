@@ -36,7 +36,10 @@ import { expiredUserInputDrafts } from "../../pendingUserInputRecovery";
 import {
   derivePendingApprovals,
   derivePendingUserInputs,
+  type PendingApproval,
+  type PendingUserInput,
 } from "../../pendingInteractionDerivation";
+import { canSessionAnswerPendingRequests } from "../../session-logic";
 import { useStore } from "../../store";
 import {
   buildThreadSubscribeInput,
@@ -46,6 +49,8 @@ import { type Thread } from "../../types";
 import { resolveRuntimeModeAfterApprovalDecision } from "../ChatView.logic.session";
 import { usePendingUserInputDrafts } from "./usePendingUserInputDrafts";
 const EMPTY_ACTIVITIES: Thread["activities"] = [];
+const EMPTY_PENDING_APPROVALS: PendingApproval[] = [];
+const EMPTY_PENDING_USER_INPUTS: PendingUserInput[] = [];
 const EMPTY_PENDING_USER_INPUT_ANSWERS: Record<string, PendingUserInputDraftAnswer> = {};
 interface ChatPendingInteractionsInput {
   threadId: ThreadId;
@@ -79,13 +84,19 @@ export function useChatPendingInteractions({
   const [pendingUserInputQuestionIndexByRequestId, setPendingUserInputQuestionIndexByRequestId] =
     useState<Record<string, number>>({});
 
+  // A closed or errored session has no provider callback left to receive an answer. Gate requests
+  // like the sidebar does so a dead request cannot lock the composer until the server settles it.
+  const canAnswerPendingRequests = canSessionAnswerPendingRequests(activeThread?.session);
   const pendingApprovals = useMemo(
     () =>
-      derivePendingApprovals(threadActivities, activeThread?.pendingInteractions, {
-        authoritativeHasPending: activeThread?.hasPendingApprovals,
-        latestTurnId: activeThread?.latestTurn?.turnId,
-      }),
+      canAnswerPendingRequests
+        ? derivePendingApprovals(threadActivities, activeThread?.pendingInteractions, {
+            authoritativeHasPending: activeThread?.hasPendingApprovals,
+            latestTurnId: activeThread?.latestTurn?.turnId,
+          })
+        : EMPTY_PENDING_APPROVALS,
     [
+      canAnswerPendingRequests,
       activeThread?.hasPendingApprovals,
       activeThread?.latestTurn?.turnId,
       activeThread?.pendingInteractions,
@@ -123,12 +134,15 @@ export function useChatPendingInteractions({
   }, [nextUserInputResponseReclaimAt]);
   const pendingUserInputs = useMemo(
     () =>
-      derivePendingUserInputs(threadActivities, activeThread?.pendingInteractions, {
-        authoritativeHasPending: activeThread?.hasPendingUserInput,
-        latestTurnId: activeThread?.latestTurn?.turnId,
-        responseClaimReferenceAt: userInputResponseClaimReferenceAt,
-      }),
+      canAnswerPendingRequests
+        ? derivePendingUserInputs(threadActivities, activeThread?.pendingInteractions, {
+            authoritativeHasPending: activeThread?.hasPendingUserInput,
+            latestTurnId: activeThread?.latestTurn?.turnId,
+            responseClaimReferenceAt: userInputResponseClaimReferenceAt,
+          })
+        : EMPTY_PENDING_USER_INPUTS,
     [
+      canAnswerPendingRequests,
       activeThread?.hasPendingUserInput,
       activeThread?.latestTurn?.turnId,
       activeThread?.pendingInteractions,
