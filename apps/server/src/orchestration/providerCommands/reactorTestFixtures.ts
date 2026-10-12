@@ -1,7 +1,7 @@
 import { ProviderSessionDirectoryLive } from "../../provider/Layers/ProviderSessionDirectory";
 import { ProviderSessionRuntimeRepositoryLive } from "../../persistence/Layers/ProviderSessionRuntime";
-import { HandoffPreparation } from "../Services/HandoffPreparation";
 import { HandoffTransitions } from "../Services/HandoffTransitions";
+import type { ParkedProviderBinding } from "../../provider/Services/ProviderSessionDirectory";
 import { HandoffTransitionsLive } from "../Layers/HandoffTransitions";
 import { seedUserMessage } from "../persistedMessage.testSupport";
 import {
@@ -144,7 +144,7 @@ export function makeReactorTestHarness() {
   });
 
   async function createHarness(input?: {
-    readonly handoffContext?: string;
+    readonly injectHistory?: boolean;
     readonly threadModelSelection?: ModelSelection;
     readonly checkpointStore?: Partial<CheckpointStoreShape>;
     readonly startReactor?: boolean;
@@ -333,6 +333,39 @@ export function makeReactorTestHarness() {
         pendingPriorTranscriptBootstraps.delete(threadId);
       }),
     );
+    const parkedSessions = new Map<string, ParkedProviderBinding>();
+    const parkSession = vi.fn<ProviderServiceShape["parkSession"]>((parkInput) =>
+      Effect.sync(() => {
+        const index = runtimeSessions.findIndex(
+          (session) => session.threadId === parkInput.threadId,
+        );
+        const session = runtimeSessions[index];
+        if (index >= 0) runtimeSessions.splice(index, 1);
+        const resumeCursor =
+          session?.resumeCursor ?? persistedResumeCursors.get(parkInput.threadId);
+        persistedResumeCursors.delete(parkInput.threadId);
+        pendingPriorTranscriptBootstraps.delete(parkInput.threadId);
+        if (session?.provider === parkInput.provider && resumeCursor != null)
+          parkedSessions.set(`${parkInput.threadId}:${parkInput.provider}`, {
+            threadId: parkInput.threadId,
+            provider: parkInput.provider,
+            resumeCursor,
+            lastSeenMessageId: parkInput.lastSeenMessageId,
+            parkedAt: new Date().toISOString(),
+          });
+      }),
+    );
+    const takeParkedSession = vi.fn<ProviderServiceShape["takeParkedSession"]>((takeInput) =>
+      Effect.sync(() => {
+        const key = `${takeInput.threadId}:${takeInput.provider}`;
+        const parked = parkedSessions.get(key);
+        parkedSessions.delete(key);
+        return parked;
+      }),
+    );
+    const injectHistory = vi.fn<ProviderServiceShape["injectHistory"]>(() =>
+      Effect.succeed(input?.injectHistory ?? false),
+    );
     const stopRuntimeSession = vi.fn((input: unknown) =>
       Effect.sync(() => {
         const threadId =
@@ -396,6 +429,9 @@ export function makeReactorTestHarness() {
       respondToUserInput: () => Effect.void,
       stopSession: stopSession as ProviderServiceShape["stopSession"],
       stopRuntimeSession: stopRuntimeSession as ProviderServiceShape["stopRuntimeSession"],
+      parkSession,
+      takeParkedSession,
+      injectHistory,
       clearSessionResumeCursor,
       listSessions,
       getCapabilities: (_provider) => Effect.succeed({}),
@@ -418,17 +454,7 @@ export function makeReactorTestHarness() {
         ? undefined
         : { commandEventTimeout: input.commandEventTimeout },
     ).pipe(
-      Layer.provideMerge(
-        Layer.mergeAll(
-          input?.handoffContext ? HandoffTransitionsLive : Layer.empty,
-          input?.handoffContext
-            ? Layer.succeed(HandoffPreparation, {
-                prepare: () => Effect.succeed(input.handoffContext!),
-                cancel: () => Effect.succeed(false),
-              })
-            : Layer.empty,
-        ),
-      ),
+      Layer.provideMerge(HandoffTransitionsLive),
       Layer.provideMerge(orchestrationLayer),
       Layer.provideMerge(OrchestrationProjectionSnapshotQueryLive),
       Layer.provideMerge(TurnCheckpointCoordinatorLive),
@@ -563,6 +589,9 @@ export function makeReactorTestHarness() {
       restoreScopedCheckpoint,
       stopSession,
       stopRuntimeSession,
+      parkSession,
+      takeParkedSession,
+      injectHistory,
       clearSessionResumeCursor,
       generateTitle,
       stateDir,

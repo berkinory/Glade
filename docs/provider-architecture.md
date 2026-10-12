@@ -89,7 +89,7 @@ A new first-class provider normally needs changes across several boundaries:
 3. registry/runtime-layer wiring;
 4. health/auth and, when applicable, update/discovery support;
 5. persistence/model-selection compatibility;
-6. web settings, provider/model picker metadata, icons, and model-picker handoff confirmation;
+6. web settings, provider/model picker metadata and icons;
 7. focused adapter tests plus regression coverage for lifecycle, interruption, resume, approvals, and event normalization.
 
 Prefer capability-driven behavior and existing shared protocol helpers. Do not add provider-specific branches to orchestration when the difference can stay inside the adapter.
@@ -143,7 +143,7 @@ is not proof of authentication. Server shutdown disposes retained attempts.
 
 Codex health accepts JSON or the plain-text `login status` output. Voice dictation is advertised only for an explicit ChatGPT sign-in; an API-key sign-in disables it, and other successful output stays authenticated without claiming voice support.
 
-Provider transitions continue in the same chat through `thread.handoff.start`. `HandoffPreparation` owns isolated destination-model evidence generation; `HandoffTransitions` validates immutable source boundaries and generations and persists stage changes. Source runtime retirement precedes destination admission, and only native first-turn acceptance marks delivery. Recovery of an interrupted turn-start RPC settles its original orchestration receipt without sending another turn. That receipt proves app-command acceptance only: the composer still waits for the matching transition operation and delivery message before clearing its captured draft. Uncertain or failed provider acceptance preserves the draft and never compensates attachments already accepted by orchestration. See [handoff-context.md](handoff-context.md) for accounting, retrieval and failure recovery. Codex rewind reads only the required descending turn-ID tail and returns no fabricated retained-history snapshot.
+Provider transitions continue in the same chat through `thread.handoff.start`, which switches the selection and records a pending transition; `thread.handoff.cancel` undoes it. The next turn dispatch parks the source session through `ProviderService.parkSession`, resumes the destination's parked session when it is still current, and delivers budgeted history from `orchestration/handoff/handoffHistory.ts` natively (`injectHistory`, Codex only) or inline. `HandoffTransitions` persists stage changes, and only native first-turn acceptance marks delivery. Adapters that can silently open a new native conversation instead of resuming report it through `resumedNativeConversation`. Recovery of an interrupted turn-start RPC settles its original orchestration receipt without sending another turn. See [handoff-context.md](handoff-context.md). Codex rewind reads only the required descending turn-ID tail and returns no fabricated retained-history snapshot.
 
 ## Native subagent coordination
 

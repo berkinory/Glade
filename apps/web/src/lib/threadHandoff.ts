@@ -43,14 +43,6 @@ export function resolveAvailableHandoffTargetProviders(input: {
   );
 }
 
-function hasNativeThreadHandoffMessages(thread: Pick<Thread, "messages">): boolean {
-  return thread.messages.some(
-    (message) =>
-      isImportableThreadMessage(message) &&
-      (message.source === "native" || message.source === "async-user-input"),
-  );
-}
-
 export function canCreateThreadHandoff(input: {
   readonly thread: Pick<Thread, "handoff" | "messages" | "session">;
   readonly isBusy?: boolean;
@@ -67,16 +59,7 @@ export function canCreateThreadHandoff(input: {
   if (!input.thread.messages.some(isImportableThreadMessage)) {
     return false;
   }
-  if (
-    ["preparing", "activating", "activated", "uncertain"].includes(
-      input.thread.handoff?.stage ?? "",
-    )
-  )
-    return false;
-  if (input.thread.handoff !== null) {
-    return hasNativeThreadHandoffMessages(input.thread);
-  }
-  return true;
+  return input.thread.handoff?.stage !== "uncertain";
 }
 
 export function resolveThreadHandoffModelSelection(input: {

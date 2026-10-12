@@ -1,6 +1,4 @@
-import { ProviderSessionDirectory } from "../../provider/Services/ProviderSessionDirectory";
 import { AppPresentation } from "../../agentGateway/Services/AppPresentation";
-import { HandoffPreparation } from "../../orchestration/Services/HandoffPreparation";
 import { readGitSidebarSummary } from "../../git/gitSidebarSummary";
 import { ProviderManagement } from "../../provider/Services/ProviderManagement.ts";
 import { sourceControlActions } from "../../git/sourceControlActions.ts";
@@ -402,8 +400,6 @@ const makeWsRpcHandlersLayer = () =>
       const open = yield* Open;
       const orchestrationEngine = yield* OrchestrationEngineService;
       const providerCommandReactor = yield* ProviderCommandReactor;
-      const handoffPreparation = yield* HandoffPreparation;
-      const providerDirectory = yield* ProviderSessionDirectory;
       const path = yield* Path.Path;
       const profileStatsQuery = yield* ProfileStatsQuery;
       const threadMessageSearch = yield* ThreadMessageSearch;
@@ -883,11 +879,6 @@ const makeWsRpcHandlersLayer = () =>
         ...remoteAccessHandlers,
         [COMPUTER_WS_METHODS.subscribe]: computerHandlers[COMPUTER_WS_METHODS.subscribe],
         [COMPUTER_WS_METHODS.revokeGrant]: computerHandlers[COMPUTER_WS_METHODS.revokeGrant],
-        [ORCHESTRATION_WS_METHODS.prepareHandoff]: (input) =>
-          rpcEffect(
-            handoffPreparation.prepare(input).pipe(Effect.asVoid),
-            "Failed to prepare handoff context",
-          ),
         [ORCHESTRATION_WS_METHODS.settleTurnDispatch]: ({ command }) =>
           rpcEffect(
             Effect.gen(function* () {
@@ -914,49 +905,7 @@ const makeWsRpcHandlersLayer = () =>
             Effect.gen(function* () {
               const { command: normalizedCommand, prepareWorkspaceRoot } =
                 yield* normalizeDispatchCommand({ command });
-              if (
-                normalizedCommand.type === "thread.turn.start" &&
-                normalizedCommand.reviewTarget === undefined
-              ) {
-                yield* handoffPreparation.prepare({
-                  threadId: normalizedCommand.threadId,
-                  modelSelection: normalizedCommand.modelSelection,
-                  providerOptions: normalizedCommand.providerOptions,
-                  latestRequest: normalizedCommand.message.text,
-                  attachmentCount: normalizedCommand.message.attachments.length,
-                });
-              }
-              if (
-                normalizedCommand.type === "thread.turn.interrupt" &&
-                (yield* handoffPreparation.cancel(normalizedCommand.threadId))
-              ) {
-                return {
-                  sequence: (yield* projectionReadModelQuery.getSnapshotSequence())
-                    .snapshotSequence,
-                };
-              }
-              if (
-                [
-                  "thread.archive",
-                  "thread.delete",
-                  "thread.session.stop",
-                  "thread.conversation.rollback",
-                  "thread.checkpoint.revert",
-                ].includes(normalizedCommand.type) &&
-                "threadId" in normalizedCommand
-              )
-                yield* handoffPreparation.cancel(normalizedCommand.threadId);
-              const dispatchCommand =
-                normalizedCommand.type === "thread.handoff.start"
-                  ? {
-                      ...normalizedCommand,
-                      sourceGeneration:
-                        Option.getOrUndefined(
-                          yield* providerDirectory.getBinding(normalizedCommand.threadId),
-                        )?.lifecycleGeneration ?? null,
-                    }
-                  : normalizedCommand;
-              const result = yield* dispatchOrchestrationCommand(dispatchCommand);
+              const result = yield* dispatchOrchestrationCommand(normalizedCommand);
               // Only scaffold managed workspace-root subdirectories (Inbox/Outbox/work/outputs) AFTER the decider
               // has accepted the command. A rejected dispatch (e.g. a cross-kind workspace-root ownership
               // conflict) must never mutate the filesystem.

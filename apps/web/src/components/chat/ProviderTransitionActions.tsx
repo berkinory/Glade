@@ -13,29 +13,25 @@ export function ProviderTransitionActions({ operationId }: { operationId: Comman
   const [busy, setBusy] = useState(false);
   if (
     handoff?.operationId !== operationId ||
-    handoff.bootstrapStatus === "completed" ||
-    handoff.stage === "cancelled"
+    (handoff.stage !== "pending" && handoff.stage !== "uncertain")
   )
     return null;
-  const canPrepare =
-    ["ready", "failed"].includes(handoff.stage ?? "") && !handoff.deliveryMessageId;
-  const run = async (action: "prepare" | "stop") => {
+  const cancel = async () => {
     const api = readNativeApi();
     if (!api) return;
     setBusy(true);
     try {
-      if (action === "prepare") await api.orchestration.prepareHandoff({ threadId });
-      else
-        await api.orchestration.dispatchCommand({
-          type: "thread.turn.interrupt",
-          commandId: newCommandId(),
-          threadId,
-          createdAt: new Date().toISOString(),
-        });
+      await api.orchestration.dispatchCommand({
+        type: "thread.handoff.cancel",
+        commandId: newCommandId(),
+        threadId,
+        operationId,
+        createdAt: new Date().toISOString(),
+      });
     } catch (cause) {
       toastManager.add({
         type: "error",
-        title: action === "prepare" ? "Could not prepare transition" : "Could not stop transition",
+        title: "Could not cancel the switch",
         description: cause instanceof Error ? cause.message : "Try again.",
       });
     } finally {
@@ -44,27 +40,8 @@ export function ProviderTransitionActions({ operationId }: { operationId: Comman
   };
   return (
     <div className="flex items-center gap-2">
-      {canPrepare ? (
-        <Button
-          variant="ghost"
-          size="sm"
-          disabled={busy}
-          onClick={() => {
-            void run("prepare");
-          }}
-        >
-          Prepare context
-        </Button>
-      ) : null}
-      <Button
-        variant="ghost"
-        size="sm"
-        disabled={busy}
-        onClick={() => {
-          void run("stop");
-        }}
-      >
-        Stop transition
+      <Button variant="ghost" size="sm" disabled={busy} onClick={() => void cancel()}>
+        {handoff.stage === "pending" ? "Switch back" : "Dismiss"}
       </Button>
     </div>
   );

@@ -1,16 +1,10 @@
 import { WorkflowCircle04Icon } from "~/lib/icons";
 import { ConversationDivider } from "./ConversationDivider";
-import { PROVIDER_DISPLAY_NAMES } from "@glade/contracts/provider/model";
-import { type ProviderKind, type ThreadId } from "@glade/contracts/core/baseSchemas";
+import { type ThreadId } from "@glade/contracts/core/baseSchemas";
 import { memo, type MouseEvent } from "react";
-import { ProviderIcon } from "../ProviderIcon";
 export interface ForkSourceReference {
   readonly sourceThreadId: ThreadId;
   readonly sourceTitle: string;
-  readonly handoff?: {
-    readonly sourceProvider: ProviderKind | null;
-    readonly targetProvider: ProviderKind;
-  };
 }
 function shouldUseClientNavigation(event: MouseEvent<HTMLAnchorElement>): boolean {
   return event.button === 0 && !event.metaKey && !event.ctrlKey && !event.shiftKey && !event.altKey;
@@ -24,7 +18,7 @@ export const ForkSourceDivider = memo(function ForkSourceDivider({
 }) {
   const sourceHref = `/${encodeURIComponent(source.sourceThreadId)}`;
   return (
-    <ConversationDivider kind={source.handoff ? "handoff" : "fork"}>
+    <ConversationDivider kind="fork">
       <a
         href={sourceHref}
         aria-label={`Open source chat ${source.sourceTitle}`}
@@ -38,25 +32,8 @@ export const ForkSourceDivider = memo(function ForkSourceDivider({
           onOpenSourceThread(source.sourceThreadId);
         }}
       >
-        {source.handoff ? (
-          <>
-            {source.handoff.sourceProvider ? (
-              <ProviderIcon provider={source.handoff.sourceProvider} className="size-4 shrink-0" />
-            ) : null}
-            <span className="truncate">
-              Continued with {PROVIDER_DISPLAY_NAMES[source.handoff.targetProvider]}
-            </span>
-            <ProviderIcon provider={source.handoff.targetProvider} className="size-4 shrink-0" />
-          </>
-        ) : (
-          <>
-            <WorkflowCircle04Icon
-              className="size-4 shrink-0 text-muted-foreground/70"
-              aria-hidden
-            />
-            <span className="truncate">Continued from chat</span>
-          </>
-        )}
+        <WorkflowCircle04Icon className="size-4 shrink-0 text-muted-foreground/70" aria-hidden />
+        <span className="truncate">Continued from chat</span>
       </a>
     </ConversationDivider>
   );

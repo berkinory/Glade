@@ -1,4 +1,4 @@
-import { decideHandoffStart } from "./handoffDecisions";
+import { decideHandoffCancel, decideHandoffStart } from "./handoffDecisions";
 import { MessageId } from "@glade/contracts/core/baseSchemas";
 import type { OrchestrationCommand } from "@glade/contracts/orchestration/commands";
 import { Effect } from "effect";
@@ -39,6 +39,7 @@ export function decideThreadLifecycleCommand({
       type:
         | "thread.create"
         | "thread.handoff.start"
+        | "thread.handoff.cancel"
         | "thread.fork.create"
         | "thread.delete"
         | "thread.archive"
@@ -113,6 +114,8 @@ export function decideThreadLifecycleCommand({
       }
       case "thread.handoff.start":
         return yield* decideHandoffStart({ command, readModel });
+      case "thread.handoff.cancel":
+        return yield* decideHandoffCancel({ command, readModel });
       case "thread.fork.create": {
         yield* requireProject({
           readModel,

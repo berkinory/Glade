@@ -110,6 +110,8 @@ export function makeProviderSessionConfiguration(input: {
       readonly providerOptions?: ProviderStartOptions;
       readonly runtimeMode?: RuntimeMode;
       readonly registerPriorTranscriptBootstrapOnFreshStart?: boolean;
+      // A provider switch starts its own native session: the destination's parked cursor, or none.
+      readonly handoffResumeCursor?: unknown;
     },
   ) {
     const thread = yield* resolveThread(threadId);
@@ -133,19 +135,15 @@ export function makeProviderSessionConfiguration(input: {
         .listSessions()
         .pipe(Effect.map((sessions) => sessions.find((session) => session.threadId === threadId)));
 
-    const retiredHandoffSource =
-      thread.handoff?.sourceRetired === true &&
-      ["activating", "activated"].includes(thread.handoff.stage ?? "") &&
-      thread.handoff.destinationModelSelection?.provider === requestedModelSelection?.provider &&
-      currentProvider === thread.handoff.sourceProvider;
+    const handoffStart = options !== undefined && "handoffResumeCursor" in options;
     const activeSession =
       currentProvider !== undefined &&
-      (thread.latestTurn === null || retiredHandoffSource) &&
+      (thread.latestTurn === null || handoffStart) &&
       requestedModelSelection !== undefined &&
       requestedModelSelection.provider !== currentProvider
         ? yield* resolveActiveSession(threadId)
         : undefined;
-    if (retiredHandoffSource && activeSession?.provider !== currentProvider) {
+    if (handoffStart && activeSession?.provider !== currentProvider) {
       currentProvider = undefined;
     }
 
@@ -362,7 +360,7 @@ export function makeProviderSessionConfiguration(input: {
       };
     }
 
-    if (thread.forkSourceThreadId) {
+    if (thread.forkSourceThreadId && !handoffStart) {
       if (!providerService.forkThread)
         return yield* new ProviderAdapterValidationError({
           provider: preferredProvider ?? thread.modelSelection.provider,
@@ -429,7 +427,7 @@ export function makeProviderSessionConfiguration(input: {
       shouldRegisterContextBootstrap &&
       options?.registerPriorTranscriptBootstrapOnFreshStart === true;
     const startOutcome = yield* startProviderSessionWithOutcome(
-      undefined,
+      handoffStart && options.handoffResumeCursor != null ? options.handoffResumeCursor : undefined,
       registerPriorTranscriptBootstrapOnFreshStart,
     ).pipe(
       Effect.map((outcome) => ({

@@ -200,7 +200,9 @@ export const ProviderSessionStartupLive = Layer.effect(
                 const nativeResumeAttempted =
                   cursorPresent &&
                   (adapter.canResumeNativeConversation?.(effectiveResumeCursor) ?? true);
-                const nativeResumeSucceeded = nativeResumeAttempted;
+                const nativeResumeSucceeded =
+                  nativeResumeAttempted &&
+                  (adapter.resumedNativeConversation?.(effectiveResumeCursor, session) ?? true);
                 // A cursor without a saved native conversation starts fresh, so Glade's transcript is
                 // the only history left to carry into the next turn.
                 const priorTranscriptBootstrapPending =

@@ -1,7 +1,10 @@
 import type { VisualReply } from "@glade/contracts/orchestration/visualReply";
 import type { ToolLifecycleItemType } from "@glade/contracts/provider/runtimeMetadata";
 import type { OrchestrationThreadActivity } from "@glade/contracts/orchestration/threadEntities";
-import type { HandoffTransitionStage } from "@glade/contracts/orchestration/threadEntities";
+import type {
+  HandoffStrategy,
+  HandoffTransitionStage,
+} from "@glade/contracts/orchestration/threadEntities";
 import type { CommandId, ProviderKind, TurnId } from "@glade/contracts/core/baseSchemas";
 import type { ApprovalRequestKind } from "@glade/shared/threads/threadSummary";
 import type { GladeMcpToolStatus } from "./lib/gatewayToolCall";
@@ -96,6 +99,7 @@ export interface WorkLogEntry {
     source: { provider: ProviderKind };
     destination: { provider: ProviderKind };
     stage: HandoffTransitionStage;
+    strategy?: HandoffStrategy | undefined;
   };
 
   replySource?: { threadId: string; nickname: string };

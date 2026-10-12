@@ -24,7 +24,6 @@ export const ORCHESTRATION_WS_METHODS = {
   searchThreadMessages: "orchestration.searchThreadMessages",
   dispatchCommand: "orchestration.dispatchCommand",
   settleTurnDispatch: "orchestration.settleTurnDispatch",
-  prepareHandoff: "orchestration.prepareHandoff",
   repairState: "orchestration.repairState",
   getTurnDiff: "orchestration.getTurnDiff",
   previewWorkspaceRestore: "orchestration.previewWorkspaceRestore",
@@ -286,7 +285,6 @@ export const OrchestrationUnsubscribeThreadInput = Schema.Struct({
 export type OrchestrationUnsubscribeThreadInput = typeof OrchestrationUnsubscribeThreadInput.Type;
 
 export const OrchestrationRpcSchemas = {
-  prepareHandoff: { input: Schema.Struct({ threadId: ThreadId }), output: Schema.Void },
   previewWorkspaceRestore: { input: PreviewWorkspaceRestoreInput, output: WorkspaceRestorePreview },
   getSnapshot: {
     input: OrchestrationGetSnapshotInput,

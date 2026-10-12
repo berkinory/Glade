@@ -23,6 +23,16 @@ export interface ProviderRuntimeBinding {
   readonly runtimeMode?: RuntimeMode;
 }
 
+// A previous provider's native session kept across a switch so a later return can resume it.
+export interface ParkedProviderBinding {
+  readonly threadId: ThreadId;
+  readonly provider: ProviderKind;
+  readonly resumeCursor: unknown;
+  // The newest chat message that provider had seen when it was parked.
+  readonly lastSeenMessageId: string | null;
+  readonly parkedAt: string;
+}
+
 type ProviderSessionDirectoryReadError = ProviderSessionDirectoryPersistenceError;
 
 export type ProviderSessionDirectoryWriteError =
@@ -55,6 +65,22 @@ export interface ProviderSessionDirectoryShape {
     ReadonlyArray<ProviderRuntimeBinding>,
     ProviderSessionDirectoryPersistenceError
   >;
+
+  readonly park: (
+    binding: Omit<ParkedProviderBinding, "parkedAt">,
+  ) => Effect.Effect<void, ProviderSessionDirectoryPersistenceError>;
+
+  readonly listParked: (
+    threadId: ThreadId,
+  ) => Effect.Effect<
+    ReadonlyArray<ParkedProviderBinding>,
+    ProviderSessionDirectoryPersistenceError
+  >;
+
+  readonly removeParked: (
+    threadId: ThreadId,
+    provider?: ProviderKind,
+  ) => Effect.Effect<void, ProviderSessionDirectoryPersistenceError>;
 }
 
 export class ProviderSessionDirectory extends ServiceMap.Service<

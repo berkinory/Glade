@@ -9,6 +9,7 @@ import {
   toPersistenceSqlOrDecodeError,
 } from "../Errors.ts";
 import {
+  ParkedProviderSession,
   ProviderSessionRuntime,
   ProviderSessionRuntimeRepository,
   type ProviderSessionRuntimeRepositoryShape,
@@ -22,6 +23,10 @@ const ProviderSessionRuntimeDbRowSchema = ProviderSessionRuntime.mapFields(
 );
 
 const decodeRuntime = Schema.decodeUnknownEffect(ProviderSessionRuntime);
+
+const ParkedProviderSessionDbRowSchema = ParkedProviderSession.mapFields(
+  Struct.assign({ resumeCursor: Schema.fromJsonString(Schema.Unknown) }),
+);
 
 const GetRuntimeRequestSchema = Schema.Struct({
   threadId: ThreadId,
@@ -120,6 +125,60 @@ const makeProviderSessionRuntimeRepository = Effect.gen(function* () {
       `,
   });
 
+  const parkRow = SqlSchema.void({
+    Request: ParkedProviderSessionDbRowSchema,
+    execute: (session) =>
+      sql`
+        INSERT INTO provider_parked_sessions (
+          thread_id,
+          provider_name,
+          resume_cursor_json,
+          last_seen_message_id,
+          parked_at
+        )
+        VALUES (
+          ${session.threadId},
+          ${session.providerName},
+          ${session.resumeCursor},
+          ${session.lastSeenMessageId},
+          ${session.parkedAt}
+        )
+        ON CONFLICT (thread_id, provider_name)
+        DO UPDATE SET
+          resume_cursor_json = excluded.resume_cursor_json,
+          last_seen_message_id = excluded.last_seen_message_id,
+          parked_at = excluded.parked_at
+      `,
+  });
+
+  const listParkedRows = SqlSchema.findAll({
+    Request: GetRuntimeRequestSchema,
+    Result: ParkedProviderSessionDbRowSchema,
+    execute: ({ threadId }) =>
+      sql`
+        SELECT
+          thread_id AS "threadId",
+          provider_name AS "providerName",
+          resume_cursor_json AS "resumeCursor",
+          last_seen_message_id AS "lastSeenMessageId",
+          parked_at AS "parkedAt"
+        FROM provider_parked_sessions
+        WHERE thread_id = ${threadId}
+        ORDER BY parked_at ASC
+      `,
+  });
+
+  const deleteParkedRows = SqlSchema.void({
+    Request: Schema.Struct({ threadId: ThreadId, providerName: Schema.optional(Schema.String) }),
+    execute: ({ threadId, providerName }) =>
+      providerName === undefined
+        ? sql`DELETE FROM provider_parked_sessions WHERE thread_id = ${threadId}`
+        : sql`
+            DELETE FROM provider_parked_sessions
+            WHERE thread_id = ${threadId} AND provider_name = ${providerName}
+          `,
+  });
+
   const upsert: ProviderSessionRuntimeRepositoryShape["upsert"] = (runtime) =>
     upsertRuntimeRow(runtime).pipe(
       Effect.mapError(
@@ -183,11 +242,44 @@ const makeProviderSessionRuntimeRepository = Effect.gen(function* () {
       ),
     );
 
+  const park: ProviderSessionRuntimeRepositoryShape["park"] = (session) =>
+    parkRow(session).pipe(
+      Effect.mapError(
+        toPersistenceSqlOrDecodeError(
+          "ProviderSessionRuntimeRepository.park:query",
+          "ProviderSessionRuntimeRepository.park:encodeRequest",
+        ),
+      ),
+    );
+
+  const listParked: ProviderSessionRuntimeRepositoryShape["listParked"] = (input) =>
+    listParkedRows(input).pipe(
+      Effect.mapError(
+        toPersistenceSqlOrDecodeError(
+          "ProviderSessionRuntimeRepository.listParked:query",
+          "ProviderSessionRuntimeRepository.listParked:decodeRows",
+        ),
+      ),
+    );
+
+  const deleteParked: ProviderSessionRuntimeRepositoryShape["deleteParked"] = (input) =>
+    deleteParkedRows(input).pipe(
+      Effect.mapError(
+        toPersistenceSqlOrDecodeError(
+          "ProviderSessionRuntimeRepository.deleteParked:query",
+          "ProviderSessionRuntimeRepository.deleteParked:encodeRequest",
+        ),
+      ),
+    );
+
   return {
     upsert,
     getByThreadId,
     list,
     deleteByThreadId,
+    park,
+    listParked,
+    deleteParked,
   } satisfies ProviderSessionRuntimeRepositoryShape;
 });
 

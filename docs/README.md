@@ -16,7 +16,7 @@ This folder contains the Glade documentation and repository guides.
 - [Architecture](./architecture.md) — application boundaries and package responsibilities.
 - [Icon assets](./icon-assets.md) - UI and brand icon ownership, persisted appearance keys and licenses.
 - [Workspace layout](./workspace-layout.md) — repository structure and ownership.
-- [Handoff context](./handoff-context.md) - frozen evidence, preparation, retrieval and verification limits.
+- [Handoff context](./handoff-context.md) - provider switches, parked sessions, history selection and delivery.
 - [Provider architecture](./provider-architecture.md) — provider integration boundaries.
 - [Git latency](./git-latency.md) - History measurements, repeatable native/WSL procedure and limits.
 - [Performance verification](./performance-verification.md) — measured development workloads and implementation limits.

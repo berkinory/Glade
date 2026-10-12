@@ -78,7 +78,7 @@ tools within those sessions; it does not require external agent pairing.
 Use a thread fork when a new task should inherit
 the conversation or split from one exact turn. Use a
 handoff through the model picker when another provider should continue
-the work in a new task.
+the work in the same task.
 
 ## Environments
 
@@ -133,11 +133,14 @@ capabilities from the installed runtime and account.
 ## Handoffs
 
 On an existing task, the model picker lists connected providers and offers a shortcut to add more. Choosing a model from another provider
-opens a confirmation dialog. Confirming creates a new task with the selected provider and model,
-imports the conversation, and keeps the working environment. The original task remains available.
-Glade freezes the complete durable conversation at handoff creation and prepares a structured record with the selected destination model. The record preserves constraints, decisions, unfinished work, and cited original evidence; the source provider does not need remaining quota. Preparation uses an isolated request and does not begin the task.
+switches the task to it right away; the task, its transcript and its working environment stay the same.
+Your next message carries the earlier conversation to the new provider. Switching back before you
+send undoes the switch.
 
-The new provider receives the prepared context with your first message. Preparation can be cancelled or retried in the new task without creating another task or clearing your draft. Omitted messages and activity remain available through source retrieval at the frozen boundary. The new task shows the provider transition in the transcript and its current provider in the sidebar.
+The previous provider's own session is kept. Returning to that provider later resumes it and only
+tells it what happened while another provider was working. Long conversations send the most recent
+and most important messages; the provider can read the rest of the transcript on demand. The
+transcript shows each switch as a divider with what was delivered.
 
 Use a handoff when:
 

@@ -1,5 +1,4 @@
 import { ProviderKind, ThreadId } from "@glade/contracts/core/baseSchemas";
-import { resolveDirectProviderSwitchMessage } from "@glade/shared/threads/directProviderSwitch";
 import { PROVIDER_SEND_TURN_MAX_ATTACHMENTS } from "@glade/contracts/orchestration/threadEntities";
 import { type ModelSlug } from "@glade/contracts/provider/model";
 import { type ModelSelection } from "@glade/contracts/provider/sessionPolicy";
@@ -115,11 +114,6 @@ export function useChatActionsController({
     );
   }, [composerSubagentStripItems, stripSourceThreadId]);
 
-  const [pendingProviderHandoff, setPendingProviderHandoff] = useState<{
-    modelSelection: ModelSelection;
-    runtimeMode: Thread["runtimeMode"];
-  } | null>(null);
-
   const [providerHandoffBusy, setProviderHandoffBusy] = useState(false);
 
   const startProviderHandoff = useCallback(
@@ -178,28 +172,23 @@ export function useChatActionsController({
         !providerModelSupportsAutoRuntimeMode(provider, runtimeModel, providerStatus)
           ? "approval-required"
           : normalizeRuntimeModeForProvider(runtimeMode, provider);
-      if (lockedProvider !== null && provider !== lockedProvider) {
-        if (handoffDisabled || !handoffTargetProviders.includes(provider)) {
+      const handoffPending = activeThread.handoff?.stage === "pending";
+      if (handoffPending || (lockedProvider !== null && provider !== lockedProvider)) {
+        if (!handoffPending && (handoffDisabled || !handoffTargetProviders.includes(provider))) {
           toastManager.add({
             type: "warning",
             title: "Provider handoff unavailable",
             description:
               "Wait for the current task to finish and check that the provider is enabled.",
           });
-        } else if (resolveDirectProviderSwitchMessage(activeThread)) {
-          const switched = await startProviderHandoff({
-            modelSelection: nextModelSelection,
-            runtimeMode: nextRuntimeMode,
-          });
-          if (switched)
-            setComposerDraftModelSelectionAndSticky(activeThread.id, nextModelSelection);
-          scheduleComposerFocus();
-        } else {
-          setPendingProviderHandoff({
-            modelSelection: nextModelSelection,
-            runtimeMode: nextRuntimeMode,
-          });
+          return;
         }
+        const switched = await startProviderHandoff({
+          modelSelection: nextModelSelection,
+          runtimeMode: nextRuntimeMode,
+        });
+        if (switched) setComposerDraftModelSelectionAndSticky(activeThread.id, nextModelSelection);
+        scheduleComposerFocus();
         return;
       }
 
@@ -363,11 +352,6 @@ export function useChatActionsController({
     },
   });
 
-  const confirmProviderHandoff = useCallback(async () => {
-    if (pendingProviderHandoff && (await startProviderHandoff(pendingProviderHandoff)))
-      setPendingProviderHandoff(null);
-  }, [pendingProviderHandoff, startProviderHandoff]);
-
   const clearComposerInput = useCallback(
     (threadId: ThreadId) => {
       promptHistoryNavigationRef.current = null;
@@ -398,9 +382,6 @@ export function useChatActionsController({
   );
   return {
     onInterruptFromStopControl,
-    pendingProviderHandoff,
-    setPendingProviderHandoff,
-    providerHandoffBusy,
     onProviderModelSelect,
     addComposerAttachments,
     onComposerPaste,
@@ -410,7 +391,6 @@ export function useChatActionsController({
     onComposerDrop,
     isThreadDragOverComposer,
     threadMentionDropzoneProps,
-    confirmProviderHandoff,
     clearComposerInput,
   } as const;
 }

@@ -85,6 +85,9 @@ function makeProviderServiceStub(input: {
     respondToUserInput: () => unsupported(),
     stopSession: input.stopSession,
     stopRuntimeSession: input.stopRuntimeSession,
+    parkSession: () => unsupported(),
+    takeParkedSession: () => unsupported(),
+    injectHistory: () => unsupported(),
     hasLiveRuntimeTasks: () => unsupported(),
     listSessions: () => Effect.succeed([]),
     getCapabilities: () => unsupported(),
@@ -108,6 +111,9 @@ describe("ProviderSessionReaperLive", () => {
       getProvider: () => unsupported(),
       getBinding: () => unsupported(),
       remove: () => Effect.void,
+      park: () => unsupported(),
+      listParked: () => Effect.succeed([]),
+      removeParked: () => Effect.void,
       listThreadIds: () => Effect.succeed([]),
       listBindings: () =>
         Effect.succeed([

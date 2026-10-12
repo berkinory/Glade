@@ -3,8 +3,6 @@ import {
   GladeListThreadsInput,
 } from "@glade/contracts/provider/agentGatewayDiscovery";
 import type { AgentGatewayDiscoveryShape } from "./Services/AgentGatewayDiscovery";
-import type { OrchestrationEventStoreShape } from "../persistence/Services/OrchestrationEventStore";
-import { readHandoffSourceSnapshot } from "../orchestration/handoff/sourceSnapshot";
 import type { TaggedFailure } from "../platform/operationError.ts";
 import { GLADE_GATEWAY_MAX_THREADS_PER_OPERATION } from "@glade/contracts/provider/agentGateway";
 import { ThreadId, TurnId, ProviderKind } from "@glade/contracts/core/baseSchemas";
@@ -49,7 +47,6 @@ import {
 } from "./toolRuntime.ts";
 
 export interface ThreadReadToolsInput {
-  readonly eventStore: OrchestrationEventStoreShape;
   readonly discovery: AgentGatewayDiscoveryShape;
   readonly snapshotQuery: ProjectionSnapshotQueryShape;
   readonly projectionTurns: ProjectionTurnRepositoryShape;
@@ -291,7 +288,7 @@ export function makeThreadReadTools(input: ThreadReadToolsInput): ReadonlyArray<
     definition: {
       name: "glade_read_thread",
       description:
-        "Read one Glade thread's status and conversation. Use this for user requests, assistant replies and reported task results; use activity/runtime tools for execution evidence absent from the transcript.\nTranscript pages are newest-last. Pass returned nextCursor as cursor to read older messages. A bounded message summary is not its complete text.\nFor a settled message that needs full inspection, pass messageIndex from its returned summary index, plus messageId and messageVersion with messageOffsetChars 0. Follow messagePage.nextOffsetChars using that same identity and version until absent. If coordinates are stale, refresh the summary instead of combining slices from different versions.\nFor frozen handoff evidence, keep throughSequence unchanged on every page. Later history is excluded; frozen evidence does not prove current workspace state.",
+        "Read one Glade thread's status and conversation. Use this for user requests, assistant replies and reported task results; use activity/runtime tools for execution evidence absent from the transcript.\nTranscript pages are newest-last. Pass returned nextCursor as cursor to read older messages. A bounded message summary is not its complete text.\nFor a settled message that needs full inspection, pass messageIndex from its returned summary index, plus messageId and messageVersion with messageOffsetChars 0. Follow messagePage.nextOffsetChars using that same identity and version until absent. If coordinates are stale, refresh the summary instead of combining slices from different versions.",
       inputSchema: {
         type: "object",
         properties: {
@@ -299,11 +296,6 @@ export function makeThreadReadTools(input: ThreadReadToolsInput): ReadonlyArray<
           cursor: {
             type: "string",
             description: "Opaque nextCursor from a previous transcript page; do not construct one.",
-          },
-          throughSequence: {
-            type: "integer",
-            minimum: 1,
-            description: "Frozen handoff event boundary, unchanged throughout retrieval.",
           },
           messageLimit: {
             type: "integer",
@@ -354,7 +346,6 @@ export function makeThreadReadTools(input: ThreadReadToolsInput): ReadonlyArray<
         const messageOffsetChars = readNumberArg(args, "messageOffsetChars");
         const messageId = readStringArg(args, "messageId");
         const messageVersion = readStringArg(args, "messageVersion");
-        const throughSequence = readNumberArg(args, "throughSequence");
         const detail = yield* snapshotQuery.getThreadDetailById(ThreadId.makeUnsafe(threadId)).pipe(
           Effect.mapError((error) => new ToolInputError(errorText(error))),
           Effect.flatMap(
@@ -366,14 +357,7 @@ export function makeThreadReadTools(input: ThreadReadToolsInput): ReadonlyArray<
         );
         return mcpToolResultJson(
           summarizeThreadDetail({
-            thread:
-              throughSequence === undefined
-                ? detail
-                : yield* readHandoffSourceSnapshot(
-                    input.eventStore,
-                    ThreadId.makeUnsafe(threadId),
-                    throughSequence,
-                  ),
+            thread: detail,
             cursor,
             messageLimit,
             maxMessageChars,

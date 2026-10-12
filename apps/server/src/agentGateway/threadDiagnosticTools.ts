@@ -1,4 +1,3 @@
-import { readHandoffSourceSnapshot } from "../orchestration/handoff/sourceSnapshot";
 import { readActivityPassage } from "./activityPassage";
 import type { TaggedFailure } from "../platform/operationError.ts";
 import { ThreadId } from "@glade/contracts/core/baseSchemas";
@@ -58,14 +57,14 @@ export function makeThreadDiagnosticTools(input: {
     definition: {
       name: "glade_read_thread_activity",
       description:
-        "Read projected activity for execution context such as tool calls and their recorded outcomes. Rows are newest-last; use the returned cursor to retrieve older evidence.\nEnable includeDetails when payload evidence is needed. Bounded or redacted details are not necessarily the full original payload. For lossless inspection of retained frozen details, pass activityId and throughSequence, navigate returned keys with detailPath, and follow detailPage.nextOffsetChars for the selected value.\nKeep the same frozen boundary throughout retrieval. Distinguish an attempted action from its recorded result, and report missing evidence rather than treating an empty page as proof nothing happened.",
+        "Read projected activity for execution context such as tool calls and their recorded outcomes. Rows are newest-last; use the returned cursor to retrieve older evidence.\nEnable includeDetails when payload evidence is needed. Bounded or redacted details are not necessarily the full original payload. For lossless inspection of one activity, pass activityId, navigate returned keys with detailPath, and follow detailPage.nextOffsetChars for the selected value.\nDistinguish an attempted action from its recorded result, and report missing evidence rather than treating an empty page as proof nothing happened.",
       inputSchema: {
         type: "object",
         properties: {
           threadId: { type: "string" },
           activityId: {
             type: "string",
-            description: "Read one frozen payload; requires throughSequence.",
+            description: "Read one activity payload losslessly.",
           },
           detailPath: {
             type: "array",
@@ -84,11 +83,6 @@ export function makeThreadDiagnosticTools(input: {
             description: "Bounded slice size; default 4000. Follow nextOffsetChars.",
           },
           cursor: { type: "string" },
-          throughSequence: {
-            type: "integer",
-            minimum: 1,
-            description: "Frozen handoff event boundary; keep unchanged while paging.",
-          },
           limit: {
             type: "number",
             description:
@@ -113,27 +107,15 @@ export function makeThreadDiagnosticTools(input: {
         yield* input.requireThreadShell(threadId);
         const turnId = readStringArg(args, "turnId") ?? null;
         const kinds = readStringArrayArg(args, "kinds") ?? [];
-        const throughSequence = readNumberArg(args, "throughSequence");
-        if (
-          throughSequence !== undefined &&
-          (!Number.isSafeInteger(throughSequence) || throughSequence < 1)
-        )
-          throw new ToolInputError("throughSequence must be a positive event sequence.");
         const activityId = readStringArg(args, "activityId");
         if (activityId) {
-          if (throughSequence === undefined)
-            throw new ToolInputError("A frozen throughSequence is required with activityId.");
-          const frozen = yield* readHandoffSourceSnapshot(
-            input.eventStore,
-            ThreadId.makeUnsafe(threadId),
-            throughSequence,
+          const detail = Option.getOrUndefined(
+            yield* input.snapshotQuery.getThreadDetailById(ThreadId.makeUnsafe(threadId)),
           );
-          const activity = frozen.activities.find((entry) => entry.id === activityId);
-          if (!activity)
-            throw new ToolInputError("The activity is unavailable at the frozen source boundary.");
+          const activity = detail?.activities.find((entry) => entry.id === activityId);
+          if (!activity) throw new ToolInputError("The activity is unavailable.");
           return mcpToolResultJson({
             threadId,
-            throughSequence,
             activityId,
             kind: activity.kind,
             summary: activity.summary,
@@ -145,11 +127,7 @@ export function makeThreadDiagnosticTools(input: {
             }),
           });
         }
-        const filterFingerprint = diagnosticFilterFingerprint({
-          turnId,
-          kinds,
-          throughSequence: throughSequence === undefined ? null : String(throughSequence),
-        });
+        const filterFingerprint = diagnosticFilterFingerprint({ turnId, kinds });
         const cursor = decodeDiagnosticCursor(readStringArg(args, "cursor"), {
           kind: "activity",
           threadId,
@@ -159,12 +137,7 @@ export function makeThreadDiagnosticTools(input: {
         const includeDetails = readBooleanArg(args, "includeDetails") ?? false;
         const limit = includeDetails ? Math.min(requestedLimit, 50) : requestedLimit;
         const activityCoverage = yield* input.diagnostics.getActivityCoverage(threadId);
-        const highWaterSequence =
-          cursor?.highWaterSequence ??
-          Math.min(
-            throughSequence ?? activityCoverage.highWaterSequence,
-            activityCoverage.highWaterSequence,
-          );
+        const highWaterSequence = cursor?.highWaterSequence ?? activityCoverage.highWaterSequence;
         const rows = yield* input.diagnostics.listActivities({
           threadId,
           throughSequenceInclusive: highWaterSequence,

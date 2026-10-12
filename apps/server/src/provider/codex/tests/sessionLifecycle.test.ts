@@ -418,3 +418,42 @@ describe.skipIf(!process.env.CODEX_BINARY_PATH)("startSession live Codex resume"
     }
   }, 180_000);
 });
+
+describe("injectItems", () => {
+  it.each([
+    { outcome: "appends natively", error: undefined, expected: true },
+    {
+      outcome: "falls back when the app server predates the method",
+      error: { code: -32601, message: "Method not found" },
+      expected: false,
+    },
+    {
+      outcome: "fails when the append outcome is ambiguous",
+      error: { code: -32603, message: "Internal error" },
+      expected: "rejects",
+    },
+  ] as const)("$outcome", async ({ error, expected }) => {
+    const fake = createSyntheticCodexAppServer(error ? { injectItemsError: error } : undefined);
+    const cwd = mkdtempSync(path.join(os.tmpdir(), "glade-codex-inject-"));
+    const { manager } = createSyntheticCodexManager(fake);
+    try {
+      const session = await manager.startSession({
+        threadId: ThreadId.makeUnsafe("thread-inject"),
+        provider: "codex",
+        runtimeMode: "full-access",
+        cwd,
+        agentGatewayCapabilityInput: AGENT_GATEWAY_NO_CAPABILITIES,
+      });
+      const items = [{ type: "message", role: "user", content: [] }];
+      const injected = manager.injectItems(session.threadId, items);
+      if (expected === "rejects") await expect(injected).rejects.toThrow("Internal error");
+      else await expect(injected).resolves.toBe(expected);
+      expect(
+        fake.requests.find((request) => request.method === "thread/inject_items")?.params,
+      ).toEqual({ threadId: (session.resumeCursor as { threadId: string }).threadId, items });
+    } finally {
+      await manager.stopAll();
+      rmSync(cwd, { recursive: true, force: true });
+    }
+  });
+});

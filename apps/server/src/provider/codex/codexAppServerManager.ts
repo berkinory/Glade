@@ -287,6 +287,17 @@ interface JsonRpcError {
   message?: string;
 }
 
+const JSON_RPC_METHOD_NOT_FOUND = -32601;
+
+class CodexRpcResponseError extends Error {
+  constructor(
+    message: string,
+    readonly code: number | undefined,
+  ) {
+    super(message);
+  }
+}
+
 interface JsonRpcRequest {
   id: string | number;
   method: string;
@@ -1698,6 +1709,22 @@ export class CodexAppServerManager extends EventEmitter<CodexAppServerManagerEve
     }
 
     return this.readThreadSnapshot(context, providerThreadId);
+  }
+
+  // False when this app server predates thread/inject_items, so the caller delivers history inline.
+  // Any other failure is ambiguous about whether the items were appended and must not fall through.
+  async injectItems(threadId: ThreadId, items: ReadonlyArray<unknown>): Promise<boolean> {
+    const context = this.requireSession(threadId);
+    const providerThreadId = readResumeThreadId({ resumeCursor: context.session.resumeCursor });
+    if (!providerThreadId) throw new Error("Session is missing a provider resume thread id.");
+    try {
+      await this.sendRequest(context, "thread/inject_items", { threadId: providerThreadId, items });
+      return true;
+    } catch (error) {
+      if (error instanceof CodexRpcResponseError && error.code === JSON_RPC_METHOD_NOT_FOUND)
+        return false;
+      throw error;
+    }
   }
 
   async updateNativeHistory(input: NativeThreadHistoryInput): Promise<void> {
@@ -4035,7 +4062,7 @@ export class CodexAppServerManager extends EventEmitter<CodexAppServerManagerEve
       context.rpcRequests = new JsonRpcStdioRequestRegistry({
         pending: context.pending,
         responseError: ({ method, error }) =>
-          new Error(`${method} failed: ${String(error.message)}`),
+          new CodexRpcResponseError(`${method} failed: ${String(error.message)}`, error.code),
       });
     }
     return context.rpcRequests;
@@ -4716,6 +4743,15 @@ function readResumeCursorThreadId(resumeCursor: unknown): string | undefined {
 
 function readResumeThreadId(input: { readonly resumeCursor?: unknown }): string | undefined {
   return readResumeCursorThreadId(input.resumeCursor);
+}
+
+// A recoverable thread/resume failure silently opens a new native thread under another id.
+export function codexResumedNativeThread(
+  resumeCursor: unknown,
+  session: { readonly resumeCursor?: unknown },
+): boolean {
+  const requested = readResumeCursorThreadId(resumeCursor);
+  return requested !== undefined && requested === readResumeCursorThreadId(session.resumeCursor);
 }
 
 function toTurnId(value: string | undefined): TurnId | undefined {

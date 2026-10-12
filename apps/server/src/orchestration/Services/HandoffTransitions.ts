@@ -9,18 +9,10 @@ import type { ProviderValidationError } from "../../provider/core/Errors";
 export class HandoffTransitions extends ServiceMap.Service<
   HandoffTransitions,
   {
-    readonly abort: (
-      threadId: ThreadId,
-      operationId: CommandId,
-    ) => Effect.Effect<void, ProviderValidationError>;
-    readonly validate: (
-      threadId: ThreadId,
-      operationId: CommandId,
-    ) => Effect.Effect<ThreadHandoff, ProviderValidationError>;
     readonly update: (
       threadId: ThreadId,
       operationId: CommandId,
-      patch: Partial<ThreadHandoff> & { stage: HandoffTransitionStage },
-    ) => Effect.Effect<void, ProviderValidationError>;
+      patch: Partial<Omit<ThreadHandoff, "operationId">> & { stage: HandoffTransitionStage },
+    ) => Effect.Effect<ThreadHandoff, ProviderValidationError>;
   }
 >()("glade/orchestration/Services/HandoffTransitions") {}

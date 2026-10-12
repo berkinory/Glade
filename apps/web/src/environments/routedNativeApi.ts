@@ -83,7 +83,6 @@ const RULES: { readonly [N in Namespace]: { readonly default: Rule } & Record<st
     getThreadDetailSnapshot: byThreadInput,
     getTurnDiff: byThreadInput,
     getFullThreadDiff: byThreadInput,
-    prepareHandoff: byThreadInput,
     previewWorkspaceRestore: byThreadInput,
     reconcileProviderDelivery: byThreadInput,
     subscribeThread: byThreadInput,

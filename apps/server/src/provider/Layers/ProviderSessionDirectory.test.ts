@@ -85,6 +85,57 @@ it.layer(makeDirectoryLayer(SqlitePersistenceMemory))("ProviderSessionDirectoryL
       );
     }));
 
+  it("parks one native session per provider and removes them per provider or thread", () =>
+    Effect.gen(function* () {
+      const directory = yield* ProviderSessionDirectory;
+      const threadId = ThreadId.makeUnsafe("thread-parked");
+      yield* directory.park({
+        threadId,
+        provider: "codex",
+        resumeCursor: { threadId: "stale" },
+        lastSeenMessageId: null,
+      });
+      yield* directory.park({
+        threadId,
+        provider: "codex",
+        resumeCursor: { threadId: "native-codex" },
+        lastSeenMessageId: "message-1",
+      });
+      yield* directory.park({
+        threadId,
+        provider: "claudeAgent",
+        resumeCursor: { resume: "native-claude" },
+        lastSeenMessageId: "message-2",
+      });
+      const parked = yield* directory.listParked(threadId);
+      assert.deepEqual(
+        parked.map(({ provider, resumeCursor, lastSeenMessageId }) => ({
+          provider,
+          resumeCursor,
+          lastSeenMessageId,
+        })),
+        [
+          {
+            provider: "codex",
+            resumeCursor: { threadId: "native-codex" },
+            lastSeenMessageId: "message-1",
+          },
+          {
+            provider: "claudeAgent",
+            resumeCursor: { resume: "native-claude" },
+            lastSeenMessageId: "message-2",
+          },
+        ],
+      );
+      yield* directory.removeParked(threadId, "codex");
+      assert.deepEqual(
+        (yield* directory.listParked(threadId)).map((entry) => entry.provider),
+        ["claudeAgent"],
+      );
+      yield* directory.removeParked(threadId);
+      assert.deepEqual(yield* directory.listParked(threadId), []);
+    }));
+
   it("persists runtime fields and merges payload updates", () =>
     Effect.gen(function* () {
       const directory = yield* ProviderSessionDirectory;

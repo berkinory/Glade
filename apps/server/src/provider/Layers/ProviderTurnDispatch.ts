@@ -132,6 +132,25 @@ export const ProviderTurnDispatchLive = Layer.effect(
         );
       });
 
+    const injectHistory: ProviderServiceShape["injectHistory"] = (input) =>
+      Effect.gen(function* () {
+        const routed = yield* resolveRoutableSession({
+          threadId: input.threadId,
+          operation: "ProviderService.injectHistory",
+          allowRecovery: false,
+        });
+        if (
+          input.expectedLifecycleGeneration !== undefined &&
+          routed.lifecycleGeneration !== input.expectedLifecycleGeneration
+        )
+          return yield* toValidationError(
+            "ProviderService.injectHistory",
+            "The destination session changed before delivery.",
+          );
+        if (!routed.adapter.injectHistory) return false;
+        return yield* routed.adapter.injectHistory(input.threadId, input.items);
+      });
+
     const startReview: ProviderServiceShape["startReview"] = (rawInput) =>
       Effect.gen(function* () {
         const input = yield* decodeInputOrValidationError({
@@ -167,6 +186,6 @@ export const ProviderTurnDispatchLive = Layer.effect(
         );
       });
 
-    return { sendTurn, steerTurn, startReview };
+    return { sendTurn, steerTurn, startReview, injectHistory };
   }),
 );

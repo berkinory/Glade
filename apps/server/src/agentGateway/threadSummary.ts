@@ -430,22 +430,7 @@ export function summarizeThreadDetail(input: {
     lastError: thread.session?.lastError ?? null,
     createdAt: thread.createdAt,
     updatedAt: thread.updatedAt,
-    messages: page.messages.map((message) => {
-      const source = thread.handoff?.sourceMessages?.find(
-        (entry) => entry.importedMessageId === message.messageId,
-      );
-      return source
-        ? {
-            ...message,
-            originalSource: {
-              threadId: source.originThreadId ?? thread.handoff!.sourceThreadId,
-              messageId: source.originMessageId ?? source.sourceMessageId,
-              throughSequence:
-                source.originBoundarySequence ?? thread.handoff?.sourceBoundarySequence,
-            },
-          }
-        : message;
-    }),
+    messages: page.messages,
     totalMessages: page.totalMessages,
     effectiveMessageLimit: page.effectiveMessageLimit,
     effectiveMaxMessageChars: page.effectiveMaxMessageChars,

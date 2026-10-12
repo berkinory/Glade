@@ -248,7 +248,6 @@ export interface MessagesTimelineProps {
   tailAnchorScrollInFlightRef?: RefObject<boolean> | undefined;
   crossTaskOrigin?: CrossTaskOrigin | null;
   forkSource?: ForkSourceReference | null;
-  handoffSource?: ForkSourceReference | null;
   timelineEntries: ReturnType<typeof deriveTimelineEntries>;
   messageChangeSignal?: unknown;
   turnDiffSummaryByAssistantMessageId: Map<MessageId, TurnDiffSummary>;

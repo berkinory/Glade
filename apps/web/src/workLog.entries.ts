@@ -4,7 +4,10 @@ import {
 } from "@glade/contracts/orchestration/visualReply";
 import { Schema, Option } from "effect";
 import { CommandId, ProviderKind } from "@glade/contracts/core/baseSchemas";
-import { HandoffTransitionStage } from "@glade/contracts/orchestration/threadEntities";
+import {
+  HandoffStrategy,
+  HandoffTransitionStage,
+} from "@glade/contracts/orchestration/threadEntities";
 import { nonEmptyTrimmed } from "@glade/shared/text/text";
 import { asObjectRecord } from "@glade/shared/transport/payloadValues";
 import type {
@@ -407,11 +410,9 @@ const transitionSummary = Schema.Struct({
   stage: HandoffTransitionStage,
   source: Schema.Struct({ provider: ProviderKind }),
   destination: Schema.Struct({ provider: ProviderKind }),
+  strategy: Schema.optional(HandoffStrategy),
 });
 const decodeTransitionSummary = Schema.decodeUnknownOption(transitionSummary);
-const decodeStoredTransitionSummary = Schema.decodeUnknownOption(
-  Schema.fromJsonString(transitionSummary),
-);
 
 const activityEntryCache = new WeakMap<OrchestrationThreadActivity, DerivedWorkLogEntry>();
 
@@ -461,11 +462,7 @@ function normalizeWorkLogActivity(activity: OrchestrationThreadActivity): Derive
     if (Option.isSome(reply)) entry.visualReply = reply.value;
   }
   if (activity.kind === "provider.transition") {
-    const transition = Option.getOrUndefined(
-      Option.orElse(decodeTransitionSummary(payload), () =>
-        decodeStoredTransitionSummary(payload?.detail),
-      ),
-    );
+    const transition = Option.getOrUndefined(decodeTransitionSummary(payload));
     if (transition) entry.providerTransition = transition;
   }
   const itemType = extractWorkLogItemType(payload);

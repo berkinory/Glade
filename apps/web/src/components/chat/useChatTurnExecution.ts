@@ -220,11 +220,6 @@ export function useChatTurnExecution({
       let createdServerThreadForLocalDraft = false;
       let createdWorktreeForSendPath: string | null = null;
       let switchedToLocalCheckout = false;
-      const preservesHandoffDraft = Boolean(
-        activeThread.handoff?.operationId &&
-        activeThread.handoff.bootstrapStatus === "pending" &&
-        activeThread.handoff.stage !== "cancelled",
-      );
       let turnStartSucceeded = false;
       let appCommandAccepted = false;
       let turnDispatchAttempted = false;
@@ -397,14 +392,7 @@ export function useChatTurnExecution({
         // race above only guards the first step).
         await consumeWorktreeSetupResolution();
 
-        if (
-          isServerThread &&
-          !(
-            activeThread.handoff?.operationId &&
-            activeThread.handoff.bootstrapStatus === "pending" &&
-            activeThread.handoff.stage !== "cancelled"
-          )
-        ) {
+        if (isServerThread && activeThread.handoff?.stage !== "pending") {
           await persistThreadSettingsForNextTurn({
             ...threadSettingsDispatchFields(dispatchSettings),
             threadId: threadIdForSend,
@@ -475,9 +463,7 @@ export function useChatTurnExecution({
               : {}),
           },
           ...turnStartDispatchFields(dispatchSettings, dispatchMode),
-          ...(activeThread.handoff?.operationId &&
-          activeThread.handoff.bootstrapStatus === "pending" &&
-          activeThread.handoff.stage !== "cancelled"
+          ...(activeThread.handoff?.stage === "pending"
             ? { handoffOperationId: activeThread.handoff.operationId }
             : {}),
 
@@ -485,37 +471,6 @@ export function useChatTurnExecution({
         });
         appCommandAccepted = true;
         stagedTurnAttachments.commit();
-        const operationId = activeThread.handoff?.operationId;
-        if (
-          operationId &&
-          activeThread.handoff?.bootstrapStatus === "pending" &&
-          activeThread.handoff.stage !== "cancelled"
-        ) {
-          const deadline = Date.now() + 120_000;
-          while (true) {
-            const snapshot = await api.orchestration.getShellSnapshot();
-            const current = snapshot.threads.find(
-              (thread) => thread.id === threadIdForSend,
-            )?.handoff;
-            if (
-              current?.operationId !== operationId ||
-              ["failed", "cancelled", "uncertain"].includes(current.stage ?? "")
-            )
-              throw new Error(
-                current?.stage === "uncertain"
-                  ? "Delivery is uncertain. Check the provider session before retrying; your draft is preserved."
-                  : (current?.detail ??
-                      "Provider transition did not accept the message. Your draft is preserved."),
-              );
-            if (current.stage === "delivered" && current.deliveryMessageId === messageIdForSend)
-              break;
-            if (Date.now() >= deadline)
-              throw new Error(
-                "Provider acceptance is still pending. Your draft is preserved; check the transition before retrying.",
-              );
-            await new Promise((resolve) => setTimeout(resolve, 500));
-          }
-        }
         turnStartSucceeded = true;
         if (
           shouldResumeSettledLocalThread &&
@@ -637,7 +592,7 @@ export function useChatTurnExecution({
             return next.length === existing.length ? existing : next;
           });
         }
-        if (queuedChatTurn === null && !turnStartSucceeded && !preservesHandoffDraft) {
+        if (queuedChatTurn === null && !turnStartSucceeded) {
           const draftStore = useComposerDraftStore.getState();
           const current = draftStore.draftsByThreadId[threadIdForSend];
           if (!current?.prompt) draftStore.setPrompt(threadIdForSend, promptForSend);

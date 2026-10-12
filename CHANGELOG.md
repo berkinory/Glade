@@ -1,5 +1,16 @@
 # Glade Changelog
 
+## Unreleased
+
+### Improved
+
+- Switching to another provider is instant: the chat switches right away, your next message carries the conversation over, and switching back before sending undoes it.
+- Returning to a provider you used earlier in a chat resumes its own session and only tells it what happened while another provider was working.
+
+### Removed
+
+- The confirmation dialog and context preparation step when switching providers.
+
 ## 0.2.4 - 2026-10-12
 
 ### New

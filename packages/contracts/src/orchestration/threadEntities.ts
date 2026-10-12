@@ -13,7 +13,6 @@ import {
   EventId,
   PositiveInt,
   ApprovalRequestId,
-  ProviderKind,
 } from "../core/baseSchemas";
 import { ProjectKind } from "../workspace/project";
 import { AsyncUserInput } from "./asyncUserInput";
@@ -28,10 +27,6 @@ import {
   ProviderApprovalDecision,
   ThreadCreationSource,
 } from "../provider/sessionPolicy";
-
-export const ThreadHandoffBootstrapStatus = Schema.Literals(["pending", "completed"]);
-
-export type ThreadHandoffBootstrapStatus = typeof ThreadHandoffBootstrapStatus.Type;
 
 export const ThreadEnvironmentMode = Schema.Literals(["local", "worktree"]);
 
@@ -279,87 +274,33 @@ export const OrchestrationMessage = Schema.Struct({
 
 export type OrchestrationMessage = typeof OrchestrationMessage.Type;
 
-const HandoffClaim = Schema.Struct({
-  text: Schema.String,
-  state: Schema.Literals(["fact", "proposal", "attempted", "confirmed", "failed", "unknown"]),
-  sourceRefs: Schema.Array(Schema.String),
-});
-
-export const HandoffRecord = Schema.Struct({
-  objective: HandoffClaim,
-  scopeChanges: Schema.Array(HandoffClaim),
-  constraints: Schema.Array(HandoffClaim),
-  decisions: Schema.Array(HandoffClaim),
-  completedWork: Schema.Array(HandoffClaim),
-  files: Schema.Array(HandoffClaim),
-  repositoryState: Schema.Array(HandoffClaim),
-  verification: Schema.Array(HandoffClaim),
-  unresolved: Schema.Array(HandoffClaim),
-  rejectedApproaches: Schema.Array(HandoffClaim),
-  nextSteps: Schema.Array(HandoffClaim),
-  requiredSourceRefs: Schema.Array(Schema.String),
-  sourcePassages: Schema.Array(Schema.Struct({ sourceRef: Schema.String, text: Schema.String })),
-});
-export type HandoffRecord = typeof HandoffRecord.Type;
-
-export const HandoffPreparation = Schema.Struct({
-  formatVersion: Schema.Literal(1),
-  inputIdentity: Schema.String,
-  goal: Schema.String,
-  modelSelection: ModelSelection,
-  record: HandoffRecord,
-  passes: NonNegativeInt,
-  estimatedInputTokens: NonNegativeInt,
-  estimatedOutputTokens: NonNegativeInt,
-  inputTokens: Schema.NullOr(NonNegativeInt),
-  outputTokens: Schema.NullOr(NonNegativeInt),
-  elapsedMs: NonNegativeInt,
-});
-export type HandoffPreparation = typeof HandoffPreparation.Type;
-
 export const HandoffTransitionStage = Schema.Literals([
-  "preparing",
-  "ready",
-  "activating",
-  "activated",
+  "pending",
   "delivered",
-  "failed",
-  "cancelled",
   "uncertain",
+  "cancelled",
 ]);
 export type HandoffTransitionStage = typeof HandoffTransitionStage.Type;
 
+// "resumed" continues the destination's own parked native session and carries only what happened
+// since it last saw the chat; "fresh" starts a new native session with the budgeted full history.
+export const HandoffStrategy = Schema.Literals(["resumed", "fresh"]);
+export type HandoffStrategy = typeof HandoffStrategy.Type;
+
 export const ThreadHandoff = Schema.Struct({
-  operationId: Schema.optional(CommandId),
-  stage: Schema.optional(HandoffTransitionStage),
-  sourceModelSelection: Schema.optional(ModelSelection),
-  destinationModelSelection: Schema.optional(ModelSelection),
-  destinationRuntimeMode: Schema.optional(RuntimeMode),
-  sourceRetired: Schema.optional(Schema.Boolean),
-  sourceGeneration: Schema.optional(Schema.NullOr(Schema.String)),
+  operationId: CommandId,
+  stage: HandoffTransitionStage,
+  sourceModelSelection: ModelSelection,
+  destinationModelSelection: ModelSelection,
   deliveryMessageId: Schema.optional(MessageId),
+  strategy: Schema.optional(HandoffStrategy),
+  channel: Schema.optional(Schema.Literals(["injected", "inline"])),
+  selectedItems: Schema.optional(NonNegativeInt),
+  omittedItems: Schema.optional(NonNegativeInt),
   transferredContext: Schema.optional(Schema.String),
   detail: Schema.optional(Schema.String),
-  sourceThreadId: ThreadId,
-  sourceProvider: ProviderKind,
-  importedAt: IsoDateTime,
-  bootstrapStatus: ThreadHandoffBootstrapStatus,
-  sourceBoundarySequence: Schema.optional(NonNegativeInt),
-  continuationGoal: Schema.optional(Schema.String),
-  sourceMessages: Schema.optional(
-    Schema.Array(
-      Schema.Struct({
-        sourceMessageId: MessageId,
-        importedMessageId: MessageId,
-        originThreadId: Schema.optional(ThreadId),
-        originMessageId: Schema.optional(MessageId),
-        originBoundarySequence: Schema.optional(NonNegativeInt),
-      }),
-    ),
-  ),
-  preparation: Schema.optional(HandoffPreparation),
+  createdAt: IsoDateTime,
 });
-
 export type ThreadHandoff = typeof ThreadHandoff.Type;
 
 export const OrchestrationSessionStatus = Schema.Literals([

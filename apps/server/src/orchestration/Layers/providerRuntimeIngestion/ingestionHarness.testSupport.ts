@@ -89,6 +89,9 @@ function createProviderServiceHarness(options?: { readonly persistedStream?: boo
     respondToUserInput: () => unsupported(),
     stopSession: () => unsupported(),
     stopRuntimeSession: () => unsupported(),
+    parkSession: () => unsupported(),
+    takeParkedSession: () => unsupported(),
+    injectHistory: () => unsupported(),
     hasLiveRuntimeTasks: () => Effect.succeed(false),
     listSessions: () => Effect.succeed([...runtimeSessions]),
     getCapabilities: (provider) =>

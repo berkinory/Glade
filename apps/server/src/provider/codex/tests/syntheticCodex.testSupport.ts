@@ -15,6 +15,7 @@ type SyntheticCodexRequest = {
 
 export function createSyntheticCodexAppServer(options?: {
   readonly forceFullHistoryResponse?: boolean;
+  readonly injectItemsError?: { readonly code: number; readonly message: string };
 }) {
   const historySentinel = "SYNTHETIC_PRIVATE_HISTORY_SENTINEL";
   const requests: SyntheticCodexRequest[] = [];
@@ -156,6 +157,11 @@ export function createSyntheticCodexAppServer(options?: {
           );
         } else if (request.method === "thread/unsubscribe" || request.method === "turn/interrupt") {
           respond({});
+        } else if (request.method === "thread/inject_items") {
+          const error = options?.injectItemsError;
+          if (error)
+            queueMicrotask(() => stdout.write(`${JSON.stringify({ id: request.id, error })}\n`));
+          else respond({});
         } else if (request.method === "turn/start") {
           respond({
             turn: { id: `synthetic-turn-${nextTurn++}`, items: [], status: "inProgress" },

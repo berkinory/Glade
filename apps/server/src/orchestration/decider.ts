@@ -37,6 +37,7 @@ export const decideOrchestrationCommand = Effect.fn("decideOrchestrationCommand"
       return yield* decideProjectCommand({ command, readModel, workspacePaths });
     case "thread.create":
     case "thread.handoff.start":
+    case "thread.handoff.cancel":
     case "thread.fork.create":
     case "thread.delete":
     case "thread.archive":

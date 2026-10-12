@@ -275,9 +275,7 @@ export function makeProviderDomainEvents(input: {
           if (
             !thread?.session ||
             thread.session.status === "stopped" ||
-            (thread.handoff?.operationId &&
-              thread.handoff.bootstrapStatus === "pending" &&
-              thread.handoff.stage !== "cancelled")
+            thread.handoff?.stage === "pending"
           ) {
             threadSessionSettings.setModelSelection(
               event.payload.threadId,

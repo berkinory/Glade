@@ -5,7 +5,6 @@ import { ConversationDivider } from "./ConversationDivider";
 import { useState, type ReactNode } from "react";
 import { Collapsible, CollapsiblePanel, CollapsibleTrigger } from "../ui/collapsible";
 import { DisclosureChevron } from "../ui/DisclosureChevron";
-import { Spinner } from "../ui/spinner";
 
 export function ProviderTransitionDivider({
   entry,
@@ -22,21 +21,16 @@ export function ProviderTransitionDivider({
   const label = !transition
     ? "Provider transition"
     : transition.stage === "delivered"
-      ? `Continued with ${destination}`
-      : transition.stage === "ready"
-        ? `Ready to continue with ${destination}`
-        : transition.stage === "preparing"
-          ? `Preparing continuation with ${destination}`
-          : transition.stage === "failed"
-            ? `Could not continue with ${destination}`
-            : transition.stage === "cancelled"
-              ? "Continuation cancelled"
-              : transition.stage === "uncertain"
-                ? `Continuation with ${destination} needs review`
-                : `Continuing with ${destination}`;
+      ? transition.strategy === "resumed"
+        ? `Resumed ${destination}`
+        : `Continued with ${destination}`
+      : transition.stage === "pending"
+        ? `Switching to ${destination} with your next message`
+        : transition.stage === "cancelled"
+          ? "Switch cancelled"
+          : `Continuation with ${destination} needs review`;
   const content = (
     <>
-      {transition?.stage === "preparing" ? <Spinner className="size-4" /> : null}
       {transition ? (
         <ProviderIcon provider={transition.source.provider} className="size-4 shrink-0" />
       ) : null}

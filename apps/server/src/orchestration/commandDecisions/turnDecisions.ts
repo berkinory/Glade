@@ -62,24 +62,18 @@ export function decideTurnCommand({
           threadId: command.threadId,
         });
         const handoff = targetThread.handoff;
-        const transitionPending =
-          handoff?.operationId &&
-          handoff.bootstrapStatus === "pending" &&
-          handoff.stage !== "cancelled";
+        const transitionPending = handoff?.stage === "pending";
         if (
           transitionPending &&
           (command.handoffOperationId !== handoff.operationId ||
-            !["ready", "failed"].includes(handoff.stage ?? "") ||
-            handoff.deliveryMessageId !== undefined ||
-            JSON.stringify(command.modelSelection) !==
-              JSON.stringify(handoff.destinationModelSelection) ||
+            command.modelSelection?.provider !== handoff.destinationModelSelection.provider ||
             command.dispatchMode === "steer" ||
             command.reviewTarget !== undefined)
         ) {
           return yield* new OrchestrationCommandInvariantError({
             commandType: command.type,
             detail:
-              "Prepare the selected provider transition before sending. Resolve any uncertain delivery first.",
+              "Send a regular message to continue with the selected provider, or switch back first.",
           });
         }
         if (!transitionPending && command.handoffOperationId !== undefined) {

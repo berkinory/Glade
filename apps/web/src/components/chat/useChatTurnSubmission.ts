@@ -284,18 +284,8 @@ export function useChatTurnSubmission({
           turnDispatchSettings,
           queuedChatTurn,
         );
-        if (
-          activeThread.handoff?.operationId &&
-          activeThread.handoff.bootstrapStatus === "pending" &&
-          activeThread.handoff.stage !== "cancelled" &&
-          activeThread.handoff.destinationModelSelection
-        )
-          dispatchSettings = {
-            ...dispatchSettings,
-            modelSelection: activeThread.handoff.destinationModelSelection,
-            runtimeMode:
-              activeThread.handoff.destinationRuntimeMode ?? dispatchSettings.runtimeMode,
-          };
+        if (activeThread.handoff?.stage === "pending")
+          dispatchSettings = { ...dispatchSettings, modelSelection: activeThread.modelSelection };
         const liveComposerSnapshot =
           queuedChatTurn === null ? (composerEditorRef.current?.readSnapshot() ?? null) : null;
         let promptForSend =
@@ -404,14 +394,8 @@ export function useChatTurnSubmission({
 
         // The sent text leaves the composer before the first send await, so text typed meanwhile
         // starts a fresh draft. Until the queue or the dispatch takes over, an early refusal puts the
-        // text back, but only into an empty composer. A pending provider transition keeps its draft
-        // until the transition accepts the message.
-        const preservesHandoffDraft = Boolean(
-          activeThread.handoff?.operationId &&
-          activeThread.handoff.bootstrapStatus === "pending" &&
-          activeThread.handoff.stage !== "cancelled",
-        );
-        if (queuedChatTurn === null && !preservesHandoffDraft) {
+        // text back, but only into an empty composer.
+        if (queuedChatTurn === null) {
           const sentPrompt = promptForSend;
           const draftStore = useComposerDraftStore.getState();
           if (draftStore.draftsByThreadId[activeThread.id]?.prompt === sentPrompt) {
@@ -719,7 +703,7 @@ export function useChatTurnSubmission({
           }
         };
         restoreSentPromptOnExit = null;
-        if (queuedChatTurn === null && !preservesHandoffDraft) clearSentComposerContent();
+        if (queuedChatTurn === null) clearSentComposerContent();
 
         const accepted = await executePreparedTurn({
           nextThreadEnvMode,
@@ -770,9 +754,6 @@ export function useChatTurnSubmission({
           composerMentionsSnapshot,
         });
         if (accepted) resumeQueueAfterSend?.();
-        if (accepted && queuedChatTurn === null && preservesHandoffDraft) {
-          clearSentComposerContent();
-        }
         return accepted;
       } finally {
         restoreSentPromptOnExit?.();

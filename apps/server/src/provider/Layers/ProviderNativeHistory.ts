@@ -1,5 +1,5 @@
 import type { ProviderServiceShape } from "../Services/ProviderService.ts";
-import { Effect, Exit, Layer, Option } from "effect";
+import { Cause, Effect, Exit, Layer, Option } from "effect";
 import { ProviderNativeHistory } from "../Services/ProviderNativeHistory.ts";
 import { ProviderSessionDirectory } from "../Services/ProviderSessionDirectory.ts";
 import { ProviderAdapterRegistry } from "../Services/ProviderAdapterRegistry.ts";
@@ -22,6 +22,33 @@ export const ProviderNativeHistoryLive = Layer.effect(
     const updateNativeHistory: ProviderServiceShape["updateNativeHistory"] = (input) =>
       lifecycle.run(input.threadId, (lease) =>
         Effect.gen(function* () {
+          if (input.action.type !== "rename") {
+            const action = input.action;
+            const parked = yield* directory.listParked(input.threadId);
+            yield* Effect.forEach(parked, (entry) =>
+              entry.provider === "claudeAgent" && action.type !== "delete"
+                ? Effect.void
+                : registry.getByProvider(entry.provider).pipe(
+                    Effect.flatMap((adapter) =>
+                      adapter.updateNativeHistory
+                        ? adapter.updateNativeHistory({
+                            threadId: input.threadId,
+                            action,
+                            resumeCursor: entry.resumeCursor,
+                          })
+                        : Effect.void,
+                    ),
+                    Effect.catchCause((cause) =>
+                      Effect.logWarning("parked native history update failed", {
+                        threadId: input.threadId,
+                        provider: entry.provider,
+                        cause: Cause.pretty(cause),
+                      }),
+                    ),
+                  ),
+            );
+            if (action.type === "delete") yield* directory.removeParked(input.threadId);
+          }
           const binding = Option.getOrUndefined(yield* directory.getBinding(input.threadId));
           // Threads without a binding have never acquired provider history.
           if (!binding) return;

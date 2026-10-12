@@ -36,6 +36,9 @@ export interface ReactorTestHarness {
   readonly restoreScopedCheckpoint: Mock<CheckpointStoreShape["restoreScopedCheckpoint"]>;
   readonly stopSession: Mock<(input: unknown) => Effect.Effect<void, never, never>>;
   readonly stopRuntimeSession: Mock<(input: unknown) => Effect.Effect<void, never, never>>;
+  readonly parkSession: Mock<ProviderServiceShape["parkSession"]>;
+  readonly takeParkedSession: Mock<ProviderServiceShape["takeParkedSession"]>;
+  readonly injectHistory: Mock<ProviderServiceShape["injectHistory"]>;
   readonly clearSessionResumeCursor: Mock<
     NonNullable<ProviderServiceShape["clearSessionResumeCursor"]>
   >;

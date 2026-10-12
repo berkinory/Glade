@@ -182,9 +182,9 @@ Glade reads a skill's name, description, short description (top level or under `
 
 ## Switching providers
 
-To switch providers in an existing task, select a model from another provider in the model picker
-and confirm the [handoff](https://github.com/berkinory/Glade/blob/main/docs/core-concepts.md).
-Glade creates a new task with the same working environment and imported conversation context.
+To switch providers in an existing task, select a model from another provider in the model picker.
+The [handoff](https://github.com/berkinory/Glade/blob/main/docs/core-concepts.md) keeps the same
+task and working environment, and your next message carries the conversation to the new provider.
 
 Use handoffs deliberately. Review the working tree before and after changing providers so ownership
 remains clear.

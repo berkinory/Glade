@@ -13,6 +13,7 @@ import {
 import { ProviderAdapterRegistry } from "../Services/ProviderAdapterRegistry.ts";
 import { type ProviderServiceShape } from "../Services/ProviderService.ts";
 import { Effect, Option } from "effect";
+import { hasResumeCursor } from "../core/providerRuntimeBinding";
 import {
   decodeInputOrValidationError,
   ClearSessionResumeCursorInput,
@@ -80,6 +81,62 @@ export const ProviderSessionTeardownLive = Layer.effect(
           }),
         );
       });
+
+    // A retried switch can find a destination left by a failed delivery bound here instead; its
+    // native history may hold part of the context, so it is discarded rather than parked.
+    const parkSession: ProviderServiceShape["parkSession"] = (input) =>
+      Effect.gen(function* () {
+        yield* idle.waitForRuntimeIdleStop(input.threadId);
+        idle.clearRuntimeIdleTimer(input.threadId);
+        return yield* lifecycle.run(input.threadId, (lease) =>
+          Effect.gen(function* () {
+            const binding = Option.getOrUndefined(yield* directory.getBinding(input.threadId));
+            if (!binding) return;
+            const adapter = yield* registry.getByProvider(binding.provider);
+            let resumeCursor = binding.resumeCursor;
+            if (yield* adapter.hasSession(input.threadId)) {
+              const active = (yield* adapter.listSessions()).find(
+                (session) => session.threadId === input.threadId,
+              );
+              if (active?.resumeCursor !== undefined) resumeCursor = active.resumeCursor;
+              yield* adapter.stopSession(input.threadId);
+            }
+            idle.clearLiveRuntimeTasks(input.threadId);
+            yield* idle.waitForRuntimeIdleStop(input.threadId);
+            yield* bindings.withBindingWriteLock(
+              input.threadId,
+              Effect.gen(function* () {
+                if (
+                  binding.provider === input.provider &&
+                  hasResumeCursor(resumeCursor) &&
+                  (adapter.canResumeNativeConversation?.(resumeCursor) ?? true)
+                )
+                  yield* directory.park({
+                    threadId: input.threadId,
+                    provider: binding.provider,
+                    resumeCursor,
+                    lastSeenMessageId: input.lastSeenMessageId,
+                  });
+                yield* directory.remove(input.threadId);
+              }),
+            );
+            interruptions.clear(input.threadId);
+            lease.retire();
+            idle.retireRuntimeIdleGeneration(input.threadId);
+          }),
+        );
+      });
+
+    const takeParkedSession: ProviderServiceShape["takeParkedSession"] = (input) =>
+      lifecycle.run(input.threadId, () =>
+        Effect.gen(function* () {
+          const parked = (yield* directory.listParked(input.threadId)).find(
+            (entry) => entry.provider === input.provider,
+          );
+          if (parked) yield* directory.removeParked(input.threadId, input.provider);
+          return parked;
+        }),
+      );
 
     const stopRuntimeSessionInternal = (
       rawInput: StopRuntimeSessionInput,
@@ -243,6 +300,8 @@ export const ProviderSessionTeardownLive = Layer.effect(
     return {
       stopRuntimeSessionInternal,
       stopSession,
+      parkSession,
+      takeParkedSession,
       stopRuntimeSession,
       hasLiveRuntimeTasks,
       clearSessionResumeCursor,

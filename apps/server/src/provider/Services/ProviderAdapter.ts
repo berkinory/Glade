@@ -148,6 +148,15 @@ export interface ProviderAdapterShape<TError> {
   /** False when a stored cursor holds no saved native conversation, so a start begins fresh. */
   readonly canResumeNativeConversation?: (resumeCursor: unknown) => boolean;
 
+  /** False when a start fell back to a new native conversation instead of resuming the cursor. */
+  readonly resumedNativeConversation?: (resumeCursor: unknown, session: ProviderSession) => boolean;
+
+  /** Appends model-visible history to the native conversation; false when unsupported. */
+  readonly injectHistory?: (
+    threadId: ThreadId,
+    items: ReadonlyArray<unknown>,
+  ) => Effect.Effect<boolean, TError>;
+
   readonly prepareSessionReplacement?: (input: ProviderSessionStartInput) => Effect.Effect<
     | {
         readonly previousSession: ProviderSession;

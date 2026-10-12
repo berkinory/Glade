@@ -9,6 +9,7 @@ import {
 } from "../core/Errors.ts";
 import {
   ProviderSessionDirectory,
+  type ParkedProviderBinding,
   type ProviderRuntimeBinding,
   type ProviderSessionDirectoryShape,
 } from "../Services/ProviderSessionDirectory.ts";
@@ -190,6 +191,42 @@ const makeProviderSessionDirectory = Effect.gen(function* () {
       Effect.map((bindings) => bindings.filter(Option.isSome).map((binding) => binding.value)),
     );
 
+  const park: ProviderSessionDirectoryShape["park"] = (binding) =>
+    repository
+      .park({
+        threadId: binding.threadId,
+        providerName: binding.provider,
+        resumeCursor: binding.resumeCursor,
+        lastSeenMessageId: binding.lastSeenMessageId,
+        parkedAt: new Date().toISOString(),
+      })
+      .pipe(Effect.mapError(toPersistenceError("ProviderSessionDirectory.park")));
+
+  const listParked: ProviderSessionDirectoryShape["listParked"] = (threadId) =>
+    repository.listParked({ threadId }).pipe(
+      Effect.mapError(toPersistenceError("ProviderSessionDirectory.listParked")),
+      Effect.map((rows) =>
+        rows.flatMap((row): ParkedProviderBinding[] =>
+          Schema.is(ProviderKind)(row.providerName)
+            ? [
+                {
+                  threadId: row.threadId,
+                  provider: row.providerName,
+                  resumeCursor: row.resumeCursor,
+                  lastSeenMessageId: row.lastSeenMessageId,
+                  parkedAt: row.parkedAt,
+                },
+              ]
+            : [],
+        ),
+      ),
+    );
+
+  const removeParked: ProviderSessionDirectoryShape["removeParked"] = (threadId, provider) =>
+    repository
+      .deleteParked({ threadId, ...(provider !== undefined ? { providerName: provider } : {}) })
+      .pipe(Effect.mapError(toPersistenceError("ProviderSessionDirectory.removeParked")));
+
   return {
     upsert,
     getProvider,
@@ -197,6 +234,9 @@ const makeProviderSessionDirectory = Effect.gen(function* () {
     remove,
     listThreadIds,
     listBindings,
+    park,
+    listParked,
+    removeParked,
   } satisfies ProviderSessionDirectoryShape;
 });
 

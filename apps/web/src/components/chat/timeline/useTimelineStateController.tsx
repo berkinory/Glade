@@ -56,7 +56,6 @@ export function useTimelineStateController(props: MessagesTimelineProps) {
     tailAnchorScrollInFlightRef,
     crossTaskOrigin: crossTaskOriginProp,
     forkSource: forkSourceProp,
-    handoffSource: handoffSourceProp,
     timelineEntries,
     messageChangeSignal: messageChangeSignalProp,
     turnDiffSummaryByAssistantMessageId,
@@ -84,8 +83,6 @@ export function useTimelineStateController(props: MessagesTimelineProps) {
   const tailAnchorMessageId = tailAnchorMessageIdProp ?? null;
 
   const forkSource = forkSourceProp ?? null;
-
-  const handoffSource = handoffSourceProp ?? null;
 
   const findHighlight = findHighlightProp ?? null;
 
@@ -251,16 +248,14 @@ export function useTimelineStateController(props: MessagesTimelineProps) {
 
   const rows = useStableRows(rawRows);
 
-  const originSource = handoffSource ?? forkSource;
-
-  const canRenderForkSourceDivider = originSource !== null && onOpenThread !== undefined;
+  const canRenderForkSourceDivider = forkSource !== null && onOpenThread !== undefined;
 
   const forkSourceDivider = useMemo(
     () =>
-      originSource && onOpenThread ? (
-        <ForkSourceDivider source={originSource} onOpenSourceThread={onOpenThread} />
+      forkSource && onOpenThread ? (
+        <ForkSourceDivider source={forkSource} onOpenSourceThread={onOpenThread} />
       ) : null,
-    [originSource, onOpenThread],
+    [forkSource, onOpenThread],
   );
 
   const forkDividerBeforeRowId = useMemo(() => {

@@ -57,7 +57,6 @@ interface ChatTranscriptPaneProps {
   >["tailAnchorScrollInFlightRef"];
   crossTaskOrigin?: ComponentProps<typeof MessagesTimeline>["crossTaskOrigin"];
   forkSource?: ComponentProps<typeof MessagesTimeline>["forkSource"];
-  handoffSource?: ComponentProps<typeof MessagesTimeline>["handoffSource"];
   markdownCwd: string | undefined;
   onExpandTimelineImage: (preview: ExpandedImagePreview) => void;
   onMessagesClickCapture: MouseEventHandler<HTMLDivElement>;
@@ -123,7 +122,6 @@ export function ChatTranscriptPane({
   tailAnchorScrollInFlightRef,
   crossTaskOrigin,
   forkSource,
-  handoffSource,
   markdownCwd,
   onExpandTimelineImage,
   onMessagesClickCapture,
@@ -266,11 +264,6 @@ export function ChatTranscriptPane({
             {...(forkSource
               ? {
                   forkSource,
-                }
-              : {})}
-            {...(handoffSource
-              ? {
-                  handoffSource,
                 }
               : {})}
             timelineEntries={timelineEntries}

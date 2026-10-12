@@ -59,11 +59,7 @@ export function useChatProviderModels({
   const queryClient = useQueryClient();
   const prompt = composerDraft.prompt;
   const handoffSelection =
-    activeThread?.handoff?.operationId &&
-    activeThread.handoff.bootstrapStatus === "pending" &&
-    activeThread.handoff.stage !== "cancelled"
-      ? activeThread.handoff.destinationModelSelection
-      : undefined;
+    activeThread?.handoff?.stage === "pending" ? activeThread.modelSelection : undefined;
   const sessionProvider = activeThread?.session?.provider ?? null;
   const selectedProviderByThreadId = composerDraft.activeProvider ?? null;
   const threadProvider =
@@ -80,7 +76,11 @@ export function useChatProviderModels({
     activeThread && threadHasProviderLockingActivity(activeThread),
   );
   const lockedProvider: ProviderKind | null = hasProviderLockingActivity
-    ? (sessionProvider ?? threadProvider ?? selectedProviderByThreadId ?? null)
+    ? (handoffSelection?.provider ??
+      sessionProvider ??
+      threadProvider ??
+      selectedProviderByThreadId ??
+      null)
     : null;
   const serverConfigQuery = useQuery(serverConfigQueryOptions());
   const environmentKey = useActiveEnvironment();

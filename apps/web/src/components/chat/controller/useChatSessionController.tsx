@@ -1,9 +1,8 @@
-import { ProviderKind, ThreadId } from "@glade/contracts/core/baseSchemas";
+import { ThreadId } from "@glade/contracts/core/baseSchemas";
 import { type ModelSelection } from "@glade/contracts/provider/sessionPolicy";
 import { type LegendListRef } from "@legendapp/list/react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
-import { Schema } from "effect";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { resolveAssistantDeliveryMode, useAppSettings } from "~/appSettings";
 import {
@@ -244,36 +243,6 @@ export function useChatSessionController(props: ChatViewProps) {
           }
         : null,
     [forkSourceThread?.title, forkSourceThreadId],
-  );
-
-  const handoffSourceThreadId = serverThread?.handoff?.operationId
-    ? null
-    : (serverThread?.handoff?.sourceThreadId ?? null);
-
-  const handoffSourceThread = useStore(
-    useMemo(() => createThreadSelector(handoffSourceThreadId), [handoffSourceThreadId]),
-  );
-
-  const handoffSource = useMemo(
-    () =>
-      handoffSourceThreadId && serverThread?.handoff
-        ? {
-            sourceThreadId: handoffSourceThreadId,
-            sourceTitle: handoffSourceThread?.title ?? "chat",
-            handoff: {
-              sourceProvider: Schema.is(ProviderKind)(serverThread.handoff.sourceProvider)
-                ? serverThread.handoff.sourceProvider
-                : null,
-              targetProvider: serverThread.modelSelection.provider,
-            },
-          }
-        : null,
-    [
-      handoffSourceThread?.title,
-      handoffSourceThreadId,
-      serverThread?.handoff,
-      serverThread?.modelSelection.provider,
-    ],
   );
 
   const fallbackDraftProjectId = draftThread?.projectId ?? null;
@@ -538,7 +507,6 @@ export function useChatSessionController(props: ChatViewProps) {
     composerThreadProjects,
     crossTaskOrigin,
     forkSource,
-    handoffSource,
     isDragOverComposer,
     setIsDragOverComposer,
     expandedImage,

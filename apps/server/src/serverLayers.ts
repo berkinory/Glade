@@ -3,8 +3,6 @@ import { HandoffTransitionsLive } from "./orchestration/Layers/HandoffTransition
 import { ThreadTitleGenerationLive } from "./orchestration/Layers/ThreadTitleGeneration";
 import { AppPresentationLive } from "./agentGateway/Layers/AppPresentation";
 import { AgentGatewayDiscoveryLive } from "./agentGateway/Layers/AgentGatewayDiscovery";
-import { HandoffPreparationLive } from "./orchestration/Layers/HandoffPreparation";
-import { HandoffGenerationLive } from "./provider/Layers/HandoffGeneration";
 import * as NodeServices from "@effect/platform-node/NodeServices";
 import { Layer } from "effect";
 
@@ -87,11 +85,8 @@ function makeServerRuntimeServicesLayer(
     Layer.provideMerge(runtimeServicesLayer),
     Layer.provideMerge(GitLayerLive),
   );
-  const handoffPreparationLayer = HandoffPreparationLive.pipe(
+  const handoffTransitionsLayer = HandoffTransitionsLive.pipe(
     Layer.provideMerge(runtimeServicesLayer),
-    Layer.provideMerge(HandoffGenerationLive),
-    Layer.provideMerge(HandoffTransitionsLive.pipe(Layer.provideMerge(runtimeServicesLayer))),
-    Layer.provideMerge(ServerSettingsLive),
   );
   const providerCommandReactorLayer = ProviderCommandReactorLive.pipe(
     Layer.provideMerge(runtimeServicesLayer),
@@ -100,7 +95,7 @@ function makeServerRuntimeServicesLayer(
     Layer.provideMerge(GitCoreLive),
     Layer.provideMerge(ThreadTitleGenerationLive),
     Layer.provideMerge(TextGenerationLayerLive),
-    Layer.provideMerge(handoffPreparationLayer),
+    Layer.provideMerge(handoffTransitionsLayer),
     Layer.provideMerge(ServerSettingsLive),
     Layer.provideMerge(AgentGatewayOperationRepositoryLive),
   );
@@ -185,7 +180,6 @@ function makeServerRuntimeServicesLayer(
     managedAttachmentCleanupLayer,
     AgentGatewayOperationRepositoryLive,
     providerHealthLayer,
-    handoffPreparationLayer,
     orchestrationReactorLayer,
     providerCommandReactorLayer,
     threadGitMetadataReactorLayer,

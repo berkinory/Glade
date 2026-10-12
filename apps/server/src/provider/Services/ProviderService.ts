@@ -23,6 +23,7 @@ import type { Effect, Stream } from "effect";
 import type { ProviderServiceError } from "../core/Errors.ts";
 import type { PersistedProviderRuntimeEvent } from "../../persistence/Services/ProviderRuntimeEvents.ts";
 import type { ProviderAdapterCapabilities } from "./ProviderAdapter.ts";
+import type { ParkedProviderBinding } from "./ProviderSessionDirectory.ts";
 
 export type ProviderRuntimeEventPumpStatus = "starting" | "healthy" | "recovering" | "degraded";
 
@@ -79,6 +80,13 @@ export interface ProviderServiceShape {
     input: ProviderStartReviewInput,
   ) => Effect.Effect<ProviderTurnStartResult, ProviderServiceError>;
 
+  /** False when the bound runtime cannot append history natively, so the caller sends it inline. */
+  readonly injectHistory: (input: {
+    readonly threadId: ThreadId;
+    readonly items: ReadonlyArray<unknown>;
+    readonly expectedLifecycleGeneration?: string;
+  }) => Effect.Effect<boolean, ProviderServiceError>;
+
   readonly forkThread?: (
     input: ProviderForkThreadInput,
   ) => Effect.Effect<ProviderForkThreadResult, ProviderServiceError>;
@@ -113,6 +121,22 @@ export interface ProviderServiceShape {
   readonly stopRuntimeSession: (input: {
     readonly threadId: ThreadId;
   }) => Effect.Effect<void, ProviderServiceError>;
+
+  /**
+   * Stops whatever session is bound to the thread. Only a session of `provider` keeps its native
+   * conversation for a later return; anything else bound there is discarded.
+   */
+  readonly parkSession: (input: {
+    readonly threadId: ThreadId;
+    readonly provider: ProviderKind;
+    readonly lastSeenMessageId: string | null;
+  }) => Effect.Effect<void, ProviderServiceError>;
+
+  /** Removes and returns the provider's parked session for this thread, if one was kept. */
+  readonly takeParkedSession: (input: {
+    readonly threadId: ThreadId;
+    readonly provider: ProviderKind;
+  }) => Effect.Effect<ParkedProviderBinding | undefined, ProviderServiceError>;
 
   readonly hasLiveRuntimeTasks: (input: { readonly threadId: ThreadId }) => Effect.Effect<boolean>;
 

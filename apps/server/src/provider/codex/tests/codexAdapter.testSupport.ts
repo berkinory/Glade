@@ -112,6 +112,9 @@ const providerSessionDirectoryTestLayer = Layer.succeed(ProviderSessionDirectory
   remove: () => Effect.void,
   listThreadIds: () => Effect.succeed([]),
   listBindings: () => Effect.succeed([]),
+  park: () => Effect.void,
+  listParked: () => Effect.succeed([]),
+  removeParked: () => Effect.void,
 });
 
 export const makeCodexAdapterTestLayer = (

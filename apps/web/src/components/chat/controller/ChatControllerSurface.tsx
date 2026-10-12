@@ -14,7 +14,6 @@ import { ChatSurfaceHeader } from "~/components/chat/ChatSurfaceHeader";
 import { ChatTranscriptPane } from "~/components/chat/ChatTranscriptPane";
 import { ExpandedImageOverlay } from "~/components/chat/ExpandedImageOverlay";
 import { ProjectPicker } from "~/components/chat/ProjectPicker";
-import { ProviderHandoffDialog } from "~/components/chat/ProviderHandoffDialog";
 import { ProviderHealthBanner } from "~/components/chat/ProviderHealthBanner";
 import { RateLimitBanner } from "~/components/chat/RateLimitBanner";
 import { ChatThreadFindHost } from "~/components/chat/ThreadFindBar";
@@ -60,7 +59,6 @@ export function ChatControllerSurface({ controller }: { controller: ChatControll
     timelineControllerRef,
     crossTaskOrigin,
     forkSource,
-    handoffSource,
     isRevertingCheckpoint,
     setIsRevertingCheckpoint,
     setPendingFileUndo,
@@ -79,16 +77,8 @@ export function ChatControllerSurface({ controller }: { controller: ChatControll
     setDismissedProviderHealthBannerKeys,
     setDismissedRateLimitBannerKey,
   } = controller.session;
-  const {
-    onComposerDragEnter,
-    onComposerDragOver,
-    onComposerDragLeave,
-    onComposerDrop,
-    pendingProviderHandoff,
-    providerHandoffBusy,
-    setPendingProviderHandoff,
-    confirmProviderHandoff,
-  } = controller.actions;
+  const { onComposerDragEnter, onComposerDragOver, onComposerDragLeave, onComposerDrop } =
+    controller.actions;
   const {
     activeProjectDisplayName,
     threadBreadcrumbs,
@@ -534,7 +524,6 @@ export function ChatControllerSurface({ controller }: { controller: ChatControll
                     tailAnchorScrollInFlightRef={tailAnchorScrollInFlightRef}
                     crossTaskOrigin={crossTaskOrigin}
                     forkSource={forkSource}
-                    handoffSource={handoffSource}
                     timelineEntries={timelineEntries}
                     messageChangeSignal={timelineMessages}
                     turnDiffSummaryByAssistantMessageId={turnDiffSummaryByAssistantMessageId}
@@ -658,15 +647,6 @@ export function ChatControllerSurface({ controller }: { controller: ChatControll
         ) : null}
       </div>
 
-      <ProviderHandoffDialog
-        provider={pendingProviderHandoff?.modelSelection.provider ?? null}
-        model={pendingProviderHandoff?.modelSelection.model ?? null}
-        busy={providerHandoffBusy}
-        onOpenChange={(open) => {
-          if (!open && !providerHandoffBusy) setPendingProviderHandoff(null);
-        }}
-        onConfirm={() => void confirmProviderHandoff()}
-      />
       {activeProject ? (
         <TranscriptSelectionActionLayer
           key={threadId}

@@ -6,7 +6,12 @@ export class ProviderSessionTeardown extends ServiceMap.Service<
   Required<
     Pick<
       ProviderServiceShape,
-      "stopSession" | "stopRuntimeSession" | "hasLiveRuntimeTasks" | "clearSessionResumeCursor"
+      | "stopSession"
+      | "stopRuntimeSession"
+      | "parkSession"
+      | "takeParkedSession"
+      | "hasLiveRuntimeTasks"
+      | "clearSessionResumeCursor"
     >
   > & { readonly stopRuntimeSessionInternal: StopIdleRuntime }
 >()("glade/provider/ProviderSessionTeardown") {}

@@ -6,7 +6,7 @@ import { ProjectionSnapshotQuery } from "../Services/ProjectionSnapshotQuery.ts"
 import { ServerConfig } from "../../server/config.ts";
 import { ManagedAttachmentRepository } from "../../persistence/Services/ManagedAttachments.ts";
 import { ProviderService } from "../../provider/Services/ProviderService.ts";
-import { Option, Effect } from "effect";
+import { Option, Effect, Schema } from "effect";
 import {
   type ModelSelection,
   type ProviderStartOptions,
@@ -16,7 +16,7 @@ import {
 import { AgentGatewayOperationRepository } from "../../agentGateway/Services/AgentGatewayOperationRepository.ts";
 import { CheckpointStore } from "../../checkpointing/Services/CheckpointStore.ts";
 import { OrchestrationEngineService } from "../Services/OrchestrationEngine.ts";
-import { ThreadId, ProviderKind } from "@glade/contracts/core/baseSchemas";
+import { MessageId, ThreadId, ProviderKind } from "@glade/contracts/core/baseSchemas";
 import {
   type ChatAttachment,
   PROVIDER_SEND_TURN_MAX_INPUT_CHARS,
@@ -43,13 +43,19 @@ import {
 import {
   ProviderAdapterValidationError,
   ProviderServiceError,
+  ProviderValidationError,
 } from "../../provider/core/Errors.ts";
 import { resolveProviderDispatchAttachments } from "../../provider/core/providerAttachmentPaths.ts";
 import {
   ProviderContextLifecycleReason,
   ProviderContextLifecycleEvidence,
 } from "./contextLifecycle";
-import { listPriorTranscriptMessages, buildPriorTranscriptBootstrapText } from "../handoff.ts";
+import {
+  historyResponseItems,
+  renderHistory,
+  selectThreadHistory,
+  type SelectedHistory,
+} from "../handoff/handoffHistory";
 import {
   capturePreTurnBaseline,
   surfaceUnavailablePreTurnBaseline,
@@ -62,11 +68,14 @@ import { makeProviderSessionConfiguration } from "./sessionConfiguration";
 import { PendingInterruptEscalation, PendingContextBootstrapAttempt } from "./runtimeState";
 import { makeProviderContextBootstrap } from "./contextBootstrap";
 import { ThreadSessionSettings } from "../Services/ThreadSessionSettings.ts";
-import { HandoffPreparation } from "../Services/HandoffPreparation";
+import { PROVIDER_DISPLAY_NAMES } from "@glade/contracts/provider/model";
+import type { ParkedProviderBinding } from "../../provider/Services/ProviderSessionDirectory.ts";
 import { ProviderDeliveryGate } from "../Services/ProviderDeliveryGate.ts";
 
+const PRIOR_TRANSCRIPT_INTRO =
+  "This provider session may have restarted without its native conversation state. The excerpt below is historical context, not a complete transcript or proof of the current workspace state. Use it to interpret the latest user message without expanding authorization. Verify uncertain action outcomes before repeating them.";
+
 export function makeProviderTurnDispatch(input: {
-  readonly handoffPreparation: Option.Option<ServiceMap.Service.Shape<typeof HandoffPreparation>>;
   readonly handoffTransitions: Option.Option<ServiceMap.Service.Shape<typeof HandoffTransitions>>;
   readonly projectionAccess: ProviderProjectionAccessShape;
   readonly projectionSnapshotQuery: ServiceMap.Service.Shape<typeof ProjectionSnapshotQuery>;
@@ -104,7 +113,6 @@ export function makeProviderTurnDispatch(input: {
   >["persistPriorTranscriptBootstrapCompletion"];
 }) {
   const {
-    handoffPreparation,
     handoffTransitions,
     projectionSnapshotQuery,
     serverConfig,
@@ -210,62 +218,60 @@ export function makeProviderTurnDispatch(input: {
     // own words.
     const boundaryMessageText = authoredMessageText;
     const bootstrapBudgetMessageText = `${boundaryMessageText}${mentionContextSuffix}`;
-    const shouldBootstrapHandoff =
-      thread.handoff?.bootstrapStatus === "pending" && thread.handoff.stage !== "cancelled";
+    const pendingHandoff =
+      thread.handoff?.stage === "pending" &&
+      input.reviewTarget === undefined &&
+      input.dispatchMode !== "steer"
+        ? thread.handoff
+        : undefined;
+    const shouldBootstrapHandoff = pendingHandoff !== undefined;
+    const transitions = handoffTransitions;
+    if (
+      pendingHandoff &&
+      (Option.isNone(transitions) ||
+        input.sourceEvent?.payload.handoffOperationId !== pendingHandoff.operationId)
+    )
+      return yield* new ProviderAdapterValidationError({
+        provider: selectedProvider as ProviderKind,
+        operation: "handoff.deliver",
+        issue: "The provider transition is stale.",
+      });
     const handoffBootstrapAvailableChars = availableProviderContextChars({
       tag: "handoff_context",
       messageText: bootstrapBudgetMessageText,
       wrapLatestUserMessage: true,
     });
-    const handoffBootstrapText =
-      shouldBootstrapHandoff && input.reviewTarget === undefined
-        ? yield* Effect.gen(function* () {
-            const preparation = handoffPreparation;
-            if (Option.isNone(preparation) || handoffBootstrapAvailableChars === 0) {
-              return yield* new ProviderAdapterValidationError({
-                provider: selectedProvider as ProviderKind,
-                operation: "thread.turn.start",
-                issue:
-                  "The handoff context cannot be prepared. Retry preparation or shorten the latest message.",
-              });
-            }
-            return yield* preparation.value.prepare({
-              threadId: input.threadId,
-              modelSelection: input.modelSelection ?? thread.modelSelection,
-              providerOptions: input.providerOptions,
-              latestRequest: bootstrapBudgetMessageText,
-              attachmentCount: input.attachments?.length ?? 0,
-            });
-          })
-        : null;
-
-    const transitions = handoffTransitions;
-    const operationId = thread.handoff?.operationId;
-    if (handoffBootstrapText && operationId) {
-      if (
-        Option.isNone(transitions) ||
-        input.sourceEvent?.payload.handoffOperationId !== operationId
-      )
-        return yield* new ProviderAdapterValidationError({
-          provider: selectedProvider as ProviderKind,
-          operation: "handoff.activate",
-          issue: "The provider transition is stale.",
-        });
-      yield* transitions.value.validate(input.threadId, operationId);
-      yield* transitions.value.update(input.threadId, operationId, { stage: "activating" });
-      // Retirement removes the source binding and gateway authority before destination admission.
-      yield* providerService.stopSession({
+    if (pendingHandoff && handoffBootstrapAvailableChars === 0)
+      return yield* new ProviderAdapterValidationError({
+        provider: selectedProvider as ProviderKind,
+        operation: "handoff.deliver",
+        issue: "The latest message leaves no room for the handoff context. Shorten it and retry.",
+      });
+    const destinationSelection = input.modelSelection ?? thread.modelSelection;
+    let parkedDestination: ParkedProviderBinding | undefined;
+    if (pendingHandoff) {
+      const lastSeen = thread.messages.findLast((message) => message.id !== input.messageId);
+      yield* providerService.parkSession({
         threadId: input.threadId,
-        expectedLifecycleGeneration: thread.handoff?.sourceGeneration,
+        provider: pendingHandoff.sourceModelSelection.provider,
+        lastSeenMessageId: lastSeen?.id ?? null,
       });
-      yield* transitions.value.update(input.threadId, operationId, {
-        stage: "activating",
-        sourceRetired: true,
+      const parked = yield* providerService.takeParkedSession({
+        threadId: input.threadId,
+        provider: destinationSelection.provider,
       });
+      // Rollbacks rewrite history, so a parked session is current only while the chat still holds
+      // the newest message it had seen.
+      parkedDestination =
+        parked &&
+        (parked.lastSeenMessageId === null ||
+          thread.messages.some((message) => message.id === parked.lastSeenMessageId))
+          ? parked
+          : undefined;
       yield* orchestrationEngine.dispatch({
         type: "thread.session.set",
         createdAt: input.createdAt,
-        commandId: serverCommandId("handoff-source-retired"),
+        commandId: serverCommandId("handoff-source-parked"),
         threadId: input.threadId,
         session: {
           threadId: input.threadId,
@@ -277,17 +283,7 @@ export function makeProviderTurnDispatch(input: {
           updatedAt: input.createdAt,
         },
       });
-      yield* orchestrationEngine.dispatch({
-        type: "thread.meta.update",
-        commandId: serverCommandId("handoff-target-selected"),
-        threadId: input.threadId,
-        expectedHandoffOperationId: operationId,
-        modelSelection: thread.handoff!.destinationModelSelection!,
-      });
-      threadSessionSettings.setModelSelection(
-        input.threadId,
-        thread.handoff!.destinationModelSelection!,
-      );
+      threadSessionSettings.setModelSelection(input.threadId, destinationSelection);
     }
     const {
       nativeResumeSucceeded,
@@ -298,30 +294,8 @@ export function makeProviderTurnDispatch(input: {
       ...(input.modelSelection !== undefined ? { modelSelection: input.modelSelection } : {}),
       ...(input.providerOptions !== undefined ? { providerOptions: input.providerOptions } : {}),
       ...(input.runtimeMode !== undefined ? { runtimeMode: input.runtimeMode } : {}),
+      ...(pendingHandoff ? { handoffResumeCursor: parkedDestination?.resumeCursor ?? null } : {}),
     });
-    const validateHandoffAdmission =
-      operationId && handoffBootstrapText && Option.isSome(transitions)
-        ? transitions.value.validate(input.threadId, operationId).pipe(
-            Effect.tapError(() =>
-              providerService
-                .stopSession({
-                  threadId: input.threadId,
-                  ...(destinationGeneration !== undefined
-                    ? { expectedLifecycleGeneration: destinationGeneration }
-                    : {}),
-                })
-                .pipe(Effect.ignore),
-            ),
-            Effect.asVoid,
-          )
-        : Effect.void;
-    if (operationId && handoffBootstrapText && destinationGeneration === undefined)
-      return yield* new ProviderAdapterValidationError({
-        provider: selectedProvider as ProviderKind,
-        operation: "handoff.activate",
-        issue: "Destination startup did not return its session generation.",
-      });
-    yield* validateHandoffAdmission;
     if (input.providerOptions !== undefined) {
       threadSessionSettings.setProviderOptions(input.threadId, input.providerOptions);
     }
@@ -329,11 +303,43 @@ export function makeProviderTurnDispatch(input: {
       threadSessionSettings.setModelSelection(input.threadId, input.modelSelection);
     }
 
-    if (handoffBootstrapText && operationId && Option.isSome(transitions))
-      yield* transitions.value.update(input.threadId, operationId, {
-        stage: "activated",
-        transferredContext: redactDiagnosticText(handoffBootstrapText),
-      });
+    const resumedHandoff = parkedDestination !== undefined && nativeResumeSucceeded;
+    let deliveredHandoff: { history: SelectedHistory; resumed: boolean } | undefined =
+      pendingHandoff
+        ? {
+            resumed: resumedHandoff,
+            history: selectThreadHistory({
+              thread,
+              beforeMessageId: input.messageId,
+              since: resumedHandoff
+                ? thread.messages.find(
+                    (message) => message.id === parkedDestination?.lastSeenMessageId,
+                  )?.createdAt
+                : undefined,
+              intro: resumedHandoff
+                ? "You are resuming your own earlier session in this chat. Other providers continued the conversation meanwhile; this is what happened since you last took part."
+                : `This chat continues from ${PROVIDER_DISPLAY_NAMES[pendingHandoff.sourceModelSelection.provider]} (${pendingHandoff.sourceModelSelection.model}) in a new native session. This is the earlier conversation.`,
+              budget: handoffBootstrapAvailableChars,
+            }),
+          }
+        : undefined;
+    const handoffHasContext =
+      deliveredHandoff !== undefined &&
+      deliveredHandoff.history.items.length + deliveredHandoff.history.omittedItems > 0;
+    const handoffInjected =
+      deliveredHandoff && handoffHasContext
+        ? yield* providerService.injectHistory({
+            threadId: input.threadId,
+            items: historyResponseItems(deliveredHandoff.history),
+            ...(destinationGeneration !== undefined
+              ? { expectedLifecycleGeneration: destinationGeneration }
+              : {}),
+          })
+        : false;
+    const handoffBootstrapText =
+      deliveredHandoff && handoffHasContext && !handoffInjected
+        ? renderHistory(deliveredHandoff.history)
+        : null;
 
     const interruptEscalation = pendingInterruptEscalations.get(input.threadId);
     const priorEscalationEvidence = interruptEscalation?.evidence;
@@ -345,17 +351,22 @@ export function makeProviderTurnDispatch(input: {
       (input.dispatchMode !== "steer" && priorEscalationEvidence?.recapText != null);
     const shouldBootstrapPriorTranscriptContext =
       hasPendingPriorTranscriptBootstrap && !shouldBootstrapHandoff;
-    const priorTranscriptMessages = listPriorTranscriptMessages(
-      thread,
-      transcriptBoundaryMessageId,
-    );
-    const hasPriorTranscriptBootstrapContent =
-      shouldBootstrapPriorTranscriptContext && priorTranscriptMessages.length > 0;
     const priorTranscriptBootstrapAvailableChars = availableProviderContextChars({
       tag: "thread_context",
       messageText: bootstrapBudgetMessageText,
       wrapLatestUserMessage: true,
     });
+    const priorTranscript = () =>
+      selectThreadHistory({
+        thread,
+        beforeMessageId: transcriptBoundaryMessageId,
+        intro: PRIOR_TRANSCRIPT_INTRO,
+        budget: priorTranscriptBootstrapAvailableChars,
+      });
+    const priorTranscriptItemCount =
+      priorTranscript().items.length + priorTranscript().omittedItems;
+    const hasPriorTranscriptBootstrapContent =
+      shouldBootstrapPriorTranscriptContext && priorTranscriptItemCount > 0;
     if (
       input.reviewTarget === undefined &&
       hasPendingPriorTranscriptBootstrap &&
@@ -371,12 +382,10 @@ export function makeProviderTurnDispatch(input: {
       });
     }
     const priorTranscriptBootstrapText =
-      shouldBootstrapPriorTranscriptContext && priorTranscriptBootstrapAvailableChars > 0
-        ? buildPriorTranscriptBootstrapText(
-            thread,
-            transcriptBoundaryMessageId,
-            priorTranscriptBootstrapAvailableChars,
-          )
+      shouldBootstrapPriorTranscriptContext &&
+      priorTranscriptBootstrapAvailableChars > 0 &&
+      priorTranscriptItemCount > 0
+        ? renderHistory(priorTranscript())
         : null;
     const restartReason: ProviderContextLifecycleReason = interruptEscalation
       ? "interrupt-escalation"
@@ -389,7 +398,7 @@ export function makeProviderTurnDispatch(input: {
       input.reviewTarget === undefined &&
       input.dispatchMode !== "steer" &&
       !shouldBootstrapHandoff &&
-      priorTranscriptMessages.length > 0 &&
+      priorTranscriptItemCount > 0 &&
       (priorTranscriptBootstrapText !== null ||
         (nativeSessionRestarted && !nativeResumeSucceeded) ||
         priorEscalationEvidence != null)
@@ -456,17 +465,13 @@ export function makeProviderTurnDispatch(input: {
       ...(requestedModelSelection !== undefined ? { modelSelection: requestedModelSelection } : {}),
     };
     const sendQueuedProviderTurn = (messageText: string | undefined) =>
-      validateHandoffAdmission.pipe(
-        Effect.andThen(() =>
-          providerService.sendTurn({
-            ...providerTurnInput,
-            ...(operationId && destinationGeneration !== undefined
-              ? { expectedLifecycleGeneration: destinationGeneration }
-              : {}),
-            ...(messageText ? { input: messageText } : {}),
-          }),
-        ),
-      );
+      providerService.sendTurn({
+        ...providerTurnInput,
+        ...(pendingHandoff && destinationGeneration !== undefined
+          ? { expectedLifecycleGeneration: destinationGeneration }
+          : {}),
+        ...(messageText ? { input: messageText } : {}),
+      });
 
     let preTurnBaseline = { status: "not-applicable" } as PreTurnBaseline;
     const captureMessageStartCheckpoint = capturePreTurnBaseline({
@@ -491,7 +496,7 @@ export function makeProviderTurnDispatch(input: {
     const priorTranscriptBootstrapRetiresOnAcceptedTurn =
       shouldBootstrapPriorTranscriptContext &&
       (priorTranscriptBootstrapText !== null || !hasPriorTranscriptBootstrapContent);
-    const specializedBootstrapCompletesFreshSessionContext = handoffBootstrapText !== null;
+    const specializedBootstrapCompletesFreshSessionContext = shouldBootstrapHandoff;
     let pendingContextBootstrapAttempt: PendingContextBootstrapAttempt | undefined;
     let startedTurn: ProviderTurnStartResult | undefined;
 
@@ -548,14 +553,12 @@ export function makeProviderTurnDispatch(input: {
           });
           yield* ensureSessionForStaleRetry;
 
+          const retryHistory = priorTranscript();
           const retryBootstrapText =
-            priorTranscriptBootstrapAvailableChars > 0
-              ? buildPriorTranscriptBootstrapText(
-                  thread,
-                  transcriptBoundaryMessageId,
-                  priorTranscriptBootstrapAvailableChars,
-                )
+            priorTranscriptBootstrapAvailableChars > 0 && priorTranscriptItemCount > 0
+              ? renderHistory(retryHistory)
               : null;
+          if (deliveredHandoff) deliveredHandoff = { history: retryHistory, resumed: false };
           providerContextLifecycleEvidence = {
             nativeHistory: "unavailable",
             recapText: retryBootstrapText,
@@ -588,8 +591,9 @@ export function makeProviderTurnDispatch(input: {
       const sentTurn = yield* sendQueuedProviderTurn(normalizedInput).pipe(
         Effect.catch((error) =>
           Effect.gen(function* () {
+            // A fresh handoff session has no native resume to go stale.
             if (
-              handoffBootstrapText ||
+              (pendingHandoff && !resumedHandoff) ||
               selectedProvider !== "claudeAgent" ||
               !isStaleClaudeResumeError(error)
             ) {
@@ -630,6 +634,19 @@ export function makeProviderTurnDispatch(input: {
               ),
             );
           }),
+        ),
+        Effect.tapError((error) =>
+          pendingHandoff &&
+          Option.isSome(transitions) &&
+          !Schema.is(ProviderAdapterValidationError)(error) &&
+          !Schema.is(ProviderValidationError)(error)
+            ? transitions.value
+                .update(input.threadId, pendingHandoff.operationId, {
+                  stage: "uncertain",
+                  detail: redactDiagnosticText(error.message),
+                })
+                .pipe(Effect.ignore)
+            : Effect.void,
         ),
         Effect.onError(() =>
           Effect.gen(function* () {
@@ -701,20 +718,18 @@ export function makeProviderTurnDispatch(input: {
     if (input.reviewTarget !== undefined) {
       completeInterruptEscalation(input.threadId, interruptEscalation);
     }
-    if (handoffBootstrapText && thread.handoff !== null && input.reviewTarget === undefined) {
-      if (operationId && Option.isSome(transitions)) {
-        yield* transitions.value.update(input.threadId, operationId, {
-          stage: "delivered",
-          bootstrapStatus: "completed",
-        });
-      } else {
-        yield* orchestrationEngine.dispatch({
-          type: "thread.meta.update",
-          commandId: serverCommandId("handoff-bootstrap-complete"),
-          threadId: input.threadId,
-          handoff: { ...thread.handoff, bootstrapStatus: "completed" },
-        });
-      }
+    if (pendingHandoff && deliveredHandoff && Option.isSome(transitions)) {
+      const { history, resumed } = deliveredHandoff;
+      yield* transitions.value.update(input.threadId, pendingHandoff.operationId, {
+        stage: "delivered",
+        deliveryMessageId: MessageId.makeUnsafe(input.messageId),
+        destinationModelSelection: destinationSelection,
+        strategy: resumed ? "resumed" : "fresh",
+        ...(handoffHasContext ? { channel: handoffInjected ? "injected" : "inline" } : {}),
+        selectedItems: history.items.length,
+        omittedItems: history.omittedItems,
+        transferredContext: redactDiagnosticText(renderHistory(history)),
+      });
     }
     const retiresPriorTranscriptBootstrap =
       priorTranscriptBootstrapRetiresOnAcceptedTurn &&

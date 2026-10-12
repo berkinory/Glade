@@ -695,8 +695,6 @@ function buildNativeApi(transport: WsTransport, listeners: NativeApiListeners): 
         transport.request(ORCHESTRATION_WS_METHODS.getThreadDetailSnapshot, input),
       searchThreadMessages: (input, options) =>
         transport.request(ORCHESTRATION_WS_METHODS.searchThreadMessages, input, options),
-      prepareHandoff: (input) =>
-        transport.request(ORCHESTRATION_WS_METHODS.prepareHandoff, input, { timeoutMs: null }),
       dispatchCommand: (command) => {
         const payload = { command: omitNullUserInputAnswers(command) };
         return command.type === "thread.turn.start"

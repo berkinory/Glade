@@ -150,6 +150,8 @@ const makeProviderService = Effect.gen(function* () {
     ...turns,
     stopSession: teardown.stopSession,
     stopRuntimeSession: teardown.stopRuntimeSession,
+    parkSession: teardown.parkSession,
+    takeParkedSession: teardown.takeParkedSession,
     hasLiveRuntimeTasks: teardown.hasLiveRuntimeTasks,
     clearSessionResumeCursor: teardown.clearSessionResumeCursor,
     ...tasks,

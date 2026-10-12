@@ -181,8 +181,14 @@ const ThreadHandoffStartCommand = Schema.Struct({
   threadId: ThreadId,
   modelSelection: ModelSelection,
   runtimeMode: RuntimeMode,
-  continuationGoal: Schema.optional(Schema.String),
-  sourceGeneration: Schema.optional(Schema.NullOr(TrimmedNonEmptyString)),
+  createdAt: IsoDateTime,
+});
+
+const ThreadHandoffCancelCommand = Schema.Struct({
+  type: Schema.Literal("thread.handoff.cancel"),
+  commandId: CommandId,
+  threadId: ThreadId,
+  operationId: CommandId,
   createdAt: IsoDateTime,
 });
 
@@ -491,6 +497,7 @@ const DispatchableClientOrchestrationCommand = Schema.Union([
   ProjectDeleteCommand,
   ThreadCreateCommand,
   ThreadHandoffStartCommand,
+  ThreadHandoffCancelCommand,
   ThreadForkCreateCommand,
   ThreadDeleteCommand,
   ThreadArchiveCommand,
@@ -528,7 +535,8 @@ export const ClientOrchestrationCommand = Schema.Union([
   ProjectMetaUpdateCommand,
   ProjectDeleteCommand,
   ThreadCreateCommand,
-  ThreadHandoffStartCommand.mapFields(Struct.omit(["sourceGeneration"])),
+  ThreadHandoffStartCommand,
+  ThreadHandoffCancelCommand,
   ThreadForkCreateCommand,
   ThreadDeleteCommand,
   ThreadArchiveCommand,

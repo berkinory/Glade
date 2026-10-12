@@ -1,18 +1,78 @@
 import { Effect } from "effect";
-import { EventId } from "@glade/contracts/core/baseSchemas";
-import type { OrchestrationThread } from "@glade/contracts/orchestration/threadEntities";
-import { resolveDirectProviderSwitchMessage } from "@glade/shared/threads/directProviderSwitch";
+import type {
+  OrchestrationThread,
+  ThreadHandoff,
+} from "@glade/contracts/orchestration/threadEntities";
 import type { OrchestrationCommand } from "@glade/contracts/orchestration/commands";
 import type { OrchestrationEvent } from "@glade/contracts/orchestration/events";
+import type { ModelSelection } from "@glade/contracts/provider/sessionPolicy";
 import {
   requireThreadNotArchived,
   threadHasCheckpointRevertInProgress,
 } from "../commandInvariants";
 import { OrchestrationCommandInvariantError } from "../Errors";
-import { HANDOFF_GOAL } from "../handoff/contextPolicy";
-import { handoffMessageReference } from "../handoff/sourceReferences";
+import { handoffTransitionActivity } from "../handoff/transitionActivity";
 import { type CommandDecisionInput, withEventBase } from "./commandEvents";
 import { validateAutoRuntimeMode } from "./threadConfiguration";
+
+type HandoffCommand = Extract<
+  OrchestrationCommand,
+  { type: "thread.handoff.start" | "thread.handoff.cancel" }
+>;
+
+// The selection changes immediately; the continuation context is built and delivered with the next
+// message, so nothing is retired until the user actually sends.
+function transitionEvents(
+  command: HandoffCommand,
+  thread: OrchestrationThread,
+  modelSelection: ModelSelection,
+  handoff: ThreadHandoff,
+) {
+  const base = () =>
+    withEventBase({
+      aggregateKind: "thread",
+      aggregateId: thread.id,
+      occurredAt: command.createdAt,
+      commandId: command.commandId,
+    });
+  return [
+    {
+      ...base(),
+      type: "thread.meta-updated",
+      payload: { threadId: thread.id, modelSelection, handoff, updatedAt: command.createdAt },
+    },
+    {
+      ...base(),
+      type: "thread.activity-appended",
+      payload: { threadId: thread.id, activity: handoffTransitionActivity(handoff) },
+    },
+  ] satisfies ReadonlyArray<Omit<OrchestrationEvent, "sequence">>;
+}
+
+// A chat whose sends never reached a provider has no provider conversation to hand off: no provider
+// turn ever started, nothing came back, and no fork seeded a native session. Switching such
+// a chat changes the model directly and resends its latest message. Anything else stays a handoff.
+function resolveDirectProviderSwitchMessage(
+  thread: OrchestrationThread,
+): OrchestrationThread["messages"][number] | null {
+  if (
+    thread.latestTurn != null ||
+    thread.parentThreadId != null ||
+    thread.forkSourceThreadId != null
+  ) {
+    return null;
+  }
+  const undelivered = thread.messages.every(
+    (message) =>
+      message.role === "user" &&
+      message.source === "native" &&
+      !message.turnId &&
+      !message.streaming,
+  );
+  const latest = thread.messages.at(-1);
+  // The resend path carries text; an attachment-only message keeps the handoff.
+  return undelivered && latest && latest.text.trim().length > 0 ? latest : null;
+}
 
 export const decideHandoffStart = Effect.fnUntraced(function* ({
   command,
@@ -24,88 +84,85 @@ export const decideHandoffStart = Effect.fnUntraced(function* ({
     threadId: command.threadId,
   });
   yield* validateAutoRuntimeMode(command, command.modelSelection, command.runtimeMode);
+  const pending = thread.handoff?.stage === "pending" ? thread.handoff : undefined;
   if (
     thread.parentThreadId !== null ||
-    thread.modelSelection.provider === command.modelSelection.provider ||
+    (!pending && thread.modelSelection.provider === command.modelSelection.provider) ||
     threadHasCheckpointRevertInProgress(thread) ||
     thread.session?.status === "running" ||
     thread.session?.status === "starting" ||
     thread.latestTurn?.state === "running" ||
     thread.pendingInteractions?.some((entry) => entry.status !== "confirmed") ||
-    ["preparing", "activating", "activated", "uncertain"].includes(thread.handoff?.stage ?? "")
+    thread.handoff?.stage === "uncertain"
   )
     return yield* new OrchestrationCommandInvariantError({
       commandType: command.type,
       detail: "Finish or stop active work and resolve pending requests before changing providers.",
     });
+  if (pending) {
+    // Choosing the source provider again before anything was sent simply undoes the switch. Once a
+    // delivery attempt parked the source, going back is itself a switch that resumes it.
+    const returning =
+      command.modelSelection.provider === pending.sourceModelSelection.provider &&
+      pending.deliveryMessageId === undefined;
+    return transitionEvents(command, thread, command.modelSelection, {
+      ...pending,
+      ...(returning
+        ? { stage: "cancelled" as const }
+        : { destinationModelSelection: command.modelSelection }),
+    });
+  }
   const resend = resolveDirectProviderSwitchMessage(thread);
   if (resend) return decideDirectProviderSwitch(command, thread, resend);
-  const messages = thread.messages.filter(
-    (message) => !message.streaming && ["user", "assistant"].includes(message.role),
-  );
-  if (!messages.length)
-    return yield* new OrchestrationCommandInvariantError({
-      commandType: command.type,
-      detail: "The chat has no completed conversation to transfer.",
-    });
-  const handoff = {
+  return transitionEvents(command, thread, command.modelSelection, {
     operationId: command.commandId,
-    ...(command.sourceGeneration !== undefined
-      ? { sourceGeneration: command.sourceGeneration }
-      : {}),
-    stage: "preparing" as const,
-    sourceThreadId: thread.id,
-    sourceProvider: thread.modelSelection.provider,
+    stage: "pending",
     sourceModelSelection: thread.modelSelection,
     destinationModelSelection: command.modelSelection,
-    destinationRuntimeMode: command.runtimeMode,
-    importedAt: command.createdAt,
-    bootstrapStatus: "pending" as const,
-    sourceBoundarySequence: readModel.snapshotSequence,
-    continuationGoal: command.continuationGoal ?? HANDOFF_GOAL,
-    sourceMessages: messages.map((message) =>
-      handoffMessageReference(thread, message, message.id, readModel.snapshotSequence),
-    ),
-  };
-  const base = withEventBase({
-    aggregateKind: "thread",
-    aggregateId: thread.id,
-    occurredAt: command.createdAt,
-    commandId: command.commandId,
+    createdAt: command.createdAt,
   });
-  return [
-    {
-      ...base,
-      type: "thread.meta-updated",
-      payload: { threadId: thread.id, handoff, updatedAt: command.createdAt },
-    },
-    {
-      ...withEventBase({
-        aggregateKind: "thread",
-        aggregateId: thread.id,
-        occurredAt: command.createdAt,
-        commandId: command.commandId,
-      }),
-      type: "thread.activity-appended",
-      payload: {
-        threadId: thread.id,
-        activity: {
-          id: EventId.makeUnsafe(`handoff-transition:${command.commandId}`),
-          kind: "provider.transition",
-          summary: `${handoff.sourceProvider === "codex" ? "Codex" : "Claude"} · ${handoff.sourceModelSelection.model} → ${command.modelSelection.provider === "codex" ? "Codex" : "Claude"} · ${command.modelSelection.model}: preparing`,
-          tone: "info",
-          turnId: null,
-          createdAt: command.createdAt,
-          payload: {
-            operationId: command.commandId,
-            source: { provider: thread.modelSelection.provider },
-            destination: { provider: command.modelSelection.provider },
-            stage: handoff.stage,
-          },
-        },
-      },
-    },
-  ] satisfies ReadonlyArray<Omit<OrchestrationEvent, "sequence">>;
+});
+
+export const decideHandoffCancel = Effect.fnUntraced(function* ({
+  command,
+  readModel,
+}: CommandDecisionInput<Extract<OrchestrationCommand, { type: "thread.handoff.cancel" }>>) {
+  const thread = yield* requireThreadNotArchived({
+    readModel,
+    command,
+    threadId: command.threadId,
+  });
+  const handoff = thread.handoff;
+  const deliveryInFlight =
+    handoff?.deliveryMessageId !== undefined &&
+    (thread.session?.status === "starting" ||
+      thread.session?.status === "running" ||
+      thread.latestTurn?.state === "running");
+  if (
+    handoff?.operationId !== command.operationId ||
+    (handoff.stage !== "pending" && handoff.stage !== "uncertain") ||
+    deliveryInFlight
+  )
+    return yield* new OrchestrationCommandInvariantError({
+      commandType: command.type,
+      detail: "The provider transition is delivering, already finished, or was replaced.",
+    });
+  if (handoff.stage === "pending")
+    return transitionEvents(
+      command,
+      thread,
+      handoff.sourceModelSelection,
+      handoff.deliveryMessageId === undefined
+        ? { ...handoff, stage: "cancelled" }
+        : { ...handoff, destinationModelSelection: handoff.sourceModelSelection },
+    );
+  // An uncertain delivery may already run on the destination, so dismissing keeps its selection.
+  return transitionEvents(command, thread, thread.modelSelection, {
+    ...handoff,
+    stage: "cancelled",
+    detail:
+      "Dismissed after uncertain delivery. The destination may have run; inspect the session and workspace before repeating actions.",
+  });
 });
 
 // The stopped, provider-less session row makes the reactor treat the old binding as dead, so the

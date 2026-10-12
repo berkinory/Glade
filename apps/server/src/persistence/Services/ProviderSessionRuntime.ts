@@ -18,6 +18,15 @@ export const ProviderSessionRuntime = Schema.Struct({
 });
 export type ProviderSessionRuntime = typeof ProviderSessionRuntime.Type;
 
+export const ParkedProviderSession = Schema.Struct({
+  threadId: ThreadId,
+  providerName: Schema.String,
+  resumeCursor: Schema.Unknown,
+  lastSeenMessageId: Schema.NullOr(Schema.String),
+  parkedAt: IsoDateTime,
+});
+export type ParkedProviderSession = typeof ParkedProviderSession.Type;
+
 const GetProviderSessionRuntimeInput = Schema.Struct({ threadId: ThreadId });
 type GetProviderSessionRuntimeInput = typeof GetProviderSessionRuntimeInput.Type;
 
@@ -41,6 +50,19 @@ export interface ProviderSessionRuntimeRepositoryShape {
   readonly deleteByThreadId: (
     input: DeleteProviderSessionRuntimeInput,
   ) => Effect.Effect<void, ProviderSessionRuntimeRepositoryError>;
+
+  readonly park: (
+    session: ParkedProviderSession,
+  ) => Effect.Effect<void, ProviderSessionRuntimeRepositoryError>;
+
+  readonly listParked: (input: {
+    readonly threadId: ThreadId;
+  }) => Effect.Effect<ReadonlyArray<ParkedProviderSession>, ProviderSessionRuntimeRepositoryError>;
+
+  readonly deleteParked: (input: {
+    readonly threadId: ThreadId;
+    readonly providerName?: string;
+  }) => Effect.Effect<void, ProviderSessionRuntimeRepositoryError>;
 }
 
 export class ProviderSessionRuntimeRepository extends ServiceMap.Service<

@@ -47,6 +47,7 @@ import { CodexAdapter, type CodexAdapterShape } from "../Services/CodexAdapter.t
 import { PROVIDER_ADAPTER_RUNTIME_EVENT_BUFFER_CAPACITY } from "../Services/ProviderAdapter.ts";
 import {
   CodexAppServerManager,
+  codexResumedNativeThread,
   parseCodexUserInputQuestions,
   type CodexAppServerSendTurnInput,
   type CodexAppServerStartSessionInput,
@@ -2501,6 +2502,12 @@ const makeCodexAdapter = (options?: CodexAdapterLiveOptions) =>
       startReview,
       interruptTurn,
       readThread,
+      resumedNativeConversation: codexResumedNativeThread,
+      injectHistory: (threadId, items) =>
+        Effect.tryPromise({
+          try: () => manager.injectItems(threadId, items),
+          catch: (cause) => toRequestError(threadId, "thread/inject_items", cause),
+        }),
       updateNativeHistory: (input) =>
         Effect.tryPromise({
           try: () => manager.updateNativeHistory(input),

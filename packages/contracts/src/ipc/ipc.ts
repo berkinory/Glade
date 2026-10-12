@@ -780,7 +780,6 @@ export interface NativeApi {
       options?: { readonly signal?: AbortSignal },
     ) => Promise<OrchestrationSearchThreadMessagesResult>;
     dispatchCommand: (command: ClientOrchestrationCommand) => Promise<{ sequence: number }>;
-    prepareHandoff: (input: { threadId: ThreadId }) => Promise<void>;
     repairState: () => Promise<OrchestrationReadModel>;
     previewWorkspaceRestore: (
       input: PreviewWorkspaceRestoreInput,
