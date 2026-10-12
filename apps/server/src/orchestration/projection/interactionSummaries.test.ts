@@ -655,7 +655,7 @@ it.layer(
 
       // Restart/session reconciliation reports the request as stale without a responseCommandId: nothing
       // ever claimed the row, but the provider callback that could consume it is gone. The row must not
-      // stay pending.
+      // stay pending or claimable.
       yield* eventStore.append({
         type: "thread.activity-appended",
         eventId: EventId.makeUnsafe("evt-stale-reconcile-failed"),
@@ -687,10 +687,12 @@ it.layer(
 
       const settledRows = yield* sql<{
         readonly status: string;
+        readonly resolvedAt: string | null;
         readonly pendingUserInputCount: number;
       }>`
         SELECT
           interactions.status,
+          interactions.resolved_at AS "resolvedAt",
           threads.pending_user_input_count AS "pendingUserInputCount"
         FROM projection_pending_interactions AS interactions
         INNER JOIN projection_threads AS threads
@@ -699,7 +701,9 @@ it.layer(
           AND interactions.interaction_kind = 'userInput'
           AND interactions.request_id = ${requestId}
       `;
-      assert.deepEqual(settledRows, [{ status: "uncertain", pendingUserInputCount: 0 }]);
+      assert.deepEqual(settledRows, [
+        { status: "confirmed", resolvedAt: reconciledAt, pendingUserInputCount: 0 },
+      ]);
     }),
   );
 });

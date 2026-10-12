@@ -13,14 +13,13 @@ export type ThreadActivityAppendCommand = Extract<
   { readonly type: "thread.activity.append" }
 >;
 
-// True when a durable interaction row still expects an answer. `confirmed` rows were answered.
-// `uncertain` rows were already reported as unanswerable, so re-reporting them would append a
-// duplicate failure activity on every settlement signal. Everything else (`pending`, `retryable`,
-// and a `responding` claim whose response never landed) is still holding a question open.
+// True when a durable interaction row still expects an answer. `confirmed` rows are terminal: answered,
+// or settled after their provider callback was reported gone. An `uncertain` row's response may never
+// have landed, so it still has to be closed when its runtime goes away.
 export function isUnsettledPendingInteraction(
   row: Pick<ProjectionPendingInteraction, "status">,
 ): boolean {
-  return row.status !== "confirmed" && row.status !== "uncertain";
+  return row.status !== "confirmed";
 }
 
 export function pendingInteractionRequestKind(

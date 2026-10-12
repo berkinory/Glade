@@ -104,55 +104,10 @@ describe("planRestartTurnReconciliation", () => {
     expect(planRestartTurnReconciliation({ threads, now: NOW })).toEqual([]);
   });
 
-  it("does not reconcile an approval again when its settlement row is non-actionable", () => {
-    const thread = makeThread("settled-mixed-sequence", {
-      session: makeSession("settled-mixed-sequence", {
-        status: "ready",
-        activeTurnId: null,
-      }),
-      latestTurn: { state: "completed" },
-      activities: [
-        {
-          ...makeActivity(
-            "approval-requested-high-sequence",
-            "approval.requested",
-            { requestId: "approval-mixed", requestKind: "command" },
-            1_695_339,
-          ),
-          createdAt: "2026-06-13T09:00:01.000Z",
-        },
-        {
-          ...makeActivity(
-            "approval-stale-low-sequence",
-            "provider.approval.respond.failed",
-            {
-              requestId: "approval-mixed",
-              detail:
-                "Stale pending approval request: approval-mixed. Provider callback state does not survive app restarts.",
-            },
-            667_085,
-          ),
-          createdAt: "2026-06-13T09:00:02.000Z",
-        },
-      ],
-      pendingInteractions: [
-        {
-          interactionKind: "approval",
-          requestId: ApprovalRequestId.makeUnsafe("approval-mixed"),
-          lifecycleGeneration: null,
-          status: "uncertain",
-          createdAt: "2026-06-13T09:00:01.000Z",
-        },
-      ],
-    });
-
-    expect(planRestartTurnReconciliation({ threads: [thread], now: NOW })).toEqual([]);
-  });
-
   it.each([
     ["pending", true],
     ["confirmed", false],
-    ["uncertain", false],
+    ["uncertain", true],
   ] as const)(
     "treats a %s projected approval according to restart callback state",
     (status, stale) => {
@@ -205,84 +160,6 @@ describe("planRestartTurnReconciliation", () => {
     });
 
     expect(planRestartTurnReconciliation({ threads: [thread], now: NOW })).toEqual([]);
-  });
-
-  it.each([
-    { name: "no terminal failure", generation: "generation-a", staleAt: null, expected: 1 },
-    {
-      name: "already stale current generation",
-      generation: "generation-a",
-      staleAt: "2026-06-13T09:00:02.000Z",
-      expected: 0,
-    },
-    {
-      name: "stale previous generation",
-      generation: "generation-old",
-      staleAt: "2026-06-13T09:00:02.000Z",
-      expected: 1,
-    },
-    {
-      name: "old legacy failure before request-ID reuse",
-      generation: undefined,
-      staleAt: "2026-06-13T08:00:00.000Z",
-      expected: 1,
-    },
-    {
-      name: "legacy failure after this request",
-      generation: undefined,
-      staleAt: "2026-06-13T09:00:02.000Z",
-      expected: 0,
-    },
-  ])("reconciles uncertain user input with $name", ({ generation, staleAt, expected }) => {
-    const requestId = ApprovalRequestId.makeUnsafe("uncertain-input");
-    const thread = makeThread("uncertain-input-thread", {
-      activities:
-        staleAt === null
-          ? []
-          : [
-              {
-                ...makeActivity(
-                  "input-already-stale",
-                  "provider.user-input.respond.failed",
-                  {
-                    requestId,
-                    ...(generation === undefined ? {} : { lifecycleGeneration: generation }),
-                    detail: "Stale pending user-input request: uncertain-input.",
-                  },
-                  1,
-                ),
-                createdAt: staleAt,
-              },
-            ],
-      pendingInteractions: [
-        {
-          interactionKind: "userInput",
-          requestId,
-          lifecycleGeneration: "generation-a",
-          status: "uncertain",
-          createdAt: "2026-06-13T09:00:01.000Z",
-        },
-      ],
-    });
-
-    const commands = planRestartTurnReconciliation({ threads: [thread], now: NOW });
-    expect(commands).toHaveLength(expected);
-    for (const command of commands) {
-      expect(command).toMatchObject({
-        type: "thread.activity.append",
-        activity: {
-          kind: "provider.user-input.respond.failed",
-          payload: { requestId, lifecycleGeneration: "generation-a" },
-        },
-      });
-      if (command.type !== "thread.activity.append") throw new Error("Expected stale cleanup");
-      expect(
-        planRestartTurnReconciliation({
-          threads: [{ ...thread, activities: [...(thread.activities ?? []), command.activity] }],
-          now: "2026-06-15T10:00:00.000Z",
-        }),
-      ).toEqual([]);
-    }
   });
 
   it("marks an unfinished checkpoint revert as failed after restart", () => {
@@ -630,8 +507,6 @@ describe("planRestartTurnReconciliation", () => {
     });
     const pendingInteractions: ReadonlyArray<ReconcilablePendingInteraction> = [
       makePendingInteraction("clean-thread", "userInput", "answered", "confirmed"),
-
-      makePendingInteraction("clean-thread", "approval", "already-reported", "uncertain"),
       makePendingInteraction("other-thread", "userInput", "elsewhere", "pending"),
     ];
 

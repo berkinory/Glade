@@ -139,21 +139,22 @@ export function makeInteractionProjector(input: {
               activity.payload,
               "responseCommandId",
             );
+            // A stale failure means the provider callback is gone, so no answer can ever land. Settle
+            // the row terminally: an `uncertain` row stays claimable and reappears as unanswered once
+            // the failure activity falls out of the client's activity window.
+            const isStale =
+              existingRow.value.status !== "confirmed" &&
+              createStalePendingInteractionMatcher([activity])(existingRow.value);
             if (responseCommandIdValue === null) {
-              // Reconciliation (server restart, provider session restart) reports stale requests without a
-              // claiming response command: no response was in flight, but the provider callback that could
-              // consume the interaction is gone. Settle the row anyway — leaving it `pending` kept threads
-              // answerable-looking forever while every actual response hit a dead provider.
-              if (
-                existingRow.value.status === "confirmed" ||
-                !createStalePendingInteractionMatcher([activity])(existingRow.value)
-              ) {
+              // Reconciliation (server restart, provider session restart) reports stale requests
+              // without a claiming response command.
+              if (!isStale) {
                 return;
               }
               nextRow = {
                 ...existingRow.value,
-                status: "uncertain",
-                resolvedAt: null,
+                status: "confirmed",
+                resolvedAt: activity.createdAt,
               };
             } else {
               if (existingRow.value.status !== "responding") {
@@ -169,13 +170,13 @@ export function makeInteractionProjector(input: {
               if (existingRow.value.responseCommandId !== responseCommandId) {
                 return;
               }
-              const nextStatus =
-                extractApprovalFailureSettlementStatus(activity.payload) ?? "uncertain";
-              nextRow = {
-                ...existingRow.value,
-                status: nextStatus,
-                resolvedAt: null,
-              };
+              nextRow = isStale
+                ? { ...existingRow.value, status: "confirmed", resolvedAt: activity.createdAt }
+                : {
+                    ...existingRow.value,
+                    status: extractApprovalFailureSettlementStatus(activity.payload) ?? "uncertain",
+                    resolvedAt: null,
+                  };
             }
           } else {
             if (

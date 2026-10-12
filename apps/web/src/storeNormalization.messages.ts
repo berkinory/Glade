@@ -2,6 +2,7 @@ import { MessageId, ThreadId, type TurnId } from "@glade/contracts/core/baseSche
 import type { OrchestrationSpaceShell } from "@glade/contracts/orchestration/threadEntities";
 import { mergeAsyncUserInput } from "@glade/shared/threads/asyncUserInput";
 import { toAttachmentPreviewUrl } from "./lib/wsHttpUrl";
+import { textSegmentsCoverText } from "./messageTextSegments";
 import { getRememberedProjectUiState, projectCwdKey } from "./storePersistence";
 import type { ChatAttachment, ChatMessage, Project, Space, Thread, ThreadSession } from "./types";
 import {
@@ -435,8 +436,19 @@ function mergeReadModelMessagesWithLiveHotPath(
     }
 
     changed = true;
+    // Segments must spell the text they ship with. The snapshot's describe its own shorter text, so keep
+    // whichever side still covers the retained live text.
+    const { textSegments: _incomingTextSegments, ...incomingMessageWithoutSegments } =
+      incomingMessage;
+    const retainedTextSegments = [incomingMessage.textSegments, previousMessage.textSegments].find(
+      (segments) =>
+        segments !== undefined &&
+        segments.length > 0 &&
+        textSegmentsCoverText(segments, previousMessage.text),
+    );
     mergedById.set(incomingMessage.id, {
-      ...incomingMessage,
+      ...incomingMessageWithoutSegments,
+      ...(retainedTextSegments !== undefined ? { textSegments: retainedTextSegments } : {}),
       text: previousMessage.text,
       dispatchMode: previousMessage.dispatchMode ?? incomingMessage.dispatchMode,
       dispatchOrigin: incomingMessage.dispatchOrigin ?? previousMessage.dispatchOrigin,

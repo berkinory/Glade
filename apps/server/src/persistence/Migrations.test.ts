@@ -1,6 +1,7 @@
 import MessageAttribution from "./Migrations/004_MessageAttribution";
 import VisualReplyAttachments from "./Migrations/006_VisualReplyAttachments";
 import AuthPairingCredentialHashes from "./Migrations/007_AuthPairingCredentialHashes";
+import SettleStalePendingInteractions from "./Migrations/008_SettleStalePendingInteractions";
 import * as Crypto from "node:crypto";
 import { assert, it } from "@effect/vitest";
 import { Effect } from "effect";
@@ -56,6 +57,63 @@ describe("baseline migrations", () => {
           credential_hash: Crypto.createHash("sha256").update("ABCDEF234567").digest("hex"),
         },
       ]);
+    }).pipe(Effect.provide(NodeSqliteClient.layer({ filename: ":memory:" }))),
+  );
+
+  it.effect("settles only interactions already reported as stale", () =>
+    Effect.gen(function* () {
+      const sql = yield* SqlClient.SqlClient;
+      yield* Baseline;
+      const stale = (requestId: string, generation?: string) =>
+        JSON.stringify({
+          requestId,
+          detail: `Stale pending user-input request: ${requestId}.`,
+          ...(generation === undefined ? {} : { lifecycleGeneration: generation }),
+        });
+      for (const [requestId, status, generation] of [
+        ["same-generation", "uncertain", "gen-a"],
+        ["legacy-after", "uncertain", "gen-a"],
+        ["legacy-before", "uncertain", null],
+        ["other-generation", "uncertain", "gen-a"],
+        ["non-stale-failure", "uncertain", null],
+        ["still-pending", "pending", null],
+      ] as const)
+        yield* sql`INSERT INTO projection_pending_interactions (interaction_kind, request_id, thread_id, lifecycle_generation, status, created_at) VALUES ('userInput', ${requestId}, 'chat', ${generation}, ${status}, '2026-10-01T10:00:00.000Z')`;
+      for (const [id, requestId, payload, createdAt] of [
+        ["a", "same-generation", stale("same-generation", "gen-a"), "2026-10-01T09:00:00.000Z"],
+        ["b", "legacy-after", stale("legacy-after"), "2026-10-01T11:00:00.000Z"],
+        ["c", "legacy-before", stale("legacy-before"), "2026-10-01T09:00:00.000Z"],
+        ["d", "other-generation", stale("other-generation", "gen-b"), "2026-10-01T11:00:00.000Z"],
+        [
+          "e",
+          "non-stale-failure",
+          JSON.stringify({ requestId: "non-stale-failure", detail: "Network error" }),
+          "2026-10-01T11:00:00.000Z",
+        ],
+        ["f", "still-pending", stale("still-pending"), "2026-10-01T11:00:00.000Z"],
+      ] as const)
+        yield* sql`INSERT INTO projection_thread_activities (activity_id, thread_id, tone, kind, summary, payload_json, created_at) VALUES (${id}, 'chat', 'error', 'provider.user-input.respond.failed', ${requestId}, ${payload}, ${createdAt})`;
+      yield* SettleStalePendingInteractions;
+      yield* SettleStalePendingInteractions;
+      assert.deepStrictEqual(
+        yield* sql`SELECT request_id, status, resolved_at FROM projection_pending_interactions ORDER BY request_id`,
+        [
+          {
+            request_id: "legacy-after",
+            status: "confirmed",
+            resolved_at: "2026-10-01T11:00:00.000Z",
+          },
+          { request_id: "legacy-before", status: "uncertain", resolved_at: null },
+          { request_id: "non-stale-failure", status: "uncertain", resolved_at: null },
+          { request_id: "other-generation", status: "uncertain", resolved_at: null },
+          {
+            request_id: "same-generation",
+            status: "confirmed",
+            resolved_at: "2026-10-01T09:00:00.000Z",
+          },
+          { request_id: "still-pending", status: "pending", resolved_at: null },
+        ],
+      );
     }).pipe(Effect.provide(NodeSqliteClient.layer({ filename: ":memory:" }))),
   );
 

@@ -128,7 +128,7 @@ describe("ProviderRuntimeIngestion session lifecycle", () => {
       harness.readProjectedThread,
       (thread) => thread.hasPendingUserInput === false,
     );
-    expect(pendingInteractionStatus(settledThread, "req-interrupted-user-input")).toBe("uncertain");
+    expect(pendingInteractionStatus(settledThread, "req-interrupted-user-input")).toBeUndefined();
     const failures = userInputFailureActivities(settledThread);
     expect(failures).toHaveLength(1);
     expect(failures[0]?.payload).toMatchObject({
@@ -232,9 +232,9 @@ describe("ProviderRuntimeIngestion session lifecycle", () => {
 
     const settledThread = await waitForProjectedThread(
       harness.readProjectedThread,
-      (thread) => pendingInteractionStatus(thread, "req-exit-generation-a") === "uncertain",
+      (thread) => thread.hasPendingUserInput === false,
     );
-    expect(settledThread.hasPendingUserInput).toBe(false);
+    expect(pendingInteractionStatus(settledThread, "req-exit-generation-a")).toBeUndefined();
     expect(userInputFailureActivities(settledThread)).toHaveLength(1);
   });
 });

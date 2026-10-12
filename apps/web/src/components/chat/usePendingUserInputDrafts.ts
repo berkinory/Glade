@@ -1,6 +1,7 @@
-import type { OrchestrationPendingInteraction } from "@glade/contracts/orchestration/threadEntities";
+import type { OrchestrationThreadActivity } from "@glade/contracts/orchestration/threadEntities";
 import type { ThreadId } from "@glade/contracts/core/baseSchemas";
 import { pendingRequestInstanceKey } from "@glade/shared/threads/threadSummary";
+import { asObjectRecord } from "@glade/shared/transport/payloadValues";
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef } from "react";
 import { useComposerDraftStore, useComposerThreadDraft } from "../../composerDraftStore";
 import type { PendingUserInput } from "../../pendingInteractionDerivation";
@@ -17,7 +18,7 @@ function draftAnswers(drafts: Record<string, PendingUserInputRecoveryDraft>): An
 export function usePendingUserInputDrafts(
   threadId: ThreadId,
   requests: ReadonlyArray<PendingUserInput>,
-  interactions: ReadonlyArray<OrchestrationPendingInteraction> | undefined,
+  activities: ReadonlyArray<OrchestrationThreadActivity>,
 ) {
   const drafts = useComposerThreadDraft(threadId).pendingUserInputDrafts ?? EMPTY_DRAFTS;
   const answers = useMemo(() => draftAnswers(drafts), [drafts]);
@@ -49,22 +50,40 @@ export function usePendingUserInputDrafts(
     [threadId],
   );
 
+  // Only a provider resolution proves the answer was delivered. A terminal row can also mean the
+  // callback went stale, and that draft must survive so the answer can be restored.
   useEffect(() => {
+    if (Object.keys(drafts).length === 0) return;
+    const resolvedInstances = new Set<string>();
+    const legacyResolvedAt = new Map<string, string>();
+    for (const activity of activities) {
+      if (activity.kind !== "user-input.resolved") continue;
+      const payload = asObjectRecord(activity.payload);
+      if (typeof payload?.requestId !== "string") continue;
+      const generation = payload.lifecycleGeneration;
+      if (typeof generation === "string" && generation.length > 0) {
+        resolvedInstances.add(pendingRequestInstanceKey(payload.requestId, generation));
+      } else if (activity.createdAt > (legacyResolvedAt.get(payload.requestId) ?? "")) {
+        legacyResolvedAt.set(payload.requestId, activity.createdAt);
+      }
+    }
     const confirmed = new Set(
-      (interactions ?? [])
-        .filter((row) => row.interactionKind === "userInput" && row.status === "confirmed")
-        .map((row) =>
-          pendingRequestInstanceKey(row.requestId, row.lifecycleGeneration ?? undefined),
-        ),
+      Object.entries(drafts)
+        .filter(
+          ([key, draft]) =>
+            resolvedInstances.has(key) ||
+            (legacyResolvedAt.get(draft.request.requestId) ?? "") >= draft.request.createdAt,
+        )
+        .map(([key]) => key),
     );
-    if (!Object.keys(drafts).some((key) => confirmed.has(key))) return;
+    if (confirmed.size === 0) return;
     useComposerDraftStore
       .getState()
       .setPendingUserInputDrafts(
         threadId,
         Object.fromEntries(Object.entries(drafts).filter(([key]) => !confirmed.has(key))),
       );
-  }, [drafts, interactions, threadId]);
+  }, [activities, drafts, threadId]);
 
   return { answers, answersRef, setAnswers, drafts };
 }

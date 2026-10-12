@@ -8,7 +8,6 @@ import type {
 import type { RuntimeMode } from "@glade/contracts/provider/sessionPolicy";
 import type { ThreadId } from "@glade/contracts/core/baseSchemas";
 import { CommandId, EventId } from "@glade/contracts/core/baseSchemas";
-import { createStalePendingInteractionMatcher } from "@glade/shared/threads/pendingInteractions";
 import {
   derivePendingThreadRequestIds,
   type PendingThreadRequestKind,
@@ -84,13 +83,8 @@ function planStalePendingRequestCommands(input: {
 }): ReadonlyArray<ThreadActivityAppendCommand> {
   const commands: ThreadActivityAppendCommand[] = [];
   if (input.thread.pendingInteractions !== undefined) {
-    const isAlreadyStale = createStalePendingInteractionMatcher(input.thread.activities ?? []);
     for (const interaction of input.thread.pendingInteractions) {
-      if (
-        interaction.status === "confirmed" ||
-        isAlreadyStale(interaction) ||
-        (interaction.status === "uncertain" && interaction.interactionKind === "approval")
-      ) {
+      if (!isUnsettledPendingInteraction(interaction)) {
         continue;
       }
       commands.push(

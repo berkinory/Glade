@@ -141,7 +141,7 @@ export function useChatPendingInteractions({
     answersRef: pendingUserInputAnswersByRequestIdRef,
     setAnswers: setPendingUserInputAnswersByRequestId,
     drafts: pendingUserInputDrafts,
-  } = usePendingUserInputDrafts(threadId, pendingUserInputs, activeThread?.pendingInteractions);
+  } = usePendingUserInputDrafts(threadId, pendingUserInputs, threadActivities);
   const expiredQuestionDrafts = useMemo(
     () => expiredUserInputDrafts(pendingUserInputDrafts, threadActivities),
     [pendingUserInputDrafts, threadActivities],
