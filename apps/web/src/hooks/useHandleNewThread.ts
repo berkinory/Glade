@@ -71,6 +71,11 @@ export function useHandleNewThread() {
       ? (draftStore.draftsByThreadId[draftThread.threadId] ?? null)
       : null;
     const project = useStore.getState().projects.find((candidate) => candidate.id === projectId);
+    // A new chat in a collapsed project is hidden from the sidebar. Empty projects look the same
+    // collapsed or expanded, so this mostly hit a project's first chat.
+    if (project) {
+      useStore.getState().setProjectExpanded(projectId, true);
+    }
 
     prefetchModelsForNewThread(queryClient, {
       settings,

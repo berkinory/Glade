@@ -1,6 +1,5 @@
 import { resolveProviderModelSelection } from "~/lib/providerModelSelection";
 import { useComposerDraftStore } from "../composerDraftStore";
-import { useStore } from "../store";
 import { useSidebarProjectOrderStore } from "../sidebarProjectOrderStore";
 import { sortProjectsForSidebar } from "./Sidebar.logic.projectData";
 import { LOCAL_ENVIRONMENT } from "../environments/environmentKey";
@@ -72,7 +71,6 @@ export function useSidebarProjectCommands(context: ReturnType<typeof useSidebarT
     handleCloseProjectContextMenu,
   } = context;
   const { handleNewThread } = useHandleNewThread();
-  const setProjectExpanded = useStore((state) => state.setProjectExpanded);
   const assignHostProject = useSpacesUiStore((state) => state.assignHostProject);
   const moveProject = useSidebarProjectOrderStore((state) => state.moveProject);
   const clearProjectDraftThreads = useComposerDraftStore((state) => state.clearProjectDraftThreads);
@@ -209,7 +207,6 @@ export function useSidebarProjectCommands(context: ReturnType<typeof useSidebarT
         });
         assignHostProject(projectId, value.spaceId);
         handleSelectSpaceForIncomingProject(value.spaceId);
-        setProjectExpanded(projectId, true);
         await handleNewThread(projectId).catch(() => undefined);
       } else {
         handleSelectSpaceForIncomingProject(destinationSpaceId);

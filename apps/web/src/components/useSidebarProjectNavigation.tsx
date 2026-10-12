@@ -1,5 +1,4 @@
 import { useCallback } from "react";
-import { useStore } from "../store";
 import { useProjectSpaceIdOf } from "../spacesUiStore";
 import { useEffect, startTransition } from "react";
 import { MAX_PINNED_PROJECTS } from "@glade/contracts/orchestration/threadEntities";
@@ -74,8 +73,6 @@ export function useSidebarProjectNavigation(context: ReturnType<typeof useSideba
     projectByIdRef,
   } = context;
   const draftThreadsByThreadId = useComposerDraftStore((state) => state.draftThreadsByThreadId);
-
-  const setProjectExpanded = useStore((state) => state.setProjectExpanded);
 
   const pinProjectLocally = useSidebarStateStore((state) => state.pinProject);
   const unpinProject = useSidebarStateStore((state) => state.unpinProject);
@@ -280,7 +277,6 @@ export function useSidebarProjectNavigation(context: ReturnType<typeof useSideba
       return true;
     }
 
-    setProjectExpanded(projectId, true);
     return (await handleNewThread(projectId).catch(() => null)) !== null;
   };
 
@@ -520,7 +516,6 @@ export function useSidebarProjectNavigation(context: ReturnType<typeof useSideba
         throw new Error(PROJECT_CREATE_EXISTING_SYNC_ERROR);
       }
 
-      setProjectExpanded(creationResult.projectId, true);
       const threadId = await handleNewThread(creationResult.projectId).catch(() => null);
       if (!threadId) {
         throw new Error("Project creation was superseded before its chat opened.");
