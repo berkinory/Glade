@@ -473,6 +473,8 @@ export function makeClaudeSessionStartup(input: {
           knownBackgroundTaskIds: new Set(),
           terminalTaskIds: new Set(),
           settledSubagentToolUseIds: new Map(),
+          subagentToolUseIdByAgentId: new Map(),
+          subagentToolUseIdAliases: new Map(),
           liveWorkflowTaskIds: new Set(),
           knownWorkflowTaskIds: new Set(),
           workflowTaskIdByMemberTaskId: new Map(),

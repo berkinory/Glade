@@ -23,11 +23,13 @@
 - GitHub data loads over GitHub's API instead of the GitHub CLI, using far fewer requests and pausing background refreshes before the rate limit runs out.
 - Deleting a worktree from Settings keeps a snapshot of its state for 30 days.
 - Source Control history, pull request comments and the Publish to GitHub dialog show GitHub avatars.
+- When Claude picks a finished subagent back up, the follow-up shows in that subagent's chat and on its own card.
 
 ### Fixed
 
 - Automatic worktree cleanup never removes a worktree whose state cannot be read and never deletes commits that exist nowhere else.
 - Committing selected files from the Environment panel no longer discards changes you staged in Source Control, and keeps partially staged files as staged.
+- Claude MCP tools whose names mention "agent" are no longer shown as subagents.
 - Stopping a single Codex subagent no longer fails with a turn mismatch.
 - Claude fast mode warns when Claude serves requests at standard speed, for example without usage credits or during a rate-limit cooldown, and notes that fast mode is billed from usage credits.
 

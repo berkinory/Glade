@@ -95,6 +95,8 @@ export function makeClaudeToolTracking(input: {
         knownBackgroundTaskIds: new Set(),
         terminalTaskIds: new Set(),
         settledSubagentToolUseIds: new Map(),
+        subagentToolUseIdByAgentId: new Map(),
+        subagentToolUseIdAliases: new Map(),
         liveWorkflowTaskIds: new Set(),
         knownWorkflowTaskIds: new Set(),
         workflowTaskIdByMemberTaskId: new Map(),
@@ -165,7 +167,7 @@ export function makeClaudeToolTracking(input: {
           status: "inProgress",
           title: tool.title,
           ...(tool.detail ? { detail: tool.detail } : {}),
-          data: toolLifecycleEventData(tool),
+          data: toolLifecycleEventData(context, tool),
         },
         providerRefs: nativeProviderRefs(context, { providerItemId: tool.itemId }),
         raw: {

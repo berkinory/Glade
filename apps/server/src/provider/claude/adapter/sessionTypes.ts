@@ -246,6 +246,11 @@ export interface ClaudeSessionSubagents {
   readonly terminalTaskIds: Set<string>;
   // Settled tool ids fence late child messages so stopped runs cannot reappear as running.
   readonly settledSubagentToolUseIds: Map<string, "completed" | "failed" | "stopped">;
+  // A subagent's agent id (its task id) to the Task call that launched it. It outlives the run so a
+  // later SendMessage that resumes the agent lands on the same child thread.
+  readonly subagentToolUseIdByAgentId: Map<string, string>;
+  // Tool calls that resumed a subagent (SendMessage) to the Task call that launched it.
+  readonly subagentToolUseIdAliases: Map<string, string>;
   readonly liveWorkflowTaskIds: Set<string>;
   readonly knownWorkflowTaskIds: Set<string>;
   readonly workflowTaskIdByMemberTaskId: Map<string, string>;

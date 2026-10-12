@@ -21,6 +21,7 @@ import {
   summarizeToolRequest,
   toolLifecycleEventData,
   isClientSurfacedClaudeTool,
+  isClaudeSubagentTool,
   toolResultBlocksFromUserMessage,
   toolResultStreamKind,
 } from "./toolPresentation";
@@ -180,7 +181,7 @@ export function makeClaudeContentMessages(input: {
               status: "inProgress",
               title: nextTool.title,
               ...(nextTool.detail ? { detail: nextTool.detail } : {}),
-              data: toolLifecycleEventData(nextTool),
+              data: toolLifecycleEventData(context, nextTool),
             },
             providerRefs: nativeProviderRefs(context, { providerItemId: nextTool.itemId }),
             raw: {
@@ -296,11 +297,10 @@ export function makeClaudeContentMessages(input: {
         const [index, tool] = toolEntry;
         const itemStatus = toolResult.isError ? "failed" : "completed";
 
-        const settledStatus =
-          tool.toolName === "Task" || tool.toolName === "Agent"
-            ? context.settledSubagentToolUseIds.get(tool.itemId)
-            : undefined;
-        const toolData = toolLifecycleEventData(tool, {
+        const settledStatus = isClaudeSubagentTool(tool.toolName)
+          ? context.settledSubagentToolUseIds.get(tool.itemId)
+          : undefined;
+        const toolData = toolLifecycleEventData(context, tool, {
           result: toolResult.block,
           ...(settledStatus === "stopped"
             ? { agentStates: { [tool.itemId]: { status: "stopped" } } }

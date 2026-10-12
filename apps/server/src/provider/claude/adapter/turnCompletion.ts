@@ -256,7 +256,7 @@ export function makeClaudeTurnCompletion(input: {
             status: status === "completed" ? "completed" : "failed",
             title: tool.title,
             ...(tool.detail ? { detail: tool.detail } : {}),
-            data: toolLifecycleEventData(tool),
+            data: toolLifecycleEventData(context, tool),
           },
           providerRefs: nativeProviderRefs(context, { providerItemId: tool.itemId }),
           raw: {

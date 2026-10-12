@@ -391,7 +391,19 @@ export function makeClaudeSystemMessages(input: {
           });
           return;
         case "task_started": {
+          // A finished subagent resumed by SendMessage starts again under its agent id. It reopens
+          // the run of the Task call that launched it so the work lands on the same child thread.
+          const resumedToolUseId = context.subagentToolUseIdByAgentId.get(message.task_id);
+          if (resumedToolUseId !== undefined && context.terminalTaskIds.has(message.task_id)) {
+            context.terminalTaskIds.delete(message.task_id);
+            context.settledSubagentToolUseIds.delete(resumedToolUseId);
+            context.taskTurnIds?.delete(message.task_id);
+            if (message.tool_use_id && message.tool_use_id !== resumedToolUseId) {
+              context.subagentToolUseIdAliases.set(message.tool_use_id, resumedToolUseId);
+            }
+          }
           if (context.terminalTaskIds.has(message.task_id)) return;
+          const subagentToolUseId = resumedToolUseId ?? message.tool_use_id;
           const ownerTurnId = context.turnState?.turnId ?? context.lastTurnId;
           if (ownerTurnId) {
             context.taskTurnIds ??= new Map();
@@ -400,13 +412,16 @@ export function makeClaudeSystemMessages(input: {
           }
 
           if (
-            message.tool_use_id &&
-            (message.subagent_type !== undefined || context.subagentRuns.has(message.tool_use_id))
+            subagentToolUseId &&
+            (message.subagent_type !== undefined ||
+              resumedToolUseId !== undefined ||
+              context.subagentRuns.has(subagentToolUseId))
           ) {
-            const run = ensureSubagentRun(context, message.tool_use_id);
+            const run = ensureSubagentRun(context, subagentToolUseId);
             run.taskId = message.task_id;
+            context.subagentToolUseIdByAgentId.set(message.task_id, subagentToolUseId);
 
-            if (context.pendingSubagentStops.delete(message.tool_use_id)) {
+            if (context.pendingSubagentStops.delete(subagentToolUseId)) {
               yield* Effect.tryPromise(() => context.query.stopTask(message.task_id)).pipe(
                 Effect.catch((cause) =>
                   emitRuntimeError(
@@ -460,7 +475,7 @@ export function makeClaudeSystemMessages(input: {
               ...(workflowMeta?.phases ? { workflowPhases: workflowMeta.phases } : {}),
               ...(workflowAgentPhases ? { workflowAgentPhases } : {}),
               ...(workflowAgentPlans ? { workflowAgentPlans } : {}),
-              ...(message.tool_use_id ? { toolUseId: message.tool_use_id } : {}),
+              ...(subagentToolUseId ? { toolUseId: subagentToolUseId } : {}),
             },
           });
           return;

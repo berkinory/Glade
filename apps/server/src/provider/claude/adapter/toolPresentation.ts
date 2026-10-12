@@ -3,9 +3,19 @@ import {
   type CanonicalRequestType,
 } from "@glade/contracts/provider/runtimeMetadata";
 import type { SDKMessage } from "@anthropic-ai/claude-agent-sdk";
-import { ToolInFlight, ClaudeToolResultStreamKind } from "./sessionTypes";
+import {
+  ToolInFlight,
+  ClaudeToolResultStreamKind,
+  type ClaudeSessionContext,
+} from "./sessionTypes";
 import { extractTextContent } from "./messageContent";
 import { subagentName } from "@glade/shared/threads/subagentName";
+
+// Only the SDK's own launcher spawns a subagent; MCP or custom tools that mention "agent" are ordinary
+// tools and must not open child threads.
+export function isClaudeSubagentTool(toolName: string): boolean {
+  return toolName === "Task" || toolName === "Agent";
+}
 
 export function classifyToolItemType(toolName: string): CanonicalItemType {
   const normalized = toolName.toLowerCase();
@@ -19,15 +29,7 @@ export function classifyToolItemType(toolName: string): CanonicalItemType {
   ) {
     return "plan";
   }
-  if (normalized.includes("agent")) {
-    return "collab_agent_tool_call";
-  }
-  if (
-    normalized === "task" ||
-    normalized === "agent" ||
-    normalized.includes("subagent") ||
-    normalized.includes("sub-agent")
-  ) {
+  if (isClaudeSubagentTool(toolName) || toolName === "SendMessage") {
     return "collab_agent_tool_call";
   }
   if (
@@ -110,6 +112,7 @@ export function isClientSurfacedClaudeTool(toolName: string): boolean {
 }
 
 export function toolLifecycleEventData(
+  context: Pick<ClaudeSessionContext, "subagentToolUseIdByAgentId">,
   tool: Pick<ToolInFlight, "itemId" | "toolName" | "input">,
   extra?: Record<string, unknown>,
 ): Record<string, unknown> {
@@ -118,9 +121,24 @@ export function toolLifecycleEventData(
     callId: tool.itemId,
     toolName: tool.toolName,
     input: tool.input,
-    ...(tool.toolName === "Task" || tool.toolName === "Agent" ? subagentReceiverData(tool) : {}),
+    ...(isClaudeSubagentTool(tool.toolName) ? subagentReceiverData(tool) : {}),
+    ...(tool.toolName === "SendMessage" ? resumedSubagentData(context, tool) : {}),
     ...extra,
   };
+}
+
+// SendMessage addresses a subagent by its agent id; naming the Task call that launched it puts the
+// follow-up on the subagent's existing child thread instead of a new one.
+function resumedSubagentData(
+  context: Pick<ClaudeSessionContext, "subagentToolUseIdByAgentId">,
+  tool: Pick<ToolInFlight, "input">,
+): Record<string, unknown> {
+  const agentId = tool.input.to;
+  const toolUseId =
+    typeof agentId === "string" ? context.subagentToolUseIdByAgentId.get(agentId) : undefined;
+  return toolUseId
+    ? { tool: "sendInput", receiverThreadId: toolUseId, nickname: subagentName(toolUseId) }
+    : { tool: "sendInput" };
 }
 
 function subagentReceiverData(

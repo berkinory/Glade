@@ -128,7 +128,10 @@ export function recognizedSubagentParentToolUseId(
   context: ClaudeSessionContext,
   message: SDKMessage,
 ): string | undefined {
-  const toolUseId = parentToolUseId(message);
+  const parentId = parentToolUseId(message);
+  const toolUseId = parentId
+    ? (context.subagentToolUseIdAliases.get(parentId) ?? parentId)
+    : undefined;
   return toolUseId && isRecognizedSubagentToolUseId(context, toolUseId) ? toolUseId : undefined;
 }
 
