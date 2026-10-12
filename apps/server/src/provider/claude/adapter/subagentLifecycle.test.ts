@@ -1,8 +1,9 @@
 import { describe, it, assert } from "@effect/vitest";
-import { Effect, Stream, Fiber, Random } from "effect";
+import { Effect, Exit, Stream, Fiber, Random, Schema } from "effect";
 import { ClaudeAdapter } from "../../Services/ClaudeAdapter.ts";
 import type { SDKMessage } from "@anthropic-ai/claude-agent-sdk";
 import { TurnId } from "@glade/contracts/core/baseSchemas";
+import { ProviderRuntimeEvent } from "@glade/contracts/provider/runtimeEvents";
 import {
   makeHarness,
   THREAD_ID,
@@ -313,4 +314,67 @@ describe("Claude subagentLifecycle", () => {
       );
     },
   );
+
+  it.effect("trims task strings so SDK descriptions ending in a newline stay journalable", () => {
+    const harness = makeHarness();
+    return Effect.gen(function* () {
+      const adapter = yield* ClaudeAdapter;
+      const runtimeEventsFiber = yield* adapter.streamEvents.pipe(
+        Stream.filter(
+          (event) =>
+            (event.type === "task.started" ||
+              event.type === "task.progress" ||
+              event.type === "task.updated") &&
+            event.payload.taskId === "bash-untrimmed",
+        ),
+        Stream.take(3),
+        Stream.runCollect,
+        Effect.forkChild,
+      );
+      yield* adapter.startSession({
+        threadId: THREAD_ID,
+        provider: "claudeAgent",
+        runtimeMode: "full-access",
+      });
+      const common = { type: "system", task_id: "bash-untrimmed", session_id: "sdk-untrimmed" };
+      harness.query.emit({
+        ...common,
+        subtype: "task_started",
+        tool_use_id: "toolu-bash-untrimmed",
+        task_type: "local_bash",
+        description: "bun run test\n",
+        uuid: "untrimmed-started",
+      } as unknown as SDKMessage);
+      harness.query.emit({
+        ...common,
+        subtype: "task_progress",
+        description: "  bun run test \n",
+        last_tool_name: "Bash ",
+        uuid: "untrimmed-progress",
+      } as unknown as SDKMessage);
+      harness.query.emit({
+        ...common,
+        subtype: "task_updated",
+        patch: { status: "failed", error: "exit code 1\n" },
+        uuid: "untrimmed-updated",
+      } as unknown as SDKMessage);
+
+      const events = Array.from(yield* Fiber.join(runtimeEventsFiber));
+      assert.deepEqual(
+        events.map((event) => event.type),
+        ["task.started", "task.progress", "task.updated"],
+      );
+      for (const event of events) {
+        const encoded = yield* Schema.encodeEffect(ProviderRuntimeEvent)(event).pipe(Effect.exit);
+        assert.isTrue(Exit.isSuccess(encoded), `${event.type} must encode`);
+      }
+      const [started, progress, updated] = events;
+      assert.include(started?.payload, { description: "bun run test" });
+      assert.include(progress?.payload, { description: "bun run test", lastToolName: "Bash" });
+      assert.include(updated?.payload, { error: "exit code 1" });
+    }).pipe(
+      Effect.provideService(Random.Random, makeDeterministicRandomService()),
+      Effect.provide(harness.layer),
+    );
+  });
 });

@@ -1,4 +1,5 @@
 import { subagentName } from "@glade/shared/threads/subagentName";
+import { nonEmptyTrimmed } from "@glade/shared/text/text";
 import { makeClaudeInteractionSettlement } from "./interactionSettlement";
 import { makeClaudeWorkflowRuntime } from "./workflowRuntime";
 import { Effect, FileSystem } from "effect";
@@ -102,6 +103,7 @@ export function makeClaudeSystemMessages(input: {
         }
         const workflowTaskId = context.workflowTaskIdByMemberTaskId.get(message.task_id);
         const run = subagentRunForTask(context, undefined, message.task_id);
+        const error = nonEmptyTrimmed(patch?.error);
         const raw = {
           source: "claude.sdk.message" as const,
           method: sdkNativeMethod(message),
@@ -119,7 +121,7 @@ export function makeClaudeSystemMessages(input: {
           payload: {
             taskId: RuntimeTaskId.makeUnsafe(message.task_id),
             ...(status !== undefined ? { status } : {}),
-            ...(patch?.error ? { error: patch.error } : {}),
+            ...(error ? { error } : {}),
             ...(isBackgrounded !== undefined ? { isBackgrounded } : {}),
             ...(run ? { toolUseId: run.toolUseId } : {}),
             ...(workflowTaskId ? { workflowTaskId: RuntimeTaskId.makeUnsafe(workflowTaskId) } : {}),
@@ -459,15 +461,20 @@ export function makeClaudeSystemMessages(input: {
           const workflowAgentPlans = workflowScript
             ? extractClaudeWorkflowAgentPlans(workflowScript)
             : undefined;
-          const workflowName = message.workflow_name ?? workflowMeta?.name;
+          // The journal rejects untrimmed strings, and SDK task descriptions (often a raw Bash
+          // command) can end in a newline.
+          const description = nonEmptyTrimmed(message.description);
+          const taskType = nonEmptyTrimmed(message.task_type);
+          const subagentType = nonEmptyTrimmed(message.subagent_type);
+          const workflowName = nonEmptyTrimmed(message.workflow_name ?? workflowMeta?.name);
           yield* offerRuntimeEvent(context, {
             ...base,
             type: "task.started",
             payload: {
               taskId: RuntimeTaskId.makeUnsafe(message.task_id),
-              description: message.description,
-              ...(message.task_type ? { taskType: message.task_type } : {}),
-              ...(message.subagent_type ? { subagentType: message.subagent_type } : {}),
+              ...(description ? { description } : {}),
+              ...(taskType ? { taskType } : {}),
+              ...(subagentType ? { subagentType } : {}),
               ...(workflowName ? { workflowName } : {}),
               ...(workflowTaskId
                 ? { workflowTaskId: RuntimeTaskId.makeUnsafe(workflowTaskId) }
@@ -496,15 +503,17 @@ export function makeClaudeSystemMessages(input: {
             }
           }
           const workflowTaskId = context.workflowTaskIdByMemberTaskId.get(message.task_id);
+          const summary = nonEmptyTrimmed(message.summary);
+          const lastToolName = nonEmptyTrimmed(message.last_tool_name);
           yield* offerRuntimeEvent(context, {
             ...base,
             type: "task.progress",
             payload: {
               taskId: RuntimeTaskId.makeUnsafe(message.task_id),
-              description: message.description,
-              ...(message.summary ? { summary: message.summary } : {}),
+              description: nonEmptyTrimmed(message.description) ?? "Task",
+              ...(summary ? { summary } : {}),
               ...(message.usage ? { usage: message.usage } : {}),
-              ...(message.last_tool_name ? { lastToolName: message.last_tool_name } : {}),
+              ...(lastToolName ? { lastToolName } : {}),
               ...(workflowTaskId
                 ? { workflowTaskId: RuntimeTaskId.makeUnsafe(workflowTaskId) }
                 : {}),
@@ -532,6 +541,7 @@ export function makeClaudeSystemMessages(input: {
           yield* settlePendingHumanInteractionsForAgent(context, message.task_id);
           context.knownBackgroundTaskIds.delete(message.task_id);
           const workflowTaskId = context.workflowTaskIdByMemberTaskId.get(message.task_id);
+          const summary = nonEmptyTrimmed(message.summary);
 
           const workflowOutputText =
             context.knownWorkflowTaskIds.has(message.task_id) &&
@@ -562,7 +572,7 @@ export function makeClaudeSystemMessages(input: {
             payload: {
               taskId: RuntimeTaskId.makeUnsafe(message.task_id),
               status: message.status,
-              ...(message.summary ? { summary: message.summary } : {}),
+              ...(summary ? { summary } : {}),
               ...(message.usage ? { usage: message.usage } : {}),
               ...(workflowTaskId
                 ? { workflowTaskId: RuntimeTaskId.makeUnsafe(workflowTaskId) }
