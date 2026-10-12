@@ -17,8 +17,15 @@ export function isClaudeSubagentTool(toolName: string): boolean {
   return toolName === "Task" || toolName === "Agent";
 }
 
+const IMAGE_GENERATION_TOOL_NAMES = new Set(["image_gen", "image_edit", "generate_image"]);
+
 export function classifyToolItemType(toolName: string): CanonicalItemType {
   const normalized = toolName.toLowerCase();
+  // Match the bare tool name of `mcp__<server>__<tool>` exactly, before the broad "edit" check turns
+  // `image_edit` into a file change.
+  if (IMAGE_GENERATION_TOOL_NAMES.has(normalized.replace(/^mcp__.+?__/, ""))) {
+    return "image_generation";
+  }
   if (
     normalized === "todowrite" ||
     normalized.includes("todo") ||
@@ -176,6 +183,8 @@ export function titleForTool(itemType: CanonicalItemType): string {
       return "Web search";
     case "image_view":
       return "Image view";
+    case "image_generation":
+      return "Image generation";
     case "dynamic_tool_call":
       return "Tool call";
     default:
