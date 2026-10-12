@@ -1,4 +1,4 @@
-import { Schema, Struct } from "effect";
+import { Effect, Option, Schema, SchemaIssue, SchemaTransformation, Struct } from "effect";
 import { ProjectionProject } from "../../persistence/Services/ProjectionProjects.ts";
 import {
   ThreadHandoff,
@@ -30,6 +30,26 @@ import { ProjectionSpace } from "../../persistence/Services/ProjectionSpaces.ts"
 import { ModelSelection } from "@glade/contracts/provider/sessionPolicy";
 
 const ModelSelectionJsonUnknown = Schema.fromJsonString(Schema.Unknown);
+
+// Activity windows decode thousands of payloads per read; Schema.fromJsonString's lazy Effect.try
+// costs about twice an eager parse per row.
+const ActivityPayloadFromJsonString = Schema.String.pipe(
+  Schema.decodeTo(
+    Schema.Unknown,
+    SchemaTransformation.transformOrFail({
+      decode: (text: string) => {
+        try {
+          return Effect.succeed<unknown>(JSON.parse(text));
+        } catch (error) {
+          return Effect.fail(
+            new SchemaIssue.InvalidValue(Option.some(text), { message: String(error) }),
+          );
+        }
+      },
+      encode: (value: unknown) => Effect.succeed(JSON.stringify(value)),
+    }),
+  ),
+);
 
 export const MAX_THREAD_MESSAGES = 2_000;
 
@@ -94,7 +114,7 @@ export const ProjectionManagedWorktreeThreadRowSchema = Schema.Struct({
 
 export const ProjectionThreadActivityDbRowSchema = ProjectionThreadActivity.mapFields(
   Struct.assign({
-    payload: Schema.fromJsonString(Schema.Unknown),
+    payload: ActivityPayloadFromJsonString,
     sequence: Schema.NullOr(NonNegativeInt),
   }),
 );
@@ -111,7 +131,7 @@ export const ProjectionCheckpointDbRowSchema = ProjectionCheckpoint.mapFields(
 
 export const ProjectionGeneratedImageActivityDbRowSchema = Schema.Struct({
   kind: Schema.String,
-  payload: Schema.fromJsonString(Schema.Unknown),
+  payload: ActivityPayloadFromJsonString,
 });
 
 export const ProjectionLatestTurnDbRowSchema = Schema.Struct({

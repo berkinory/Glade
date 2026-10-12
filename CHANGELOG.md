@@ -17,6 +17,7 @@
 - Long chats stay smoother while a reply streams.
 - The branch picker and subagent list do less work while a reply streams.
 - Chats open faster: math, file previews and code reviews load the first time they are needed.
+- Long chats open faster, and opening one no longer pauses other chats' streaming.
 
 ### Fixed
 

@@ -1,12 +1,11 @@
 import { readNativeMessageReferences } from "./nativeMessageReferences";
-import { Schema, Effect, Option } from "effect";
-import { OrchestrationThread } from "@glade/contracts/orchestration/threadEntities";
-import { OrchestrationThreadDetailSnapshot } from "@glade/contracts/orchestration/snapshots";
+import { Effect, Option } from "effect";
+import type { OrchestrationThread } from "@glade/contracts/orchestration/threadEntities";
+import type { OrchestrationThreadDetailSnapshot } from "@glade/contracts/orchestration/snapshots";
 import * as SqlClient from "effect/unstable/sql/SqlClient";
 import { ThreadId } from "@glade/contracts/core/baseSchemas";
 import {
   toPersistenceSqlOrDecodeError,
-  toPersistenceDecodeError,
   isPersistenceError,
   toPersistenceSqlError,
 } from "../../persistence/Errors.ts";
@@ -30,10 +29,6 @@ import {
   toProjectedSession,
 } from "./snapshotAssembly";
 import { computeSnapshotSequence } from "./snapshotCursor";
-
-const decodeThreadDetail = Schema.decodeUnknownEffect(OrchestrationThread);
-
-const decodeThreadDetailSnapshot = Schema.decodeUnknownEffect(OrchestrationThreadDetailSnapshot);
 
 export function makeSnapshotThreadDetails(input: {
   readonly getThreadRowById: ReturnType<typeof makeSnapshotThreadQueries>["getThreadRowById"];
@@ -81,7 +76,7 @@ export function makeSnapshotThreadDetails(input: {
     countThreadMessageRows,
     listProjectionStateRows,
   } = input;
-  const loadThreadDetailRaw = (
+  const loadThreadDetail = (
     threadId: ThreadId,
     options: { readonly messageLimit: number | null; readonly tracePrefix: string } = {
       messageLimit: MAX_THREAD_MESSAGES,
@@ -104,7 +99,7 @@ export function makeSnapshotThreadDetails(input: {
         ),
       );
       if (Option.isNone(threadRow)) {
-        return Option.none<ReturnType<typeof toProjectedThread>>();
+        return Option.none<OrchestrationThread>();
       }
 
       const [
@@ -190,26 +185,6 @@ export function makeSnapshotThreadDetails(input: {
 
       return Option.some(thread);
     });
-
-  const loadThreadDetail = (
-    threadId: ThreadId,
-    options: { readonly messageLimit: number | null; readonly tracePrefix: string } = {
-      messageLimit: MAX_THREAD_MESSAGES,
-      tracePrefix: "ProjectionSnapshotQuery.getThreadDetailById",
-    },
-  ) =>
-    loadThreadDetailRaw(threadId, options).pipe(
-      Effect.flatMap(
-        Option.match({
-          onNone: () => Effect.succeed(Option.none<OrchestrationThread>()),
-          onSome: (thread) =>
-            decodeThreadDetail(thread).pipe(
-              Effect.map((decodedThread) => Option.some(decodedThread)),
-              Effect.mapError(toPersistenceDecodeError(`${options.tracePrefix}:decodeThread`)),
-            ),
-        }),
-      ),
-    );
 
   const getThreadMentionContextById: ProjectionSnapshotQueryShape["getThreadMentionContextById"] = (
     threadId,
@@ -308,16 +283,14 @@ export function makeSnapshotThreadDetails(input: {
         );
 
   // Capture the projection cursor and thread detail in one transaction so the snapshot fence cannot
-  // advance past the detail payload the client receives. Schema validation runs once, after the
-  // transaction commits: the decode of a full transcript is CPU-bound and must not hold the shared
-  // SQL connection.
+  // advance past the detail payload the client receives.
   const getThreadDetailSnapshotById: ProjectionSnapshotQueryShape["getThreadDetailSnapshotById"] = (
     threadId,
   ) =>
     sql
       .withTransaction(
         Effect.all([
-          loadThreadDetailRaw(threadId, {
+          loadThreadDetail(threadId, {
             messageLimit: MAX_THREAD_MESSAGES,
             tracePrefix: "ProjectionSnapshotQuery.getThreadDetailSnapshotById",
           }),
@@ -337,18 +310,11 @@ export function makeSnapshotThreadDetails(input: {
             return Effect.succeed(Option.none<OrchestrationThreadDetailSnapshot>());
           }
           return computeSnapshotSequence(stateRows).pipe(
-            Effect.flatMap((snapshotSequence) =>
-              decodeThreadDetailSnapshot({
+            Effect.map((snapshotSequence) =>
+              Option.some<OrchestrationThreadDetailSnapshot>({
                 snapshotSequence,
                 thread: threadDetail.value,
-              }).pipe(
-                Effect.map((snapshot) => Option.some(snapshot)),
-                Effect.mapError(
-                  toPersistenceDecodeError(
-                    "ProjectionSnapshotQuery.getThreadDetailSnapshotById:decodeSnapshot",
-                  ),
-                ),
-              ),
+              }),
             ),
           );
         }),

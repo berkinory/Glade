@@ -1,7 +1,7 @@
 import { readBackgroundActivities } from "./backgroundWorkQuery";
 import { readNativeMessageReferences } from "./nativeMessageReferences";
-import { Schema, Effect } from "effect";
-import {
+import { Effect } from "effect";
+import type {
   OrchestrationReadModel,
   OrchestrationShellSnapshot,
 } from "@glade/contracts/orchestration/snapshots";
@@ -13,12 +13,11 @@ import {
 } from "../Services/ProjectionSnapshotQuery.ts";
 import {
   toPersistenceSqlOrDecodeError,
-  toPersistenceDecodeError,
   isPersistenceError,
   toPersistenceSqlError,
 } from "../../persistence/Errors.ts";
-import {
-  type OrchestrationProject,
+import type {
+  OrchestrationProject,
   OrchestrationThread,
 } from "@glade/contracts/orchestration/threadEntities";
 import { makeSnapshotBaseQueries } from "./snapshotBaseQueries";
@@ -47,10 +46,6 @@ import {
   toProjectedThreadShellFromStoredSummary,
 } from "./snapshotAssembly";
 import { computeSnapshotSequence } from "./snapshotCursor";
-
-const decodeReadModel = Schema.decodeUnknownEffect(OrchestrationReadModel);
-
-const decodeShellSnapshot = Schema.decodeUnknownEffect(OrchestrationShellSnapshot);
 
 export function makeSnapshotReadModels(input: {
   readonly persistenceScope: string | undefined;
@@ -258,20 +253,14 @@ export function makeSnapshotReadModels(input: {
             }),
           );
 
-          const snapshot = {
+          return {
             persistenceScope: input.persistenceScope,
             snapshotSequence: yield* computeSnapshotSequence(stateRows),
             spaces: spaceRows.map(toProjectedSpace),
             projects,
             threads,
             updatedAt: updatedAt ?? new Date(0).toISOString(),
-          };
-
-          return yield* decodeReadModel(snapshot).pipe(
-            Effect.mapError(
-              toPersistenceDecodeError("ProjectionSnapshotQuery.getSnapshot:decodeReadModel"),
-            ),
-          );
+          } satisfies OrchestrationReadModel;
         }),
       )
       .pipe(
@@ -395,20 +384,14 @@ export function makeSnapshotReadModels(input: {
             }),
           );
 
-          return yield* decodeReadModel({
+          return {
             persistenceScope: input.persistenceScope,
             snapshotSequence: yield* computeSnapshotSequence(stateRows),
             spaces: spaceRows.map(toProjectedSpace),
             projects,
             threads,
             updatedAt: updatedAt ?? new Date(0).toISOString(),
-          }).pipe(
-            Effect.mapError(
-              toPersistenceDecodeError(
-                "ProjectionSnapshotQuery.getCommandReadModel:decodeReadModel",
-              ),
-            ),
-          );
+          } satisfies OrchestrationReadModel;
         }),
       )
       .pipe(
@@ -511,7 +494,7 @@ export function makeSnapshotReadModels(input: {
               )
             : false;
 
-          const snapshot = {
+          return {
             persistenceScope: input.persistenceScope,
             snapshotSequence: yield* computeSnapshotSequence(stateRows),
             requiresEmptyProjectShellRepair,
@@ -530,15 +513,7 @@ export function makeSnapshotReadModels(input: {
                 }),
               ),
             updatedAt: updatedAt ?? new Date(0).toISOString(),
-          };
-
-          return yield* decodeShellSnapshot(snapshot).pipe(
-            Effect.mapError(
-              toPersistenceDecodeError(
-                "ProjectionSnapshotQuery.getShellSnapshot:decodeShellSnapshot",
-              ),
-            ),
-          );
+          } satisfies OrchestrationShellSnapshot;
         }),
       )
       .pipe(
