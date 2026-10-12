@@ -11,7 +11,7 @@ import {
   ProviderListSkillsInput,
   ProviderReadPluginInput,
 } from "@glade/contracts/provider/providerDiscovery";
-import { Effect, Exit, Layer, Option, Queue, Schema, SchemaIssue } from "effect";
+import { Effect, Exit, FileSystem, Layer, Option, Queue, Schema, SchemaIssue } from "effect";
 
 import { modelDiscoveryContext } from "../core/modelDiscoveryContext.ts";
 import { ServerConfig } from "../../server/config.ts";
@@ -104,6 +104,7 @@ const make = Effect.gen(function* () {
   const registry = yield* ProviderAdapterRegistry;
   const serverConfig = yield* ServerConfig;
   const serverSettings = yield* ServerSettingsService;
+  const fileSystem = yield* FileSystem.FileSystem;
 
   const catalogCachePath = resolveProviderModelCatalogCachePath({
     stateDir: serverConfig.stateDir,
@@ -374,8 +375,16 @@ const make = Effect.gen(function* () {
           cached: false,
         };
       }
-      const context = yield* resolveDiscoveryContext(parsed, "listModels");
-      const request = { ...parsed, binaryPath: context.binaryPath };
+      // Chat folders are created on first send, so a draft can ask before its cwd exists. The CLI
+      // cannot spawn there, and a missing folder has no project settings, so the global catalog
+      // is the right answer.
+      const { cwd: requestedCwd, ...workspaceless } = parsed;
+      const cwdExists =
+        requestedCwd !== undefined &&
+        (yield* fileSystem.exists(requestedCwd).pipe(Effect.orElseSucceed(() => false)));
+      const scoped: ProviderListModelsInput = cwdExists ? parsed : workspaceless;
+      const context = yield* resolveDiscoveryContext(scoped, "listModels");
+      const request = { ...scoped, binaryPath: context.binaryPath };
       const listModelsFromAdapter = adapter.listModels;
       const discover = (cwd: string) =>
         Effect.suspend(() => listModelsFromAdapter({ ...request, cwd })).pipe(
