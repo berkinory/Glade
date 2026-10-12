@@ -17,6 +17,7 @@
 - Thinking gets its own row that says how long the agent thought, instead of riding inside tool call groups, and opens to the full reasoning.
 - A turn's edited files list shows about six files and scrolls the rest, with each file's name followed by its folder.
 - The pull request dialog says once that an empty title and description are generated, instead of repeating it in both fields.
+- Loading indicators are easier to read at small sizes, with smoother motion and a distinct look for actions, loading content, a working agent, subagents and voice transcription.
 
 ### Fixed
 
