@@ -18,7 +18,7 @@ import { withoutProcessedTokenTotal } from "./sessionResume";
 import { type ThreadTokenUsageSnapshot } from "@glade/contracts/provider/runtimePayloads";
 import { cancelAgentGatewayTurn } from "../../../agentGateway/sessionLease.ts";
 import { asRuntimeItemId, nativeProviderRefs, asCanonicalTurnId } from "./messageContent";
-import { toolLifecycleEventData } from "./toolPresentation";
+import { isClaudeSubagentTool, toolLifecycleEventData } from "./toolPresentation";
 import { makeClaudeInteractionSettlement } from "./interactionSettlement";
 import { makeClaudeContextUsage } from "./contextUsage";
 import type { ClaudeRuntimeEventsShape } from "../../Services/ClaudeRuntimeEvents.ts";
@@ -242,6 +242,7 @@ export function makeClaudeTurnCompletion(input: {
       }
 
       for (const [index, tool] of context.inFlightTools.entries()) {
+        const stoppedSubagent = status === "interrupted" && isClaudeSubagentTool(tool.toolName);
         const toolStamp = yield* makeEventStamp();
         yield* offerRuntimeEvent(context, {
           type: "item.completed",
@@ -253,10 +254,21 @@ export function makeClaudeTurnCompletion(input: {
           itemId: asRuntimeItemId(tool.itemId),
           payload: {
             itemType: tool.itemType,
-            status: status === "completed" ? "completed" : "failed",
+            status:
+              status === "completed"
+                ? "completed"
+                : status === "interrupted"
+                  ? "declined"
+                  : "failed",
             title: tool.title,
             ...(tool.detail ? { detail: tool.detail } : {}),
-            data: toolLifecycleEventData(context, tool),
+            data: toolLifecycleEventData(
+              context,
+              tool,
+              stoppedSubagent
+                ? { agentStates: { [tool.itemId]: { status: "stopped" } } }
+                : undefined,
+            ),
           },
           providerRefs: nativeProviderRefs(context, { providerItemId: tool.itemId }),
           raw: {

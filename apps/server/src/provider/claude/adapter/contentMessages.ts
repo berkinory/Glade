@@ -31,7 +31,7 @@ import {
   parseClaudeWorkflowLaunch,
   parseClaudeWorkflowLaunchFromText,
 } from "../claudeWorkflowScript.ts";
-import { claudeAssistantErrorMessage } from "./streamErrors";
+import { claudeAssistantErrorMessage, hasPendingUserInterrupt } from "./streamErrors";
 
 import { normalizeClaudeTokenUsage } from "../claudeTokenUsage.ts";
 
@@ -295,16 +295,20 @@ export function makeClaudeContentMessages(input: {
         }
 
         const [index, tool] = toolEntry;
-        const itemStatus = toolResult.isError ? "failed" : "completed";
-
-        const settledStatus = isClaudeSubagentTool(tool.toolName)
-          ? context.settledSubagentToolUseIds.get(tool.itemId)
-          : undefined;
+        // An interrupted foreground subagent's error result arrives before the CLI reports the task
+        // killed, so a pending stop of the parent turn already means the subagent was stopped.
+        const subagentStopped =
+          isClaudeSubagentTool(tool.toolName) &&
+          (context.settledSubagentToolUseIds.get(tool.itemId) === "stopped" ||
+            (toolResult.isError && hasPendingUserInterrupt(context)));
+        const itemStatus = subagentStopped
+          ? "declined"
+          : toolResult.isError
+            ? "failed"
+            : "completed";
         const toolData = toolLifecycleEventData(context, tool, {
           result: toolResult.block,
-          ...(settledStatus === "stopped"
-            ? { agentStates: { [tool.itemId]: { status: "stopped" } } }
-            : {}),
+          ...(subagentStopped ? { agentStates: { [tool.itemId]: { status: "stopped" } } } : {}),
         });
 
         const updatedStamp = yield* makeEventStamp();
@@ -318,7 +322,7 @@ export function makeClaudeContentMessages(input: {
           itemId: asRuntimeItemId(tool.itemId),
           payload: {
             itemType: tool.itemType,
-            status: toolResult.isError ? "failed" : "inProgress",
+            status: subagentStopped ? "declined" : toolResult.isError ? "failed" : "inProgress",
             title: tool.title,
             ...(tool.detail ? { detail: tool.detail } : {}),
             data: toolData,

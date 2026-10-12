@@ -377,4 +377,80 @@ describe("Claude subagentLifecycle", () => {
       Effect.provide(harness.layer),
     );
   });
+
+  it.effect("reports a foreground subagent interrupted with its parent as stopped", () => {
+    const harness = makeHarness();
+    return Effect.gen(function* () {
+      const adapter = yield* ClaudeAdapter;
+      const toolCompleted = yield* adapter.streamEvents.pipe(
+        Stream.filter(
+          (event) => event.type === "item.completed" && event.itemId === "tool-task-interrupted",
+        ),
+        Stream.take(1),
+        Stream.runCollect,
+        Effect.forkChild,
+      );
+      const session = yield* adapter.startSession({
+        threadId: THREAD_ID,
+        provider: "claudeAgent",
+        runtimeMode: "full-access",
+      });
+      yield* adapter.sendTurn({ threadId: session.threadId, input: "delegate", attachments: [] });
+      const envelope = { session_id: "sdk-session-interrupt", parent_tool_use_id: null };
+      harness.query.emit({
+        ...envelope,
+        type: "stream_event",
+        uuid: "interrupt-tool-start",
+        event: {
+          type: "content_block_start",
+          index: 0,
+          content_block: {
+            type: "tool_use",
+            id: "tool-task-interrupted",
+            name: "Agent",
+            input: { description: "Sleep", prompt: "sleep", subagent_type: "general-purpose" },
+          },
+        },
+      } as unknown as SDKMessage);
+      harness.query.emit({
+        ...envelope,
+        type: "system",
+        subtype: "task_started",
+        task_id: "task-interrupted",
+        tool_use_id: "tool-task-interrupted",
+        subagent_type: "general-purpose",
+        description: "Sleep",
+        uuid: "interrupt-task-started",
+      } as unknown as SDKMessage);
+      yield* adapter.interruptTurn(session.threadId);
+      // Claude Code delivers the rejected tool result before it reports the subagent task killed.
+      harness.query.emit({
+        ...envelope,
+        type: "user",
+        uuid: "interrupt-tool-result",
+        message: {
+          role: "user",
+          content: [
+            {
+              type: "tool_result",
+              tool_use_id: "tool-task-interrupted",
+              is_error: true,
+              content: "The user doesn't want to proceed with this tool use.",
+            },
+          ],
+        },
+      } as unknown as SDKMessage);
+
+      const [completed] = Array.from(yield* Fiber.join(toolCompleted));
+      assert.equal(completed?.type, "item.completed");
+      if (completed?.type !== "item.completed") return;
+      assert.equal(completed.payload.status, "declined");
+      assert.deepEqual((completed.payload.data as { agentStates?: unknown }).agentStates, {
+        "tool-task-interrupted": { status: "stopped" },
+      });
+    }).pipe(
+      Effect.provideService(Random.Random, makeDeterministicRandomService()),
+      Effect.provide(harness.layer),
+    );
+  });
 });
