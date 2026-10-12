@@ -270,11 +270,13 @@ export function useChatTranscriptController({
       });
     }
     return buildTurnDiffSummaryByAssistantMessageId({
-      turnDiffSummaries: turnDiffSummaries.map((summary) => ({
-        ...summary,
-        checkpointTurnCount:
-          summary.checkpointTurnCount ?? inferredCheckpointTurnCountByTurnId[summary.turnId],
-      })),
+      turnDiffSummaries: turnDiffSummaries.map((summary) => {
+        const inferredCheckpointTurnCount = inferredCheckpointTurnCountByTurnId[summary.turnId];
+        return summary.checkpointTurnCount !== undefined ||
+          inferredCheckpointTurnCount === undefined
+          ? summary
+          : { ...summary, checkpointTurnCount: inferredCheckpointTurnCount };
+      }),
       messages: messagesForDiffAnchoring,
     });
   })();

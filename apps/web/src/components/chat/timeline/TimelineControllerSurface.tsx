@@ -25,10 +25,10 @@ import { cn } from "~/lib/utils";
 import { MUTED_LABEL_TEXT_CLASS_NAME } from "~/surfaceStyles";
 import { type WorkLogEntry } from "~/workLog.types";
 import { BackgroundWaitRow } from "../BackgroundWaitRow";
-import { renderTimelineAssistantMessage } from "./TimelineAssistantMessage";
+import { TimelineAssistantMessage } from "./TimelineAssistantMessage";
 import { TurnFailureNotice } from "./TurnFailureNotice";
 import { TRAIL_VIEWABILITY_CONFIG, WorktreeSetupCard } from "./timelineSupport";
-import { renderTimelineUserMessage } from "./TimelineUserMessage";
+import { TimelineUserMessage } from "./TimelineUserMessage";
 import type { TimelineController } from "./useTimelineController";
 export function TimelineControllerSurface({ controller }: { controller: TimelineController }) {
   const {
@@ -231,13 +231,13 @@ export function TimelineControllerSurface({ controller }: { controller: Timeline
             </div>
           );
         })()}
-      {row.kind === "message" &&
-        row.message.role === "user" &&
-        renderTimelineUserMessage(controller, row)}
+      {row.kind === "message" && row.message.role === "user" && (
+        <TimelineUserMessage controller={controller} row={row} />
+      )}
 
-      {row.kind === "message" &&
-        row.message.role === "assistant" &&
-        renderTimelineAssistantMessage(controller, row)}
+      {row.kind === "message" && row.message.role === "assistant" && (
+        <TimelineAssistantMessage controller={controller} row={row} />
+      )}
 
       {row.kind === "working" && (
         <div

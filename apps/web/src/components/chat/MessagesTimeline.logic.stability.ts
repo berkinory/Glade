@@ -1,4 +1,5 @@
 import { deepEqualJson } from "../../storeNormalization.shared";
+import type { TurnDiffSummary } from "../../types";
 import type { WorkLogEntry } from "../../workLog.types";
 import type {
   CollapsedTurnItem,
@@ -211,6 +212,44 @@ function collapsedTurnItemsEqual(
   });
 }
 
+function numberArraysEqual(
+  left: ReadonlyArray<number> | undefined,
+  right: ReadonlyArray<number> | undefined,
+): boolean {
+  if (left === right) return true;
+  if (!left || !right) return false;
+  return left.length === right.length && left.every((entry, index) => entry === right[index]);
+}
+
+// Summaries are re-merged on every derivation, so identity never survives a flush.
+function turnDiffSummariesEqual(
+  a: TurnDiffSummary | undefined,
+  b: TurnDiffSummary | undefined,
+): boolean {
+  if (a === b) return true;
+  if (!a || !b) return false;
+  return (
+    a.turnId === b.turnId &&
+    a.completedAt === b.completedAt &&
+    a.status === b.status &&
+    a.checkpointRef === b.checkpointRef &&
+    a.assistantMessageId === b.assistantMessageId &&
+    a.checkpointTurnCount === b.checkpointTurnCount &&
+    numberArraysEqual(a.checkpointTurnCounts, b.checkpointTurnCounts) &&
+    a.files.length === b.files.length &&
+    a.files.every((file, index) => {
+      const other = b.files[index]!;
+      return (
+        file === other ||
+        (file.path === other.path &&
+          file.kind === other.kind &&
+          file.additions === other.additions &&
+          file.deletions === other.deletions)
+      );
+    })
+  );
+}
+
 function isRowUnchanged(a: MessagesTimelineRow, b: MessagesTimelineRow): boolean {
   if (a.kind !== b.kind || a.id !== b.id) return false;
 
@@ -281,7 +320,7 @@ function isRowUnchanged(a: MessagesTimelineRow, b: MessagesTimelineRow): boolean
         a.showAssistantCopyButton === bm.showAssistantCopyButton &&
         a.assistantCopyStreaming === bm.assistantCopyStreaming &&
         a.assistantTurnInProgress === bm.assistantTurnInProgress &&
-        a.assistantTurnDiffSummary === bm.assistantTurnDiffSummary
+        turnDiffSummariesEqual(a.assistantTurnDiffSummary, bm.assistantTurnDiffSummary)
       );
     }
 
