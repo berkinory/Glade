@@ -668,8 +668,32 @@ export function useChatTurnSubmission({
             description: toastCopy.description,
           });
         }
-        // Queued turns are dispatched from their captured snapshot, so this send path must not clear a
-        // separate live draft the user may already be editing.
+        // Clear before the dispatch await: the composer must not keep showing sent text that the
+        // user then types after. A failed send puts the text back only into an empty composer.
+        // Queued turns send from their captured snapshot and never touch the live draft. A pending
+        // provider transition keeps its draft until the transition accepts the message.
+        const preservesHandoffDraft = Boolean(
+          activeThread.handoff?.operationId &&
+          activeThread.handoff.bootstrapStatus === "pending" &&
+          activeThread.handoff.stage !== "cancelled",
+        );
+        const clearSentComposerContent = () => {
+          clearComposerDraftContent(threadIdForSend, { preservePreviewUrls: true, consumedDraft });
+          if (
+            activeThreadIdRef.current === threadIdForSend &&
+            !useComposerDraftStore.getState().draftsByThreadId[threadIdForSend]?.prompt
+          ) {
+            promptHistoryNavigationRef.current = null;
+            applyingPromptHistoryNavigationRef.current = false;
+            expectedPromptHistoryPromptRef.current = null;
+            promptRef.current = "";
+            setComposerHighlightedItemId(null);
+            setComposerCursor(0);
+            setComposerTrigger(null);
+            scheduleComposerFocus();
+          }
+        };
+        if (queuedChatTurn === null && !preservesHandoffDraft) clearSentComposerContent();
 
         const accepted = await executePreparedTurn({
           nextThreadEnvMode,
@@ -720,21 +744,8 @@ export function useChatTurnSubmission({
           composerMentionsSnapshot,
         });
         if (accepted) resumeQueueAfterSend?.();
-        if (accepted && queuedChatTurn === null) {
-          clearComposerDraftContent(threadIdForSend, { preservePreviewUrls: true, consumedDraft });
-          if (
-            activeThreadIdRef.current === threadIdForSend &&
-            !useComposerDraftStore.getState().draftsByThreadId[threadIdForSend]?.prompt
-          ) {
-            promptHistoryNavigationRef.current = null;
-            applyingPromptHistoryNavigationRef.current = false;
-            expectedPromptHistoryPromptRef.current = null;
-            promptRef.current = "";
-            setComposerHighlightedItemId(null);
-            setComposerCursor(0);
-            setComposerTrigger(null);
-            scheduleComposerFocus();
-          }
+        if (accepted && queuedChatTurn === null && preservesHandoffDraft) {
+          clearSentComposerContent();
         }
         return accepted;
       } finally {
