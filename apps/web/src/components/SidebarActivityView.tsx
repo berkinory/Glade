@@ -22,6 +22,7 @@ import {
   type MouseEvent,
   type PointerEvent as ReactPointerEvent,
   type ReactNode,
+  type Ref,
 } from "react";
 import type { OrchestrationThreadPullRequest } from "@glade/contracts/orchestration/threadEntities";
 import type { ProjectId, ThreadId } from "@glade/contracts/core/baseSchemas";
@@ -112,6 +113,7 @@ function ActivityThreadRow({
   onRenamePointerUp,
   onContextMenu,
   renderHoverCard,
+  rowRef,
 }: {
   thread: SidebarThreadSummary;
   project: Project | undefined;
@@ -129,6 +131,7 @@ function ActivityThreadRow({
   onRenamePointerUp: (event: ReactPointerEvent<HTMLElement>, threadId: ThreadId) => void;
   onContextMenu: (threadId: ThreadId, position: SidebarRowContextMenuPosition) => void;
   renderHoverCard: (anchorId: string) => ReactNode;
+  rowRef: Ref<HTMLButtonElement> | undefined;
 }) {
   const isLocalDraft = useComposerDraftStore((state) => {
     const draft = state.draftThreadsByThreadId[thread.id];
@@ -171,7 +174,9 @@ function ActivityThreadRow({
         }
       >
         <button
+          ref={rowRef}
           type="button"
+          aria-current={isActive ? "page" : undefined}
           onClick={onOpen}
           draggable
           onDragStart={(event) => beginThreadDrag(event, thread.id)}
@@ -696,6 +701,37 @@ export function SidebarActivityView({
     },
     [onVisibleThreadIdsChange],
   );
+  const activeRowRef = useRef<HTMLButtonElement | null>(null);
+  const lastActiveRevealKeyRef = useRef<string | null>(null);
+  const activeRevealKey =
+    activeThreadId !== null && visibleThreadIds.includes(activeThreadId)
+      ? `${activeThreadId}:${groupMode}:${activeScope ?? "all"}`
+      : null;
+  useEffect(() => {
+    if (activeRevealKey === null) {
+      lastActiveRevealKeyRef.current = null;
+      return;
+    }
+    if (lastActiveRevealKeyRef.current === activeRevealKey) return;
+    const frameId = window.requestAnimationFrame(() => {
+      const row = activeRowRef.current;
+      const viewport = row?.closest<HTMLElement>('[data-slot="scroll-area-viewport"]');
+      if (!row || !viewport || viewport.clientHeight === 0 || row.getClientRects().length === 0) {
+        return;
+      }
+      lastActiveRevealKeyRef.current = activeRevealKey;
+      // Scroll only the sidebar viewport and leave focus in the chat. Reveal once per selection, so
+      // later activity updates do not pull a reader back to the open chat.
+      const rowBounds = row.getBoundingClientRect();
+      const viewportBounds = viewport.getBoundingClientRect();
+      if (rowBounds.top < viewportBounds.top) {
+        viewport.scrollTop += rowBounds.top - viewportBounds.top;
+      } else if (rowBounds.bottom > viewportBounds.bottom) {
+        viewport.scrollTop += rowBounds.bottom - viewportBounds.bottom;
+      }
+    });
+    return () => window.cancelAnimationFrame(frameId);
+  }, [activeRevealKey, visibleThreadIdsFingerprint]);
   const markAllRead = () => {
     for (const thread of unreadThreads) {
       onMarkThreadRead(thread.id, thread.latestTurn?.completedAt ?? undefined);
@@ -731,6 +767,7 @@ export function SidebarActivityView({
       onRenamePointerUp={onThreadRenamePointerUp}
       onContextMenu={onThreadContextMenu}
       renderHoverCard={(anchorId) => renderThreadHoverCard(thread, anchorId)}
+      rowRef={activeThreadId === thread.id ? activeRowRef : undefined}
     />
   );
   const renderActiveRow = (thread: SidebarThreadSummary) =>
