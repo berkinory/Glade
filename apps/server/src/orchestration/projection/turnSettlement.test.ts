@@ -3,7 +3,14 @@ import { Layer, Effect, FileSystem, Path } from "effect";
 import { OrchestrationEventStore } from "../../persistence/Services/OrchestrationEventStore.ts";
 import { OrchestrationProjectionPipeline } from "../Services/ProjectionPipeline.ts";
 import * as SqlClient from "effect/unstable/sql/SqlClient";
-import { ThreadId, TurnId, EventId, CommandId, MessageId } from "@glade/contracts/core/baseSchemas";
+import {
+  ThreadId,
+  TurnId,
+  EventId,
+  CommandId,
+  MessageId,
+  CheckpointRef,
+} from "@glade/contracts/core/baseSchemas";
 import { CorrelationId } from "@glade/contracts/orchestration/threadEntities";
 import { ManagedAttachmentRepository } from "../../persistence/Services/ManagedAttachments.ts";
 import { ServerConfig } from "../../server/config.ts";
@@ -158,7 +165,7 @@ it.layer(
     }),
   );
 
-  it.effect("matches in-memory turn settlement for terminal session statuses", () =>
+  it.effect("keeps the session-settled turn state through a later checkpoint", () =>
     Effect.gen(function* () {
       const eventStore = yield* OrchestrationEventStore;
       const projectionPipeline = yield* OrchestrationProjectionPipeline;
@@ -263,6 +270,34 @@ it.layer(
             },
           },
         });
+
+        if (scenario.expectedCompleted) {
+          yield* eventStore.append({
+            type: "thread.turn-diff-completed",
+            eventId: EventId.makeUnsafe(`evt-session-settlement-${scenario.key}-checkpoint`),
+            aggregateKind: "thread",
+            aggregateId: threadId,
+            occurredAt: settledAt,
+            commandId: CommandId.makeUnsafe(`cmd-session-settlement-${scenario.key}-checkpoint`),
+            causationEventId: null,
+            correlationId: CorrelationId.makeUnsafe(
+              `cmd-session-settlement-${scenario.key}-checkpoint`,
+            ),
+            metadata: {},
+            payload: {
+              threadId,
+              turnId,
+              checkpointTurnCount: 1,
+              checkpointRef: CheckpointRef.makeUnsafe(
+                `refs/historical/checkpoints/${threadId}/turn/1`,
+              ),
+              status: "ready",
+              files: [],
+              assistantMessageId: null,
+              completedAt: settledAt,
+            },
+          });
+        }
       }
 
       yield* projectionPipeline.bootstrap;

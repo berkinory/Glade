@@ -228,14 +228,19 @@ export function makeTurnProjector(input: {
             turnId: event.payload.turnId,
           });
           const isInProgressDiff = isInProgressTurnDiff(event.payload);
+          // The session owns how a turn ended; a checkpoint captured after an interrupt or failure
+          // only describes files.
+          const sessionSettledState = Option.match(existingTurn, {
+            onNone: () => null,
+            onSome: (turn) =>
+              turn.state === "interrupted" || turn.state === "error" ? turn.state : null,
+          });
           const nextState = isInProgressDiff
             ? Option.match(existingTurn, {
                 onNone: () => "running" as const,
                 onSome: (turn) => turn.state,
               })
-            : event.payload.status === "error"
-              ? "error"
-              : "completed";
+            : (sessionSettledState ?? (event.payload.status === "error" ? "error" : "completed"));
           yield* projectionTurnRepository.clearCheckpointTurnConflict({
             threadId: event.payload.threadId,
             turnId: event.payload.turnId,
