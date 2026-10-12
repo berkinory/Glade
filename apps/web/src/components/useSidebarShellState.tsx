@@ -240,7 +240,10 @@ export function useSidebarShellState() {
 
   const latestProjectId = useProjectPreferencesStore((state) => state.latestProjectId);
 
-  const [createProjectDialogOpen, setCreateProjectDialogOpen] = useState(false);
+  const createProjectDialogOpen = useSidebarStateStore((state) => state.createProjectDialogOpen);
+  const setCreateProjectDialogOpen = useSidebarStateStore(
+    (state) => state.setCreateProjectDialogOpen,
+  );
 
   const [createProjectSpaceId, setCreateProjectSpaceId] = useState<SpaceId | null | undefined>();
 

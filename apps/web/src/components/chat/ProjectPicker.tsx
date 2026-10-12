@@ -48,6 +48,8 @@ import {
 } from "../ui/combobox";
 import { useWorkspacePathsStore } from "../../workspacePathsStore";
 import { useSpacesUiStore } from "../../spacesUiStore";
+import { useSidebarStateStore } from "../../sidebarStateStore";
+import { useSidebar } from "../ui/sidebar";
 interface ProjectPickerProps {
   align?: "start" | "center" | "end";
   side?: "top" | "bottom";
@@ -141,6 +143,7 @@ export const ProjectPicker = memo(function ProjectPicker({
   searchPlaceholder: searchPlaceholderProp,
 }: ProjectPickerProps) {
   const isLocalDesktop = useLocalDesktopActive();
+  const { isMobile: isMobileSidebar, setOpenMobile: setOpenMobileSidebar } = useSidebar();
   const align = alignProp ?? "start";
   const side = sideProp ?? "bottom";
   const selectionMode = selectionModeProp ?? "workspace-root";
@@ -388,6 +391,15 @@ export const ProjectPicker = memo(function ProjectPicker({
   };
   const handleAddNewProject = async () => {
     if (isPicking) return;
+    // Without the local desktop folder dialog, hand off to the sidebar's Create project dialog,
+    // which takes a typed path or a clone and targets the active environment. The mobile sidebar
+    // sheet unmounts its dialogs while closed, so it has to open too.
+    if (!isLocalDesktop) {
+      setOpen(false);
+      if (isMobileSidebar) setOpenMobileSidebar(true);
+      useSidebarStateStore.getState().setCreateProjectDialogOpen(true);
+      return;
+    }
     const api = readNativeApi();
     if (!api) {
       setErrorMessage("App is still connecting. Try again in a moment.");
@@ -594,7 +606,7 @@ export const ProjectPicker = memo(function ProjectPicker({
           }
           footer={
             <>
-              {isLocalDesktop ? (
+              {isLocalDesktop || onCreateProjectFromPath ? (
                 <button
                   type="button"
                   className={cn(

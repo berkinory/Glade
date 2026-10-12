@@ -44,6 +44,8 @@ interface SidebarState {
     update: LastThreadRoute | ((current: LastThreadRoute | null) => LastThreadRoute | null),
   ) => void;
   setActivityViewEnabled: (value: boolean) => void;
+  createProjectDialogOpen: boolean;
+  setCreateProjectDialogOpen: (open: boolean) => void;
   pinnedProjectIds: ProjectId[];
   pinnedThreadIds: ThreadId[];
   recentViews: RecentView[];
@@ -159,6 +161,8 @@ export const useSidebarStateStore = create<SidebarState>((set, get) => ({
     }),
   setActivityScope: (activityScope) => commitSidebarUi({ activityScope }),
   setActivityViewEnabled: (activityViewEnabled) => commitSidebarUi({ activityViewEnabled }),
+  createProjectDialogOpen: false,
+  setCreateProjectDialogOpen: (createProjectDialogOpen) => set({ createProjectDialogOpen }),
   pinnedProjectIds: readPinnedIds<ProjectId>(
     PINNED_PROJECTS_KEY,
     "pinnedProjectIds",
