@@ -52,6 +52,21 @@ function compareThreadIds(
   return left.id.localeCompare(right.id);
 }
 
+// The open thread and threads working or starting a turn keep their place while a
+// draft is typed, so a follow-up never makes the row jump into Drafts.
+function isParkedActivityDraft(
+  thread: SidebarThreadSummary,
+  draftThreadIds: ReadonlySet<ThreadId> | undefined,
+  activeThreadId: ThreadId | null,
+): boolean {
+  if (!draftThreadIds?.has(thread.id) || thread.id === activeThreadId) return false;
+  return !(
+    isThreadRunningForActivity(thread) ||
+    thread.session?.orchestrationStatus === "starting" ||
+    thread.latestTurn?.state === "running"
+  );
+}
+
 export interface ActivityViewModel {
   pinned: SidebarThreadSummary[];
   drafts: SidebarThreadSummary[];
@@ -63,8 +78,8 @@ export function buildActivityViewModel(input: {
   threads: readonly SidebarThreadSummary[];
   pinnedThreadIdSet: ReadonlySet<ThreadId>;
   draftThreadIds?: ReadonlySet<ThreadId>;
+  activeThreadId?: ThreadId | null;
   settledOverrideByThreadId?: ReadonlyMap<ThreadId, boolean>;
-
   projectFilterIds?: ReadonlySet<ProjectId> | null;
 }): ActivityViewModel {
   const projectFilterIds = input.projectFilterIds ?? null;
@@ -84,7 +99,7 @@ export function buildActivityViewModel(input: {
       pinned.push(thread);
       continue;
     }
-    if (input.draftThreadIds?.has(thread.id)) {
+    if (isParkedActivityDraft(thread, input.draftThreadIds, input.activeThreadId ?? null)) {
       drafts.push(thread);
       continue;
     }
