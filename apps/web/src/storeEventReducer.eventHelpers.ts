@@ -5,7 +5,10 @@ import type { OrchestrationPendingInteraction } from "@glade/contracts/orchestra
 import type { ThreadId } from "@glade/contracts/core/baseSchemas";
 import { mergeAsyncUserInput } from "@glade/shared/threads/asyncUserInput";
 import { resolveHumanMessageAt } from "@glade/shared/threads/threadSummary";
-import { isPendingInteractionResponseClaimable } from "@glade/shared/threads/pendingInteractions";
+import {
+  createStalePendingInteractionMatcher,
+  isPendingInteractionResponseClaimable,
+} from "@glade/shared/threads/pendingInteractions";
 import { advanceMessageTextSegments } from "./messageTextSegments";
 import { isSessionRunningTurn } from "./session-logic";
 import {
@@ -147,23 +150,34 @@ export function reconcilePendingInteractionsFromActivity(
     activity.kind === "provider.approval.respond.failed" ||
     activity.kind === "provider.user-input.respond.failed"
   ) {
+    // Mirrors the server projector: a stale failure settles its row terminally, and snapshots omit
+    // terminal rows.
+    const isStale = createStalePendingInteractionMatcher([activity]);
     const responseCommandId = payload?.responseCommandId;
     if (typeof responseCommandId !== "string" || responseCommandId.length === 0) {
-      return pendingInteractions;
+      const next = existing.filter(
+        (interaction) =>
+          interaction.interactionKind !== interactionKind ||
+          interaction.status === "confirmed" ||
+          !isStale(interaction),
+      );
+      return next.length === existing.length ? pendingInteractions : next;
     }
     const settlementStatus: OrchestrationPendingInteraction["status"] =
       payload?.settlementStatus === "retryable" ? "retryable" : "uncertain";
     let changed = false;
-    const next = existing.map((interaction) => {
+    const next = existing.flatMap((interaction) => {
       if (
         !matchesIdentity(interaction) ||
         interaction.status !== "responding" ||
         interaction.responseCommandId !== responseCommandId
       ) {
-        return interaction;
+        return [interaction];
       }
       changed = true;
-      return { ...interaction, status: settlementStatus, resolvedAt: null };
+      return isStale(interaction)
+        ? []
+        : [{ ...interaction, status: settlementStatus, resolvedAt: null }];
     });
     return changed ? next : pendingInteractions;
   }
