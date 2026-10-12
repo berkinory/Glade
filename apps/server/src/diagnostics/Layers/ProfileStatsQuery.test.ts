@@ -108,82 +108,91 @@ it.layer(layer)("historical profile attribution", (it) => {
   );
 });
 
-it.layer(layer)("token accounting boundaries", (it) => {
-  it.effect("counts each native usage session and uncovered Claude subagents once", () =>
-    Effect.gen(function* () {
-      const sql = yield* SqlClient.SqlClient;
-      const stats = yield* ProfileStatsQuery;
-      const archive = yield* ProfileStatsArchive;
-      yield* sql`INSERT INTO projection_projects
-        (project_id, title, workspace_root, scripts_json, created_at, updated_at)
-        VALUES ('project', 'Token fixture', '/nonexistent-token-fixture', '[]', ${date}, ${date})`;
-      const threads = [
-        { id: "codex", provider: "codex", parent: null, sourceTurn: null },
-        { id: "parent", provider: "claudeAgent", parent: null, sourceTurn: null },
-        { id: "child-covered", provider: "claudeAgent", parent: "parent", sourceTurn: "covered" },
-        { id: "child-stopped", provider: "claudeAgent", parent: "parent", sourceTurn: "stopped" },
-      ];
-      for (const thread of threads) {
-        yield* sql`INSERT INTO projection_threads
-          (thread_id, project_id, title, model_selection_json, creation_source, parent_thread_id,
-           source_turn_id, created_at, updated_at)
-          VALUES (${thread.id}, 'project', 'Usage',
-            ${JSON.stringify({ provider: thread.provider, model: "model" })},
-            ${thread.parent ? "provider_native" : null}, ${thread.parent}, ${thread.sourceTurn},
-            ${date}, ${date})`;
-      }
-      const claudeResult = (modelUsage?: number) => ({
-        provider: "claudeAgent",
-        tokenAccountingVersion: 1,
-        mainLoopTokens: 100,
-        ...(modelUsage ? { modelUsage: { model: { totalTokens: modelUsage } } } : {}),
-      });
-      const activities = [
-        // A resumed native session keeps its counter; a new native session starts from zero.
-        [
-          "codex",
-          null,
-          "context-window.updated",
-          { totalProcessedTokens: 500, usageSessionId: "a:1" },
-        ],
-        [
-          "codex",
-          null,
-          "context-window.updated",
-          { totalProcessedTokens: 800, usageSessionId: "a:2" },
-        ],
-        [
-          "codex",
-          null,
-          "context-window.updated",
-          { totalProcessedTokens: 900, usageSessionId: "b:2" },
-        ],
-        ["parent", "covered", "turn.completed", claudeResult(300)],
-        ["parent", "stopped", "turn.completed", claudeResult()],
-        ["child-covered", "child-covered-turn", "turn.completed", claudeResult(200)],
-        ["child-stopped", "child-stopped-turn", "turn.completed", claudeResult(200)],
-      ] as const;
-      for (const [index, [threadId, turnId, kind, payload]] of activities.entries()) {
-        yield* sql`INSERT INTO projection_thread_activities
-          (activity_id, thread_id, turn_id, tone, kind, summary, payload_json, sequence, created_at)
-          VALUES (${`activity-${index}`}, ${threadId}, ${turnId}, 'info', ${kind}, 'usage',
-            ${JSON.stringify({ provider: "codex", ...payload })}, ${index}, ${date})`;
-      }
-      const input = { utcOffsetMinutes: 0 };
-      const tokensByProvider = (models: ReadonlyArray<{ provider: string; tokens: number }>) =>
-        Object.fromEntries(
-          ["codex", "claudeAgent"].map((provider) => [
-            provider,
-            models.reduce((sum, row) => sum + (row.provider === provider ? row.tokens : 0), 0),
-          ]),
+const deleteOrders = [
+  ["subagents before parent", ["child-stopped", "child-covered", "parent", "codex"]],
+  ["parent before subagents", ["parent", "child-covered", "child-stopped", "codex"]],
+  ["parent between subagents", ["child-covered", "parent", "child-stopped", "codex"]],
+] as const;
+
+for (const [orderName, deleteOrder] of deleteOrders) {
+  it.layer(layer)(`token accounting, deleting ${orderName}`, (it) => {
+    it.effect("counts each native session and uncovered Claude subagent exactly once", () =>
+      Effect.gen(function* () {
+        const sql = yield* SqlClient.SqlClient;
+        const stats = yield* ProfileStatsQuery;
+        const archive = yield* ProfileStatsArchive;
+        yield* sql`INSERT INTO projection_projects
+          (project_id, title, workspace_root, scripts_json, created_at, updated_at)
+          VALUES ('project', 'Token fixture', '/nonexistent-token-fixture', '[]', ${date}, ${date})`;
+        const threads = [
+          { id: "codex", provider: "codex", parent: null, sourceTurn: null },
+          { id: "parent", provider: "claudeAgent", parent: null, sourceTurn: null },
+          { id: "child-covered", provider: "claudeAgent", parent: "parent", sourceTurn: "covered" },
+          { id: "child-stopped", provider: "claudeAgent", parent: "parent", sourceTurn: "stopped" },
+        ];
+        for (const thread of threads) {
+          yield* sql`INSERT INTO projection_threads
+            (thread_id, project_id, title, model_selection_json, creation_source, parent_thread_id,
+             source_turn_id, created_at, updated_at)
+            VALUES (${thread.id}, 'project', 'Usage',
+              ${JSON.stringify({ provider: thread.provider, model: "model" })},
+              ${thread.parent ? "provider_native" : null}, ${thread.parent}, ${thread.sourceTurn},
+              ${date}, ${date})`;
+        }
+        const claudeResult = (modelUsage?: number) => ({
+          provider: "claudeAgent",
+          tokenAccountingVersion: 1,
+          mainLoopTokens: 100,
+          ...(modelUsage ? { modelUsage: { model: { totalTokens: modelUsage } } } : {}),
+        });
+        const activities = [
+          // A resumed native session keeps its counter; a new native session starts from zero.
+          [
+            "codex",
+            null,
+            "context-window.updated",
+            { totalProcessedTokens: 500, usageSessionId: "a:1" },
+          ],
+          [
+            "codex",
+            null,
+            "context-window.updated",
+            { totalProcessedTokens: 800, usageSessionId: "a:2" },
+          ],
+          [
+            "codex",
+            null,
+            "context-window.updated",
+            { totalProcessedTokens: 900, usageSessionId: "b:2" },
+          ],
+          ["parent", "covered", "turn.completed", claudeResult(300)],
+          ["parent", "stopped", "turn.completed", claudeResult()],
+          ["child-covered", "child-covered-turn", "turn.completed", claudeResult(200)],
+          ["child-stopped", "child-stopped-turn", "turn.completed", claudeResult(200)],
+        ] as const;
+        for (const [index, [threadId, turnId, kind, payload]] of activities.entries()) {
+          yield* sql`INSERT INTO projection_thread_activities
+            (activity_id, thread_id, turn_id, tone, kind, summary, payload_json, sequence, created_at)
+            VALUES (${`activity-${index}`}, ${threadId}, ${turnId}, 'info', ${kind}, 'usage',
+              ${JSON.stringify({ provider: "codex", ...payload })}, ${index}, ${date})`;
+        }
+        const tokensByProvider = Effect.map(
+          stats.getProfileTokenStats({ utcOffsetMinutes: 0 }),
+          ({ models }) =>
+            Object.fromEntries(
+              ["codex", "claudeAgent"].map((provider) => [
+                provider,
+                models.reduce((sum, row) => sum + (row.provider === provider ? row.tokens : 0), 0),
+              ]),
+            ),
         );
-      const before = yield* stats.getProfileTokenStats(input);
-      expect(tokensByProvider(before.models)).toEqual({ codex: 1_700, claudeAgent: 600 });
-      for (const thread of threads.toReversed()) {
-        yield* archive.purgeThreadWithStatsSnapshot({ threadId: thread.id });
-      }
-      const after = yield* stats.getProfileTokenStats(input);
-      expect(tokensByProvider(after.models)).toEqual({ codex: 1_700, claudeAgent: 600 });
-    }),
-  );
-});
+        const expected = { codex: 1_700, claudeAgent: 600 };
+        expect(yield* tokensByProvider).toEqual(expected);
+        for (const threadId of deleteOrder) {
+          yield* archive.purgeThreadWithStatsSnapshot({ threadId });
+          expect(yield* tokensByProvider, `after deleting ${threadId}`).toEqual(expected);
+        }
+      }),
+    );
+  });
+}

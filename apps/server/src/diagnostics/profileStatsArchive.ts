@@ -642,13 +642,23 @@ const makeProfileStatsArchive = Effect.gen(function* () {
         model: threadSelection?.model ?? null,
       });
 
-      const claudeTokenRows = yield* sql<ThreadTokenSnapshotRow>`
-        WITH turn_model AS (${turnModelSelectionCte(sql, { threadId })}),
-          ${claudeTokenActivityCtes(sql, { threadId })}
+      const claudeTokenRowsFor = (scopeThreadId: string) => sql<ThreadTokenSnapshotRow>`
+        WITH turn_model AS (${turnModelSelectionCte(sql, { threadId: scopeThreadId })}),
+          ${claudeTokenActivityCtes(sql, { threadId: scopeThreadId })}
         SELECT created_at AS createdAt, 'claudeAgent' AS provider, model, tokens
         FROM claude_token_rows
       `;
-      tokenRows.push(...claudeTokenRows);
+      tokenRows.push(...(yield* claudeTokenRowsFor(threadId)));
+      // Provider-native children stop counting once this thread is gone, so their usage that this
+      // thread's results do not cover is archived here while it can still be resolved.
+      const nativeChildRows = yield* sql<{ readonly threadId: string }>`
+        SELECT thread_id AS "threadId"
+        FROM projection_threads
+        WHERE parent_thread_id = ${threadId} AND creation_source = 'provider_native'
+      `;
+      for (const child of nativeChildRows) {
+        tokenRows.push(...(yield* claudeTokenRowsFor(child.threadId)));
+      }
       const skillRows = aggregateProfileSkillUsageRows(skillMessageRows);
       const hasStatsContribution = hasProfileStatsContribution({
         promptRows: skillMessageRows,

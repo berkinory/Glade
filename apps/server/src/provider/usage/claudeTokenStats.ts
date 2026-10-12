@@ -34,18 +34,26 @@ export function claudeTokenActivityCtes(
       -- Provider-native children mirror usage that the parent's turn result
       -- includes, but a stopped parent turn has no result usage. Count a child
       -- unless its source turn has a versioned result breakdown that covers it.
-      -- Other child threads are independent work and always count.
+      -- Purging the parent archives that uncovered usage with the parent, so a
+      -- child of a purged parent no longer counts. Other child threads are
+      -- independent work and always count.
       WHERE (
         COALESCE(th.creation_source, '') != 'provider_native'
-        OR NOT EXISTS (
-          SELECT 1
-          FROM projection_thread_activities parent
-          WHERE parent.thread_id = th.parent_thread_id
-            AND parent.turn_id = th.source_turn_id
-            AND parent.kind = 'turn.completed'
-            AND json_valid(parent.payload_json)
-            AND json_extract(parent.payload_json, '$.tokenAccountingVersion') = 1
-            AND json_type(parent.payload_json, '$.modelUsage') = 'object'
+        OR (
+          EXISTS (
+            SELECT 1 FROM projection_threads parent_thread
+            WHERE parent_thread.thread_id = th.parent_thread_id
+          )
+          AND NOT EXISTS (
+            SELECT 1
+            FROM projection_thread_activities parent
+            WHERE parent.thread_id = th.parent_thread_id
+              AND parent.turn_id = th.source_turn_id
+              AND parent.kind = 'turn.completed'
+              AND json_valid(parent.payload_json)
+              AND json_extract(parent.payload_json, '$.tokenAccountingVersion') = 1
+              AND json_type(parent.payload_json, '$.modelUsage') = 'object'
+          )
         )
       )
         AND COALESCE(
