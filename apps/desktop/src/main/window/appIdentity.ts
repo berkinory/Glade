@@ -36,6 +36,9 @@ import {
   serializeLaunchVersionRecord,
   shouldRefreshIconCache,
 } from "./macIconCacheRefresh";
+
+const MAC_DOCK_ICON_PX = 512;
+
 export interface IdentityResources {
   resolveAboutCommitHash(): string | null;
   resolveResourcePath(filename: string): string | null;
@@ -344,7 +347,9 @@ export function createAppIdentity(
     if (image.isEmpty()) return;
 
     if (process.platform === "darwin") {
-      app.dock?.setIcon(image);
+      // Dock tiles top out at 128 pt (256 px on Retina) with the stock settings. The Dock keeps a
+      // raster of whatever it is given: 32 MB for the 1024 px artwork, 8 MB at 512 px.
+      app.dock?.setIcon(image.resize({ width: MAC_DOCK_ICON_PX, quality: "best" }));
       await syncMacAppBundleIcon(icon, image);
       return;
     }

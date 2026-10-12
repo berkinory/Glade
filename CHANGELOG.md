@@ -10,6 +10,7 @@
 - Busy terminals use less CPU.
 - The agent browser uses less memory: at most four tabs stay loaded, and idle tabs in chats you are not looking at unload sooner.
 - Glade opens faster: its local server now starts before other startup work.
+- The Dock icon uses less memory on macOS.
 
 ### Fixed
 
