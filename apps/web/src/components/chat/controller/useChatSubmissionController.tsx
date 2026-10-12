@@ -2,10 +2,13 @@ import { resolveFollowUpDispatchMode } from "~/appSettings";
 import { useLayoutEffect, useRef } from "react";
 import { ComposerModelMenuTrigger } from "~/components/chat/ComposerModelMenuTrigger";
 import { ComposerModelPicker } from "~/components/chat/ComposerModelPicker";
+import { ComposerTraitsPicker } from "~/components/chat/ComposerTraitsPicker";
 import { resolveProviderModelLabel } from "~/components/chat/ProviderModelPicker";
-import { resolveTraitsTriggerSummary } from "~/components/chat/TraitsPicker";
 import type { LateComposerSendHandlers } from "~/components/chat/chatSendTypes";
-import { getComposerTraitSelection } from "~/components/chat/composerTraits";
+import {
+  getComposerTraitSelection,
+  resolveComposerTraitsSummary,
+} from "~/components/chat/composerTraits";
 import { useChatComposerCommands } from "~/components/chat/useChatComposerCommands";
 import { useChatComposerEditing } from "~/components/chat/useChatComposerEditing";
 import { useChatQueuedTurns } from "~/components/chat/useChatQueuedTurns";
@@ -19,7 +22,6 @@ import { collapseExpandedComposerCursor, detectComposerTrigger } from "~/compose
 import { useComposerSlashCommands } from "~/hooks/useComposerSlashCommands";
 import { formatContextWindowTokens } from "~/lib/contextWindow";
 import { deriveFastModeUnavailableNotice } from "~/lib/fastModeStatus";
-import { buildNextProviderOptions } from "~/providerModelOptions";
 import { type ChatViewProps } from "./chatViewSupport";
 import type { useChatActionsController } from "./useChatActionsController";
 import type { useChatComposerController } from "./useChatComposerController";
@@ -68,15 +70,14 @@ export function useChatSubmissionController({
     composerFooterTierRef,
     setComposerFooterTier,
     composerFooterLayoutSyncRef,
-    setIsTraitsPickerOpen,
-    isComposerModelEffortPickerOpen,
+    isModelPickerOpen,
+    isTraitsPickerOpen,
     setComposerDraftProviderModelOptions,
     handleNewThread,
     setComposerCommandPicker,
   } = session;
   const {
     selectedProvider,
-    selectedModel,
     composerModelOptions,
     selectedRuntimeModel,
     lockedProvider,
@@ -90,7 +91,12 @@ export function useChatSubmissionController({
     selectedModelSelection,
     onAdvanceActivePendingUserInput,
   } = provider;
-  const { scheduleComposerFocus, handleModelPickerOpenChange, reportChatActionFailure } = composer;
+  const {
+    scheduleComposerFocus,
+    handleModelPickerOpenChange,
+    handleTraitsPickerOpenChange,
+    reportChatActionFailure,
+  } = composer;
   const { isLocalDraftThread, activeProject, isServerThread, activeContextWindow, runtimeMode } =
     workspace;
   const { envMode } = environment;
@@ -104,6 +110,7 @@ export function useChatSubmissionController({
   const {
     providerStatuses,
     modelPickerShortcutLabel,
+    traitsPickerShortcutLabel,
     supportsFastSlashCommand,
     canOfferExportCommand,
     fastModeEnabled,
@@ -191,14 +198,6 @@ export function useChatSubmissionController({
 
   const selectedProviderModelOptions = composerModelOptions?.[selectedProvider];
 
-  const composerTraitSelection = getComposerTraitSelection(
-    selectedProvider,
-    selectedModel,
-    prompt,
-    selectedProviderModelOptions,
-    selectedRuntimeModel,
-  );
-
   const runtimeUsageContextWindow = activeContextWindow;
 
   const contextWindowSelectionStatus = {
@@ -220,13 +219,15 @@ export function useChatSubmissionController({
     modelOptionsByProvider,
   });
 
-  const composerFooterTraitsSummary = resolveTraitsTriggerSummary({
-    provider: selectedProvider,
-    model: selectedModelForPickerWithCustomFallback,
-    prompt,
-    modelOptions: selectedProviderModelOptions,
-    ...(selectedRuntimeModel ? { runtimeModel: selectedRuntimeModel } : {}),
-  });
+  const composerFooterTraitsSummary = resolveComposerTraitsSummary(
+    getComposerTraitSelection(
+      selectedProvider,
+      selectedModelForPickerWithCustomFallback,
+      prompt,
+      selectedProviderModelOptions,
+      selectedRuntimeModel,
+    ),
+  );
 
   const composerFooterPlanInputsKey = [
     composerFooterModelLabel,
@@ -251,74 +252,61 @@ export function useChatSubmissionController({
     composerFooterLayoutSyncRef.current?.();
   }, [composerFooterLayoutSyncRef, composerFooterTier]);
 
-  const handleComposerModelEffortPickerOpenChange = (open: boolean) => {
-    if (open) {
-      handleModelPickerOpenChange(true);
-    } else {
-      handleModelPickerOpenChange(false);
-      setIsTraitsPickerOpen(false);
-    }
-  };
-
   const composerPickerControls = showComposerModelBootstrapSkeleton ? (
     <ComposerModelMenuTrigger
       provider={selectedProvider}
       modelLabel={composerFooterModelLabel}
-      statusLabel={composerFooterTraitsSummary.primaryLabel}
-      showsFastBadge={composerFooterTraitsSummary.showsFastBadge}
       hideModelLabel={!composerFooterControlsPlan.showModelLabel}
-      hideStatusLabel={!composerFooterControlsPlan.showTraitsLabel}
       isMenuOpen={false}
       loading
     />
   ) : (
-    <ComposerModelPicker
-      hideModelLabel={!composerFooterControlsPlan.showModelLabel}
-      hideStatusLabel={!composerFooterControlsPlan.showTraitsLabel}
-      provider={selectedProvider}
-      model={selectedModelForPickerWithCustomFallback}
-      providers={providerStatuses}
-      modelOptionsByProvider={modelOptionsByProvider}
-      loadingModelProviders={loadingModelProviders}
-      discoveryErrorsByProvider={discoveryErrorsByProvider}
-      hiddenProviders={settings.hiddenProviders}
-      providerOrder={settings.providerOrder}
-      threadId={threadId}
-      runtimeModel={selectedRuntimeModel}
-      runtimeModelsByProvider={runtimeModelsByProvider}
-      modelOptions={selectedProviderModelOptions}
-      prompt={prompt}
-      onPromptChange={setPromptFromTraits}
-      onProviderModelChange={(...args: Parameters<typeof onProviderModelSelect>) => {
-        void onProviderModelSelect(...args).catch(reportChatActionFailure);
-      }}
-      onSelectionCommitted={scheduleComposerFocus}
-      open={isComposerModelEffortPickerOpen}
-      onOpenChange={handleComposerModelEffortPickerOpenChange}
-      shortcutLabel={modelPickerShortcutLabel}
-      fastModeNotice={
-        selectedProvider === "claudeAgent" && fastModeEnabled
-          ? deriveFastModeUnavailableNotice(activeThread?.activities ?? [])
-          : null
-      }
-    />
+    <div className="flex min-w-0 items-center">
+      <ComposerModelPicker
+        hideModelLabel={!composerFooterControlsPlan.showModelLabel}
+        provider={selectedProvider}
+        model={selectedModelForPickerWithCustomFallback}
+        providers={providerStatuses}
+        modelOptionsByProvider={modelOptionsByProvider}
+        loadingModelProviders={loadingModelProviders}
+        discoveryErrorsByProvider={discoveryErrorsByProvider}
+        hiddenProviders={settings.hiddenProviders}
+        providerOrder={settings.providerOrder}
+        threadId={threadId}
+        runtimeModel={selectedRuntimeModel}
+        runtimeModelsByProvider={runtimeModelsByProvider}
+        modelOptions={selectedProviderModelOptions}
+        prompt={prompt}
+        onPromptChange={setPromptFromTraits}
+        onProviderModelChange={(...args: Parameters<typeof onProviderModelSelect>) => {
+          void onProviderModelSelect(...args).catch(reportChatActionFailure);
+        }}
+        onSelectionCommitted={scheduleComposerFocus}
+        open={isModelPickerOpen}
+        onOpenChange={handleModelPickerOpenChange}
+        shortcutLabel={modelPickerShortcutLabel}
+      />
+      <ComposerTraitsPicker
+        threadId={threadId}
+        provider={selectedProvider}
+        model={selectedModelForPickerWithCustomFallback}
+        modelOptions={selectedProviderModelOptions}
+        runtimeModel={selectedRuntimeModel}
+        fastModeNotice={
+          selectedProvider === "claudeAgent" && fastModeEnabled
+            ? deriveFastModeUnavailableNotice(activeThread?.activities ?? [])
+            : null
+        }
+        hideLabel={!composerFooterControlsPlan.showTraitsLabel}
+        shortcutLabel={traitsPickerShortcutLabel}
+        open={isTraitsPickerOpen}
+        onOpenChange={(open) => {
+          handleTraitsPickerOpenChange(open);
+          if (!open) scheduleComposerFocus();
+        }}
+      />
+    </div>
   );
-
-  const toggleFastMode = () => {
-    if (!composerTraitSelection.caps.supportsFastMode) {
-      scheduleComposerFocus();
-      return;
-    }
-    setComposerDraftProviderModelOptions(
-      threadId,
-      selectedProvider,
-      buildNextProviderOptions(selectedProvider, selectedProviderModelOptions, {
-        fastMode: !composerTraitSelection.fastModeEnabled,
-      }),
-      { persistSticky: true },
-    );
-    scheduleComposerFocus();
-  };
 
   const {
     onEnvModeChange,
@@ -462,12 +450,10 @@ export function useChatSubmissionController({
     onResumeWorkflowRun,
 
     selectedProviderModelOptions,
-    composerTraitSelection,
     runtimeUsageContextWindow,
     contextWindowSelectionStatus,
     composerFooterControlsPlan,
     composerPickerControls,
-    toggleFastMode,
     onEnvModeChange,
     handleSelectEnvironmentForEmptyDraft,
     handleResetWorkspaceToHome,

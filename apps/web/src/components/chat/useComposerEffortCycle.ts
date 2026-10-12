@@ -7,6 +7,7 @@ import {
   planComposerEffortChange,
   resolveComposerEffortLadderIndex,
 } from "./composerTraits";
+import { TRAITS_PICKER_POPUP_ATTRIBUTE } from "./ComposerTraitsPicker";
 import { useComposerTraitCommit } from "./useComposerTraitCommit";
 
 export function useComposerEffortCycle(input: {
@@ -36,7 +37,10 @@ export function useComposerEffortCycle(input: {
   }, [threadId, provider, model, setPickerOpen]);
   useEffect(() => {
     const takeOwnership = (event: PointerEvent) => {
-      if (event.target instanceof Element && event.target.closest("[data-model-picker-popup]"))
+      if (
+        event.target instanceof Element &&
+        event.target.closest(`[${TRAITS_PICKER_POPUP_ATTRIBUTE}]`)
+      )
         cancelPreview();
     };
     window.addEventListener("pointerdown", takeOwnership, true);

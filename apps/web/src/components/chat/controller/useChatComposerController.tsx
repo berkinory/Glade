@@ -192,8 +192,8 @@ export function useChatComposerController({
     model: provider.selectedModel,
     modelOptions: provider.composerModelOptions?.[selectedProvider],
     runtimeModel: provider.selectedRuntimeModel,
-    pickerOpen: session.isComposerModelEffortPickerOpen,
-    setPickerOpen: setIsModelPickerOpen,
+    pickerOpen: session.isTraitsPickerOpen,
+    setPickerOpen: setIsTraitsPickerOpen,
   });
   const handleModelPickerOpenChange = (open: boolean) => {
     cancelEffortPreview();
@@ -204,6 +204,7 @@ export function useChatComposerController({
   };
 
   const handleTraitsPickerOpenChange = (open: boolean) => {
+    cancelEffortPreview();
     setIsTraitsPickerOpen(open);
     if (open) {
       setIsModelPickerOpen(false);

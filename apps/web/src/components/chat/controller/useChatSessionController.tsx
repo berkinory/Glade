@@ -315,8 +315,6 @@ export function useChatSessionController(props: ChatViewProps) {
 
   const [isTraitsPickerOpen, setIsTraitsPickerOpen] = useState(false);
 
-  const isComposerModelEffortPickerOpen = isModelPickerOpen || isTraitsPickerOpen;
-
   const legendListRef = useRef<LegendListRef | null>(null);
 
   const timelineControllerRef = useRef<MessagesTimelineController | null>(null);
@@ -543,7 +541,8 @@ export function useChatSessionController(props: ChatViewProps) {
     setDismissedRateLimitBannerKey,
     setIsModelPickerOpen,
     setIsTraitsPickerOpen,
-    isComposerModelEffortPickerOpen,
+    isModelPickerOpen,
+    isTraitsPickerOpen,
     legendListRef,
     timelineControllerRef,
     threadFindOpen,

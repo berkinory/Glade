@@ -169,3 +169,20 @@ export function resolveComposerModelOptions(
   }
   return Object.keys(next).length > 0 ? next : undefined;
 }
+
+export function resolveComposerTraitsSummary(selection: ComposerTraitSelection): {
+  primaryLabel: string | null;
+  showsFastBadge: boolean;
+  summaryText: string;
+} {
+  const isFastOnlyControl =
+    supportsComposerFastModeControl(selection) &&
+    selection.effortLevels.length === 0 &&
+    selection.thinkingEnabled === null;
+  const primaryLabel =
+    resolveComposerTraitStatusLabel(selection) ??
+    (isFastOnlyControl ? (selection.fastModeEnabled ? "Fast" : "Default") : null);
+  const showsFastBadge = showsComposerFastModeBadge(selection) && !isFastOnlyControl;
+  const summaryText = [primaryLabel, showsFastBadge ? "Fast" : null].filter(Boolean).join(" · ");
+  return { primaryLabel, showsFastBadge, summaryText };
+}

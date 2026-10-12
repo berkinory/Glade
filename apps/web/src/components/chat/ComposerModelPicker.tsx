@@ -42,15 +42,12 @@ import {
   ComposerModelPickerTabs,
   resolveComposerModelPickerProviderTabs,
 } from "./ComposerModelPickerTabs";
-import { ComposerModelPickerTraitRows } from "./ComposerModelPickerTraitRows";
 import { ComposerPickerMenuPopup } from "./ComposerPickerMenuPopup";
 import { COMPOSER_PICKER_MODEL_LIST_SCROLL_CLASS_NAME } from "./composerPickerStyles";
 import {
   getComposerTraitSelection,
   matchComposerEffort,
   resolveComposerModelOptions,
-  resolveComposerTraitStatusLabel,
-  showsComposerFastModeBadge,
 } from "./composerTraits";
 import { MENU_NAVIGATION_KEYS } from "./PickerPanelShell";
 import {
@@ -77,7 +74,6 @@ type ComposerModelPickerProps = {
   hiddenProviders?: ReadonlyArray<ProviderKind>;
   providerOrder?: ReadonlyArray<ProviderKind>;
   hideModelLabel?: boolean;
-  hideStatusLabel?: boolean;
   disabled?: boolean;
   onProviderModelChange: (
     provider: ProviderKind,
@@ -96,7 +92,6 @@ type ComposerModelPickerProps = {
   open?: boolean;
   onOpenChange?: (open: boolean) => void;
   shortcutLabel?: string | null;
-  fastModeNotice?: string | null;
 };
 function groupRowElements(
   rows: ReadonlyArray<PickerRow>,
@@ -150,16 +145,11 @@ export function ComposerModelPicker(props: ComposerModelPickerProps) {
   const normalizedQuery = useDeferredValue(query).trim().toLowerCase();
   const searchInputRef = useRef<HTMLInputElement | null>(null);
   const [wasMenuOpen, setWasMenuOpen] = useState(isMenuOpen);
-  const selectionCommittedWhileOpenRef = useRef(false);
   const setMenuOpen = (nextOpen: boolean) => {
     if (open === undefined) {
       setUncontrolledOpen(nextOpen);
     }
     onOpenChange?.(nextOpen);
-    if (!nextOpen && selectionCommittedWhileOpenRef.current) {
-      selectionCommittedWhileOpenRef.current = false;
-      props.onSelectionCommitted?.();
-    }
   };
   useEffect(() => {
     if (!isMenuOpen) return;
@@ -255,30 +245,11 @@ export function ComposerModelPicker(props: ComposerModelPickerProps) {
             query: normalizedQuery,
             selectedModel: tab === activeProvider ? props.model : null,
           });
-  const traitsProvider = tab === STARRED_TAB ? props.provider : tab;
-  const traitsModels = props.runtimeModelsByProvider?.[traitsProvider];
-  const rememberedModel =
-    traitsProvider === props.provider
-      ? props.model
-      : (draftSelectionByProvider?.[traitsProvider]?.model ??
-        stickySelectionByProvider[traitsProvider]?.model);
-  const traitsRuntimeModel =
-    resolveRuntimeModelDescriptor({
-      provider: traitsProvider,
-      model: rememberedModel,
-      runtimeModels: traitsModels,
-    }) ??
-    (traitsProvider === props.provider ? props.runtimeModel : undefined) ??
-    traitsModels?.find((model) => model.isDefault) ??
-    traitsModels?.find((model) => !model.hidden);
-  const traitsModel = traitsRuntimeModel?.slug ?? rememberedModel ?? "";
   const starredModelSlots = new Set(starredModels.map(starredModelSlotKey));
-  const commitRow = (
-    row: PickerRow,
-    model: ModelSlug,
-    patch: Record<string, unknown>,
-    keepOpen = false,
-  ) => {
+  const selectRow = (row: PickerRow) => {
+    if (props.disabled) return;
+    const model = row.selectableModel;
+    if (model === null) return;
     const selection = traitSelectionFor(row.provider, model);
     const matchedEffort =
       row.provider !== props.provider && row.preset === null
@@ -290,45 +261,24 @@ export function ComposerModelPicker(props: ComposerModelPickerProps) {
             [selection.primarySelectDescriptor.id]: matchedEffort,
           }
         : {};
+    const presetPatch = row.preset
+      ? buildStarredModelOptionsPatch({
+          provider: row.provider,
+          selection,
+          starred: row.preset,
+        })
+      : {};
     props.onProviderModelChange(row.provider, model, {
       modelOptions: resolveComposerModelOptions(
         buildNextProviderOptions(row.provider, providerOptionsFor(row.provider), {
           ...effortPatch,
-          ...patch,
+          ...presetPatch,
         }),
         selection.descriptors,
       ),
     });
-    if (keepOpen) {
-      selectionCommittedWhileOpenRef.current = true;
-      return;
-    }
-    selectionCommittedWhileOpenRef.current = false;
     setMenuOpen(false);
     props.onSelectionCommitted?.();
-  };
-  const selectRow = (row: PickerRow) => {
-    if (props.disabled) return;
-    const model = row.selectableModel;
-    if (model === null) return;
-    const selection = traitSelectionFor(row.provider, model);
-    const keepOpen =
-      row.provider === props.provider &&
-      row.preset === null &&
-      !row.selected &&
-      selection.effortLevels.length > 0;
-    commitRow(
-      row,
-      model,
-      row.preset
-        ? buildStarredModelOptionsPatch({
-            provider: row.provider,
-            selection,
-            starred: row.preset,
-          })
-        : {},
-      keepOpen,
-    );
   };
   const openTabs: ComposerModelPickerTab[] = [STARRED_TAB, ...openProviderTabs];
   const cycleTab = (direction: 1 | -1) => {
@@ -368,14 +318,9 @@ export function ComposerModelPicker(props: ComposerModelPickerProps) {
       <ComposerModelMenuTrigger
         provider={activeProvider}
         modelLabel={modelLabel}
-        statusLabel={resolveComposerTraitStatusLabel(currentTraitSelection)}
-        showsFastBadge={showsComposerFastModeBadge(currentTraitSelection)}
-        fastModeNotice={props.fastModeNotice ?? null}
         hideModelLabel={props.hideModelLabel}
-        hideStatusLabel={props.hideStatusLabel}
         disabled={props.disabled}
         isMenuOpen={isMenuOpen}
-        openPlaceholderLabel="Select effort"
         shortcutLabel={props.shortcutLabel}
       />
       <ComposerPickerMenuPopup
@@ -488,20 +433,6 @@ export function ComposerModelPicker(props: ComposerModelPickerProps) {
               </div>
             )}
           </div>
-          <ComposerModelPickerTraitRows
-            provider={traitsProvider}
-            threadId={threadId}
-            model={traitsModel}
-            runtimeModel={traitsRuntimeModel}
-            modelOptions={resolveComposerModelOptions(
-              providerOptionsFor(traitsProvider),
-              traitsRuntimeModel?.optionDescriptors ?? [],
-            )}
-            prompt={promptFor(traitsProvider)}
-            fastModeNotice={
-              traitsProvider === props.provider ? (props.fastModeNotice ?? null) : null
-            }
-          />
         </div>
       </ComposerPickerMenuPopup>
     </Menu>

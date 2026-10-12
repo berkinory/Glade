@@ -124,9 +124,6 @@ export function ChatComposerSurface({
     onResumeQueuedComposerTurns,
     onEditPausedQueuedComposerTurn,
 
-    composerTraitSelection,
-    toggleFastMode,
-
     handleSelectLocalDirectoryMention,
     handleNavigateLocalFolder,
     onComposerMenuItemHighlighted,
@@ -426,11 +423,8 @@ export function ChatComposerSurface({
                       {composerExtrasPanelOpen ? (
                         <ComposerExtrasPanel
                           panelId={COMPOSER_EXTRAS_PANEL_ID}
-                          supportsFastMode={composerTraitSelection.caps.supportsFastMode}
-                          fastModeEnabled={composerTraitSelection.fastModeEnabled}
                           threadId={threadId}
                           onAddAttachments={addComposerAttachments}
-                          onToggleFastMode={toggleFastMode}
                           onClose={() => {
                             setIsComposerExtrasPanelOpen(false);
                             scheduleComposerFocus();

@@ -377,6 +377,8 @@ export function useChatDiscoveryController({
     "terminal.workspace.closeActive",
   );
 
+  const traitsPickerShortcutLabel = shortcutLabelForCommand(keybindings, "traitsPicker.toggle");
+
   const modelPickerShortcutLabel =
     shortcutLabelForCommand(keybindings, "modelPicker.toggle") ??
     formatShortcutLabel({
@@ -454,6 +456,7 @@ export function useChatDiscoveryController({
     closeTerminalShortcutLabel,
     closeWorkspaceShortcutLabel,
     modelPickerShortcutLabel,
+    traitsPickerShortcutLabel,
     onToggleDiff,
     envLocked,
     isTerminalPrimarySurface,

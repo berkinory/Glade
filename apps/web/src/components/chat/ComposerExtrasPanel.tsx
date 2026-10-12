@@ -1,4 +1,4 @@
-import { CheckIcon, EnergyFilledIcon, AttachmentIcon } from "~/lib/icons";
+import { AttachmentIcon } from "~/lib/icons";
 import type { ThreadId } from "@glade/contracts/core/baseSchemas";
 import { useEffect, useId, useRef, useState, type ChangeEvent } from "react";
 import {
@@ -9,14 +9,9 @@ import {
 export const COMPOSER_EXTRAS_TRIGGER_ATTRIBUTE = "data-composer-extras-trigger";
 const GLYPH = COMPOSER_MENU_PANEL_GLYPH_CLASS_NAME;
 const ROW_FILES = "extras:files";
-const ROW_FAST = "extras:fast";
-const CHECK = <CheckIcon className="size-3.5 text-foreground/70" />;
 export function ComposerExtrasPanel(props: {
-  supportsFastMode: boolean;
-  fastModeEnabled: boolean;
   threadId?: ThreadId;
   onAddAttachments: (files: File[]) => void;
-  onToggleFastMode: () => void;
   onClose: () => void;
   panelId: string;
 }) {
@@ -34,17 +29,6 @@ export function ComposerExtrasPanel(props: {
           icon: <AttachmentIcon className={GLYPH} />,
           title: "Files and folders",
         },
-        ...(props.supportsFastMode
-          ? [
-              {
-                id: ROW_FAST,
-                icon: <EnergyFilledIcon className={GLYPH} />,
-                title: "Speed",
-                secondary: props.fastModeEnabled ? "Fast" : "Default",
-                trailing: props.fastModeEnabled ? CHECK : null,
-              },
-            ]
-          : []),
       ],
     },
   ];
@@ -58,11 +42,6 @@ export function ComposerExtrasPanel(props: {
   const selectRow = (rowId: string) => {
     if (rowId === ROW_FILES) {
       fileInputRef.current?.click();
-      return;
-    }
-    if (rowId === ROW_FAST) {
-      props.onToggleFastMode();
-      props.onClose();
       return;
     }
   };

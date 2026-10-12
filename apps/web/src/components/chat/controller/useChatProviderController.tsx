@@ -33,7 +33,7 @@ export function useChatProviderController({
     activeThread,
     composerDraft,
     settings,
-    isComposerModelEffortPickerOpen,
+    isModelPickerOpen,
     prompt,
     composerSkills,
     composerMentions,
@@ -85,7 +85,7 @@ export function useChatProviderController({
     activeProject,
     composerDraft,
     settings,
-    isModelPickerOpen: isComposerModelEffortPickerOpen,
+    isModelPickerOpen,
     resolvedThreadWorktreePath,
   });
 

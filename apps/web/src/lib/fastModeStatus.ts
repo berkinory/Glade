@@ -3,8 +3,7 @@ import type { ThreadId } from "@glade/contracts/core/baseSchemas";
 import { asObjectRecord } from "@glade/shared/transport/payloadValues";
 import type { AppState } from "~/storeState";
 
-export const CLAUDE_FAST_MODE_BILLING_NOTE =
-  "Fast mode is billed at a premium rate from usage credits, not plan limits.";
+export const CLAUDE_FAST_MODE_BILLING_NOTE = "Billed from usage credits.";
 
 // Reasons Claude Code reports while fast mode is blocked. `sdk_opt_in_required` and `pending` are
 // left out: they describe a session that has not opted in or checked yet, which the next report
