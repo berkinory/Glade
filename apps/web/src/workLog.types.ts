@@ -77,6 +77,8 @@ export interface WorkLogEntry {
   toolKind?: WorkLogToolKind;
   subagents?: ReadonlyArray<WorkLogSubagent>;
   subagentAction?: WorkLogSubagentAction;
+  // Set on the one transcript entry that stands in for a batch of subagent launches.
+  subagentRun?: WorkLogSubagentRun;
   gladeThreadCreation?: WorkLogGladeThreadCreation;
   visualReply?: VisualReply;
   // Durable provider failure of this entry's turn; session readiness never clears it.
@@ -160,6 +162,23 @@ export interface WorkLogSubagentAction {
   summaryText: string;
   model?: string | undefined;
   prompt?: string | undefined;
+}
+
+export interface WorkLogSubagentUsage {
+  totalTokens?: number;
+  toolUses?: number;
+  durationMs?: number;
+}
+
+export interface WorkLogSubagentRunMember {
+  subagent: WorkLogSubagent;
+  launchedAt: string;
+  settledAt?: string;
+  usage?: WorkLogSubagentUsage;
+}
+
+export interface WorkLogSubagentRun {
+  members: ReadonlyArray<WorkLogSubagentRunMember>;
 }
 
 export interface DerivedWorkLogEntry extends WorkLogEntry {

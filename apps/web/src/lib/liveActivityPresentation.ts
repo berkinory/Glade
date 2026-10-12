@@ -51,13 +51,17 @@ function isLiveActivityInProgress(activity: WorkLogLiveActivity): boolean {
 }
 
 export function useLiveActivityNow(activity: WorkLogLiveActivity | undefined): number {
-  const inProgress = activity ? isLiveActivityInProgress(activity) : false;
+  return useLiveClockNow(activity ? isLiveActivityInProgress(activity) : false);
+}
+
+// One shared one-second clock for every live elapsed label, so only the labels re-render.
+export function useLiveClockNow(live: boolean): number {
   const nowMs = useSyncExternalStore(
-    inProgress ? subscribeLiveActivityClock : subscribeInactiveLiveActivityClock,
+    live ? subscribeLiveActivityClock : subscribeInactiveLiveActivityClock,
     getLiveActivityClockSnapshot,
     getLiveActivityClockSnapshot,
   );
-  return inProgress ? nowMs : Date.now();
+  return live ? nowMs : Date.now();
 }
 
 function parseTimestamp(value: string | undefined): number | null {
@@ -125,14 +129,9 @@ export function formatLiveActivityElapsed(
   return elapsedMs < 1_000 ? `${Math.round(elapsedMs)}ms` : formatClockDuration(elapsedMs);
 }
 
-export interface LiveActivityMetaOptions {
-  readonly subagent?: boolean;
-}
-
 export function formatLiveActivityMeta(
   activity: WorkLogLiveActivity,
   nowMs: number,
-  options?: LiveActivityMetaOptions,
 ): string | null {
   if (activity.state === "completed") {
     return null;
@@ -140,11 +139,7 @@ export function formatLiveActivityMeta(
 
   const parts: string[] = [];
   const elapsed = formatLiveActivityElapsed(activity, nowMs);
-  if (isLiveActivityInProgress(activity)) {
-    if (options?.subagent) {
-      parts.push("Subagent working");
-    }
-  } else {
+  if (!isLiveActivityInProgress(activity)) {
     parts.push(formatLiveActivityStateLabel(activity.state));
   }
 

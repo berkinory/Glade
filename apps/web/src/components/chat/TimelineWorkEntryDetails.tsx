@@ -134,7 +134,6 @@ export function ToolDetailsDisclosure(props: {
   details?: TimelineWorkEntry["toolDetails"] | undefined;
   activity?: TimelineWorkEntry["liveActivity"] | undefined;
   detailContent?: ReactNode;
-  relatedContent?: ReactNode;
   summaryClassName?: string | undefined;
   tooltip?: ReactNode;
 }) {
@@ -216,7 +215,6 @@ export function ToolDetailsDisclosure(props: {
           contentClassName={cn("min-w-0 pt-2", props.compact ? "ml-5" : "ml-7")}
         >
           <div data-tool-details-inline="true">
-            {props.relatedContent}
             {props.detailContent ?? (
               <ToolCallDetailsContent details={props.details} activity={props.activity} />
             )}

@@ -1,3 +1,4 @@
+import { deepEqualJson } from "../../storeNormalization.shared";
 import type { WorkLogEntry } from "../../workLog.types";
 import type {
   CollapsedTurnItem,
@@ -49,7 +50,8 @@ function workLogSubagentsEqual(
       a.latestUpdate === b.latestUpdate &&
       a.title === b.title &&
       a.statusLabel === b.statusLabel &&
-      a.isActive === b.isActive
+      a.isActive === b.isActive &&
+      a.lastCompletedAt === b.lastCompletedAt
     );
   });
 }
@@ -170,6 +172,7 @@ function workLogEntryContentEqual(a: WorkLogEntry, b: WorkLogEntry): boolean {
     stringArraysEqual(a.changedFiles, b.changedFiles) &&
     workLogSubagentActionsEqual(a.subagentAction, b.subagentAction) &&
     workLogSubagentsEqual(a.subagents, b.subagents) &&
+    deepEqualJson(a.subagentRun, b.subagentRun) &&
     workLogGladeThreadCreationsEqual(a.gladeThreadCreation, b.gladeThreadCreation) &&
     workLogLiveActivitiesEqual(a.liveActivity, b.liveActivity) &&
     workLogToolDetailsEqual(a.toolDetails, b.toolDetails)

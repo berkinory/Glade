@@ -1,8 +1,5 @@
-import {
-  SubagentToolAvatars,
-  SubagentToolLinks,
-  subagentToolHeading,
-} from "./SubagentToolPresentation";
+import { subagentToolHeading } from "./SubagentToolPresentation";
+import { SubagentRunCard } from "./SubagentRunCard";
 import { resolveMcpToolIcon } from "~/lib/mcpToolIcon";
 import { GitHubIcon } from "~/lib/brandIcons";
 import {
@@ -406,7 +403,7 @@ function toolRowTooltipContent(
   }
   return fallback ? <span className="whitespace-pre-wrap">{fallback}</span> : null;
 }
-export const TimelineWorkEntryRow = memo(function TimelineWorkEntryRow(props: {
+type TimelineWorkEntryRowProps = {
   workEntry: TimelineWorkEntry;
   chatMetaFontSizePx: number;
   textFontSizePx?: number;
@@ -424,7 +421,22 @@ export const TimelineWorkEntryRow = memo(function TimelineWorkEntryRow(props: {
   onOpenTurnDiff?: (turnId: TurnId, filePath?: string) => void;
   activityDetail?: AgentActivityDetail | undefined;
   timestampFormat: TimestampFormat;
-}) {
+};
+
+export const TimelineWorkEntryRow = memo(function TimelineWorkEntryRow(
+  props: TimelineWorkEntryRowProps,
+) {
+  return props.workEntry.subagentRun ? (
+    <SubagentRunCard
+      run={props.workEntry.subagentRun}
+      fontSizePx={props.textFontSizePx ?? props.chatMetaFontSizePx}
+    />
+  ) : (
+    <ToolWorkEntryRow {...props} />
+  );
+});
+
+function ToolWorkEntryRow(props: TimelineWorkEntryRowProps) {
   const {
     workEntry,
     chatMetaFontSizePx,
@@ -487,9 +499,7 @@ export const TimelineWorkEntryRow = memo(function TimelineWorkEntryRow(props: {
   );
   const liveActivityNowMs = useLiveActivityNow(workEntry.liveActivity);
   const liveActivityMetaText = workEntry.liveActivity
-    ? formatLiveActivityMeta(workEntry.liveActivity, liveActivityNowMs, {
-        subagent: (workEntry.subagents?.length ?? 0) > 0,
-      })
+    ? formatLiveActivityMeta(workEntry.liveActivity, liveActivityNowMs)
     : null;
   const readFilePath =
     opener !== null && !activityDetail && workEntry.detail && workEntry.toolKind === "read"
@@ -591,15 +601,12 @@ export const TimelineWorkEntryRow = memo(function TimelineWorkEntryRow(props: {
                     "flex shrink-0 items-center justify-center",
                     WORK_ROW_MUTED_HOVER_TONE["tool-row"],
                     workEntry.toolStatus === "failed" && "text-destructive/85",
-                    workEntry.subagents?.length ? "min-w-4" : compact ? "size-4" : "size-5",
+                    compact ? "size-4" : "size-5",
                   )}
                   data-tool-icon={leftIconKind}
                   data-work-entry-icon="true"
                 >
-                  {workEntry.itemType === "collab_agent_tool_call" &&
-                  workEntry.subagents?.length ? (
-                    <SubagentToolAvatars subagents={workEntry.subagents} />
-                  ) : linkIconUrl ? (
+                  {linkIconUrl ? (
                     <LinkChipIcon url={linkIconUrl} className={compact ? "size-3.5" : "size-4"} />
                   ) : (
                     renderWorkEntryIcon(LeftIcon, compact ? "size-3.5" : "size-4")
@@ -643,11 +650,6 @@ export const TimelineWorkEntryRow = memo(function TimelineWorkEntryRow(props: {
                     <ProviderContextLifecycleDetails info={providerContextLifecycle} />
                   ) : undefined)
                 }
-                relatedContent={
-                  workEntry.subagents?.length ? (
-                    <SubagentToolLinks subagents={workEntry.subagents} />
-                  ) : undefined
-                }
                 compact={compact}
                 tooltip={toolRowTooltipContent(rawCommand, displayText, displayText)}
               >
@@ -675,7 +677,7 @@ export const TimelineWorkEntryRow = memo(function TimelineWorkEntryRow(props: {
       )}
     </div>
   );
-});
+}
 // Long edit lists scroll in place so one large turn cannot push the rest of the transcript away.
 // Short lists stay unclipped so an opened row's diff is not trapped in the list's scroll box.
 const EDITED_FILE_LIST_SCROLL_THRESHOLD = 8;

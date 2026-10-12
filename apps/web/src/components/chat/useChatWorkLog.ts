@@ -14,6 +14,7 @@ import {
 } from "../ChatView.logic.subagents";
 import { createRelevantWorkLogThreadsSelector } from "../ChatView.selectors";
 import { deriveComposerSubagentStripItems } from "./ComposerSubagentStrip.logic";
+import { deriveSubagentTaskReports, foldSubagentRunEntries } from "./SubagentRunCard.logic";
 import { deriveWorkflowRunState, type WorkflowSubagentThreadRef } from "./WorkflowRunCard.logic";
 const EMPTY_ACTIVITIES: OrchestrationThreadActivity[] = [];
 const TURN_ID_KEY_SEPARATOR = "\n";
@@ -115,8 +116,9 @@ export function useChatWorkLog({
   );
 
   // Native activity and snapshot metadata update the child surfaces, not the tool transcript.
-  const workLogEntries = enrichedWorkLogEntries.filter(
-    (entry) => entry.subagentAction?.tool !== "agentActivity",
+  const workLogEntries = foldSubagentRunEntries(
+    enrichedWorkLogEntries.filter((entry) => entry.subagentAction?.tool !== "agentActivity"),
+    deriveSubagentTaskReports(threadActivities),
   );
 
   const liveSubagentThreadIdsKey = useMemo(() => {

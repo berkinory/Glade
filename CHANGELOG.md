@@ -23,6 +23,7 @@
 - GitHub data loads over GitHub's API instead of the GitHub CLI, using far fewer requests and pausing background refreshes before the rate limit runs out.
 - Deleting a worktree from Settings keeps a snapshot of its state for 30 days.
 - Source Control history, pull request comments and the Publish to GitHub dialog show GitHub avatars.
+- Subagents launched together share one card in the chat that shows each one's live step, result, duration and token use, opens its chat with a click, and stops it from its row.
 - When Claude picks a finished subagent back up, the follow-up shows in that subagent's chat and on its own card.
 
 ### Fixed
