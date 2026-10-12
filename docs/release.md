@@ -7,10 +7,10 @@ Glade's version history starts at **0.0.1**. One stable GitHub Release contains 
 - Application: `Glade.app`; bundle ID: `com.agent.glade`; protocol: `glade://`.
 - Data: `~/.glade`; Electron profile: `glade`.
 - Dedicated updater manifests: `glade-mac.yml`, `glade-linux.yml`, and `glade.yml`. The macOS manifest combines the verified arm64 and x64 ZIP entries so existing installations update to the matching architecture.
-- Artifact filenames include the platform and architecture: `Glade-X.Y.Z-macOS-arm64.dmg`, `Glade-X.Y.Z-macOS-x64.dmg`, `Glade-X.Y.Z-Linux-x86_64.AppImage`, and `Glade-X.Y.Z-Windows-x64.exe`. macOS update ZIPs use the same `macOS` prefix.
+- Artifact filenames include the platform and architecture: `Glade-X.Y.Z-macOS-arm64.dmg`, `Glade-X.Y.Z-macOS-x64.dmg`, `Glade-X.Y.Z-Linux-x86_64.AppImage`, and `Glade-X.Y.Z-Windows-x64.exe`. Every other asset uses a lowercase name, such as `glade-X.Y.Z-macos-arm64.zip`. The Windows blockmap keeps the installer's name because the updater finds it there, and gets a lowercase display label instead.
 - Published assets from older releases keep their filenames and URLs; their display labels use the platform-aware filename format without breaking updater or Homebrew references. Update manifests keep their original display names.
 - The macOS ZIP is for automatic updates; the DMG is for manual installation. The Linux AppImage and Windows NSIS installer serve both purposes.
-- The macOS and Linux jobs also publish `glade-remote-server-X.Y.Z-<target>.tar.gz` and its `.sha256` file, the server the desktop installs on SSH hosts. See [SSH hosts](ssh-hosts.md).
+- The macOS and Linux jobs also publish `glade-remote-server-X.Y.Z-<target>.tar.gz`, the server the desktop installs on SSH hosts. Its checksum is the SHA-256 digest GitHub records for the asset, not a separate file. See [SSH hosts](ssh-hosts.md).
 - Every release also publishes `install.sh` from `scripts/install.sh`, the server installer, with its hash in the release notes. See [Remote access](REMOTE.md#on-a-server).
 - Windows is intentionally unsigned. The installer runs, but Windows SmartScreen may display an unrecognized-app warning until signing and reputation are established.
 
@@ -94,7 +94,7 @@ The local keychain does not transfer to GitHub runners. Missing Apple secrets st
 3. Optionally give the release a visual overview: write its tiles in `scripts/release-bento/releases/X.Y.Z.ts`, starting from the previous release's file, then run `node scripts/release-bento/render.ts X.Y.Z` on macOS with ImageMagick. It counts the New, Improved and Fixed entries from `CHANGELOG.md` and writes `apps/web/src/whatsNew/releases/X.Y.Z.avif`. The app shows it above that release's notes, and the GitHub Release notes embed it. Mockup content in the tiles is illustrative; keep labels and icons true to the app.
 4. Run `bun run check`, `bun run test`, `bun scripts/check-windows-runtime-boundary.ts`, and `bun scripts/check-migration-lineage.ts`. Check the packaged app with an isolated profile on each supported platform.
 5. Commit the reviewed source on `main` and push it to `origin`. Tag that commit `vX.Y.Z` and push the tag; the release builds while exact-commit CI finishes and publishes only after it passes. Do not push inherited upstream tags.
-6. Verify the GitHub Release notes link all four installers and list their SHA-256 checksums. The ten assets are four installers, two macOS update ZIPs, three platform update manifests, and the Windows blockmap. Verify both Homebrew architecture checksums.
+6. Verify the GitHub Release notes link all four installers and list their SHA-256 checksums. The fourteen assets are four installers, two macOS update ZIPs, three platform update manifests, the Windows blockmap, three server bundles and `install.sh`; every asset except the four installers has a lowercase name or label. Verify both Homebrew architecture checksums.
 
 ## Development and production
 

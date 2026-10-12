@@ -190,8 +190,6 @@ try {
   // macOS tar otherwise records extended attributes (com.apple.provenance) that GNU tar on the host
   // warns about once per file.
   run("tar", ["--no-xattrs", "-czf", archive, "-C", workDir, bundleName]);
-  const digest = await sha256(archive);
-  writeFileSync(`${archive}.sha256`, `${digest}  ${bundleName}.tar.gz\n`);
   console.log(`[remote-server] Wrote ${archive}`);
 } finally {
   rmSync(workDir, { recursive: true, force: true });

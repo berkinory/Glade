@@ -71,11 +71,10 @@ if (publish && process.env.GITHUB_REPOSITORY !== "berkinory/Glade") {
   throw new Error("Glade releases may only publish to berkinory/Glade.");
 }
 const lockfileSha256 = createHash("sha256").update(readFileSync("bun.lock")).digest("hex");
-// The server bundle the desktop installs on SSH hosts, with the checksum file it verifies.
-const remoteServerFiles = (target: RemoteServerTarget) => {
-  const archive = `${remoteServerBundleName(version, target)}.tar.gz`;
-  return [archive, `${archive}.sha256`] as const;
-};
+// The server bundle the desktop installs on SSH hosts. Its checksum is the digest GitHub records
+// for the release asset.
+const remoteServerArchive = (target: RemoteServerTarget) =>
+  `${remoteServerBundleName(version, target)}.tar.gz`;
 const platforms = [
   {
     id: "mac-arm64",
@@ -83,12 +82,12 @@ const platforms = [
     arch: "arm64",
     files: [
       `Glade-${version}-macOS-arm64.dmg`,
-      `Glade-${version}-macOS-arm64.zip`,
+      `glade-${version}-macos-arm64.zip`,
       "latest-mac-arm64.yml",
-      ...remoteServerFiles("darwin-arm64"),
+      remoteServerArchive("darwin-arm64"),
     ],
     manifest: "latest-mac-arm64.yml",
-    download: `Glade-${version}-macOS-arm64.zip`,
+    download: `glade-${version}-macos-arm64.zip`,
     signing: publish ? "verified" : "unsigned-build-only",
   },
   {
@@ -97,12 +96,12 @@ const platforms = [
     arch: "x64",
     files: [
       `Glade-${version}-macOS-x64.dmg`,
-      `Glade-${version}-macOS-x64.zip`,
+      `glade-${version}-macos-x64.zip`,
       "latest-mac-x64.yml",
-      ...remoteServerFiles("darwin-x64"),
+      remoteServerArchive("darwin-x64"),
     ],
     manifest: "latest-mac-x64.yml",
-    download: `Glade-${version}-macOS-x64.zip`,
+    download: `glade-${version}-macos-x64.zip`,
     signing: publish ? "verified" : "unsigned-build-only",
   },
   {
@@ -112,7 +111,7 @@ const platforms = [
     files: [
       `Glade-${version}-Linux-x86_64.AppImage`,
       "latest-linux.yml",
-      ...remoteServerFiles("linux-x64"),
+      remoteServerArchive("linux-x64"),
     ],
     manifest: "latest-linux.yml",
     download: `Glade-${version}-Linux-x86_64.AppImage`,
@@ -224,9 +223,7 @@ for (const platform of platforms) {
       throw new Error(`Release asset has changed since verification: ${artifact.fileName}.`);
     }
   }
-  binaries.push(
-    ...platform.files.filter((name) => !name.endsWith(".yml") && !name.endsWith(".sha256")),
-  );
+  binaries.push(...platform.files.filter((name) => !name.endsWith(".yml")));
 }
 
 if (rawEntries.length !== expectedRaw.size || rawEntries.some((name) => !expectedRaw.has(name))) {

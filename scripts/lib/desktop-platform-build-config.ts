@@ -102,6 +102,8 @@ export function createDesktopPlatformBuildConfig(
   if (input.platform === "mac") {
     const mac = {
       target: input.target === "dmg" ? [input.target, "zip"] : [input.target],
+      // Only the DMG is downloaded by hand; the update zip gets the lowercase release asset name.
+      artifactName: `glade-\${version}-macos-\${arch}.\${ext}`,
       icon: MAC_DMG_ICON_PATH,
       category: "public.app-category.developer-tools",
       hardenedRuntime: input.signed === true,
@@ -135,6 +137,7 @@ export function createDesktopPlatformBuildConfig(
           }
         : {}),
       dmg: {
+        artifactName: `Glade-\${version}-macOS-\${arch}.\${ext}`,
         background: "apps/desktop/resources/dmgly/assets/dmg-background.png",
         window: { width: 642, height: 406 },
         iconSize: 128,

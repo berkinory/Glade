@@ -37,7 +37,7 @@ function readMacManifest(source: string, arch: "arm64" | "x64"): MacManifest {
   if (
     !version ||
     !fileBlock ||
-    fileBlock[1] !== `Glade-${version}-macOS-${arch}.zip` ||
+    fileBlock[1] !== `glade-${version}-macos-${arch}.zip` ||
     !/^[A-Za-z0-9+/]{86}==$/.test(fileBlock[2] ?? "") ||
     !Number.isSafeInteger(Number(fileBlock[3])) ||
     path !== fileBlock[1] ||

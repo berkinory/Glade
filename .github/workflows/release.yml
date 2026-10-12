@@ -195,7 +195,16 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          gh release create "$GITHUB_REF_NAME" release-publish/* \
+          # electron-updater finds the blockmap at the installer's URL plus .blockmap, so it keeps the
+          # installer's file name and only its displayed label is lowercase.
+          assets=()
+          for file in release-publish/*; do
+            case "$file" in
+              *.blockmap) assets+=("$file#$(basename "$file" | tr '[:upper:]' '[:lower:]')") ;;
+              *) assets+=("$file") ;;
+            esac
+          done
+          gh release create "$GITHUB_REF_NAME" "${assets[@]}" \
             --repo "$GITHUB_REPOSITORY" --verify-tag \
             --title "Glade $GITHUB_REF_NAME" --notes-file release-notes.md --latest
 

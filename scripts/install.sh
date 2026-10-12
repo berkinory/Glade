@@ -16,6 +16,7 @@ set -eu
 
 REPO="berkinory/Glade"
 BASE="${GLADE_DOWNLOAD_BASE:-https://github.com/$REPO/releases}"
+API="${GLADE_RELEASE_API:-https://api.github.com/repos/$REPO/releases}"
 ROOT="$HOME/.glade/remote"
 RUNTIMES="$ROOT/runtime"
 BIN="$HOME/.glade/bin"
@@ -163,9 +164,15 @@ name="glade-remote-server-$version-$target"
 url="$BASE/download/v$version/$name.tar.gz"
 
 spin "Checking Glade $version…"
-fetch "$url.sha256" "$staging/sum" 2>/dev/null ||
-  fail "Glade $version has no server for $target yet."
-expected=$(cut -d' ' -f1 <"$staging/sum")
+# GitHub records each release asset's SHA-256 when it is uploaded. Asset objects in the release
+# JSON start at their API url, so splitting there leaves one asset per line.
+fetch "$API/tags/v$version" "$staging/release.json" 2>/dev/null ||
+  fail "Could not find Glade $version."
+expected=$(tr -d '\n' <"$staging/release.json" |
+  awk '{ gsub(/"url": *"https:\/\/api\.github\.com\/repos\/[^"]*\/releases\/assets\//, "\n&"); print }' |
+  grep "\"name\": *\"$name.tar.gz\"" |
+  sed -n 's/.*"digest": *"sha256:\([0-9a-f]*\)".*/\1/p')
+[ -n "$expected" ] || fail "Glade $version has no server for $target yet."
 case "$expected" in
   *[!0-9a-f]* | "") fail "The published checksum for Glade $version is malformed." ;;
 esac
