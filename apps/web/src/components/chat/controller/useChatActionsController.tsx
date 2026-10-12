@@ -7,7 +7,7 @@ import { resolveAppModelSelection } from "~/appSettings";
 import { commitAfterRuntimeModePersistence } from "../../ChatView.logic.session";
 import { resolveCommittedProviderModel } from "../../ChatView.logic.worktree";
 import { type ComposerModelSelectionOptions } from "~/components/chat/ComposerModelPicker";
-import { collectForegroundRunningSubagentStripItems } from "~/components/chat/ComposerSubagentStrip.logic";
+import { collectForegroundRunningSubagentRosterItems } from "~/components/chat/subagentRoster.logic";
 import { resolveRuntimeModelDescriptor } from "~/components/chat/runtimeModelCapabilities";
 import { useChatKeyboardShortcuts } from "~/components/chat/useChatKeyboardShortcuts";
 import { toastManager } from "~/components/ui/toast";
@@ -76,8 +76,8 @@ export function useChatActionsController({
     setComposerTrigger,
   } = session;
   const {
-    stripSourceThreadId,
-    composerSubagentStripItems,
+    rosterSourceThreadId,
+    subagentRosterItems,
     modelOptionsByProvider,
     runtimeModelsByProvider,
     lockedProvider,
@@ -107,12 +107,12 @@ export function useChatActionsController({
   }, [activeThread]);
 
   const onBackgroundAllForegroundSubagentStripItems = useCallback(async () => {
-    const foreground = collectForegroundRunningSubagentStripItems(composerSubagentStripItems);
-    if (!stripSourceThreadId) return;
+    const foreground = collectForegroundRunningSubagentRosterItems(subagentRosterItems);
+    if (!rosterSourceThreadId) return;
     await Promise.all(
-      foreground.map((item) => backgroundSubagent(stripSourceThreadId, item.providerThreadId)),
+      foreground.map((item) => backgroundSubagent(rosterSourceThreadId, item.providerThreadId)),
     );
-  }, [composerSubagentStripItems, stripSourceThreadId]);
+  }, [subagentRosterItems, rosterSourceThreadId]);
 
   const [providerHandoffBusy, setProviderHandoffBusy] = useState(false);
 

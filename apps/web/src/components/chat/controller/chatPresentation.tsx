@@ -70,7 +70,6 @@ export function createChatPresentation(
     selectedRuntimeModel,
     activeTaskList,
     workflowRunState,
-    composerSubagentStripItems,
     activeBackgroundTasks,
   } = controller.provider;
   const {
@@ -342,7 +341,6 @@ export function createChatPresentation(
   const showComposerLiveChangesHeader = latestTurnLive && activeTurnLiveDiffState.hasChanges;
   const showComposerActiveTaskListCard = Boolean(activeTaskList && !taskListSidebarOpen);
   const showComposerWorkflowRunCard = workflowRunState !== null;
-  const showComposerSubagentStrip = composerSubagentStripItems.length > 0;
   const composerBackgroundTaskCount = workflowRunState
     ? (activeBackgroundTasks?.taskIds.filter((taskId) => !workflowRunState.taskIds.includes(taskId))
         .length ?? 0)
@@ -362,7 +360,6 @@ export function createChatPresentation(
     showComposerLiveChangesHeader,
     renderActiveTaskListCard,
     showComposerActiveTaskListCard,
-    showComposerSubagentStrip,
     showComposerWorkflowRunCard,
     emptyLandingControls,
     relocateComposerLeadingControls,

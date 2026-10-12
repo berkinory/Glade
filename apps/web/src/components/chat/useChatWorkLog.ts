@@ -13,7 +13,7 @@ import {
   resolveComposerStripWorkLogEntries,
 } from "../ChatView.logic.subagents";
 import { createRelevantWorkLogThreadsSelector } from "../ChatView.selectors";
-import { deriveComposerSubagentStripItems } from "./ComposerSubagentStrip.logic";
+import { deriveSubagentRosterItems } from "./subagentRoster.logic";
 import { deriveSubagentTaskReports, foldSubagentRunEntries } from "./SubagentRunCard.logic";
 import { deriveWorkflowRunState, type WorkflowSubagentThreadRef } from "./WorkflowRunCard.logic";
 const EMPTY_ACTIVITIES: OrchestrationThreadActivity[] = [];
@@ -149,118 +149,115 @@ export function useChatWorkLog({
     };
   }, [liveSubagentThreadIdsKey]);
 
-  const stripParentThreadId = activeThread?.parentThreadId ?? null;
-  const stripParentThread = useStore(
-    useMemo(() => createThreadSelector(stripParentThreadId), [stripParentThreadId]),
+  const rosterParentThreadId = activeThread?.parentThreadId ?? null;
+  const rosterParentThread = useStore(
+    useMemo(() => createThreadSelector(rosterParentThreadId), [rosterParentThreadId]),
   );
 
   useEffect(() => {
-    if (!stripParentThreadId) {
+    if (!rosterParentThreadId) {
       return;
     }
-    return retainThreadDetailSubscription(stripParentThreadId);
-  }, [stripParentThreadId]);
-  const stripSourceThreadId = stripParentThread?.id ?? activeThread?.id ?? null;
-  const sourceSessionStatus = (stripParentThread ?? activeThread)?.session?.status;
-  const stripSourceRuntimeActive =
-    sourceSessionStatus === "ready" || sourceSessionStatus === "running";
-  const stripSourceActivities = stripParentThread?.activities ?? threadActivities;
-  const stripSourceLatestTurnId = stripParentThread
-    ? (stripParentThread.latestTurn?.turnId ?? null)
+    return retainThreadDetailSubscription(rosterParentThreadId);
+  }, [rosterParentThreadId]);
+  const rosterSourceThreadId = rosterParentThread?.id ?? activeThread?.id ?? null;
+  const rosterSourceActivities = rosterParentThread?.activities ?? threadActivities;
+  const rosterSourceLatestTurnId = rosterParentThread
+    ? (rosterParentThread.latestTurn?.turnId ?? null)
     : (activeLatestTurn?.turnId ?? null);
-  const stripSourceLatestTurnState = stripParentThread
-    ? (stripParentThread.latestTurn?.state ?? null)
+  const rosterSourceLatestTurnState = rosterParentThread
+    ? (rosterParentThread.latestTurn?.state ?? null)
     : activeLatestTurnState;
-  const stripSourceLatestTurnStartedAt = stripParentThread
-    ? (stripParentThread.latestTurn?.startedAt ?? null)
+  const rosterSourceLatestTurnStartedAt = rosterParentThread
+    ? (rosterParentThread.latestTurn?.startedAt ?? null)
     : activeLatestTurnStartedAt;
-  const stripSourceLatestTurnCompletedAt = stripParentThread
-    ? (stripParentThread.latestTurn?.completedAt ?? null)
+  const rosterSourceLatestTurnCompletedAt = rosterParentThread
+    ? (rosterParentThread.latestTurn?.completedAt ?? null)
     : activeLatestTurnCompletedAt;
-  const stripVisibleTurnIds = useMemo(() => {
-    if (!stripParentThread) {
+  const rosterVisibleTurnIds = useMemo(() => {
+    if (!rosterParentThread) {
       return workLogVisibleTurnIds;
     }
     const turnIds = new Set<TurnId>();
-    for (const message of stripParentThread.messages) {
+    for (const message of rosterParentThread.messages) {
       if (message.turnId) {
         turnIds.add(message.turnId);
       }
     }
-    if (stripParentThread.latestTurn?.turnId) {
-      turnIds.add(stripParentThread.latestTurn.turnId);
+    if (rosterParentThread.latestTurn?.turnId) {
+      turnIds.add(rosterParentThread.latestTurn.turnId);
     }
     return turnIds;
-  }, [stripParentThread, workLogVisibleTurnIds]);
-  const stripLiveTurnId = stripParentThread
-    ? isLatestTurnSettled(stripParentThread.latestTurn, stripParentThread.session ?? null)
+  }, [rosterParentThread, workLogVisibleTurnIds]);
+  const rosterLiveTurnId = rosterParentThread
+    ? isLatestTurnSettled(rosterParentThread.latestTurn, rosterParentThread.session ?? null)
       ? null
-      : (stripParentThread.latestTurn?.turnId ?? null)
+      : (rosterParentThread.latestTurn?.turnId ?? null)
     : latestTurnSettled
       ? null
       : (activeLatestTurn?.turnId ?? null);
 
-  const stripRawWorkLogEntries = useMemo(
+  const rosterRawWorkLogEntries = useMemo(
     () =>
       resolveComposerStripWorkLogEntries({
-        hasDistinctParentSource: stripParentThread !== undefined,
+        hasDistinctParentSource: rosterParentThread !== undefined,
         activeWorkLogEntries: rawWorkLogEntries,
         deriveParentWorkLogEntries: () =>
-          deriveWorkLogEntries(stripSourceActivities, stripSourceLatestTurnId ?? undefined, {
-            visibleTurnIds: stripVisibleTurnIds,
-            activeTurnId: stripLiveTurnId,
-            activeTurnStartedAt: stripSourceLatestTurnStartedAt,
-            latestTurnState: stripSourceLatestTurnState,
-            latestTurnCompletedAt: stripSourceLatestTurnCompletedAt,
+          deriveWorkLogEntries(rosterSourceActivities, rosterSourceLatestTurnId ?? undefined, {
+            visibleTurnIds: rosterVisibleTurnIds,
+            activeTurnId: rosterLiveTurnId,
+            activeTurnStartedAt: rosterSourceLatestTurnStartedAt,
+            latestTurnState: rosterSourceLatestTurnState,
+            latestTurnCompletedAt: rosterSourceLatestTurnCompletedAt,
           }),
       }),
     [
       rawWorkLogEntries,
-      stripLiveTurnId,
-      stripParentThread,
-      stripSourceActivities,
-      stripSourceLatestTurnCompletedAt,
-      stripSourceLatestTurnId,
-      stripSourceLatestTurnStartedAt,
-      stripSourceLatestTurnState,
-      stripVisibleTurnIds,
+      rosterLiveTurnId,
+      rosterParentThread,
+      rosterSourceActivities,
+      rosterSourceLatestTurnCompletedAt,
+      rosterSourceLatestTurnId,
+      rosterSourceLatestTurnStartedAt,
+      rosterSourceLatestTurnState,
+      rosterVisibleTurnIds,
     ],
   );
-  const hasStripWorkLogSubagents = useMemo(
-    () => stripRawWorkLogEntries.some((entry) => (entry.subagents?.length ?? 0) > 0),
-    [stripRawWorkLogEntries],
+  const hasRosterWorkLogSubagents = useMemo(
+    () => rosterRawWorkLogEntries.some((entry) => (entry.subagents?.length ?? 0) > 0),
+    [rosterRawWorkLogEntries],
   );
-  const stripRelevantWorkLogThreads = useStore(
+  const rosterRelevantWorkLogThreads = useStore(
     useMemo(
       () =>
         createRelevantWorkLogThreadsSelector({
-          workEntries: stripRawWorkLogEntries,
-          parentThreadId: stripSourceThreadId,
-          enabled: hasStripWorkLogSubagents,
+          workEntries: rosterRawWorkLogEntries,
+          parentThreadId: rosterSourceThreadId,
+          enabled: hasRosterWorkLogSubagents,
         }),
-      [stripSourceThreadId, hasStripWorkLogSubagents, stripRawWorkLogEntries],
+      [rosterSourceThreadId, hasRosterWorkLogSubagents, rosterRawWorkLogEntries],
     ),
   );
-  const stripWorkLogEntries = useMemo(
+  const rosterWorkLogEntries = useMemo(
     () =>
-      hasStripWorkLogSubagents
+      hasRosterWorkLogSubagents
         ? enrichSubagentWorkEntries(
-            stripRawWorkLogEntries,
-            stripRelevantWorkLogThreads,
-            stripSourceThreadId,
+            rosterRawWorkLogEntries,
+            rosterRelevantWorkLogThreads,
+            rosterSourceThreadId,
           )
-        : stripRawWorkLogEntries,
+        : rosterRawWorkLogEntries,
     [
-      stripSourceThreadId,
-      hasStripWorkLogSubagents,
-      stripRawWorkLogEntries,
-      stripRelevantWorkLogThreads,
+      rosterSourceThreadId,
+      hasRosterWorkLogSubagents,
+      rosterRawWorkLogEntries,
+      rosterRelevantWorkLogThreads,
     ],
   );
 
   const backgroundedSubagentToolUseIds = useMemo(() => {
     const toolUseIds = new Set<string>();
-    for (const activity of stripSourceActivities) {
+    for (const activity of rosterSourceActivities) {
       if (activity.kind !== "task.updated") {
         continue;
       }
@@ -279,26 +276,14 @@ export function useChatWorkLog({
       }
     }
     return toolUseIds;
-  }, [stripSourceActivities]);
-  const composerSubagentStripItems = useMemo(
+  }, [rosterSourceActivities]);
+  const subagentRosterItems = useMemo(
     () =>
-      deriveComposerSubagentStripItems({
-        workEntries: stripWorkLogEntries,
-        // Inside a subagent's chat the strip is how you hop between its siblings, so it keeps them all.
-        liveTurnId: stripParentThread ? undefined : stripLiveTurnId,
+      deriveSubagentRosterItems({
+        workEntries: rosterWorkLogEntries,
         backgroundedProviderThreadIds: backgroundedSubagentToolUseIds,
-        viewedThreadId: stripParentThread ? (activeThread?.id ?? null) : null,
-        parentRow: stripParentThread
-          ? { threadId: stripParentThread.id, label: stripParentThread.title ?? null }
-          : null,
       }),
-    [
-      activeThread?.id,
-      backgroundedSubagentToolUseIds,
-      stripLiveTurnId,
-      stripParentThread,
-      stripWorkLogEntries,
-    ],
+    [backgroundedSubagentToolUseIds, rosterWorkLogEntries],
   );
 
   const workflowSubagentThreadsByToolUseId = useMemo(() => {
@@ -345,9 +330,8 @@ export function useChatWorkLog({
   );
   return {
     workLogEntries,
-    composerSubagentStripItems,
-    stripSourceThreadId,
-    stripSourceRuntimeActive,
+    subagentRosterItems,
+    rosterSourceThreadId,
     workflowRunState,
   };
 }

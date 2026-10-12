@@ -14,7 +14,7 @@ import { isTerminalFocused } from "../../lib/terminalFocus";
 import type { Project } from "../../types";
 import { type Thread } from "../../types";
 import { resolveCycledModelSlug } from "../ChatView.logic.worktree";
-import { collectForegroundRunningSubagentStripItems } from "./ComposerSubagentStrip.logic";
+import { collectForegroundRunningSubagentRosterItems } from "./subagentRoster.logic";
 import { useChatProviderModels } from "./useChatProviderModels";
 import type { ThreadTerminalState } from "~/terminalStateNormalization";
 import { useChatWorkLog } from "./useChatWorkLog";
@@ -50,7 +50,7 @@ interface ChatKeyboardShortcutsInput {
   hasLiveTurn: boolean;
   composerFormRef: RefObject<HTMLFormElement | null>;
   onInterruptFromStopControl: () => void;
-  composerSubagentStripItems: ReturnType<typeof useChatWorkLog>["composerSubagentStripItems"];
+  subagentRosterItems: ReturnType<typeof useChatWorkLog>["subagentRosterItems"];
   onBackgroundAllForegroundSubagentStripItems: () => Promise<void>;
   isVoiceRecording: ReturnType<typeof useComposerVoiceController>["isVoiceRecording"];
   isVoiceTranscribing: ReturnType<typeof useComposerVoiceController>["isVoiceTranscribing"];
@@ -113,7 +113,7 @@ type ChatKeyboardShortcutsControllerInput = {
   provider: Pick<
     ChatKeyboardShortcutsInput,
     | "hasLiveTurn"
-    | "composerSubagentStripItems"
+    | "subagentRosterItems"
     | "modelOptionsByProvider"
     | "selectedProvider"
     | "selectedModel"
@@ -176,7 +176,7 @@ export function useChatKeyboardShortcuts({
   } = session;
   const {
     hasLiveTurn,
-    composerSubagentStripItems,
+    subagentRosterItems,
     modelOptionsByProvider,
     selectedProvider,
     selectedModel,
@@ -255,7 +255,7 @@ export function useChatKeyboardShortcuts({
         event.key.toLowerCase() === "b" &&
         !isTerminalFocused() &&
         !isEditableEventTarget(event) &&
-        collectForegroundRunningSubagentStripItems(composerSubagentStripItems).length > 0
+        collectForegroundRunningSubagentRosterItems(subagentRosterItems).length > 0
       ) {
         event.preventDefault();
         event.stopPropagation();
@@ -492,7 +492,7 @@ export function useChatKeyboardShortcuts({
     onInterruptFromStopControl,
     showGitActions,
     isGitRepo,
-    composerSubagentStripItems,
+    subagentRosterItems,
     onBackgroundAllForegroundSubagentStripItems,
     hasLiveTurn,
     cycleEffort,

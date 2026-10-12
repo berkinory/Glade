@@ -1,5 +1,3 @@
-import { useQuery } from "@tanstack/react-query";
-import { providerComposerCapabilitiesQueryOptions } from "~/lib/providerDiscoveryReactQuery";
 import { Spinner } from "~/components/ui/spinner";
 import { pendingRequestInstanceKey } from "@glade/shared/threads/threadSummary";
 import type { ThreadId, TurnId } from "@glade/contracts/core/baseSchemas";
@@ -20,8 +18,6 @@ import { ComposerQueuedHeader } from "~/components/chat/ComposerQueuedHeader";
 import { ComputerComposerPanel } from "~/components/computer/ComputerComposerPanel";
 import { ComposerReferenceAttachments } from "~/components/chat/ComposerReferenceAttachments";
 import { ComposerConnectionNotice } from "~/components/chat/ComposerConnectionNotice";
-import { ComposerSubagentStrip } from "~/components/chat/ComposerSubagentStrip";
-import { collectRunningSubagentStripItems } from "~/components/chat/ComposerSubagentStrip.logic";
 import { ContextWindowMeter } from "~/components/chat/ContextWindowMeter";
 import { WorkflowRunCard } from "~/components/chat/WorkflowRunCard";
 import {
@@ -33,7 +29,7 @@ import {
 import { collapseExpandedComposerCursor } from "~/composer-logic";
 import { cn } from "~/lib/utils";
 
-import { backgroundSubagent, stopSubagent, stopWorkflowTask } from "../chatTaskActions";
+import { stopWorkflowTask } from "../chatTaskActions";
 import { useChatThreadContext } from "../ChatThreadContext";
 import type { createChatPresentation } from "./chatPresentation";
 import { COMPOSER_EXTRAS_PANEL_ID } from "./chatViewSupport";
@@ -50,12 +46,6 @@ export function ChatComposerSurface({
   onOpenTurnDiff: (turnId: TurnId, filePath?: string) => void;
 }) {
   const { threadId } = useChatThreadContext();
-  const nativeControls = useQuery(
-    providerComposerCapabilitiesQueryOptions(
-      controller.session.activeThread?.modelSelection.provider ??
-        controller.provider.selectedProvider,
-    ),
-  ).data?.nativeSubagentControls;
   const {
     activeTurnLiveDiffState,
     settledThreadBranchMismatch,
@@ -165,7 +155,6 @@ export function ChatComposerSurface({
   const { selectedProvider } = controller.provider;
   const {
     workflowRunState,
-    composerSubagentStripItems,
     activePendingApproval,
     pendingApprovals,
     respondingRequestKeys,
@@ -187,8 +176,6 @@ export function ChatComposerSurface({
     hasLiveTurn,
     phase,
     activeTaskList,
-    stripSourceThreadId,
-    stripSourceRuntimeActive,
 
     activePendingResolvedAnswers,
     isSendBusy,
@@ -226,7 +213,6 @@ export function ChatComposerSurface({
     showComposerLiveChangesHeader,
     renderActiveTaskListCard,
     showComposerActiveTaskListCard,
-    showComposerSubagentStrip,
     showComposerWorkflowRunCard,
 
     emptyLandingControls,
@@ -297,52 +283,6 @@ export function ChatComposerSurface({
                 attachedToPrevious={showComposerLiveChangesHeader || showComposerActiveTaskListCard}
               />
             ) : null}
-            {showComposerSubagentStrip && !isNativeSubagent ? (
-              <ComposerSubagentStrip
-                items={composerSubagentStripItems}
-                onOpenThread={onNavigateToThread}
-                onBackgroundItem={
-                  nativeControls?.background && stripSourceRuntimeActive
-                    ? (item) => {
-                        if (stripSourceThreadId) {
-                          void backgroundSubagent(stripSourceThreadId, item.providerThreadId).catch(
-                            reportChatActionFailure,
-                          );
-                        }
-                      }
-                    : undefined
-                }
-                onStopItem={
-                  nativeControls?.interrupt && stripSourceRuntimeActive
-                    ? (item) => {
-                        if (stripSourceThreadId) {
-                          void stopSubagent(stripSourceThreadId, item.providerThreadId).catch(
-                            reportChatActionFailure,
-                          );
-                        }
-                      }
-                    : undefined
-                }
-                onStopAll={
-                  nativeControls?.interrupt && stripSourceRuntimeActive
-                    ? () => {
-                        if (stripSourceThreadId) {
-                          void Promise.all(
-                            collectRunningSubagentStripItems(composerSubagentStripItems).map(
-                              (item) => stopSubagent(stripSourceThreadId, item.providerThreadId),
-                            ),
-                          ).catch(reportChatActionFailure);
-                        }
-                      }
-                    : undefined
-                }
-                attachedToPrevious={
-                  showComposerLiveChangesHeader ||
-                  showComposerActiveTaskListCard ||
-                  showComposerWorkflowRunCard
-                }
-              />
-            ) : null}
             <ComposerQueuedHeader
               queuedTurns={queuedComposerTurns}
               onSteer={(...args: Parameters<typeof onSteerQueuedComposerTurn>) => {
@@ -357,8 +297,7 @@ export function ChatComposerSurface({
               attachedToPrevious={
                 showComposerLiveChangesHeader ||
                 showComposerActiveTaskListCard ||
-                showComposerWorkflowRunCard ||
-                showComposerSubagentStrip
+                showComposerWorkflowRunCard
               }
             />
             {isNativeSubagent ? null : (
@@ -368,7 +307,6 @@ export function ChatComposerSurface({
                   showComposerLiveChangesHeader ||
                   showComposerActiveTaskListCard ||
                   showComposerWorkflowRunCard ||
-                  showComposerSubagentStrip ||
                   queuedComposerTurns.length > 0
                 }
               />

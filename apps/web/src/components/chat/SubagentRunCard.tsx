@@ -3,7 +3,7 @@ import { formatEffortLabel } from "@glade/shared/provider/effortLabel";
 import { useQuery } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
-import { AlertCircleIcon, ArrowRight02Icon, SquareFilledIcon } from "~/lib/icons";
+import { AlertCircleIcon, ArrowRight02Icon, BotIcon, SquareFilledIcon } from "~/lib/icons";
 import { useLiveClockNow } from "~/lib/liveActivityPresentation";
 import { providerComposerCapabilitiesQueryOptions } from "~/lib/providerDiscoveryReactQuery";
 import {
@@ -25,6 +25,11 @@ import { DisclosureRegion } from "../ui/DisclosureRegion";
 import { Spinner } from "../ui/spinner";
 import { interruptThreadTurn } from "./chatTaskActions";
 import { SubagentAvatar } from "./SubagentAvatar";
+import {
+  WORK_ROW_GAP_CLASS_NAME,
+  WORK_ROW_ICON_CLASS_NAME,
+  WORK_ROW_ICON_SLOT_CLASS_NAME,
+} from "./workRowStyles";
 import {
   describeLatestStep,
   describeRunHeader,
@@ -85,59 +90,58 @@ export function SubagentRunCard({
       ? formatClockDuration(endMs - startMs)
       : null;
   const failed = kinds.includes("failed");
+  const runningThreadIds = members
+    .filter((member) => isLiveKind(subagentStatusKind(member.subagent)))
+    .map(memberThreadId);
 
   return (
     <div data-subagent-run="true">
-      <button
-        type="button"
-        aria-expanded={open}
-        className={cn(
-          "inline-flex max-w-full items-center gap-1.5 py-0.5 text-left transition-colors duration-100 hover:text-foreground",
-          MUTED_LABEL_TEXT_CLASS_NAME,
-        )}
-        style={{ fontSize: `${fontSizePx}px` }}
-        onClick={() => setUserOpen(!open)}
-      >
-        <span className="flex shrink-0 items-center -space-x-1" aria-hidden>
-          {live ? (
-            <Spinner variant="subagent" className="size-3.5" />
-          ) : failed ? (
-            <AlertCircleIcon className="size-3.5 text-destructive/85" />
-          ) : (
-            members
-              .slice(0, 3)
-              .map((member) => (
-                <SubagentAvatar
-                  key={member.subagent.threadId}
-                  threadId={memberThreadId(member)}
-                  className="size-[1.143em] ring-2 ring-background"
-                />
-              ))
+      <div className="flex max-w-full items-center gap-1">
+        <button
+          type="button"
+          aria-expanded={open}
+          className={cn(
+            "inline-flex min-w-0 items-center py-0.5 text-left transition-colors duration-100 hover:text-foreground",
+            WORK_ROW_GAP_CLASS_NAME,
+            MUTED_LABEL_TEXT_CLASS_NAME,
           )}
-        </span>
-        <span className="min-w-0 truncate">
-          <span className={live ? "work-text-shimmer" : undefined}>
-            {describeRunHeader(members)}
+          style={{ fontSize: `${fontSizePx}px` }}
+          onClick={() => setUserOpen(!open)}
+        >
+          <span className={WORK_ROW_ICON_SLOT_CLASS_NAME} aria-hidden>
+            {live ? (
+              <Spinner variant="subagent" className={WORK_ROW_ICON_CLASS_NAME} />
+            ) : failed ? (
+              <AlertCircleIcon className={cn(WORK_ROW_ICON_CLASS_NAME, "text-destructive/85")} />
+            ) : (
+              <BotIcon className={WORK_ROW_ICON_CLASS_NAME} />
+            )}
           </span>
-          {elapsed ? <span> · {elapsed}</span> : null}
-        </span>
-        <DisclosureChevron open={open} className="text-muted-foreground/70" />
-      </button>
-      <DisclosureRegion open={open}>
-        {open ? (
-          <div className="tool-group-tree">
-            <div className="space-y-px pt-0.5">
-              {members.map((member) => (
-                <SubagentRunRow
-                  key={`${member.subagent.threadId}:${member.launchedAt}`}
-                  member={member}
-                  nowMs={nowMs}
-                  fontSizePx={fontSizePx}
-                />
-              ))}
-            </div>
-          </div>
+          <span className="min-w-0 truncate">
+            <span className={live ? "work-text-shimmer" : undefined}>
+              {describeRunHeader(members)}
+            </span>
+            {elapsed ? <span> · {elapsed}</span> : null}
+          </span>
+          <DisclosureChevron open={open} className="text-muted-foreground/70" />
+        </button>
+        {runningThreadIds.length > 1 ? (
+          <SubagentStopAllButton threadIds={runningThreadIds} />
         ) : null}
+      </div>
+      <DisclosureRegion open={open} lazy>
+        <div className="tool-group-tree">
+          <div className="space-y-px pt-0.5">
+            {members.map((member) => (
+              <SubagentRunRow
+                key={`${member.subagent.threadId}:${member.launchedAt}`}
+                member={member}
+                nowMs={nowMs}
+                fontSizePx={fontSizePx}
+              />
+            ))}
+          </div>
+        </div>
       </DisclosureRegion>
     </div>
   );
@@ -271,6 +275,43 @@ function SubagentStopButton({
         void interruptThreadTurn(threadId).catch((error: unknown) => {
           setError(threadId, error instanceof Error ? error.message : "Could not stop subagent.");
         });
+      }}
+    >
+      <SquareFilledIcon className="size-3" />
+    </button>
+  );
+}
+
+function SubagentStopAllButton({ threadIds }: { threadIds: ReadonlyArray<ThreadId> }) {
+  const provider = useStore(
+    (store) => store.threadShellById?.[threadIds[0]!]?.modelSelection.provider,
+  );
+  return provider ? <SubagentStopAllControl threadIds={threadIds} provider={provider} /> : null;
+}
+
+function SubagentStopAllControl({
+  threadIds,
+  provider,
+}: {
+  threadIds: ReadonlyArray<ThreadId>;
+  provider: ProviderKind;
+}) {
+  const setError = useStore((store) => store.setError);
+  const canInterrupt = useQuery(providerComposerCapabilitiesQueryOptions(provider)).data
+    ?.nativeSubagentControls?.interrupt;
+  if (!canInterrupt) return null;
+  return (
+    <button
+      type="button"
+      aria-label="Stop all subagents"
+      title="Stop all running subagents"
+      className="flex size-5 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-[var(--color-background-button-secondary-hover)] hover:text-foreground"
+      onClick={() => {
+        for (const threadId of threadIds) {
+          void interruptThreadTurn(threadId).catch((error: unknown) => {
+            setError(threadId, error instanceof Error ? error.message : "Could not stop subagent.");
+          });
+        }
       }}
     >
       <SquareFilledIcon className="size-3" />

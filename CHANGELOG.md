@@ -12,6 +12,7 @@
 ### Removed
 
 - The confirmation dialog and context preparation step when switching providers.
+- The subagent list above the composer. Subagents show in their card in the chat, which can also stop them all, and in the Environment panel.
 
 ## 0.2.4 - 2026-10-12
 

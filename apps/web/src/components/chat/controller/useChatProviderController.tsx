@@ -119,17 +119,12 @@ export function useChatProviderController({
   const providerDisplayName =
     PROVIDER_DISPLAY_NAMES[activeThread?.session?.provider ?? selectedProvider];
 
-  const {
-    workLogEntries,
-    composerSubagentStripItems,
-    stripSourceThreadId,
-    stripSourceRuntimeActive,
-    workflowRunState,
-  } = useChatWorkLog({
-    activeThread,
-    latestTurnSettled,
-    latestTurnLive,
-  });
+  const { workLogEntries, subagentRosterItems, rosterSourceThreadId, workflowRunState } =
+    useChatWorkLog({
+      activeThread,
+      latestTurnSettled,
+      latestTurnLive,
+    });
 
   const selectAgentActivityTimeline = useMemo(() => createAgentActivityTimelineSelector(), []);
   const agentActivityTimelineState = selectAgentActivityTimeline(workLogEntries);
@@ -308,9 +303,8 @@ export function useChatProviderController({
     isConnecting,
     providerDisplayName,
     workLogEntries,
-    composerSubagentStripItems,
-    stripSourceThreadId,
-    stripSourceRuntimeActive,
+    subagentRosterItems,
+    rosterSourceThreadId,
     workflowRunState,
     getAgentActivityDetail,
     agentActivityTimelineState,

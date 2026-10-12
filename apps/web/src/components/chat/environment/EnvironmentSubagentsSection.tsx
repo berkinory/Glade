@@ -15,10 +15,7 @@ import { useStore } from "~/store";
 import { createThreadSelector } from "~/storeSelectors";
 import type { ThreadShell } from "~/types";
 import { deriveWorkLogEntries } from "~/workLog.entries";
-import {
-  type ComposerSubagentStripItem,
-  deriveComposerSubagentStripItems,
-} from "../ComposerSubagentStrip.logic";
+import { type SubagentRosterItem, deriveSubagentRosterItems } from "../subagentRoster.logic";
 import { SubagentAvatar } from "../SubagentAvatar";
 import { SubagentStatusIndicator } from "../SubagentStatusIndicator";
 import { SubagentRosterSummary } from "../SubagentRosterSummary";
@@ -39,7 +36,7 @@ function NativeSubagentRow({
   onOpen,
 }: {
   thread: ThreadShell;
-  detail: ComposerSubagentStripItem | undefined;
+  detail: SubagentRosterItem | undefined;
   runtimeUnavailable: boolean;
   onOpen: (id: ThreadId) => void;
 }) {
@@ -151,10 +148,10 @@ export function EnvironmentSubagentsSection({
     ),
   );
   if (!root || !shells) return null;
-  const details = deriveComposerSubagentStripItems({
+  const details = deriveSubagentRosterItems({
     workEntries: enrichSubagentWorkEntries(entries, relevantThreads, root.id),
     backgroundedProviderThreadIds: NO_BACKGROUND_IDS,
-  }).filter((item): item is ComposerSubagentStripItem => item.kind === "subagent");
+  });
   const detailById = new Map(
     details.map((item) => [`subagent:${root.id}:${item.providerThreadId}`, item]),
   );

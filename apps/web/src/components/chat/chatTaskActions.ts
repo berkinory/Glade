@@ -1,7 +1,6 @@
 import { confirmWorkspaceRestore } from "./confirmWorkspaceRestore";
 import type { ThreadId } from "@glade/contracts/core/baseSchemas";
 import type { PendingFileUndo } from "~/components/ChatView.logic.session";
-import { localSubagentThreadId } from "~/components/ChatView.selectors";
 import { holdQueuedComposerTurnsForStop } from "~/lib/queuedComposerDrain";
 import { newCommandId } from "~/lib/utils";
 import { readNativeApi } from "~/nativeApi";
@@ -45,10 +44,6 @@ export async function backgroundSubagent(
     toolUseId: providerThreadId,
     createdAt: new Date().toISOString(),
   });
-}
-
-export function stopSubagent(threadId: ThreadId, providerThreadId: string): Promise<void> {
-  return interruptThreadTurn(localSubagentThreadId(threadId, providerThreadId));
 }
 
 export async function undoTurnFiles(input: {
