@@ -475,7 +475,7 @@ export function useSidebarRows(context: ReturnType<typeof useSidebarPanelEffects
       thread,
     });
     const isSubagentThread = Boolean(thread.parentThreadId);
-    const subagentIndentPx = Math.max(0, Math.min(depth - 1, 3) * 10);
+    const subagentIndentPx = Math.min(depth, 3) * 12;
     const showCompactMeta = !isSubagentThread;
     const threadJumpLabel = visibleThreadJumpLabelByThreadId.get(thread.id) ?? null;
     const hoverAnchorId = createSidebarThreadHoverAnchorId({
