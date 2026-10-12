@@ -20,7 +20,7 @@ export const THREAD_DETAIL_REPLAY_MAX_NOOP_STREAK = 2;
 export const THREAD_DETAIL_PROJECTION_RECONCILE_MAX_NOOP_STREAK = 4;
 export const THREAD_DETAIL_PROJECTION_RECONCILE_MAX_INTERVAL_MS = 72_000;
 export const PENDING_SHELL_EVENT_BUFFER_LIMIT = 1_024;
-export const PENDING_THREAD_EVENT_BUFFER_LIMIT = 512;
+const PENDING_THREAD_EVENT_BUFFER_LIMIT = 512;
 const IMMEDIATE_ASSISTANT_FLUSH_ID_LIMIT = 512;
 function shellThreadHasStarted(thread: OrchestrationShellSnapshot["threads"][number]): boolean {
   return thread.latestTurn !== null || thread.session !== null;
