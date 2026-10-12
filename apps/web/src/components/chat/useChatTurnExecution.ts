@@ -310,7 +310,7 @@ export function useChatTurnExecution({
               associatedWorktreeBranch: nextAssociatedWorktreeBranch,
               associatedWorktreeRef: nextAssociatedWorktreeRef,
               lastKnownPr: activeThread.lastKnownPr ?? null,
-              createdAt: activeThread.createdAt,
+              createdAt: messageCreatedAt,
             },
             api,
           );

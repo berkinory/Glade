@@ -18,7 +18,6 @@ type DraftThreadRenameSource = Pick<
   | "worktreePath"
   | "workingDirectory"
   | "lastKnownPr"
-  | "createdAt"
 >;
 
 export function buildDraftThreadRenameCreateInput(thread: DraftThreadRenameSource) {
@@ -32,7 +31,6 @@ export function buildDraftThreadRenameCreateInput(thread: DraftThreadRenameSourc
     worktreePath: thread.worktreePath,
     workingDirectory: thread.workingDirectory ?? null,
     ...(thread.lastKnownPr !== undefined ? { lastKnownPr: thread.lastKnownPr } : {}),
-    createdAt: thread.createdAt,
   } satisfies {
     projectId: ProjectId;
     modelSelection: ModelSelection;
@@ -43,7 +41,6 @@ export function buildDraftThreadRenameCreateInput(thread: DraftThreadRenameSourc
     worktreePath: string | null;
     workingDirectory: string | null;
     lastKnownPr?: OrchestrationThreadPullRequest | null;
-    createdAt: string;
   };
 }
 
@@ -62,7 +59,6 @@ export async function dispatchThreadRename(input: {
         worktreePath: string | null;
         workingDirectory: string | null;
         lastKnownPr?: OrchestrationThreadPullRequest | null;
-        createdAt: string;
       }
     | undefined;
 }): Promise<ThreadRenameOutcome> {
@@ -97,7 +93,7 @@ export async function dispatchThreadRename(input: {
         ...(input.createIfMissing.lastKnownPr !== undefined
           ? { lastKnownPr: input.createIfMissing.lastKnownPr }
           : {}),
-        createdAt: input.createIfMissing.createdAt,
+        createdAt: new Date().toISOString(),
       },
       api,
     );
