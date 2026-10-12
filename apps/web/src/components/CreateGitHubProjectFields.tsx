@@ -1,7 +1,9 @@
 import { GitHubIcon } from "~/lib/brandIcons";
 import { FolderIcon } from "~/lib/icons";
 import type { KeyboardEvent, ReactNode } from "react";
+import type { EnvironmentKey } from "~/environments/environmentKey";
 import { cn } from "~/lib/utils";
+import { HostFolderField } from "./HostFolderField";
 import { Button } from "./ui/button";
 import { dialogFieldLabelClassName } from "./ui/dialog";
 import { InputGroup, InputGroupAddon, InputGroupInput } from "./ui/input-group";
@@ -18,6 +20,8 @@ export function CreateGitHubProjectFields(props: {
   readonly formError: string | null;
   readonly provisionProgress: string | null;
   readonly isElectron: boolean;
+  // The SSH host or paired machine that clones; null for this machine.
+  readonly host: { readonly key: EnvironmentKey; readonly label: string } | null;
   readonly isPickingFolder: boolean;
   readonly submitting: boolean;
   readonly onRepositoryChange: (value: string) => void;
@@ -25,6 +29,7 @@ export function CreateGitHubProjectFields(props: {
   readonly onDirectoryNameChange: (value: string) => void;
   readonly onBrowse: () => void;
   readonly onSubmitKeyDown: (event: KeyboardEvent<HTMLInputElement>) => void;
+  readonly onSubmit: () => void;
 }) {
   return (
     <div className="space-y-3">
@@ -41,7 +46,7 @@ export function CreateGitHubProjectFields(props: {
           <GitHubRequirement index={3} title="Private access">
             Public repositories work immediately. For private repositories, run{" "}
             <code className="font-mono text-foreground">gh auth login</code> or configure Git
-            credentials.
+            credentials{props.host ? ` on ${props.host.label}` : ""}.
           </GitHubRequirement>
         </ol>
       </div>
@@ -83,34 +88,47 @@ export function CreateGitHubProjectFields(props: {
         >
           Clone into
         </label>
-        <div className="flex items-center gap-2">
-          <InputGroup className={cn(PROJECT_DIALOG_FIELD_CONTROL_CLASS_NAME, "min-w-0 flex-1")}>
-            <InputGroupAddon className="w-10 self-stretch border-e border-foreground/12 ps-0">
-              <FolderIcon className="size-4 text-muted-foreground/70" aria-hidden="true" />
-            </InputGroupAddon>
-            <InputGroupInput
-              id={props.destinationParentInputId}
-              value={props.destinationParent}
-              placeholder="/parent/folder"
-              spellCheck={false}
-              autoCorrect="off"
-              autoCapitalize="off"
-              onChange={(event) => props.onDestinationParentChange(event.target.value)}
-              onKeyDown={props.onSubmitKeyDown}
-            />
-          </InputGroup>
-          {props.isElectron ? (
-            <Button
-              type="button"
-              variant="outline"
-              className={cn(PROJECT_DIALOG_FIELD_CONTROL_CLASS_NAME, "shrink-0 px-3")}
-              disabled={props.isPickingFolder || props.submitting}
-              onClick={props.onBrowse}
-            >
-              Browse
-            </Button>
-          ) : null}
-        </div>
+        {props.host ? (
+          <HostFolderField
+            id={props.destinationParentInputId}
+            environmentKey={props.host.key}
+            className={PROJECT_DIALOG_FIELD_CONTROL_CLASS_NAME}
+            value={props.destinationParent}
+            invalid={props.formError !== null}
+            placeholder="~/"
+            onChange={props.onDestinationParentChange}
+            onSubmit={props.onSubmit}
+          />
+        ) : (
+          <div className="flex items-center gap-2">
+            <InputGroup className={cn(PROJECT_DIALOG_FIELD_CONTROL_CLASS_NAME, "min-w-0 flex-1")}>
+              <InputGroupAddon className="w-10 self-stretch border-e border-foreground/12 ps-0">
+                <FolderIcon className="size-4 text-muted-foreground/70" aria-hidden="true" />
+              </InputGroupAddon>
+              <InputGroupInput
+                id={props.destinationParentInputId}
+                value={props.destinationParent}
+                placeholder="/parent/folder"
+                spellCheck={false}
+                autoCorrect="off"
+                autoCapitalize="off"
+                onChange={(event) => props.onDestinationParentChange(event.target.value)}
+                onKeyDown={props.onSubmitKeyDown}
+              />
+            </InputGroup>
+            {props.isElectron ? (
+              <Button
+                type="button"
+                variant="outline"
+                className={cn(PROJECT_DIALOG_FIELD_CONTROL_CLASS_NAME, "shrink-0 px-3")}
+                disabled={props.isPickingFolder || props.submitting}
+                onClick={props.onBrowse}
+              >
+                Browse
+              </Button>
+            ) : null}
+          </div>
+        )}
       </div>
 
       <div className="space-y-2">

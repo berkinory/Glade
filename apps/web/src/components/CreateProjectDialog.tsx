@@ -61,6 +61,8 @@ interface CreateLocalProjectSubmitValue {
 }
 interface CreateGitHubProjectSubmitValue {
   readonly source: "github";
+  // The machine that clones the repository and owns the project.
+  readonly environmentKey: EnvironmentKey;
   readonly operationId: string;
   readonly repository: string;
   readonly destinationParent: string;
@@ -86,9 +88,10 @@ export function CreateProjectDialog(props: {
   const localHomeDir = useWorkspacePathsStore((state) => state.homeDir);
   const [environmentKey, setEnvironmentKey] = useState<EnvironmentKey>(LOCAL_ENVIRONMENT);
   const host = environments.find((environment) => environment.key === environmentKey) ?? null;
-  // Folder pickers, dropped folders and GitHub clones act on this machine.
+  // Folder pickers and dropped folders act on this machine.
   const isLocalDesktop = isElectron && host === null;
-  const githubAvailable = props.githubProvisioningAvailable && host === null;
+  // Hosts run this app's build or a newer one, so they always provision from GitHub.
+  const githubAvailable = host !== null || props.githubProvisioningAvailable;
   const [source, setSource] = useState<"local" | "github">("local");
   const [path, setPath] = useState("");
   const [repositoryInput, setRepositoryInput] = useState("");
@@ -159,19 +162,21 @@ export function CreateProjectDialog(props: {
       ? [...props.spaces, createdSpace]
       : props.spaces;
   const voidSpace = useVoidSpace();
+  // Progress comes from the server that clones: the chosen host's, or the local one.
+  const provisionApi = host ? (host.api?.api ?? null) : readNativeApi();
   useEffect(() => {
-    if (!props.open) return;
-    const api = readNativeApi();
-    if (!api) return;
-    return api.projects.onProvisionProgress((event: GitHubProjectProvisionProgressEvent) => {
-      if (event.operationId !== activeOperationIdRef.current) return;
-      if (event.kind === "completed") {
-        setProvisionProgress("Project added");
-        return;
-      }
-      setProvisionProgress(event.message);
-    });
-  }, [props.open]);
+    if (!props.open || !provisionApi) return;
+    return provisionApi.projects.onProvisionProgress(
+      (event: GitHubProjectProvisionProgressEvent) => {
+        if (event.operationId !== activeOperationIdRef.current) return;
+        if (event.kind === "completed") {
+          setProvisionProgress("Project added");
+          return;
+        }
+        setProvisionProgress(event.message);
+      },
+    );
+  }, [props.open, provisionApi]);
   const applyPickedFolder = useCallback(
     (picked: string) => {
       setPath(picked);
@@ -223,7 +228,7 @@ export function CreateProjectDialog(props: {
       setFormError("Enter a GitHub repository as owner/repository or a GitHub.com repository URL.");
       return;
     }
-    if (source === "github" && !props.githubProvisioningAvailable) {
+    if (source === "github" && !githubAvailable) {
       setFormError("Update the Glade server before adding a project from GitHub.");
       return;
     }
@@ -250,6 +255,7 @@ export function CreateProjectDialog(props: {
         await props.onSubmit(
           {
             source: "github",
+            environmentKey,
             operationId,
             repository: parsedRepository ?? repositoryInput.trim(),
             destinationParent: trimmedDestinationParent,
@@ -372,9 +378,17 @@ export function CreateProjectDialog(props: {
                 <ComposerPickerMenuPopup align="start">
                   <EnvironmentMenuItems
                     onSelect={(nextKey) => {
+                      const nextHost = environments.find(
+                        (environment) => environment.key === nextKey,
+                      );
                       setEnvironmentKey(nextKey);
                       setPickedPath(null);
                       setPath("");
+                      setDestinationParent(
+                        nextHost
+                          ? (nextHost.workspacePaths?.homeDir ?? "~")
+                          : props.defaultCloneParent,
+                      );
                       setFormError(null);
                     }}
                   />
@@ -493,6 +507,7 @@ export function CreateProjectDialog(props: {
               formError={formError}
               provisionProgress={provisionProgress}
               isElectron={isLocalDesktop}
+              host={host ? { key: host.key, label: host.host.label } : null}
               isPickingFolder={isPickingFolder}
               submitting={submitting}
               onRepositoryChange={(nextInput) => {
@@ -514,6 +529,7 @@ export function CreateProjectDialog(props: {
               }}
               onBrowse={() => void handleBrowse()}
               onSubmitKeyDown={submitOnEnter}
+              onSubmit={() => void submit()}
             />
           )}
 

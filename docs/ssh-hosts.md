@@ -14,7 +14,9 @@ your machine.
   `~/.ssh/config` (following `Include`) and `known_hosts`.
 - **Projects on a host** are added from **Add project** by choosing the host as the machine. The path
   field browses the host's folders as you type (`~` is the host's home); a missing folder is created.
-  The project picker of a chat on that host adds projects too.
+  **GitHub** clones a repository on the host with the host's own `gh` sign-in or Git credentials,
+  so private repositories need `gh auth login` there. The project picker of a chat on that host adds
+  projects too.
 - **Host status** is a dot wherever a host is offered: green connected, amber connecting, grey
   unreachable, red waiting for you. Grey hosts are not offered and are retried in the background
   with growing pauses from 15 s up to 5 minutes (and right away on wake); red hosts wait for you and open **Settings → SSH hosts** when clicked.

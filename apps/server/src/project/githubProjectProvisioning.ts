@@ -180,7 +180,7 @@ function classifyCloneFailure(cause: unknown): GitHubProjectProvisioningError {
   ) {
     return provisioningError(
       "AUTH_REQUIRED",
-      "GitHub authentication is required. Sign in with `gh auth login` or configure Git credentials, then retry.",
+      "GitHub authentication is required on the machine that clones the repository. Sign in there with `gh auth login` or configure Git credentials, then retry.",
       false,
       cause,
     );
@@ -372,17 +372,27 @@ export const makeGitHubProjectProvisioner = Effect.fn(function* (
     );
 
     if (githubCliReady) {
-      yield* github.execute({
-        cwd: parent,
-        args: ["repo", "clone", "--no-upstream", repository, stagingPath, "--", "--progress"],
-        timeoutMs: CLONE_TIMEOUT_MS,
-        maxBufferBytes: CLONE_OUTPUT_LIMIT_BYTES,
-        outputMode: "truncate",
-        env: NON_INTERACTIVE_GIT_ENV,
-        onStdoutChunk: publishChunk,
-        onStderrChunk: publishChunk,
-      });
-      return;
+      const clonedWithCli = yield* github
+        .execute({
+          cwd: parent,
+          args: ["repo", "clone", "--no-upstream", repository, stagingPath, "--", "--progress"],
+          timeoutMs: CLONE_TIMEOUT_MS,
+          maxBufferBytes: CLONE_OUTPUT_LIMIT_BYTES,
+          outputMode: "truncate",
+          env: NON_INTERACTIVE_GIT_ENV,
+          onStdoutChunk: publishChunk,
+          onStderrChunk: publishChunk,
+        })
+        .pipe(
+          Effect.as(true),
+          // `GH_TOKEN` passes the viewer check over HTTPS without the CLI installed, which is common
+          // on SSH hosts; plain git still clones public repositories there.
+          Effect.catchIf(
+            (error) => error.reason === "not-installed",
+            () => Effect.succeed(false),
+          ),
+        );
+      if (clonedWithCli) return;
     }
 
     yield* git.execute({

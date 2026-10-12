@@ -5,6 +5,7 @@ import { useSidebarProjectOrderStore } from "../sidebarProjectOrderStore";
 import { sortProjectsForSidebar } from "./Sidebar.logic.projectData";
 import { LOCAL_ENVIRONMENT } from "../environments/environmentKey";
 import { addProjectOnHost } from "../environments/hostProjects";
+import { remoteEnvironment } from "../environments/remoteEnvironments";
 import { useHandleNewThread } from "../hooks/useHandleNewThread";
 import { useSpacesUiStore } from "../spacesUiStore";
 import { useCallback } from "react";
@@ -24,7 +25,7 @@ import { newCommandId, newProjectId } from "../lib/utils";
 import { expandProjectHomePath, joinProjectPath } from "../lib/projectPaths";
 import { deleteProjectFromClient } from "../lib/projectDelete";
 import { shortcutLabelForCommand, spaceJumpCommandForIndex } from "../keybindings";
-import { readNativeApi } from "../nativeApi";
+import { ensureEnvironmentNativeApi, readNativeApi } from "../nativeApi";
 import { toastManager } from "./ui/toast";
 import {
   findWorkspaceRootMatch,
@@ -124,8 +125,16 @@ export function useSidebarProjectCommands(context: ReturnType<typeof useSidebarT
     const destinationSpaceId = existingProject ? (existingProject.spaceId ?? null) : value.spaceId;
     const runCreateProject = async () => {
       if (value.source === "github") {
-        const api = readNativeApi();
+        // A host clones into its own disk and owns the project; spaces stay on this machine.
+        const host =
+          value.environmentKey === LOCAL_ENVIRONMENT
+            ? null
+            : remoteEnvironment(value.environmentKey);
+        const api = host ? ensureEnvironmentNativeApi(value.environmentKey) : readNativeApi();
         if (!api) throw new Error("The app server is unavailable.");
+        const syncSnapshot = host
+          ? host.store.getState().syncServerShellSnapshot
+          : syncServerShellSnapshot;
         await runExclusiveProjectAddition(projectAdditionLockRef, async () => {
           const openProvisionedProject = async (
             projectId: ProjectId,
@@ -134,16 +143,20 @@ export function useSidebarProjectCommands(context: ReturnType<typeof useSidebarT
           ) => {
             const { project, snapshot } = await waitForProject(api, projectId, workspaceRoot);
             if (snapshot) {
-              syncServerShellSnapshot(snapshot);
+              syncSnapshot(snapshot);
             }
             if (!project || !snapshot) return false;
 
-            handleSelectSpaceForIncomingProject(project.spaceId ?? null);
+            if (host) assignHostProject(project.id, value.spaceId);
+            handleSelectSpaceForIncomingProject(host ? value.spaceId : (project.spaceId ?? null));
             return openExistingProjectFromSnapshot(project.id, snapshot);
           };
           const requestedProjectId = newProjectId();
           const requestedWorkspaceRoot = joinProjectPath(
-            expandProjectHomePath(value.destinationParent, homeDir),
+            expandProjectHomePath(
+              value.destinationParent,
+              host ? (host.workspacePaths?.homeDir ?? null) : homeDir,
+            ),
             value.directoryName,
           );
           const provision = await runProjectProvisionWithCancellationRecovery({
@@ -157,10 +170,10 @@ export function useSidebarProjectCommands(context: ReturnType<typeof useSidebarT
                   directoryName: value.directoryName,
                   commandId: newCommandId(),
                   projectId: requestedProjectId,
-                  newProjectSpaceId: value.spaceId,
+                  newProjectSpaceId: host ? null : value.spaceId,
                   defaultModelSelection: await resolveProviderModelSelection({
                     api,
-                    selection: { provider: "codex", model: "" },
+                    selection: { provider: appSettings.defaultProvider, model: "" },
                   }),
                   createdAt: new Date().toISOString(),
                 },
