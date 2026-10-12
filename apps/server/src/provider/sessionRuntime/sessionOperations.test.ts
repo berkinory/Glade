@@ -298,6 +298,32 @@ routing.layer("Provider service sessionOperations", (it) => {
     }),
   );
 
+  it.effect("keeps a forked thread on its own native session after it has run turns", () =>
+    Effect.gen(function* () {
+      const provider = yield* ProviderService;
+      const directory = yield* ProviderSessionDirectory;
+      const sourceThreadId = asThreadId("thread-claude-fork-source");
+      const threadId = asThreadId("thread-claude-fork-target");
+      const forkInput = { sourceThreadId, threadId, runtimeMode: "full-access" } as const;
+
+      yield* provider.startSession(sourceThreadId, {
+        provider: "claudeAgent",
+        threadId: sourceThreadId,
+        runtimeMode: "full-access",
+      });
+      routing.claude.forkThread.mockClear();
+      yield* provider.forkThread!(forkInput);
+      yield* provider.sendTurn({ threadId, input: "first turn in the fork", attachments: [] });
+      yield* routing.claude.stopAll();
+
+      const reopened = yield* provider.forkThread!(forkInput);
+
+      const binding = Option.getOrThrow(yield* directory.getBinding(threadId));
+      assert.deepEqual(reopened.resumeCursor, binding.resumeCursor);
+      assert.equal(routing.claude.forkThread.mock.calls.length, 1);
+    }),
+  );
+
   it.effect("refreshes persisted resume cursor immediately on model reroutes", () =>
     Effect.gen(function* () {
       const provider = yield* ProviderService;

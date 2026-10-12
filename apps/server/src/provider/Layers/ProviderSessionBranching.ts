@@ -12,7 +12,6 @@ import {
   toValidationError,
 } from "../core/providerServiceValidation";
 import { ProviderForkThreadInput } from "@glade/contracts/provider/provider";
-import { asRecord } from "@glade/shared/transport/payloadValues";
 import {
   hasResumeCursor,
   readPersistedProviderOptions,
@@ -39,11 +38,10 @@ export const ProviderSessionBranchingLive = Layer.effect(
           yield* directory.getBinding(input.threadId),
         );
         if (existingTargetBinding) {
-          const existingTargetPayload = asRecord(existingTargetBinding.runtimePayload) ?? {};
-          if (
-            existingTargetPayload.lastRuntimeEvent === "provider.thread.forked" &&
-            hasResumeCursor(existingTargetBinding.resumeCursor)
-          ) {
+          // The fork target starts without a binding, so a resumable one is the target's own native
+          // session: the fork itself, or what it became after later turns, interrupts or idle stops.
+          // Turn delivery resumes it; forking the source again would drop the target's own turns.
+          if (hasResumeCursor(existingTargetBinding.resumeCursor)) {
             return {
               threadId: input.threadId,
               resumeCursor: existingTargetBinding.resumeCursor,
@@ -51,7 +49,7 @@ export const ProviderSessionBranchingLive = Layer.effect(
           }
           return yield* toValidationError(
             "ProviderService.forkThread",
-            "The target already has a different provider binding.",
+            "The fork target has a native session that cannot be resumed.",
           );
         }
 
