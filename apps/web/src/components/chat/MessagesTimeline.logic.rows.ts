@@ -10,6 +10,7 @@ import {
   mergeTurnDiffSummaries,
   planWorkEntryRenderChunks,
 } from "./MessagesTimeline.logic.rowTypes";
+import type { BackgroundWaitItem } from "./BackgroundWaitRow.logic";
 import type { CollapsedTurnItem, MessagesTimelineRow } from "./MessagesTimeline.logic.rowTypes";
 
 // Rows that start a reply without a user message: a background reply, a provider switch, or the
@@ -30,6 +31,7 @@ export function deriveMessagesTimelineRows(input: {
   activeTurnInProgress?: boolean;
   activeTurnId?: TurnId | null | undefined;
   turnDiffSummaryByAssistantMessageId: ReadonlyMap<MessageId, TurnDiffSummary>;
+  backgroundWait?: readonly BackgroundWaitItem[] | undefined;
 }): MessagesTimelineRow[] {
   const nextRows: MessagesTimelineRow[] = [];
   const timelineMessages = input.timelineEntries.flatMap<TimelineDurationMessage>((entry) =>
@@ -280,6 +282,12 @@ export function deriveMessagesTimelineRows(input: {
     nextRows.push({
       kind: "working",
       id: "working-indicator-row",
+    });
+  } else if (!input.isWorking && input.backgroundWait && input.backgroundWait.length > 0) {
+    nextRows.push({
+      kind: "background-wait",
+      id: "background-wait-row",
+      items: input.backgroundWait,
     });
   }
 

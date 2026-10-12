@@ -473,6 +473,7 @@ export function resolveThreadSidebarMetadata(
 
     hasLiveTailWork: Boolean(
       (thread.backgroundWork?.taskIds.length ?? 0) > 0 ||
+      (thread.backgroundWork?.awaitingReplyTaskIds?.length ?? 0) > 0 ||
       hasLiveTurnTailWork({
         latestTurn: thread.latestTurn,
         messages: thread.messages,

@@ -429,7 +429,7 @@ function normalizeWorkLogActivity(activity: OrchestrationThreadActivity): Derive
     const threadId = nonEmptyTrimmed(source?.threadId);
     const nickname = nonEmptyTrimmed(source?.nickname);
     if (threadId && nickname) entry.replySource = { threadId, nickname };
-    else entry.label = "Subagent reply";
+    else entry.label = "Background task finished";
   }
   if (activity.kind === VISUAL_REPLY_ACTIVITY_KIND) {
     const reply = Schema.decodeUnknownOption(VisualReply)(activity.payload);

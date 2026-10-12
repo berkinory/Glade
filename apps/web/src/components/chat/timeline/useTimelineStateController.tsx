@@ -44,6 +44,7 @@ export function useTimelineStateController(props: MessagesTimelineProps) {
   const {
     isWorking,
     workingLabel: workingLabelProp,
+    backgroundWait,
     activeTurnInProgress,
     worktreeSetup: worktreeSetupProp,
     worktreeSetupPendingAction: worktreeSetupPendingActionProp,
@@ -250,6 +251,7 @@ export function useTimelineStateController(props: MessagesTimelineProps) {
         activeTurnInProgress,
         activeTurnId,
         turnDiffSummaryByAssistantMessageId,
+        backgroundWait,
       }),
     [
       timelineEntries,
@@ -258,6 +260,7 @@ export function useTimelineStateController(props: MessagesTimelineProps) {
       activeTurnInProgress,
       activeTurnId,
       turnDiffSummaryByAssistantMessageId,
+      backgroundWait,
     ],
   );
 

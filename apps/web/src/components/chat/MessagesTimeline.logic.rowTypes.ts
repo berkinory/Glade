@@ -10,6 +10,7 @@ import {
   type ToolCallGroupSummary,
 } from "./toolCallGroup.logic";
 import type { ChatMessage, TurnDiffSummary, WorktreeSetupStep } from "../../types";
+import type { BackgroundWaitItem } from "./BackgroundWaitRow.logic";
 
 export function canSubmitUserMessageEdit(input: { draft: string; disabled: boolean }): boolean {
   return input.draft.trim().length > 0 && !input.disabled;
@@ -197,6 +198,7 @@ export type MessagesTimelineRow =
       segmentIndex: number;
     }
   | { kind: "working"; id: string }
+  | { kind: "background-wait"; id: string; items: readonly BackgroundWaitItem[] }
   | {
       kind: "worktree-setup";
       id: string;

@@ -453,4 +453,100 @@ describe("Claude subagentLifecycle", () => {
       Effect.provide(harness.layer),
     );
   });
+
+  it.effect("attributes a wake only to the task that settled while the agent was idle", () => {
+    const harness = makeHarness();
+    return Effect.gen(function* () {
+      const adapter = yield* ClaudeAdapter;
+      let mainTurnsCompleted = 0;
+      const runtimeEventsFiber = yield* adapter.streamEvents.pipe(
+        Stream.takeUntil(
+          (event) =>
+            event.type === "turn.completed" &&
+            event.providerRefs?.providerThreadId === undefined &&
+            ++mainTurnsCompleted === 2,
+        ),
+        Stream.runCollect,
+        Effect.forkChild,
+      );
+      const session = yield* adapter.startSession({
+        threadId: THREAD_ID,
+        provider: "claudeAgent",
+        runtimeMode: "full-access",
+      });
+      yield* adapter.sendTurn({ threadId: session.threadId, input: "run checks", attachments: [] });
+
+      const system = (subtype: string, fields: Record<string, unknown>) =>
+        harness.query.emit({
+          type: "system",
+          subtype,
+          session_id: "sdk-session-wake",
+          uuid: `${subtype}-${String(fields.task_id)}`,
+          ...fields,
+        } as unknown as SDKMessage);
+      const result = (uuid: string) =>
+        harness.query.emit({
+          type: "result",
+          subtype: "success",
+          is_error: false,
+          errors: [],
+          session_id: "sdk-session-wake",
+          uuid,
+        } as unknown as SDKMessage);
+
+      for (const taskId of ["mid-turn", "background"]) {
+        system("task_started", {
+          task_id: taskId,
+          tool_use_id: `tool-${taskId}`,
+          task_type: "local_bash",
+          description: taskId,
+        });
+      }
+      system("task_notification", {
+        task_id: "mid-turn",
+        tool_use_id: "tool-mid-turn",
+        status: "completed",
+        summary: "Finished while the turn ran.",
+      });
+      result("result-first");
+
+      system("task_updated", { task_id: "background", patch: { status: "completed" } });
+      system("task_notification", {
+        task_id: "background",
+        tool_use_id: "tool-background",
+        status: "completed",
+        summary: "Finished after the turn.",
+      });
+      harness.query.emit({
+        type: "stream_event",
+        session_id: "sdk-session-wake",
+        uuid: "wake-message-start",
+        parent_tool_use_id: null,
+        event: { type: "message_start", message: { id: "wake-message" } },
+      } as unknown as SDKMessage);
+      result("result-wake");
+
+      const mainEvents = Array.from(yield* Fiber.join(runtimeEventsFiber)).filter(
+        (event) => event.providerRefs?.providerThreadId === undefined,
+      );
+      const [firstTurn, wakeTurn] = mainEvents.filter((event) => event.type === "turn.started");
+      assert.ok(firstTurn?.type === "turn.started" && wakeTurn?.type === "turn.started");
+      assert.equal(wakeTurn.payload.backgroundParentTurnId, firstTurn.turnId);
+      assert.equal(wakeTurn.payload.backgroundReplySource, undefined);
+
+      const wakeFlags = mainEvents.flatMap((event) =>
+        (event.type === "task.updated" || event.type === "task.completed") &&
+        (event.payload.status === "completed" || event.type === "task.completed")
+          ? [[String(event.payload.taskId), event.payload.wakesAgent ?? false] as const]
+          : [],
+      );
+      assert.deepEqual(wakeFlags, [
+        ["mid-turn", false],
+        ["background", true],
+      ]);
+    }).pipe(
+      Effect.provideService(Random.Random, makeDeterministicRandomService()),
+      Effect.provide(harness.layer),
+    );
+  });
 });

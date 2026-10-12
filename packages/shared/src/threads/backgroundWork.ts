@@ -4,6 +4,9 @@ import type { OrchestrationThreadActivity } from "@glade/contracts/orchestration
 
 export interface BackgroundWork {
   taskIds: readonly string[];
+  // Finished tasks that woke the agent, until the turn that reads their result starts. Absent from
+  // servers that predate it.
+  awaitingReplyTaskIds?: readonly string[] | undefined;
   failed: boolean;
   settledAt: string | null;
 }
@@ -28,6 +31,7 @@ export function deriveBackgroundWork(input: {
       ownedTurns.add(payload.backgroundParentTurnId);
   }
   const tasks = new Map<string, { background: boolean; terminal: boolean }>();
+  const awaitingReply = new Set<string>();
   let failed = false;
   let settledAt: string | null = null;
   for (const activity of input.activities.toSorted(
@@ -39,6 +43,7 @@ export function deriveBackgroundWork(input: {
     if (activity.kind === "background-work.reset") {
       failed ||= [...tasks.values()].some((task) => task.background && !task.terminal);
       tasks.clear();
+      awaitingReply.clear();
       continue;
     }
     if (!activity.kind.startsWith("task.")) continue;
@@ -62,6 +67,10 @@ export function deriveBackgroundWork(input: {
     const background = payload.isBackgrounded === true || (previous?.background ?? false);
     if (payload.taskType === "plan") continue;
     tasks.set(payload.taskId, { background, terminal });
+    // Only the latest turn waits: the wake turn that reads the result replaces it as the latest.
+    if (terminal && payload.wakesAgent === true && activity.turnId === input.turnId) {
+      awaitingReply.add(payload.taskId);
+    }
     if (terminal && background) {
       // A task the agent or user killed or stopped ended on purpose; only a crash is a failure.
       failed ||= payload.status === "failed";
@@ -73,6 +82,7 @@ export function deriveBackgroundWork(input: {
     taskIds: active
       ? [...tasks].filter(([, value]) => value.background && !value.terminal).map(([id]) => id)
       : [],
+    awaitingReplyTaskIds: active ? [...awaitingReply] : [],
     failed:
       failed || (!active && [...tasks.values()].some((task) => task.background && !task.terminal)),
     settledAt,

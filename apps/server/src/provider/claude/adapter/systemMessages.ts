@@ -101,6 +101,7 @@ export function makeClaudeSystemMessages(input: {
         }
         const isTerminalStatus =
           status === "completed" || status === "failed" || status === "killed";
+        const wakesAgent = isTerminalStatus && !context.turnState;
         if (isTerminalStatus) {
           context.terminalTaskIds.add(message.task_id);
           yield* settlePendingHumanInteractionsForAgent(context, message.task_id);
@@ -138,6 +139,7 @@ export function makeClaudeSystemMessages(input: {
             ...(status !== undefined ? { status } : {}),
             ...(error ? { error } : {}),
             ...(isBackgrounded !== undefined ? { isBackgrounded } : {}),
+            ...(wakesAgent ? { wakesAgent } : {}),
             ...(run ? { toolUseId: run.toolUseId } : {}),
             ...(workflowTaskId ? { workflowTaskId: RuntimeTaskId.makeUnsafe(workflowTaskId) } : {}),
           },
@@ -539,22 +541,26 @@ export function makeClaudeSystemMessages(input: {
           return;
         }
         case "task_notification": {
-          if (context.terminalTaskIds.has(message.task_id)) return;
-          context.terminalTaskIds.add(message.task_id);
           const ownerTurnId = context.taskTurnIds?.get(message.task_id) ?? context.lastTurnId;
           const run = subagentRunForTask(context, message.tool_use_id, message.task_id);
-          if (ownerTurnId) {
+          // Only a notification that arrives while the agent is idle wakes it into a new turn. One
+          // that arrives mid-turn is read by the running turn and must not label a later wake, and
+          // a task already settled by task_updated still caused the wake it is notifying about.
+          const wakesAgent = !context.turnState;
+          if (wakesAgent && ownerTurnId) {
             context.backgroundReplySourceTurnId = ownerTurnId;
-            const providerThreadId = run?.toolUseId ?? message.tool_use_id;
-            if (providerThreadId) {
+            // Shell commands and other tasks have no subagent behind them to name.
+            if (run) {
               context.backgroundReplySource = {
-                providerThreadId,
-                nickname: subagentName(providerThreadId),
+                providerThreadId: run.toolUseId,
+                nickname: subagentName(run.toolUseId),
               };
             } else {
               delete context.backgroundReplySource;
             }
           }
+          if (context.terminalTaskIds.has(message.task_id)) return;
+          context.terminalTaskIds.add(message.task_id);
           yield* settlePendingHumanInteractionsForAgent(context, message.task_id);
           context.knownBackgroundTaskIds.delete(message.task_id);
           const workflowTaskId = context.workflowTaskIdByMemberTaskId.get(message.task_id);
@@ -590,6 +596,7 @@ export function makeClaudeSystemMessages(input: {
               taskId: RuntimeTaskId.makeUnsafe(message.task_id),
               status: message.status,
               ...(summary ? { summary } : {}),
+              ...(wakesAgent ? { wakesAgent } : {}),
               ...(message.usage ? { usage: message.usage } : {}),
               ...(workflowTaskId
                 ? { workflowTaskId: RuntimeTaskId.makeUnsafe(workflowTaskId) }

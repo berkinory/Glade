@@ -111,7 +111,7 @@ export function projectProviderRuntimeActivities(
               kind: "response.started",
               summary: event.payload.backgroundReplySource
                 ? `Reply from ${event.payload.backgroundReplySource.nickname}`
-                : "Subagent reply",
+                : "Background task finished",
               payload: {
                 backgroundParentTurnId: event.payload.backgroundParentTurnId,
                 ...(event.payload.backgroundReplySource
@@ -446,6 +446,7 @@ export function projectProviderRuntimeActivities(
               ? { detail: truncateDetail(event.payload.summary, MAX_ACTIVITY_DATA_STRING_CHARS) }
               : {}),
             ...(event.payload.usage !== undefined ? { usage: event.payload.usage } : {}),
+            ...(event.payload.wakesAgent ? { wakesAgent: true } : {}),
             ...(event.payload.workflowTaskId
               ? { workflowTaskId: event.payload.workflowTaskId }
               : {}),
@@ -480,6 +481,7 @@ export function projectProviderRuntimeActivities(
             ...(event.payload.isBackgrounded !== undefined
               ? { isBackgrounded: event.payload.isBackgrounded }
               : {}),
+            ...(event.payload.wakesAgent ? { wakesAgent: true } : {}),
             ...(event.payload.toolUseId ? { toolUseId: event.payload.toolUseId } : {}),
             ...(event.payload.error
               ? { detail: truncateDetail(event.payload.error, MAX_ACTIVITY_DATA_STRING_CHARS) }

@@ -57,6 +57,7 @@ describe("background completion delivery", () => {
     const activities = [...started, makeActivity({ kind: "background-work.reset", sequence: 7 })];
     expect(deriveBackgroundWork({ activities, turnId, sessionStatus: "ready" })).toEqual({
       taskIds: [],
+      awaitingReplyTaskIds: [],
       failed: true,
       settledAt: null,
     });
@@ -74,6 +75,37 @@ describe("background completion delivery", () => {
         [{ ...settled, activities: [...started, completed("a"), completed("b", "failed")] }],
       ),
     ).toEqual([]);
+  });
+  it("holds the completion until the agent has read a task that woke it", () => {
+    const wakeTurn = TurnId.makeUnsafe("wake");
+    const woke = [
+      ...started,
+      makeActivity({
+        kind: "task.updated",
+        turnId,
+        payload: { taskId: "a", status: "completed", wakesAgent: true },
+        sequence: 5,
+      }),
+      { ...completed("b"), turnId, sequence: 6 },
+    ];
+    const waiting = { ...settled, activities: woke };
+    expect(
+      collectCompletedThreadCandidates([{ ...settled, activities: started }], [waiting]),
+    ).toEqual([]);
+    const replied = {
+      ...settled,
+      latestTurn: { ...settled.latestTurn!, turnId: wakeTurn },
+      activities: [
+        ...woke,
+        makeActivity({
+          kind: "response.started",
+          turnId: wakeTurn,
+          payload: { backgroundParentTurnId: turnId },
+          sequence: 7,
+        }),
+      ],
+    };
+    expect(collectCompletedThreadCandidates([waiting], [replied])).toHaveLength(1);
   });
   it("does not let an earlier turn's unfinished tasks pin a new completion", () => {
     const next = {

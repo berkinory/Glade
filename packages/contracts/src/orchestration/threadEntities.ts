@@ -639,6 +639,9 @@ export const OrchestrationThreadShell = Schema.Struct({
   backgroundWork: Schema.optional(
     Schema.Struct({
       taskIds: Schema.Array(Schema.String),
+      // Finished tasks whose result the agent has been woken to read but has not started on yet.
+      // Servers before this field omit it.
+      awaitingReplyTaskIds: Schema.optional(Schema.Array(Schema.String)),
       failed: Schema.Boolean,
       settledAt: Schema.NullOr(IsoDateTime),
     }),

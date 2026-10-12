@@ -37,6 +37,7 @@ import { startSelectionChat } from "~/lib/selectionChat";
 import { cn } from "~/lib/utils";
 import { findLatestTurnFailure, isSameFailureMessage } from "~/workLog.turnFailures";
 import { ChatComposerSurface } from "./ChatComposerSurface";
+import { deriveBackgroundWait } from "../BackgroundWaitRow.logic";
 import { undoTurnFiles } from "../chatTaskActions";
 import { createChatPresentation } from "./chatPresentation";
 import { MAX_DISMISSED_PROVIDER_HEALTH_BANNERS } from "./chatViewSupport";
@@ -496,6 +497,7 @@ export function ChatControllerSurface({ controller }: { controller: ChatControll
                     activeTurnId={activeTurnIdForTranscript}
                     hasMessages={timelineEntries.length > 0}
                     isWorking={isWorking}
+                    backgroundWait={deriveBackgroundWait(activeThread)}
                     workingLabel={resolveWorkingLabel({
                       isSendBusy,
                       dispatchDeliveryState,

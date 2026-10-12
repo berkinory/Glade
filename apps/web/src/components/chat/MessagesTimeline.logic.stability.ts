@@ -243,6 +243,9 @@ function isRowUnchanged(a: MessagesTimelineRow, b: MessagesTimelineRow): boolean
     case "working":
       return true;
 
+    case "background-wait":
+      return deepEqualJson(a.items, (b as typeof a).items);
+
     case "worktree-setup": {
       const bw = b as typeof a;
       return (

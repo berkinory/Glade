@@ -24,6 +24,7 @@ import { HelpCircleIcon } from "~/lib/icons";
 import { cn } from "~/lib/utils";
 import { MUTED_LABEL_TEXT_CLASS_NAME } from "~/surfaceStyles";
 import { type WorkLogEntry } from "~/workLog.types";
+import { BackgroundWaitRow } from "../BackgroundWaitRow";
 import { renderTimelineAssistantMessage } from "./TimelineAssistantMessage";
 import { TurnFailureNotice } from "./TurnFailureNotice";
 import { TRAIL_VIEWABILITY_CONFIG, WorktreeSetupCard } from "./timelineSupport";
@@ -93,6 +94,7 @@ export function TimelineControllerSurface({ controller }: { controller: Timeline
         CHAT_COLUMN_FRAME_CLASS_NAME,
         "px-1 transition-colors duration-100",
         row.kind === "working" ||
+          row.kind === "background-wait" ||
           (row.kind === "message" &&
             row.message.role === "assistant" &&
             row.assistantTurnInProgress)
@@ -249,6 +251,8 @@ export function TimelineControllerSurface({ controller }: { controller: Timeline
           {workingLabel}
         </div>
       )}
+
+      {row.kind === "background-wait" && <BackgroundWaitRow items={row.items} />}
 
       {row.kind === "worktree-setup" && (
         <DisclosureRegion open={row.open}>

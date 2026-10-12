@@ -14,7 +14,7 @@ const Rows = Schema.Array(
 export function readBackgroundActivities(sql: SqlClient, threadIds?: readonly ThreadId[]) {
   return sql<{ threadId: string; activity: string }>`
     SELECT a.thread_id AS "threadId", json_object('id', a.activity_id, 'kind', a.kind,
-      'turnId', a.turn_id, 'payload', json_object('taskId', json_extract(a.payload_json, '$.taskId'), 'taskType', json_extract(a.payload_json, '$.taskType'), 'status', json_extract(a.payload_json, '$.status'), 'isBackgrounded', json(CASE json_extract(a.payload_json, '$.isBackgrounded') WHEN 1 THEN 'true' WHEN 0 THEN 'false' ELSE 'null' END)), 'createdAt', a.created_at,
+      'turnId', a.turn_id, 'payload', json_object('taskId', json_extract(a.payload_json, '$.taskId'), 'taskType', json_extract(a.payload_json, '$.taskType'), 'status', json_extract(a.payload_json, '$.status'), 'isBackgrounded', json(CASE json_extract(a.payload_json, '$.isBackgrounded') WHEN 1 THEN 'true' WHEN 0 THEN 'false' ELSE 'null' END), 'wakesAgent', json(CASE json_extract(a.payload_json, '$.wakesAgent') WHEN 1 THEN 'true' ELSE 'null' END)), 'createdAt', a.created_at,
       'tone', a.tone, 'summary', a.summary, 'sequence', a.sequence) AS activity
     FROM projection_thread_activities a
     WHERE ${threadIds ? sql.in("a.thread_id", threadIds) : sql`1 = 1`}

@@ -500,7 +500,12 @@ function isCompletionNotificationSettled(thread: Thread | undefined): boolean {
       turnId: thread.latestTurn.turnId,
       sessionStatus: thread.session?.status,
     });
-  if (background.taskIds.length > 0 || background.failed) return false;
+  if (
+    background.taskIds.length > 0 ||
+    (background.awaitingReplyTaskIds?.length ?? 0) > 0 ||
+    background.failed
+  )
+    return false;
   if (!thread.session) return true;
   return thread.session.orchestrationStatus !== "running";
 }

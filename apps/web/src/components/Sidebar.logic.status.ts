@@ -104,7 +104,8 @@ export function resolveThreadStatusPill(input: {
   }
 
   if (
-    (thread.backgroundWork?.taskIds.length ?? 0) > 0 &&
+    ((thread.backgroundWork?.taskIds.length ?? 0) > 0 ||
+      (thread.backgroundWork?.awaitingReplyTaskIds?.length ?? 0) > 0) &&
     thread.latestTurn?.completedAt &&
     canAnswerPendingRequests
   ) {

@@ -43,6 +43,7 @@ interface ChatTranscriptPaneProps {
   isRevertingCheckpoint: boolean;
   isWorking: boolean;
   workingLabel?: ComponentProps<typeof MessagesTimeline>["workingLabel"];
+  backgroundWait?: ComponentProps<typeof MessagesTimeline>["backgroundWait"];
   followLiveOutput: boolean;
   listRef: RefObject<LegendListRef | null>;
   timelineControllerRef?: RefObject<MessagesTimelineController | null>;
@@ -110,6 +111,7 @@ export function ChatTranscriptPane({
   isRevertingCheckpoint,
   isWorking,
   workingLabel,
+  backgroundWait,
   followLiveOutput,
   listRef,
   timelineControllerRef,
@@ -209,6 +211,7 @@ export function ChatTranscriptPane({
                   workingLabel,
                 }
               : {})}
+            backgroundWait={backgroundWait}
             worktreeSetup={worktreeSetup}
             worktreeSetupPendingAction={worktreeSetupPendingAction ?? null}
             {...(onResolveWorktreeSetup

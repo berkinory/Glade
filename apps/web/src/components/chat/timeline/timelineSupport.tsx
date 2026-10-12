@@ -34,6 +34,7 @@ import {
   type WorktreeSetupStep,
 } from "~/types";
 import { deriveTimelineEntries } from "~/workLog.timeline";
+import type { BackgroundWaitItem } from "../BackgroundWaitRow.logic";
 import { UI_MOTION_LONG_MS } from "~/lib/uiMotion";
 export const EMPTY_EDITOR_KEYBINDINGS: ResolvedKeybindingsConfig = [];
 export const EMPTY_AVAILABLE_EDITORS: ReadonlyArray<EditorId> = [];
@@ -230,6 +231,7 @@ export interface MessagesTimelineProps {
   hasMessages: boolean;
   isWorking: boolean;
   workingLabel?: WorkingLabel | undefined;
+  backgroundWait?: readonly BackgroundWaitItem[] | undefined;
   activeTurnInProgress: boolean;
   worktreeSetup?: WorktreeSetupSnapshot | null;
   worktreeSetupPendingAction?: WorktreeSetupResolutionAction | null;

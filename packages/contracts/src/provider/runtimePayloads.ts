@@ -362,6 +362,8 @@ export const TaskUpdatedPayload = Schema.Struct({
   error: Schema.optional(TrimmedNonEmptyStringSchema),
 
   isBackgrounded: Schema.optional(Schema.Boolean),
+  // The task settled while the agent was idle, so the provider wakes the agent to read its result.
+  wakesAgent: Schema.optional(Schema.Boolean),
   toolUseId: Schema.optional(TrimmedNonEmptyStringSchema),
   workflowTaskId: Schema.optional(RuntimeTaskId),
 
@@ -375,6 +377,8 @@ export const TaskCompletedPayload = Schema.Struct({
   taskId: RuntimeTaskId,
   status: Schema.Literals(["completed", "failed", "stopped"]),
   summary: Schema.optional(TrimmedNonEmptyStringSchema),
+  // See TaskUpdatedPayload.wakesAgent.
+  wakesAgent: Schema.optional(Schema.Boolean),
   usage: Schema.optional(Schema.Unknown),
   workflowTaskId: Schema.optional(RuntimeTaskId),
   workflowAgents: Schema.optional(Schema.Array(WorkflowAgentSnapshot)),

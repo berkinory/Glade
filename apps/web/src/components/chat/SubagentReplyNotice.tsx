@@ -4,7 +4,7 @@ import { useNavigate } from "@tanstack/react-router";
 import type { WorkLogEntry } from "~/workLog.types";
 import { useStore } from "~/store";
 import { resolveSubagentPresentation } from "~/lib/subagentPresentation";
-import { BotIcon } from "~/lib/icons";
+import { ComputerTerminal01Icon } from "~/lib/icons";
 import { SubagentAvatar } from "./SubagentAvatar";
 import {
   WORK_ROW_GAP_CLASS_NAME,
@@ -30,10 +30,10 @@ export function SubagentReplyNotice({ entry }: { entry: WorkLogEntry }) {
         {source ? (
           <SubagentAvatar threadId={source.threadId} className="size-4" />
         ) : (
-          <BotIcon className={WORK_ROW_ICON_CLASS_NAME} />
+          <ComputerTerminal01Icon className={WORK_ROW_ICON_CLASS_NAME} />
         )}
       </span>
-      <span className="truncate">{name ? `Reply from ${name}` : "Subagent reply"}</span>
+      <span className="truncate">{name ? `Reply from ${name}` : "Background task finished"}</span>
     </>
   );
   const className = cn(
