@@ -9,6 +9,10 @@
 - Everything that opens and closes in the chat uses the same motion, including tool details, subagent cards, pasted text, error details and long messages.
 - Icons of tool calls, tool groups, subagent cards and notices in the chat line up in one column.
 
+### Fixed
+
+- Claude subagents no longer add a "Moved to background" row each; their card marks the ones running in the background.
+
 ### Removed
 
 - The confirmation dialog and context preparation step when switching providers.

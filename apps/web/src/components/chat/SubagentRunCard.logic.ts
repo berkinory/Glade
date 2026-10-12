@@ -17,6 +17,8 @@ interface SubagentTaskRun {
   startedAt: string;
   usage?: WorkLogSubagentUsage;
   settledAt?: string;
+  // Providers may move a subagent to the background after launch, or launch it there by default.
+  backgrounded?: boolean;
 }
 
 export interface SubagentTaskReports {
@@ -73,6 +75,7 @@ export function deriveSubagentTaskReports(
     if (!run) continue;
     const usage = readUsage(payload?.usage);
     if (usage) run.usage = usage;
+    if (typeof payload?.isBackgrounded === "boolean") run.backgrounded = payload.isBackgrounded;
     if (activity.kind === "task.progress") {
       progressActivityIds.add(activity.id);
     } else if (
@@ -207,6 +210,7 @@ function toRunEntry(run: RunDraft, reports: SubagentTaskReports): WorkLogEntry {
     const settledAt = member.settledAt ?? taskRun?.settledAt;
     return {
       ...member,
+      ...(taskRun?.backgrounded ? { subagent: { ...member.subagent, background: true } } : {}),
       ...(settledAt ? { settledAt } : {}),
       ...(taskRun?.usage ? { usage: taskRun.usage } : {}),
     };
