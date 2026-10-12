@@ -1,6 +1,9 @@
 import { useEffect, useState, useCallback, useSyncExternalStore } from "react";
 import type { ThreadId } from "@glade/contracts/core/baseSchemas";
-import { isNormalizedWindowsAbsolutePath } from "@glade/shared/platform/path";
+import {
+  isNormalizedWindowsAbsolutePath,
+  isWorkspaceRelativePathSafe,
+} from "@glade/shared/platform/path";
 import { useQueryClient } from "@tanstack/react-query";
 import { directoryChain, useExplorerRevealRequestStore } from "~/explorerRevealRequestStore";
 import type { ChatFileReference } from "~/lib/chatReferences";
@@ -12,6 +15,11 @@ import {
 } from "~/lib/workspaceEditorSession";
 import { projectListDirectoriesQueryOptions } from "~/lib/projectReactQuery";
 import { WorkspaceExplorerSidebar } from "./workspaceExplorer";
+
+function parentDirectoryChain(filePath: string): string[] {
+  return directoryChain(filePath.includes("/") ? filePath.slice(0, filePath.lastIndexOf("/")) : "");
+}
+
 export const DockExplorerPane = function DockExplorerPane(props: {
   threadId: ThreadId;
   workspaceRoot: string | null;
@@ -33,8 +41,14 @@ export const DockExplorerPane = function DockExplorerPane(props: {
   const dirtyPaths = props.workspaceRoot
     ? dirtyWorkspaceEditorPaths(queryClient, props.workspaceRoot)
     : new Set<string>();
+  // The pane remounts per chat, so it reopens with the active file's folders expanded.
   const [expandedDirectories, setExpandedDirectories] = useState<ReadonlySet<string>>(
-    () => new Set<string>(),
+    () =>
+      new Set(
+        fileTabs.activeFilePath && isWorkspaceRelativePathSafe(fileTabs.activeFilePath)
+          ? parentDirectoryChain(fileTabs.activeFilePath)
+          : [],
+      ),
   );
   const [codeQuery, setCodeQuery] = useState("");
   const revealRequest = useExplorerRevealRequestStore(
@@ -91,8 +105,7 @@ export const DockExplorerPane = function DockExplorerPane(props: {
       preview: options?.preview === true && !dirtyPaths.has(path),
       ...(options?.position ? { position: options.position } : {}),
     });
-    const parent = path.includes("/") ? path.slice(0, path.lastIndexOf("/")) : "";
-    setExpandedDirectories((current) => new Set([...current, ...directoryChain(parent)]));
+    setExpandedDirectories((current) => new Set([...current, ...parentDirectoryChain(path)]));
   };
   const handleToggleDirectory = (path: string) => {
     setExpandedDirectories((current) => {
