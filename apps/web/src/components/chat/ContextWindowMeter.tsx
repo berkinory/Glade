@@ -137,10 +137,11 @@ export function ContextWindowMeter(props: {
               >
                 {props.compactAction.isSubmitting ? "Starting compaction..." : "Compact now"}
               </Button>
-              <p className="text-ui leading-relaxed text-muted-foreground">
-                {props.compactAction.disabledReason ??
-                  "Compaction processes this conversation and consumes usage. Later turns use its summary."}
-              </p>
+              {props.compactAction.disabledReason ? (
+                <p className="text-ui leading-relaxed text-muted-foreground">
+                  {props.compactAction.disabledReason}
+                </p>
+              ) : null}
             </div>
           ) : null}
         </div>
