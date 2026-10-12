@@ -1,6 +1,7 @@
 import { useState } from "react";
 import type { CommandId } from "@glade/contracts/core/baseSchemas";
 import { useStore } from "~/store";
+import { useComposerDraftStore } from "~/composerDraftStore";
 import { readNativeApi } from "~/nativeApi";
 import { newCommandId } from "~/lib/utils";
 import { useChatThreadContext } from "./ChatThreadContext";
@@ -19,6 +20,7 @@ export function ProviderTransitionActions({ operationId }: { operationId: Comman
   const cancel = async () => {
     const api = readNativeApi();
     if (!api) return;
+    const restoredSelection = handoff.stage === "pending" ? handoff.sourceModelSelection : null;
     setBusy(true);
     try {
       await api.orchestration.dispatchCommand({
@@ -28,6 +30,9 @@ export function ProviderTransitionActions({ operationId }: { operationId: Comman
         operationId,
         createdAt: new Date().toISOString(),
       });
+      // The picker records the chosen provider in the composer draft; switching back undoes it.
+      if (restoredSelection)
+        useComposerDraftStore.getState().setModelSelectionAndSticky(threadId, restoredSelection);
     } catch (cause) {
       toastManager.add({
         type: "error",
