@@ -1,10 +1,11 @@
 import { Option, Schema } from "effect";
-import type { MessageId, ThreadId } from "@glade/contracts/core/baseSchemas";
+import { MessageId, type ThreadId } from "@glade/contracts/core/baseSchemas";
 import type {
   ChatAttachment,
   OrchestrationMessage,
   OrchestrationThread,
   OrchestrationThreadActivity,
+  PinnedMessage,
 } from "@glade/contracts/orchestration/threadEntities";
 import {
   VisualReply,
@@ -23,10 +24,12 @@ interface ForkVisualReply {
 export interface ForkImport {
   readonly messages: ReadonlyArray<OrchestrationMessage>;
   readonly visualReplies: ReadonlyArray<ForkVisualReply>;
+  readonly pins: ReadonlyArray<PinnedMessage>;
 }
 
 // Visual replies are part of the assistant's answer, so a fork carries those published up to the
-// fork message. The rest of the work log stays with the source.
+// fork message, along with pins on the messages it imports. The rest of the work log stays with the
+// source.
 export function selectForkImport(
   source: OrchestrationThread,
   forkMessageId: MessageId,
@@ -47,7 +50,13 @@ export function selectForkImport(
     const reply = Schema.decodeUnknownOption(VisualReply)(activity.payload);
     return Option.isSome(reply) ? [{ activity, reply: reply.value }] : [];
   });
-  return { messages, visualReplies };
+  const messageIds = new Set(messages.map((message) => message.id));
+  const pins = (source.pinnedMessages ?? []).filter((pin) => messageIds.has(pin.messageId));
+  return { messages, visualReplies, pins };
+}
+
+export function forkMessageId(forkThreadId: ThreadId, sourceMessageId: MessageId): MessageId {
+  return MessageId.makeUnsafe(`${forkThreadId}:${sourceMessageId}`);
 }
 
 export function forkAttachmentId(forkThreadId: ThreadId, sourceAttachmentId: string): string {

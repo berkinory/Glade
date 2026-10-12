@@ -35,7 +35,7 @@
 - A Claude Monitor update that arrives while the agent is working stays inside that turn instead of splitting it in two.
 - Stopping a background task, such as a dev server the agent started, no longer marks the chat as failed in the sidebar, and a real background failure clears once you open the chat.
 - The model picker of a new chat lists Claude models instead of showing a launch error before the chat's folder exists.
-- Forked chats keep their visual replies and their full history, and their attachments no longer break when the original chat is deleted or rewound.
+- Forked chats keep their visual replies, pinned messages and full history, and their attachments no longer break when the original chat is deleted or rewound.
 - Reverting changes in a forked chat no longer removes the conversation it was forked with.
 
 ### Removed

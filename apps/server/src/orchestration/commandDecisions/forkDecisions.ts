@@ -1,5 +1,5 @@
 import { Effect } from "effect";
-import { EventId, MessageId } from "@glade/contracts/core/baseSchemas";
+import { EventId } from "@glade/contracts/core/baseSchemas";
 import type { OrchestrationCommand } from "@glade/contracts/orchestration/commands";
 import type { OrchestrationEvent } from "@glade/contracts/orchestration/events";
 import {
@@ -9,7 +9,12 @@ import {
   requireThreadAbsent,
 } from "../commandInvariants.ts";
 import { OrchestrationCommandInvariantError } from "../Errors.ts";
-import { forkMessageAttachment, forkVisualReplyPayload, selectForkImport } from "../forkImport.ts";
+import {
+  forkMessageAttachment,
+  forkMessageId,
+  forkVisualReplyPayload,
+  selectForkImport,
+} from "../forkImport.ts";
 import { buildForkThreadTitle } from "../forkThreadTitle.ts";
 import { type CommandDecisionInput, withEventBase } from "./commandEvents";
 import {
@@ -126,7 +131,7 @@ export const decideForkCreate = Effect.fnUntraced(function* ({
       type: "thread.message-sent",
       payload: {
         threadId: command.threadId,
-        messageId: MessageId.makeUnsafe(`${command.threadId}:${message.id}`),
+        messageId: forkMessageId(command.threadId, message.id),
         ...(message.providerMessageId ? { providerMessageId: message.providerMessageId } : {}),
         role: message.role,
         ...(message.modelSelection ? { modelSelection: message.modelSelection } : {}),
@@ -166,5 +171,22 @@ export const decideForkCreate = Effect.fnUntraced(function* ({
     }),
   );
 
-  return [createdEvent, ...importedMessageEvents, ...importedVisualReplyEvents];
+  const importedPinEvents = forkImport.pins.map(
+    (pin): Omit<OrchestrationEvent, "sequence"> => ({
+      ...base(),
+      type: "thread.pinned-message-added",
+      payload: {
+        threadId: command.threadId,
+        pin: { ...pin, messageId: forkMessageId(command.threadId, pin.messageId) },
+        updatedAt: command.createdAt,
+      },
+    }),
+  );
+
+  return [
+    createdEvent,
+    ...importedMessageEvents,
+    ...importedVisualReplyEvents,
+    ...importedPinEvents,
+  ];
 });
