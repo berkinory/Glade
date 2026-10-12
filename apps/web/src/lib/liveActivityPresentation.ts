@@ -139,7 +139,8 @@ export function formatLiveActivityMeta(
 
   const parts: string[] = [];
   const elapsed = formatLiveActivityElapsed(activity, nowMs);
-  if (!isLiveActivityInProgress(activity)) {
+  // A failed row already shows a red icon; the word would only repeat it.
+  if (!isLiveActivityInProgress(activity) && activity.state !== "failed") {
     parts.push(formatLiveActivityStateLabel(activity.state));
   }
 
