@@ -46,6 +46,12 @@ export function useChatTranscriptScroll({
     top: number;
   } | null>(null);
   const pendingInteractionAnchorFrameRef = useRef<number | null>(null);
+  const pendingFollowCorrectionTimerRef = useRef<number | null>(null);
+  const cancelPendingFollowCorrection = useCallback(() => {
+    if (pendingFollowCorrectionTimerRef.current === null) return;
+    window.clearTimeout(pendingFollowCorrectionTimerRef.current);
+    pendingFollowCorrectionTimerRef.current = null;
+  }, []);
   const showScrollDebouncer = useRef(
     new Debouncer(() => setShowScrollToBottom(true), { wait: 150 }),
   );
@@ -54,12 +60,13 @@ export function useChatTranscriptScroll({
     const scrollDebouncer = showScrollDebouncer.current;
     return () => {
       scrollDebouncer.cancel();
+      cancelPendingFollowCorrection();
       const pendingFrame = pendingInteractionAnchorFrameRef.current;
       if (pendingFrame !== null) {
         window.cancelAnimationFrame(pendingFrame);
       }
     };
-  }, []);
+  }, [cancelPendingFollowCorrection]);
 
   const tailAnchorScrollInFlightRef = useRef(false);
 
@@ -104,6 +111,7 @@ export function useChatTranscriptScroll({
   const armTranscriptAutoFollow = useCallback(
     (targetThreadId: ThreadId, animated = false) => {
       cancelPendingScrollGesture();
+      cancelPendingFollowCorrection();
       autoFollowThreadIdRef.current = targetThreadId;
       animateNextAutoFollowScrollRef.current = animated;
       isAtEndRef.current = true;
@@ -111,11 +119,12 @@ export function useChatTranscriptScroll({
       showScrollDebouncer.current.cancel();
       setShowScrollToBottom(false);
     },
-    [cancelPendingScrollGesture, setTranscriptScrollDetached],
+    [cancelPendingScrollGesture, cancelPendingFollowCorrection, setTranscriptScrollDetached],
   );
   const clearTranscriptAutoFollow = useCallback(
     (synchronous = false) => {
       cancelPendingScrollGesture();
+      cancelPendingFollowCorrection();
       const scrollTarget = settledScrollInFlightRef.current ? legendListRef.current : null;
       autoFollowThreadIdRef.current = null;
       animateNextAutoFollowScrollRef.current = false;
@@ -137,7 +146,12 @@ export function useChatTranscriptScroll({
         void stopTranscriptScrollAtCurrentOffset(scrollTarget);
       }
     },
-    [legendListRef, cancelPendingScrollGesture, setTranscriptScrollDetached],
+    [
+      legendListRef,
+      cancelPendingScrollGesture,
+      cancelPendingFollowCorrection,
+      setTranscriptScrollDetached,
+    ],
   );
   const onTranscriptNavigate = useCallback(() => {
     clearTranscriptAutoFollow();
@@ -178,21 +192,36 @@ export function useChatTranscriptScroll({
           !isScrollContainerNearBottom(container, 1) &&
           !tailAnchorScrollInFlightRef.current &&
           !settledScrollInFlightRef.current &&
-          performance.now() >= programmaticScrollUntilRef.current
+          pendingFollowCorrectionTimerRef.current === null
         ) {
+          // This may be the only notification for a growing streamed row, so a correction that lands inside
+          // the programmatic-scroll guard waits for the guard instead of being dropped.
           const request = settledScrollRequestRef.current;
-          programmaticScrollUntilRef.current = performance.now() + 200;
-          window.requestAnimationFrame(() => {
+          const correctAtEnd = () => {
+            pendingFollowCorrectionTimerRef.current = null;
             if (
-              request === settledScrollRequestRef.current &&
-              !isUserScrollDetachedRef.current &&
-              !tailAnchorScrollInFlightRef.current &&
-              !settledScrollInFlightRef.current &&
-              legendListRef.current?.getScrollableNode() === container &&
-              !isScrollContainerNearBottom(container, 1)
+              request !== settledScrollRequestRef.current ||
+              isUserScrollDetachedRef.current ||
+              tailAnchorScrollInFlightRef.current ||
+              settledScrollInFlightRef.current ||
+              legendListRef.current?.getScrollableNode() !== container ||
+              isScrollContainerNearBottom(container, 1)
             )
-              scrollToEnd();
-          });
+              return;
+            const remainingGuardMs = programmaticScrollUntilRef.current - performance.now();
+            if (remainingGuardMs > 0) {
+              pendingFollowCorrectionTimerRef.current = window.setTimeout(
+                correctAtEnd,
+                remainingGuardMs,
+              );
+              return;
+            }
+            scrollToEnd();
+          };
+          pendingFollowCorrectionTimerRef.current = window.setTimeout(
+            correctAtEnd,
+            Math.max(0, programmaticScrollUntilRef.current - performance.now()),
+          );
         }
         return;
       }
@@ -282,6 +311,15 @@ export function useChatTranscriptScroll({
   const onMessagesTouchStartBase = useCallback(() => {
     clearTranscriptAutoFollow(true);
   }, [clearTranscriptAutoFollow]);
+  // Layout can move a following transcript off its end without a gesture. A gesture that starts more than a
+  // viewport above the end is reading, so it must not snap back to the end.
+  const isFollowingFromViewport = useCallback(
+    (container: HTMLElement) =>
+      isAtEndRef.current &&
+      !isUserScrollDetachedRef.current &&
+      isScrollContainerNearBottom(container, container.clientHeight),
+    [],
+  );
   const onMessagesScrollGesture = useCallback(
     (upward: boolean) => {
       const container = legendListRef.current?.getScrollableNode();
@@ -295,8 +333,7 @@ export function useChatTranscriptScroll({
               container,
               scrollTop: container.scrollTop,
               wasFollowing:
-                isAtEndRef.current &&
-                !isUserScrollDetachedRef.current &&
+                isFollowingFromViewport(container) &&
                 (!upward || isScrollContainerNearBottom(container, 1)),
             };
       clearTranscriptAutoFollow(true);
@@ -321,6 +358,7 @@ export function useChatTranscriptScroll({
     [
       legendListRef,
       clearTranscriptAutoFollow,
+      isFollowingFromViewport,
       onIsAtEndChange,
       releaseTranscriptScrollGesture,
       scrollToEnd,
@@ -365,7 +403,7 @@ export function useChatTranscriptScroll({
             : {
                 container,
                 scrollTop: container.scrollTop,
-                wasFollowing: isAtEndRef.current && !isUserScrollDetachedRef.current,
+                wasFollowing: isFollowingFromViewport(container),
                 keyboard: true,
               };
         clearTranscriptAutoFollow(true);
@@ -413,6 +451,7 @@ export function useChatTranscriptScroll({
   }, [
     legendListRef,
     clearTranscriptAutoFollow,
+    isFollowingFromViewport,
     onIsAtEndChange,
     onMessagesScrollGesture,
     releaseTranscriptScrollGesture,
@@ -421,6 +460,7 @@ export function useChatTranscriptScroll({
   ]);
 
   useLayoutEffect(() => {
+    cancelPendingFollowCorrection();
     isAtEndRef.current = true;
     settledScrollRequestRef.current += 1;
     settledScrollInFlightRef.current = false;
@@ -429,7 +469,7 @@ export function useChatTranscriptScroll({
     showScrollDebouncer.current.cancel();
     const settle = window.setTimeout(() => setShowScrollToBottom(false), 0);
     return () => window.clearTimeout(settle);
-  }, [activeThreadId, setTranscriptScrollDetached]);
+  }, [activeThreadId, cancelPendingFollowCorrection, setTranscriptScrollDetached]);
   useLayoutEffect(() => {
     const shouldFollowPendingTurn =
       activeThreadId !== null && autoFollowThreadIdRef.current === activeThreadId;
@@ -505,6 +545,7 @@ export function useChatTranscriptScroll({
 
   const onScrollToBottom = useCallback(() => {
     cancelPendingScrollGesture();
+    cancelPendingFollowCorrection();
     tailAnchorScrollInFlightRef.current = false;
     setTranscriptScrollDetached(false);
     isAtEndRef.current = true;
@@ -544,7 +585,12 @@ export function useChatTranscriptScroll({
           settledScrollInFlightRef.current = false;
         }
       });
-  }, [legendListRef, cancelPendingScrollGesture, setTranscriptScrollDetached]);
+  }, [
+    legendListRef,
+    cancelPendingScrollGesture,
+    cancelPendingFollowCorrection,
+    setTranscriptScrollDetached,
+  ]);
 
   const previousThreadIdRef = useRef(activeThreadId);
   const pendingStreamingThreadRef = useRef<ThreadId | null>(null);
