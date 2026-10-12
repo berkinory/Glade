@@ -3,6 +3,12 @@ import { MessageId } from "@glade/contracts/core/baseSchemas";
 import type { ChatMessage, Thread } from "~/types";
 import { extractCollabSubagents } from "~/workLog.extraction";
 
+const INITIAL_PROMPT_ID_PREFIX = "subagent-prompt:";
+
+export function isSubagentInitialPromptId(id: string): boolean {
+  return id.startsWith(INITIAL_PROMPT_ID_PREFIX);
+}
+
 export function subagentInitialPrompt(
   child: Thread | undefined,
   parent: Thread | undefined,
@@ -23,7 +29,7 @@ export function subagentInitialPrompt(
     const text = asObjectRecord(nativePrompt.payload)?.text;
     if (typeof text === "string" && text.trim()) {
       return {
-        id: MessageId.makeUnsafe(`subagent-prompt:${child.id}`),
+        id: MessageId.makeUnsafe(`${INITIAL_PROMPT_ID_PREFIX}${child.id}`),
         role: "user",
         text,
         streaming: false,
@@ -46,7 +52,7 @@ export function subagentInitialPrompt(
     // The launch prompt already belongs to durable parent activity. Derive its display here;
     // never dispatch a user turn or copy it into another store to populate a read-only child.
     return {
-      id: MessageId.makeUnsafe(`subagent-prompt:${child.id}`),
+      id: MessageId.makeUnsafe(`${INITIAL_PROMPT_ID_PREFIX}${child.id}`),
       role: "user",
       text: agent.prompt,
       streaming: false,

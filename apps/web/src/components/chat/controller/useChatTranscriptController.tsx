@@ -13,6 +13,7 @@ import {
   shouldEnableComposerPastedTextCollapse,
 } from "../../ChatView.logic.session";
 import { resolveThreadDetailHydration } from "../../ChatView.logic.worktree";
+import { isSubagentInitialPromptId } from "../subagentTranscript";
 import { buildTurnDiffSummaryByAssistantMessageId } from "../MessagesTimeline.logic.rowTypes";
 import { ThreadDetailHydrationState } from "~/components/chat/ThreadDetailHydrationState";
 import { usePinnedMessageActions } from "~/components/chat/environment/usePinnedMessageActions";
@@ -176,10 +177,19 @@ export function useChatTranscriptController({
     return derivePromptHistoryFromMessages([...activeMessages, ...pendingOptimisticMessages]);
   })();
 
-  const timelineEntries = deriveTimelineEntries(
+  const allTimelineEntries = deriveTimelineEntries(
     timelineMessages,
     agentActivityTimelineState.timelineWorkEntries,
   );
+  // A subagent's launch prompt is derived from its parent and exists before the subagent's own
+  // history loads. It must not stand in for that history, or the chat opens on the prompt alone and
+  // its messages pop in afterwards.
+  const threadDetailHydration = resolveThreadDetailHydration({
+    isServerThread,
+    hasTimelineEntries: allTimelineEntries.some((entry) => !isSubagentInitialPromptId(entry.id)),
+    detailSyncState: threadDetailSyncState,
+  });
+  const timelineEntries = threadDetailHydration === "ready" ? allTimelineEntries : [];
 
   const enteringUserMessageIds: ReadonlySet<MessageId> = new Set(
     optimisticUserMessages.map((message) => message.id),
@@ -215,12 +225,6 @@ export function useChatTranscriptController({
   const handleJumpToPinnedMessage = (messageId: MessageId) => {
     timelineControllerRef.current?.scrollToMessage(messageId);
   };
-
-  const threadDetailHydration = resolveThreadDetailHydration({
-    isServerThread,
-    hasTimelineEntries: timelineEntries.length > 0,
-    detailSyncState: threadDetailSyncState,
-  });
 
   // Turn/session updates can arrive before the first transcript row. An empty synced snapshot during
   // startup must not restore the unstarted landing. Terminal turns can lack start timestamps after

@@ -26,6 +26,7 @@
 
 ### Fixed
 
+- Opening a subagent's chat shows the loading state and then its whole conversation with its prompt, instead of the prompt alone with messages and code colours popping in afterwards.
 - Reading an image no longer shows an expand arrow that opens nothing.
 - Images in replies show on their own line at a readable size instead of as small thumbnails next to the text.
 - The chat stays scrolled to the end while a turn runs tools, opens tool groups or asks for approval, until you scroll away.
