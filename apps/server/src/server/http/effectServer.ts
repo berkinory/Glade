@@ -174,9 +174,9 @@ export const createEffectServer = Effect.fn(function* (
   const remoteAccess = yield* RemoteAccess;
   const readiness = yield* makeServerReadiness;
 
-  yield* keybindings.syncDefaultKeybindingsOnStartup.pipe(
+  yield* keybindings.start.pipe(
     Effect.catch((error) =>
-      Effect.logWarning("failed to sync keybindings defaults on startup", {
+      Effect.logWarning("failed to start keybindings config watcher", {
         path: error.configPath,
         detail: error.detail,
         cause: error.cause,

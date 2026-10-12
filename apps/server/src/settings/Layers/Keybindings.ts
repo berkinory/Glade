@@ -4,7 +4,6 @@ import {
   Path,
   PubSub,
   Ref,
-  Deferred,
   Scope,
   Exit,
   Schema,
@@ -65,7 +64,6 @@ const makeKeybindings = Effect.gen(function* () {
   const resolvedConfigCacheKey = "resolved" as const;
   const changesPubSub = yield* PubSub.unbounded<KeybindingsChangeEvent>();
   const startedRef = yield* Ref.make(false);
-  const startedDeferred = yield* Deferred.make<void, KeybindingsConfigError>();
   const watcherScope = yield* Scope.make("sequential");
   yield* Effect.addFinalizer(() => Scope.close(watcherScope, Exit.void));
   const emitChange = (configState: KeybindingsConfigState) =>
@@ -440,27 +438,21 @@ const makeKeybindings = Effect.gen(function* () {
     }).pipe(Effect.ignoreCause({ log: true }), Effect.forkIn(watcherScope), Effect.asVoid);
   });
 
+  // The watcher starts after the defaults sync, and a failed sync is only logged, so neither step
+  // can keep the other from running.
   const start = Effect.gen(function* () {
-    const alreadyStarted = yield* Ref.get(startedRef);
-    if (alreadyStarted) {
-      return yield* Deferred.await(startedDeferred);
-    }
-
-    yield* Ref.set(startedRef, true);
-    const startup = Effect.gen(function* () {
-      yield* startWatcher;
-      yield* syncDefaultKeybindingsOnStartup;
-      yield* Cache.invalidate(resolvedConfigCache, resolvedConfigCacheKey);
-      yield* loadConfigStateFromCacheOrDisk;
-    });
-
-    const startupExit = yield* Effect.exit(startup);
-    if (startupExit._tag === "Failure") {
-      yield* Deferred.failCause(startedDeferred, startupExit.cause).pipe(Effect.orDie);
-      return yield* Effect.failCause(startupExit.cause);
-    }
-
-    yield* Deferred.succeed(startedDeferred, undefined).pipe(Effect.orDie);
+    const alreadyStarted = yield* Ref.getAndSet(startedRef, true);
+    if (alreadyStarted) return;
+    yield* syncDefaultKeybindingsOnStartup.pipe(
+      Effect.catch((error) =>
+        Effect.logWarning("failed to sync keybindings defaults on startup", {
+          path: error.configPath,
+          detail: error.detail,
+          cause: error.cause,
+        }),
+      ),
+    );
+    yield* startWatcher;
   });
 
   const validateUpsertRule = (rule: KeybindingRule) =>
@@ -484,8 +476,6 @@ const makeKeybindings = Effect.gen(function* () {
 
   return {
     start,
-    ready: Deferred.await(startedDeferred),
-    syncDefaultKeybindingsOnStartup,
     loadConfigState: loadConfigStateFromCacheOrDisk,
     getSnapshot: loadConfigStateFromCacheOrDisk,
     get streamChanges() {

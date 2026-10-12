@@ -28,10 +28,6 @@ export interface KeybindingsChangeEvent {
 export interface KeybindingsShape {
   readonly start: Effect.Effect<void, KeybindingsConfigError>;
 
-  readonly ready: Effect.Effect<void, KeybindingsConfigError>;
-
-  readonly syncDefaultKeybindingsOnStartup: Effect.Effect<void, KeybindingsConfigError>;
-
   readonly loadConfigState: Effect.Effect<KeybindingsConfigState, KeybindingsConfigError>;
 
   readonly getSnapshot: Effect.Effect<KeybindingsConfigState, KeybindingsConfigError>;
