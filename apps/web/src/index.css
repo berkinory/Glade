@@ -260,14 +260,15 @@
 }
 
 /* Live work labels keep their text stable and signal progress with a sweep instead. The fill is
-   made transparent through text-fill-color so `currentColor` still resolves to the muted ink. */
+   made transparent through text-fill-color so `currentColor` still resolves to the muted ink.
+   Stepped timing repaints the clipped text about 12 times a second instead of every frame. */
 .work-text-shimmer {
   background: linear-gradient(100deg, currentColor 35%, var(--foreground) 50%, currentColor 65%) 0
     0 / 300% 100%;
   -webkit-background-clip: text;
   background-clip: text;
   -webkit-text-fill-color: transparent;
-  animation: work-text-shimmer 2.4s linear infinite;
+  animation: work-text-shimmer 2.4s steps(30) infinite;
 }
 
 @keyframes work-text-shimmer {
