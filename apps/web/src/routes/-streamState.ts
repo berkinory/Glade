@@ -30,6 +30,9 @@ export function createStreamState() {
     pendingShellEvents: [] as OrchestrationShellStreamEvent[],
     subscribedThreadIds: new Set<ThreadId>(),
     threadSnapshotSequenceById: new Map<ThreadId, number>(),
+    // The cached resume cursor a subscription started from, until a snapshot confirms it. Only then can a
+    // lower snapshot be legitimate: a server reset restarts sequences.
+    threadResumeSeedSequenceById: new Map<ThreadId, number>(),
     pendingThreadEventsById: new Map<ThreadId, OrchestrationEvent[]>(),
     threadSnapshotRequestInFlight: new Set<ThreadId>(),
     threadSnapshotRefreshPending: new Set<ThreadId>(),

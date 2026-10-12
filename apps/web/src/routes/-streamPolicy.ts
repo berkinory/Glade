@@ -117,8 +117,10 @@ export function createStreamPolicy(state: StreamState, operations: StreamOperati
     const resumeCursor = getThreadDetailResumeCursor(threadId);
     if (resumeCursor === undefined) {
       state.threadSnapshotSequenceById.delete(threadId);
+      state.threadResumeSeedSequenceById.delete(threadId);
     } else {
       state.threadSnapshotSequenceById.set(threadId, resumeCursor);
+      state.threadResumeSeedSequenceById.set(threadId, resumeCursor);
     }
     state.pendingThreadEventsById.set(threadId, []);
     state.threadSnapshotRequestInFlight.delete(threadId);

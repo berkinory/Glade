@@ -53,6 +53,7 @@ export function createStreamSubscriptions(
 
     for (const threadId of removals) {
       state.threadSnapshotSequenceById.delete(threadId);
+      state.threadResumeSeedSequenceById.delete(threadId);
       state.pendingThreadEventsById.delete(threadId);
       state.threadSnapshotRequestInFlight.delete(threadId);
       state.threadSnapshotRefreshPending.delete(threadId);
@@ -259,6 +260,7 @@ export function createStreamSubscriptions(
         .catch(() => loadBootstrapShellSnapshotIfMissing(generation));
       await enqueueThreadSubscriptionOperation(async () => {
         state.threadSnapshotSequenceById.clear();
+        state.threadResumeSeedSequenceById.clear();
         state.pendingThreadEventsById.clear();
         state.threadSnapshotRequestInFlight.clear();
         state.threadSnapshotRefreshPending.clear();

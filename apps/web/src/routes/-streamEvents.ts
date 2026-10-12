@@ -171,6 +171,16 @@ export function subscribeStreamEvents(
         clearThreadDetailResumeCursor(threadId);
         return;
       }
+      // A slower stream snapshot can land after a projection read or live events moved the cursor past
+      // it; applying it would roll the thread back behind consumed events.
+      const appliedSequence = state.threadSnapshotSequenceById.get(threadId);
+      if (
+        appliedSequence !== undefined &&
+        item.snapshot.snapshotSequence < appliedSequence &&
+        state.threadResumeSeedSequenceById.get(threadId) !== appliedSequence
+      ) {
+        return;
+      }
       batching.flushQueuedDomainEventsNow();
       context.syncServerThreadDetailHotPath(item.snapshot.thread, item.snapshot.snapshotSequence);
       // The projection can discard a tombstoned snapshot (deleted thread or project) instead of applying
@@ -184,6 +194,7 @@ export function subscribeStreamEvents(
         return;
       }
       state.threadSnapshotSequenceById.set(threadId, item.snapshot.snapshotSequence);
+      state.threadResumeSeedSequenceById.delete(threadId);
       state.threadSnapshotNotFoundRetryAttempted.delete(threadId);
 
       setThreadDetailResumeCursor(threadId, item.snapshot.snapshotSequence);

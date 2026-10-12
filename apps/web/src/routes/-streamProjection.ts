@@ -143,6 +143,7 @@ export function createStreamProjection(
       batching.flushQueuedDomainEventsNow();
       const stateBeforeProjectionApply = context.store.getState();
       context.syncServerThreadDetailHotPath(snapshot.thread, snapshot.snapshotSequence);
+      state.threadResumeSeedSequenceById.delete(threadId);
       reconcilePromotedDraftFromThreadDetail(snapshot.thread);
       policy.flushThreadBuffer(threadId, snapshot.snapshotSequence);
       projectionConfirmed = true;
