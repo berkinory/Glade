@@ -2,7 +2,15 @@ import { GitCommitHorizontalIcon, GitPullRequestIcon, PlusMinusSquare01Icon } fr
 import type { ProjectId, ThreadId } from "@glade/contracts/core/baseSchemas";
 import { useNavigate } from "@tanstack/react-router";
 import { useQueryClient } from "@tanstack/react-query";
-import { useCallback, useEffect, useState, useSyncExternalStore, type ReactNode } from "react";
+import {
+  Suspense,
+  lazy,
+  useCallback,
+  useEffect,
+  useState,
+  useSyncExternalStore,
+  type ReactNode,
+} from "react";
 import { useComposerDraftStore } from "~/composerDraftStore";
 import { basenameOfPath } from "~/file-icons";
 import { WorkspaceHeaderContext } from "./WorkspaceHeaderContext";
@@ -22,17 +30,36 @@ import {
 } from "~/workspaceFileTabsStore";
 import { useStore } from "~/store";
 import { cn } from "~/lib/utils";
-import { WorkspaceFilePreview } from "../WorkspaceFilePreview";
 import type { ChatFileReference } from "~/lib/chatReferences";
-import { WorkspaceGitDiff } from "./WorkspaceGitDiff";
-import { CommitDetail } from "./CommitDetail";
-import { PullRequestDetail } from "../pullRequest/PullRequestDetail";
-import { SourceControlTurnChanges } from "./SourceControlTurnChanges";
 import { FileEntryIcon } from "./FileEntryIcon";
 import { PanelTabBar, type PanelTab } from "./PanelTabBar";
+import { PanelStateMessage } from "./PanelStateMessage";
 import { useWorkspaceShortcuts } from "./useWorkspaceShortcuts";
 import { useWorkspaceTabSelection } from "./useWorkspaceTabSelection";
 import { useWorkspaceSidebarStore } from "~/workspaceSidebarStore";
+
+// File previews and reviews carry the editor, diff renderer and HTML parser, so they load with the first
+// tab that shows one instead of with every chat.
+const WorkspaceFilePreview = lazy(() =>
+  import("../WorkspaceFilePreview").then((module) => ({ default: module.WorkspaceFilePreview })),
+);
+const WorkspaceGitDiff = lazy(() =>
+  import("./WorkspaceGitDiff").then((module) => ({ default: module.WorkspaceGitDiff })),
+);
+const CommitDetail = lazy(() =>
+  import("./CommitDetail").then((module) => ({ default: module.CommitDetail })),
+);
+const PullRequestDetail = lazy(() =>
+  import("../pullRequest/PullRequestDetail").then((module) => ({
+    default: module.PullRequestDetail,
+  })),
+);
+const SourceControlTurnChanges = lazy(() =>
+  import("./SourceControlTurnChanges").then((module) => ({
+    default: module.SourceControlTurnChanges,
+  })),
+);
+const WORKSPACE_TAB_LOADING_FALLBACK = <PanelStateMessage loadingLabel="Loading" />;
 
 // Recently viewed files stay mounted (hidden, like the chat tab) so switching tabs keeps their
 // scroll, cursor and undo state. Each one holds its rendered contents, so only a few are kept.
@@ -206,57 +233,63 @@ export function MainWorkspace(props: {
               inert={path !== filePath}
               aria-hidden={path !== filePath}
             >
-              <WorkspaceFilePreview
-                workspaceRoot={props.workspaceRoot}
-                filePath={path}
-                editable
-                onEdit={() => pinFile(props.threadId, path)}
-                liveRevalidationEnabled={path === filePath}
-                revealPosition={revealPosition?.filePath === path ? revealPosition : undefined}
-                onReferenceInChat={props.onReferenceInChat}
-              />
+              <Suspense fallback={WORKSPACE_TAB_LOADING_FALLBACK}>
+                <WorkspaceFilePreview
+                  workspaceRoot={props.workspaceRoot}
+                  filePath={path}
+                  editable
+                  onEdit={() => pinFile(props.threadId, path)}
+                  liveRevalidationEnabled={path === filePath}
+                  revealPosition={revealPosition?.filePath === path ? revealPosition : undefined}
+                  onReferenceInChat={props.onReferenceInChat}
+                />
+              </Suspense>
             </div>
           ))}
-          {review?.kind === "commit" && props.workspaceRoot ? (
-            <div className="flex h-full min-h-0 flex-col">
-              <CommitDetail
-                key={review.id}
-                cwd={props.workspaceRoot}
-                filePath={review.filePath}
-                commit={review}
-                onClose={() => closeReview(props.threadId, review.id)}
-                onOpenFile={(path) => openFile(props.threadId, path)}
-              />
-            </div>
-          ) : null}
-          {review?.kind === "gitFile" && props.workspaceRoot ? (
-            <WorkspaceGitDiff
-              key={review.id}
-              cwd={props.workspaceRoot}
-              filePath={review.filePath}
-              scope={review.scope}
-              onOpenFile={(path) => openFile(props.threadId, path)}
-            />
-          ) : null}
-          {review?.kind === "pullRequest" ? (
-            <PullRequestDetail
-              key={review.id}
-              cwd={review.cwd}
-              number={review.number}
-              threadId={props.threadId}
-              onOpenFile={(path) => openFile(props.threadId, path)}
-            />
-          ) : null}
-          {review?.kind === "diff" ? (
-            <SourceControlTurnChanges
-              key={review.id}
-              threadId={props.threadId}
-              turnId={review.turnId}
-              filePath={review.filePath}
-              cwd={props.workspaceRoot}
-              onOpenFile={(path) => openFile(props.threadId, path)}
-              onCurrentChanges={() => useWorkspaceSidebarStore.getState().show("git")}
-            />
+          {review ? (
+            <Suspense fallback={WORKSPACE_TAB_LOADING_FALLBACK}>
+              {review.kind === "commit" && props.workspaceRoot ? (
+                <div className="flex h-full min-h-0 flex-col">
+                  <CommitDetail
+                    key={review.id}
+                    cwd={props.workspaceRoot}
+                    filePath={review.filePath}
+                    commit={review}
+                    onClose={() => closeReview(props.threadId, review.id)}
+                    onOpenFile={(path) => openFile(props.threadId, path)}
+                  />
+                </div>
+              ) : null}
+              {review.kind === "gitFile" && props.workspaceRoot ? (
+                <WorkspaceGitDiff
+                  key={review.id}
+                  cwd={props.workspaceRoot}
+                  filePath={review.filePath}
+                  scope={review.scope}
+                  onOpenFile={(path) => openFile(props.threadId, path)}
+                />
+              ) : null}
+              {review.kind === "pullRequest" ? (
+                <PullRequestDetail
+                  key={review.id}
+                  cwd={review.cwd}
+                  number={review.number}
+                  threadId={props.threadId}
+                  onOpenFile={(path) => openFile(props.threadId, path)}
+                />
+              ) : null}
+              {review.kind === "diff" ? (
+                <SourceControlTurnChanges
+                  key={review.id}
+                  threadId={props.threadId}
+                  turnId={review.turnId}
+                  filePath={review.filePath}
+                  cwd={props.workspaceRoot}
+                  onOpenFile={(path) => openFile(props.threadId, path)}
+                  onCurrentChanges={() => useWorkspaceSidebarStore.getState().show("git")}
+                />
+              ) : null}
+            </Suspense>
           ) : null}
         </div>
       </div>

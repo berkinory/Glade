@@ -16,6 +16,7 @@
 - Opening a busy chat or starting Glade no longer downloads the same data twice, and live chats stop polling while updates stream in.
 - Long chats stay smoother while a reply streams.
 - The branch picker and subagent list do less work while a reply streams.
+- Chats open faster: math, file previews and code reviews load the first time they are needed.
 
 ### Fixed
 

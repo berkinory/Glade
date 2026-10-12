@@ -1,7 +1,8 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import type { ReactElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
-import { describe, expect, it, vi } from "vitest";
+import { prerender } from "react-dom/static";
+import { beforeAll, describe, expect, it, vi } from "vitest";
 
 import ChatMarkdown from "./ChatMarkdown";
 
@@ -25,6 +26,25 @@ function renderWithQueryClient(ui: ReactElement) {
   });
   return renderToStaticMarkup(<QueryClientProvider client={client}>{ui}</QueryClientProvider>);
 }
+
+// KaTeX and the authored-HTML sanitizer load on first use. Awaiting one render through each lazy
+// combination lets every synchronous render below use them.
+beforeAll(async () => {
+  const client = new QueryClient();
+  await Promise.all(
+    [
+      { text: "$x$", renderAuthoredHtml: true },
+      { text: "$x$", renderAuthoredHtml: false },
+      { text: "x", renderAuthoredHtml: true },
+    ].map((props) =>
+      prerender(
+        <QueryClientProvider client={client}>
+          <ChatMarkdown cwd="/repo" isStreaming={false} {...props} />
+        </QueryClientProvider>,
+      ),
+    ),
+  );
+});
 
 function renderMarkdown(text: string, cwd = "C:\\Users\\LENOVO\\glade") {
   return renderWithQueryClient(<ChatMarkdown text={text} cwd={cwd} isStreaming={false} />);

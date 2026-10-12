@@ -10,14 +10,13 @@ import {
 } from "lexical";
 import type { ProviderKind } from "@glade/contracts/core/baseSchemas";
 import type { ReactElement } from "react";
-import { renderToStaticMarkup } from "react-dom/server";
 import {
   INLINE_TERMINAL_CONTEXT_PLACEHOLDER,
   type TerminalContextDraft,
 } from "~/lib/terminalContext";
 import { formatComposerMentionToken } from "~/lib/composerMentions";
 import { basenameOfPath } from "~/file-icons";
-import { createIconElement } from "~/lib/createIconElement";
+import { createIconElement, renderIconMarkupInto } from "~/lib/createIconElement";
 import {
   COMPOSER_INLINE_DECORATOR_HOST_CLASS_NAME,
   COMPOSER_EDITOR_INLINE_CHIP_CLASS_NAME,
@@ -105,7 +104,8 @@ function renderMentionChipDom(
       ? (() => {
           const host = document.createElement("span");
           host.className = COMPOSER_INLINE_CHIP_INLINE_ICON_CLASS_NAME;
-          host.innerHTML = renderToStaticMarkup(
+          renderIconMarkupInto(
+            host,
             <ProviderIcon
               provider={provider}
               className="size-full"

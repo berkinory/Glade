@@ -9,7 +9,6 @@ import {
   TriangleAlertIcon,
 } from "~/lib/icons";
 import type { ProviderMentionReference } from "@glade/contracts/provider/providerDiscovery";
-import "katex/dist/katex.min.css";
 import { remarkWikiLinks } from "../lib/remarkWikiLinks";
 import {
   MARKDOWN_LINK_POSITION_SUFFIX_PATTERN,
@@ -42,7 +41,6 @@ import React, {
 import type { Components } from "react-markdown";
 import ReactMarkdown from "react-markdown";
 import { defaultUrlTransform } from "react-markdown";
-import rehypeKatex from "rehype-katex";
 import remarkBreaks from "remark-breaks";
 import remarkGfm from "remark-gfm";
 import remarkMath from "remark-math";
@@ -97,7 +95,6 @@ import {
   remarkFindableText,
 } from "./ChatMarkdownFind";
 import { rehypeBlockDirection } from "./ChatMarkdownDirection";
-import { AUTHORED_HTML_REHYPE_PLUGINS } from "./ChatMarkdownHtml";
 import { IncrementalShikiCodeBlock } from "./IncrementalShikiCodeBlock";
 import { createIncrementalMarkdownPlugin } from "../markdownIncremental";
 const EXTERNAL_HTTP_HREF_PATTERN = /^https?:\/\//i;
@@ -245,23 +242,56 @@ function rehypeRestoreLiteralDollars() {
     restoreLiteralDollarsInNode(tree);
   };
 }
-const MARKDOWN_REHYPE_PLUGINS: MarkdownRehypePlugins = [
-  [
-    rehypeKatex,
-    {
-      output: "htmlAndMathml",
-      strict: false,
-      throwOnError: false,
-    },
-  ],
+const BASE_MARKDOWN_REHYPE_PLUGINS: MarkdownRehypePlugins = [
   rehypeRestoreLiteralDollars,
   rehypeBlockDirection,
 ];
-// KaTeX runs after the sanitizer so its generated markup does not widen the allowlist.
-const AUTHORED_HTML_MARKDOWN_REHYPE_PLUGINS: MarkdownRehypePlugins = [
-  ...AUTHORED_HTML_REHYPE_PLUGINS,
-  ...MARKDOWN_REHYPE_PLUGINS,
-];
+// KaTeX and the authored-HTML sanitizer are heavy and rarely needed, so they load on first use. Once
+// loaded, a combination is read synchronously, so only the first message that needs it waits. The
+// sanitizer runs first, directly after parsing, and KaTeX after it so its generated markup does not
+// widen the allowlist.
+const extendedRehypePluginsByKey = new Map<string, MarkdownRehypePlugins>();
+const extendedRehypePluginsPromiseByKey = new Map<string, Promise<MarkdownRehypePlugins>>();
+function loadExtendedRehypePlugins(
+  key: string,
+  authoredHtml: boolean,
+  math: boolean,
+): Promise<MarkdownRehypePlugins> {
+  let promise = extendedRehypePluginsPromiseByKey.get(key);
+  if (!promise) {
+    promise = Promise.all([
+      authoredHtml ? import("./ChatMarkdownHtml") : null,
+      math ? import("./ChatMarkdownMath") : null,
+    ]).then(([htmlModule, mathModule]) => {
+      const plugins: MarkdownRehypePlugins = [
+        ...(htmlModule?.AUTHORED_HTML_REHYPE_PLUGINS ?? []),
+        ...(mathModule?.MATH_REHYPE_PLUGINS ?? []),
+        ...BASE_MARKDOWN_REHYPE_PLUGINS,
+      ];
+      extendedRehypePluginsByKey.set(key, plugins);
+      return plugins;
+    });
+    extendedRehypePluginsPromiseByKey.set(key, promise);
+  }
+  return promise;
+}
+function ExtendedParsedMarkdown({
+  needsMath,
+  needsAuthoredHtml,
+  ...props
+}: Omit<ParsedMarkdownProps, "rehypePlugins"> & {
+  needsMath: boolean;
+  needsAuthoredHtml: boolean;
+}) {
+  const key = `${needsAuthoredHtml ? "html" : ""}:${needsMath ? "math" : ""}`;
+  // A single `use` call: React replays suspended `use` calls by position.
+  const rehypePlugins =
+    !needsAuthoredHtml && !needsMath
+      ? BASE_MARKDOWN_REHYPE_PLUGINS
+      : (extendedRehypePluginsByKey.get(key) ??
+        use(loadExtendedRehypePlugins(key, needsAuthoredHtml, needsMath)));
+  return <ParsedMarkdown {...props} rehypePlugins={rehypePlugins} />;
+}
 function extractRawFenceInfo(className: string | undefined): string {
   const match = className?.match(CODE_FENCE_LANGUAGE_REGEX);
   return match?.[1] ?? "text";
@@ -963,11 +993,8 @@ function ChatMarkdown({
       remarkFindableText,
     ];
   }, [composerChipsRemarkPlugin, incrementalMarkdownPlugin, wikiLinkRoot, cwd]);
-  const rehypePlugins = isUserVariant
-    ? USER_MARKDOWN_REHYPE_PLUGINS
-    : renderAuthoredHtml
-      ? AUTHORED_HTML_MARKDOWN_REHYPE_PLUGINS
-      : MARKDOWN_REHYPE_PLUGINS;
+  // Only `$` delimiters become math nodes, and literal dollars are already escaped out of the text.
+  const needsMath = !isUserVariant && renderedText.includes("$");
   const rootRef = useRef<HTMLDivElement | null>(null);
   useLayoutEffect(() => {
     applyActiveChatFindMatch(rootRef.current, findActiveRange);
@@ -1014,12 +1041,35 @@ function ChatMarkdown({
         activeRange={findActiveRange}
       >
         <MarkdownRenderContext.Provider value={renderContext}>
-          <ParsedMarkdown
-            text={renderedText}
-            remarkPlugins={remarkPlugins}
-            rehypePlugins={rehypePlugins}
-            components={MARKDOWN_COMPONENTS}
-          />
+          {isUserVariant ? (
+            <ParsedMarkdown
+              text={renderedText}
+              remarkPlugins={remarkPlugins}
+              rehypePlugins={USER_MARKDOWN_REHYPE_PLUGINS}
+              components={MARKDOWN_COMPONENTS}
+            />
+          ) : (
+            // Until a plugin module loads, the base plugins render math as its TeX source and drop
+            // authored HTML, so unsanitized markup never reaches the DOM.
+            <Suspense
+              fallback={
+                <ParsedMarkdown
+                  text={renderedText}
+                  remarkPlugins={remarkPlugins}
+                  rehypePlugins={BASE_MARKDOWN_REHYPE_PLUGINS}
+                  components={MARKDOWN_COMPONENTS}
+                />
+              }
+            >
+              <ExtendedParsedMarkdown
+                text={renderedText}
+                remarkPlugins={remarkPlugins}
+                components={MARKDOWN_COMPONENTS}
+                needsMath={needsMath}
+                needsAuthoredHtml={renderAuthoredHtml === true}
+              />
+            </Suspense>
+          )}
         </MarkdownRenderContext.Provider>
       </ChatFindRenderProvider>
     </div>
