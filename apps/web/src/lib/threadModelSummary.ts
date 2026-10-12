@@ -1,5 +1,6 @@
 import type { ModelSelection } from "@glade/contracts/provider/sessionPolicy";
 import type { ProviderKind } from "@glade/contracts/core/baseSchemas";
+import type { ProviderModelDescriptor } from "@glade/contracts/provider/providerDiscovery";
 
 import {
   getComposerTraitSelection,
@@ -19,6 +20,7 @@ export interface ThreadModelSummary {
 
 export function resolveThreadModelSummary(
   modelSelection: ModelSelection | null | undefined,
+  runtimeModel: ProviderModelDescriptor | undefined,
 ): ThreadModelSummary | null {
   if (!modelSelection) {
     return null;
@@ -35,6 +37,7 @@ export function resolveThreadModelSummary(
     modelSelection.model,
     "",
     modelSelection.options as ProviderOptions | undefined,
+    runtimeModel,
   );
   return {
     provider,

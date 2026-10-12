@@ -1,8 +1,16 @@
 import { EnergyFilledIcon, WorkflowCircle04Icon, GitForkIcon, FolderIcon } from "~/lib/icons";
+import type { ProviderKind, ThreadId } from "@glade/contracts/core/baseSchemas";
 import type { OrchestrationThreadPullRequest } from "@glade/contracts/orchestration/threadEntities";
-import type { MouseEvent, ReactNode } from "react";
+import type { ProviderListModelsResult } from "@glade/contracts/provider/providerDiscovery";
+import type { ModelSelection } from "@glade/contracts/provider/sessionPolicy";
+import { useQueryClient } from "@tanstack/react-query";
+import { useSyncExternalStore, type MouseEvent, type ReactNode } from "react";
+import { selectFastModeUnavailableNotice } from "~/lib/fastModeStatus";
 import type { ProjectAppearance } from "~/lib/projectAppearance";
-import type { ThreadModelSummary } from "~/lib/threadModelSummary";
+import { providerDiscoveryQueryKeys } from "~/lib/providerDiscoveryReactQuery";
+import { resolveThreadModelSummary } from "~/lib/threadModelSummary";
+import { useStore } from "~/store";
+import { resolveRuntimeModelDescriptor } from "./chat/runtimeModelCapabilities";
 import { ProjectSidebarIcon } from "./ProjectSidebarIcon";
 import { ProviderIcon } from "./ProviderIcon";
 import {
@@ -30,7 +38,8 @@ export type ThreadHoverCardContentProps = {
   };
   pullRequest: OrchestrationThreadPullRequest | null;
   onOpenPullRequest: (event: MouseEvent<HTMLElement>, prUrl: string) => void;
-  model: ThreadModelSummary | null;
+  threadId: ThreadId;
+  modelSelection: ModelSelection | null;
   status: ThreadStatusPill | null;
 };
 const META_ROW_CLASS_NAME = `${SIDEBAR_HOVER_CARD_ROW_CLASS_NAME} text-foreground/80`;
@@ -43,13 +52,50 @@ function MetaRow({ icon, children }: { icon: ReactNode; children: string }) {
     </span>
   );
 }
-function ModelRow({ model }: { model: ThreadModelSummary }) {
+// Reads models already discovered for any project, without starting discovery from a hover.
+function useCachedRuntimeModel(provider: ProviderKind, model: string) {
+  const queryClient = useQueryClient();
+  return useSyncExternalStore(
+    (onChange) => queryClient.getQueryCache().subscribe(onChange),
+    () => {
+      const cached = queryClient.getQueriesData<ProviderListModelsResult>({
+        queryKey: [...providerDiscoveryQueryKeys.modelsAll, provider],
+      });
+      for (const [, data] of cached) {
+        const match = resolveRuntimeModelDescriptor({
+          provider,
+          model,
+          runtimeModels: data?.models,
+        });
+        if (match) return match;
+      }
+      return undefined;
+    },
+  );
+}
+function ModelRow({
+  threadId,
+  modelSelection,
+}: {
+  threadId: ThreadId;
+  modelSelection: ModelSelection;
+}) {
+  const runtimeModel = useCachedRuntimeModel(modelSelection.provider, modelSelection.model);
+  // Claude reports whether it actually serves fast mode; the selection is only a request.
+  const fastModeNotice = useStore(selectFastModeUnavailableNotice(threadId));
+  const model = resolveThreadModelSummary(modelSelection, runtimeModel);
+  if (!model) return null;
+  const fastMode =
+    model.fastMode && (modelSelection.provider !== "claudeAgent" || fastModeNotice === null);
   return (
     <span className={META_ROW_CLASS_NAME}>
       <ProviderIcon provider={model.provider} className={META_ICON_CLASS_NAME} />
       <span className="min-w-0 truncate">{model.modelLabel}</span>
-      {model.fastMode ? (
-        <EnergyFilledIcon aria-hidden className="size-3.5 shrink-0 text-muted-foreground/75" />
+      {fastMode ? (
+        <EnergyFilledIcon
+          aria-label="Fast mode"
+          className="size-3.5 shrink-0 text-muted-foreground/75"
+        />
       ) : null}
       {model.statusLabel ? (
         <span className="shrink-0 text-muted-foreground/70">{model.statusLabel}</span>
@@ -64,7 +110,8 @@ export function ThreadHoverCardContent({
   workspace,
   pullRequest,
   onOpenPullRequest,
-  model,
+  threadId,
+  modelSelection,
   status,
 }: ThreadHoverCardContentProps) {
   const {
@@ -80,7 +127,7 @@ export function ThreadHoverCardContent({
     Boolean(branch) ||
     Boolean(worktreeName) ||
     Boolean(pullRequest) ||
-    Boolean(model) ||
+    Boolean(modelSelection) ||
     Boolean(status);
   return (
     <div
@@ -148,7 +195,7 @@ export function ThreadHoverCardContent({
             </MetaRow>
           ) : null}
           {pullRequest ? <PullRequestRow pr={pullRequest} onOpen={onOpenPullRequest} /> : null}
-          {model ? <ModelRow model={model} /> : null}
+          {modelSelection ? <ModelRow threadId={threadId} modelSelection={modelSelection} /> : null}
         </div>
       ) : null}
     </div>

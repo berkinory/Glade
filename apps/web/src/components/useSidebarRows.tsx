@@ -54,7 +54,6 @@ import {
 } from "./Sidebar.logic.statusTypes";
 import { resolveThreadRowClassName, type SidebarDerivedProjectData } from "./Sidebar.logic.status";
 import { cn } from "~/lib/utils";
-import { resolveThreadModelSummary } from "~/lib/threadModelSummary";
 import { beginThreadDrag, endThreadDrag } from "../lib/threadDrag";
 import {
   sidebarHoverRevealHideClassName,
@@ -306,7 +305,8 @@ export function useSidebarRows(context: ReturnType<typeof useSidebarPanelEffects
           }}
           pullRequest={prByThreadId.get(thread.id) ?? null}
           onOpenPullRequest={openPrLink}
-          model={resolveThreadModelSummary(thread.modelSelection)}
+          threadId={thread.id}
+          modelSelection={thread.modelSelection}
           status={hoverStatus}
         />
       </TooltipPopup>
