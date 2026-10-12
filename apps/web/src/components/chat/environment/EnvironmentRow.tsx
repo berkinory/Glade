@@ -51,17 +51,31 @@ export function EnvironmentLabeledSection({
     </>
   );
 }
+// The panel overlays the chat; a scrollbar appearing and disappearing would shift its rows.
+export const HIDDEN_SCROLLBAR_CLASS_NAME =
+  "[-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden";
+
 export function EnvironmentCollapsibleSection({
   label,
   defaultOpen: defaultOpenProp,
+  open: openProp,
+  onOpenChange,
+  collapsedContent,
   children,
 }: {
   label: ReactNode;
   defaultOpen?: boolean;
+  // Controlled open state, for sections whose preference outlives the panel.
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
+  // Shown under the header while the section is closed.
+  collapsedContent?: ReactNode;
   children: ReactNode;
 }) {
   const defaultOpen = defaultOpenProp ?? true;
-  const [open, setOpen] = useState(defaultOpen);
+  const [localOpen, setLocalOpen] = useState(defaultOpen);
+  const open = openProp ?? localOpen;
+  const setOpen = onOpenChange ?? setLocalOpen;
   return (
     <Collapsible open={open} onOpenChange={setOpen} className="flex flex-col">
       <CollapsibleTrigger
@@ -80,6 +94,7 @@ export function EnvironmentCollapsibleSection({
           className="size-3 shrink-0 text-[var(--color-text-foreground-secondary)] opacity-60"
         />
       </CollapsibleTrigger>
+      {collapsedContent && !open ? <div className="pt-0.5">{collapsedContent}</div> : null}
       <CollapsiblePanel>
         <div className="flex flex-col pt-0.5">{children}</div>
       </CollapsiblePanel>

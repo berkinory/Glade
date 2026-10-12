@@ -1,9 +1,12 @@
-import { BackgroundIcon, BotIcon, CollapseIcon, ExpandIcon, SquareFilledIcon } from "~/lib/icons";
+import { BackgroundIcon, BotIcon, SquareFilledIcon } from "~/lib/icons";
 import { SubagentAvatar } from "./SubagentAvatar";
 import { SubagentStatusIndicator } from "./SubagentStatusIndicator";
+import { SubagentRosterSummary } from "./SubagentRosterSummary";
+import { useSubagentListExpanded } from "./subagentListExpanded";
 import type { ThreadId } from "@glade/contracts/core/baseSchemas";
 import { cn } from "~/lib/utils";
 import { Button } from "../ui/button";
+import { DisclosureChevron } from "../ui/DisclosureChevron";
 import { DisclosureRegion } from "../ui/DisclosureRegion";
 import type {
   ComposerSubagentStripItem,
@@ -23,8 +26,6 @@ import {
 } from "./composerStackedPanelStyles";
 interface ComposerSubagentStripProps {
   items: ReadonlyArray<ComposerSubagentStripRow>;
-  compact: boolean;
-  onCompactChange: (compact: boolean) => void;
   onOpenThread: (threadId: ThreadId) => void;
   onBackgroundItem?: ((item: ComposerSubagentStripItem) => void) | undefined;
   onStopItem?: ((item: ComposerSubagentStripItem) => void) | undefined;
@@ -33,8 +34,6 @@ interface ComposerSubagentStripProps {
 }
 export const ComposerSubagentStrip = function ComposerSubagentStrip({
   items,
-  compact,
-  onCompactChange,
   onOpenThread,
   onBackgroundItem,
   onStopItem,
@@ -46,6 +45,7 @@ export const ComposerSubagentStrip = function ComposerSubagentStrip({
     (item): item is ComposerSubagentStripItem => item.kind === "subagent",
   );
   const runningCount = subagentItems.filter((item) => item.isActive).length;
+  const [expanded, setExpanded] = useSubagentListExpanded();
   return (
     <ComposerStackedPanel
       passthroughSideMargins
@@ -75,15 +75,27 @@ export const ComposerSubagentStrip = function ComposerSubagentStrip({
           variant="ghost"
           size="icon-xs"
           className={cn("shrink-0", COMPOSER_STACKED_PANEL_ICON_BUTTON_CLASS_NAME)}
-          onClick={() => onCompactChange(!compact)}
-          aria-label={compact ? "Expand subagent strip" : "Collapse subagent strip"}
-          title={compact ? "Expand subagent strip" : "Collapse subagent strip"}
+          onClick={() => setExpanded(!expanded)}
+          aria-expanded={expanded}
+          aria-label={expanded ? "Show subagent avatars" : "Show subagent list"}
+          title={expanded ? "Show subagent avatars" : "Show subagent list"}
         >
-          {compact ? <ExpandIcon className="size-3" /> : <CollapseIcon className="size-3" />}
+          <DisclosureChevron open={expanded} />
         </Button>
       </ComposerStackedPanelHeaderRow>
+      <DisclosureRegion open={!expanded}>
+        <div className="px-1.5 pb-1">
+          <SubagentRosterSummary
+            threadIds={subagentItems.map((item) => item.threadId)}
+            runningCount={runningCount}
+            doneCount={subagentItems.length - runningCount}
+            onExpand={() => setExpanded(true)}
+            className="px-1 py-1"
+          />
+        </div>
+      </DisclosureRegion>
 
-      <DisclosureRegion open={!compact}>
+      <DisclosureRegion open={expanded}>
         <div
           className={cn(
             "space-y-0",

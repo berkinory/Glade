@@ -21,8 +21,11 @@ import {
 } from "../ComposerSubagentStrip.logic";
 import { SubagentAvatar } from "../SubagentAvatar";
 import { SubagentStatusIndicator } from "../SubagentStatusIndicator";
+import { SubagentRosterSummary } from "../SubagentRosterSummary";
+import { useSubagentListExpanded } from "../subagentListExpanded";
 import {
   EnvironmentCollapsibleSection,
+  HIDDEN_SCROLLBAR_CLASS_NAME,
   EnvironmentSectionDivider,
   ENVIRONMENT_ROW_CLASS_NAME,
 } from "./EnvironmentRow";
@@ -121,6 +124,7 @@ export function EnvironmentSubagentsSection({
 }) {
   const shells = useStore((state) => state.threadShellById);
   const navigate = useNavigate();
+  const [expanded, setExpanded] = useSubagentListExpanded();
   let root = threadId ? shells?.[threadId] : undefined;
   const visited = new Set<ThreadId>();
   while (
@@ -179,29 +183,52 @@ export function EnvironmentSubagentsSection({
   }
   const visibleChildren = children.filter((thread) => detailById.has(thread.id));
   if (visibleChildren.length === 0) return null;
+  const runningCount = visibleChildren.filter(
+    (thread) => detailById.get(thread.id)?.isActive,
+  ).length;
   return (
     <>
       <EnvironmentSectionDivider />
-      <EnvironmentCollapsibleSection label={`Subagents (${visibleChildren.length})`}>
+      <EnvironmentCollapsibleSection
+        label={`Subagents (${visibleChildren.length})`}
+        open={expanded}
+        onOpenChange={setExpanded}
+        collapsedContent={
+          <SubagentRosterSummary
+            threadIds={visibleChildren.map((thread) => thread.id)}
+            runningCount={runningCount}
+            doneCount={visibleChildren.length - runningCount}
+            onExpand={() => setExpanded(true)}
+            className="px-2 py-1"
+          />
+        }
+      >
         {omission ? (
           <p className="px-2 py-1 text-ui-xs text-muted-foreground">{omission.summary}</p>
         ) : null}
-        {visibleChildren.map((thread) => (
-          <NativeSubagentRow
-            key={thread.id}
-            thread={thread}
-            detail={detailById.get(thread.id)}
-            runtimeUnavailable={
-              rootThread?.session?.status === "closed" ||
-              rootThread?.session?.status === "error" ||
-              rootThread?.session?.status === "disconnected"
-            }
-            onOpen={(id) => {
-              void navigate({ to: "/$threadId", params: { threadId: id } });
-              onClose();
-            }}
-          />
-        ))}
+        <div
+          className={cn(
+            "scroll-fade-y max-h-[min(15rem,40vh)] overflow-y-auto overscroll-contain",
+            HIDDEN_SCROLLBAR_CLASS_NAME,
+          )}
+        >
+          {visibleChildren.map((thread) => (
+            <NativeSubagentRow
+              key={thread.id}
+              thread={thread}
+              detail={detailById.get(thread.id)}
+              runtimeUnavailable={
+                rootThread?.session?.status === "closed" ||
+                rootThread?.session?.status === "error" ||
+                rootThread?.session?.status === "disconnected"
+              }
+              onOpen={(id) => {
+                void navigate({ to: "/$threadId", params: { threadId: id } });
+                onClose();
+              }}
+            />
+          ))}
+        </div>
       </EnvironmentCollapsibleSection>
     </>
   );

@@ -284,13 +284,21 @@ export function useChatWorkLog({
     () =>
       deriveComposerSubagentStripItems({
         workEntries: stripWorkLogEntries,
+        // Inside a subagent's chat the strip is how you hop between its siblings, so it keeps them all.
+        liveTurnId: stripParentThread ? undefined : stripLiveTurnId,
         backgroundedProviderThreadIds: backgroundedSubagentToolUseIds,
         viewedThreadId: stripParentThread ? (activeThread?.id ?? null) : null,
         parentRow: stripParentThread
           ? { threadId: stripParentThread.id, label: stripParentThread.title ?? null }
           : null,
       }),
-    [activeThread?.id, backgroundedSubagentToolUseIds, stripParentThread, stripWorkLogEntries],
+    [
+      activeThread?.id,
+      backgroundedSubagentToolUseIds,
+      stripLiveTurnId,
+      stripParentThread,
+      stripWorkLogEntries,
+    ],
   );
 
   const workflowSubagentThreadsByToolUseId = useMemo(() => {

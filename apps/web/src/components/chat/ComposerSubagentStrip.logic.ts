@@ -1,4 +1,4 @@
-import { ThreadId } from "@glade/contracts/core/baseSchemas";
+import { ThreadId, type TurnId } from "@glade/contracts/core/baseSchemas";
 
 import type { WorkLogEntry, WorkLogSubagent } from "../../workLog.types";
 import {
@@ -128,16 +128,9 @@ function collectSubagentStripItems(
       subagentByKey.set(key, previous ? mergeSubagentSnapshots(previous, subagent) : subagent);
     }
   }
-  return [...subagentByKey.entries()].flatMap(([key, subagent]) => {
-    const item = toStripItem(key, subagent, backgroundedThreadIds, viewedThreadId);
-    if (item.isActive || item.statusKind === "queued" || subagent.hasPendingInteraction)
-      return [item];
-    return item.statusKind === "completed" ||
-      item.statusKind === "failed" ||
-      item.statusKind === "stopped"
-      ? []
-      : [item];
-  });
+  return [...subagentByKey.entries()].map(([key, subagent]) =>
+    toStripItem(key, subagent, backgroundedThreadIds, viewedThreadId),
+  );
 }
 
 export function collectRunningSubagentStripItems(
@@ -174,8 +167,12 @@ function withParentRow(
   ];
 }
 
+// The strip follows the live turn: its own subagents plus any still running from earlier turns.
+// Without a live turn it stays only while something is still running, then retires; the
+// Environment panel keeps the full history.
 export function deriveComposerSubagentStripItems(input: {
   workEntries: ReadonlyArray<WorkLogEntry>;
+  liveTurnId?: TurnId | null | undefined;
 
   backgroundedProviderThreadIds?: ReadonlySet<string>;
 
@@ -198,5 +195,14 @@ export function deriveComposerSubagentStripItems(input: {
     backgroundedThreadIds,
     viewedThreadId,
   );
-  return withParentRow(items, input.parentRow);
+  if (input.liveTurnId === undefined) return withParentRow(items, input.parentRow);
+  const liveTurnKeys = new Set(
+    collectSubagentStripItems(
+      entriesWithSubagents.filter((entry) => entry.turnId === input.liveTurnId),
+      backgroundedThreadIds,
+      viewedThreadId,
+    ).map((item) => item.key),
+  );
+  const visible = items.filter((item) => liveTurnKeys.has(item.key) || item.isActive);
+  return withParentRow(visible, input.parentRow);
 }

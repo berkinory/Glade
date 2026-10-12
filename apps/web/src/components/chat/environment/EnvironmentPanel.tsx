@@ -35,10 +35,10 @@ import {
   EnvironmentPanelTitle,
   EnvironmentRow,
   EnvironmentSectionDivider,
+  HIDDEN_SCROLLBAR_CLASS_NAME,
 } from "./EnvironmentRow";
 export const ENVIRONMENT_DOCKED_CONTENT_INSET_PX = 312;
-const ENVIRONMENT_PANEL_OVERLAY_WRAPPER_CLASS_NAME =
-  "pointer-events-none absolute inset-y-0 right-0 z-20 flex flex-col items-end gap-3 overflow-x-clip overflow-y-auto p-3";
+const ENVIRONMENT_PANEL_OVERLAY_WRAPPER_CLASS_NAME = `pointer-events-none absolute inset-y-0 right-0 z-20 flex flex-col items-end gap-3 overflow-x-clip overflow-y-auto p-3 ${HIDDEN_SCROLLBAR_CLASS_NAME}`;
 export interface EnvironmentPanelProps {
   open: boolean;
   variant: "docked" | "floating";
@@ -272,7 +272,7 @@ export function EnvironmentPanel({
             : "pointer-events-none translate-x-full opacity-0",
         )}
       >
-        <div className="min-h-0 overflow-y-auto">{content}</div>
+        <div className={cn("min-h-0 overflow-y-auto", HIDDEN_SCROLLBAR_CLASS_NAME)}>{content}</div>
       </div>
     </div>
   );

@@ -90,8 +90,6 @@ export function ChatComposerSurface({
     setTaskListSidebarOpen,
     workflowRunCardCompact,
     setWorkflowRunCardCompact,
-    subagentStripCompact,
-    setSubagentStripCompact,
     queuedComposerTurns,
     activeThread,
     promptRef,
@@ -299,8 +297,6 @@ export function ChatComposerSurface({
             {showComposerSubagentStrip && !isNativeSubagent ? (
               <ComposerSubagentStrip
                 items={composerSubagentStripItems}
-                compact={subagentStripCompact}
-                onCompactChange={setSubagentStripCompact}
                 onOpenThread={onNavigateToThread}
                 onBackgroundItem={
                   nativeControls?.background && stripSourceRuntimeActive
