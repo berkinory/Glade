@@ -283,9 +283,15 @@ export function makeClaudeContentMessages(input: {
           : toolResult.isError
             ? "failed"
             : "completed";
+        const stoppedState = subagentStopped
+          ? { agentStates: { [tool.itemId]: { status: "stopped" } } }
+          : {};
+        // The completion right below carries the result; repeating it on this update would store
+        // the full output twice.
+        const updatedToolData = toolLifecycleEventData(context, tool, stoppedState);
         const toolData = toolLifecycleEventData(context, tool, {
           result: toolResult.block,
-          ...(subagentStopped ? { agentStates: { [tool.itemId]: { status: "stopped" } } } : {}),
+          ...stoppedState,
         });
 
         const updatedStamp = yield* makeEventStamp();
@@ -302,7 +308,7 @@ export function makeClaudeContentMessages(input: {
             status: subagentStopped ? "declined" : toolResult.isError ? "failed" : "inProgress",
             title: tool.title,
             ...(tool.detail ? { detail: tool.detail } : {}),
-            data: toolData,
+            data: updatedToolData,
           },
           providerRefs: nativeProviderRefs(context, { providerItemId: tool.itemId }),
           raw: {

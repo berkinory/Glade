@@ -383,11 +383,32 @@ function withBufferedReasoningSummary(
   };
 }
 
+// The text a completed tool already carries: a Claude tool_result (string or text blocks, joined
+// the way the client renders them) or a Codex command's aggregated output.
+function completedToolOutputText(data: Record<string, unknown>): string | undefined {
+  const content = isRecord(data.result) ? data.result.content : undefined;
+  if (typeof content === "string") return content;
+  if (Array.isArray(content)) {
+    return content
+      .map((block) =>
+        isRecord(block) && block.type === "text" && typeof block.text === "string"
+          ? block.text
+          : "",
+      )
+      .join("");
+  }
+  const aggregatedOutput = isRecord(data.item) ? data.item.aggregatedOutput : undefined;
+  return typeof aggregatedOutput === "string" ? aggregatedOutput : undefined;
+}
+
 function mergeBufferedToolOutputData(
   data: unknown,
   bufferedOutput: BufferedToolOutput,
 ): Record<string, unknown> {
   const baseData = isRecord(data) ? data : {};
+  if (!bufferedOutput.truncated && completedToolOutputText(baseData) === bufferedOutput.text) {
+    return baseData;
+  }
   const existingRawOutput = isRecord(baseData.rawOutput)
     ? baseData.rawOutput
     : typeof baseData.rawOutput === "string" && baseData.rawOutput.trim().length > 0

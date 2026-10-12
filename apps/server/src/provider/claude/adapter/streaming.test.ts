@@ -497,23 +497,17 @@ describe("Claude streaming", () => {
         });
       }
 
-      const toolResultUpdated = runtimeEvents.find(
-        (event) =>
-          event.type === "item.updated" &&
-          (event.payload.data as { result?: { tool_use_id?: string } } | undefined)?.result
-            ?.tool_use_id === "tool-grep-1",
+      const toolResults = runtimeEvents.flatMap((event) => {
+        if (event.type !== "item.updated" && event.type !== "item.completed") return [];
+        const result = (
+          event.payload.data as { result?: { tool_use_id?: string; content?: string } } | undefined
+        )?.result;
+        return result?.tool_use_id === "tool-grep-1" ? [{ type: event.type, result }] : [];
+      });
+      assert.deepEqual(
+        toolResults.map((entry) => [entry.type, entry.result.content]),
+        [["item.completed", "src/example.ts:1:foo"]],
       );
-      assert.equal(toolResultUpdated?.type, "item.updated");
-      if (toolResultUpdated?.type === "item.updated") {
-        assert.equal(
-          (
-            toolResultUpdated.payload.data as {
-              result?: { content?: string };
-            }
-          ).result?.content,
-          "src/example.ts:1:foo",
-        );
-      }
     }).pipe(
       Effect.provideService(Random.Random, makeDeterministicRandomService()),
       Effect.provide(harness.layer),
