@@ -12,6 +12,16 @@ import {
 } from "./MessagesTimeline.logic.rowTypes";
 import type { CollapsedTurnItem, MessagesTimelineRow } from "./MessagesTimeline.logic.rowTypes";
 
+// Rows that start a reply without a user message: a background reply, a provider switch, or the
+// Monitor update that woke the agent.
+function isResponseBoundaryEntry(entry: WorkLogEntry): boolean {
+  return (
+    entry.activityKind === "response.started" ||
+    entry.activityKind === "provider.transition" ||
+    entry.monitorNotification !== undefined
+  );
+}
+
 export function deriveMessagesTimelineRows(input: {
   timelineEntries: ReadonlyArray<TimelineEntry>;
   isWorking: boolean;
@@ -25,8 +35,7 @@ export function deriveMessagesTimelineRows(input: {
   const timelineMessages = input.timelineEntries.flatMap<TimelineDurationMessage>((entry) =>
     entry.kind === "message"
       ? [entry.message]
-      : entry.kind === "work" &&
-          ["response.started", "provider.transition"].includes(entry.entry.activityKind ?? "")
+      : entry.kind === "work" && isResponseBoundaryEntry(entry.entry)
         ? [{ id: entry.id, role: "user" as const, createdAt: entry.createdAt }]
         : [],
   );
@@ -134,9 +143,7 @@ export function deriveMessagesTimelineRows(input: {
       continue;
     }
     if (timelineEntry.kind === "work") {
-      if (
-        ["response.started", "provider.transition"].includes(timelineEntry.entry.activityKind ?? "")
-      ) {
+      if (isResponseBoundaryEntry(timelineEntry.entry)) {
         flushPendingWorkGroup();
         nextRows.push({
           kind: "work",
@@ -157,7 +164,7 @@ export function deriveMessagesTimelineRows(input: {
           nextEntry.entry.turnFailure !== undefined ||
           nextEntry.entry.userInputExchange !== undefined ||
           nextEntry.entry.turnStopped !== undefined ||
-          ["response.started", "provider.transition"].includes(nextEntry.entry.activityKind ?? "")
+          isResponseBoundaryEntry(nextEntry.entry)
         )
           break;
         groupedEntries.push(nextEntry.entry);
@@ -291,12 +298,7 @@ function findTailTerminalAssistantMessageId(
 ): string | null {
   for (let index = rows.length - 1; index >= 0; index -= 1) {
     const row = rows[index]!;
-    if (
-      row.kind === "work" &&
-      row.groupedEntries.some((entry) =>
-        ["response.started", "provider.transition"].includes(entry.activityKind ?? ""),
-      )
-    )
+    if (row.kind === "work" && row.groupedEntries.some((entry) => isResponseBoundaryEntry(entry)))
       return null;
     if (row.kind !== "message") {
       continue;
@@ -376,12 +378,7 @@ function collapseSettledTurns(
       // Visual replies and answered questions stay visible beside the fold without splitting the turn.
       if (prev.kind === "visual-reply" || prev.kind === "user-input") continue;
       if (prev.kind === "work") {
-        if (
-          prev.groupedEntries.some((entry) =>
-            ["response.started", "provider.transition"].includes(entry.activityKind ?? ""),
-          )
-        )
-          break;
+        if (prev.groupedEntries.some((entry) => isResponseBoundaryEntry(entry))) break;
         foldIndices.push(scan);
         continue;
       }

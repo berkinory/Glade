@@ -69,16 +69,21 @@ export function isCodexActivityStatusWorkEntry(entry: WorkLogEntry): boolean {
 }
 
 export function isPlainRuntimeNoticeWorkEntry(
-  entry: Pick<WorkLogEntry, "activityKind" | "nativeEventType" | "providerContextLifecycle">,
+  entry: Pick<
+    WorkLogEntry,
+    "activityKind" | "nativeEventType" | "providerContextLifecycle" | "monitorNotification"
+  >,
 ): boolean {
   return (
     entry.activityKind === "runtime.warning" &&
     entry.nativeEventType !== "background_tasks_changed" &&
-    !entry.providerContextLifecycle
+    !entry.providerContextLifecycle &&
+    !entry.monitorNotification
   );
 }
 
 function isAgentActivityWorkEntry(entry: WorkLogEntry): boolean {
+  if (entry.monitorNotification) return false;
   return (
     entry.itemType === "collab_agent_tool_call" ||
     isReasoningUpdateWorkEntry(entry) ||

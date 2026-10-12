@@ -42,6 +42,7 @@ import { createElement, memo, useMemo, type ReactElement, type ReactNode } from 
 import { basenameOfPath } from "~/file-icons";
 import {
   AgentActivityOpenSurface,
+  MonitorEventDetails,
   ProviderContextLifecycleDetails,
   ToolDetailsDisclosure,
 } from "./TimelineWorkEntryDetails";
@@ -139,6 +140,7 @@ function ownsToolTitle(workEntry: TimelineWorkEntry): boolean {
   return workEntry.toolKind === "browser" || workEntry.toolKind === "computer";
 }
 function workEntryPreview(workEntry: TimelineWorkEntry): string | null {
+  if (workEntry.monitorNotification) return null;
   if (isReasoningUpdateWorkEntry(workEntry)) {
     return formatAgentActivityEntryPreview(workEntry);
   }
@@ -194,6 +196,9 @@ function workEntryIcon(workEntry: TimelineWorkEntry): IconComponent {
   if (workEntry.activityKind === "user-input.resolved") return CheckmarkCircle02Icon;
   if (workEntry.activityKind === "context-compaction") return FilterIcon;
   if (workEntry.nativeEventType === "background_tasks_changed") return BackgroundIcon;
+  if (workEntry.monitorNotification) {
+    return workEntry.monitorNotification.outcome === "failed" ? AlertCircleIcon : ViewIcon;
+  }
   if (workEntry.providerContextLifecycle) {
     return workEntry.providerContextLifecycle.nativeHistory === "unavailable"
       ? AlertCircleIcon
@@ -277,7 +282,7 @@ function classifyWorkEntryTool(workEntry: TimelineWorkEntry) {
   };
 }
 export function prefersCompactWorkEntryRow(workEntry: TimelineWorkEntry): boolean {
-  if (isCodexActivityStatusWorkEntry(workEntry)) {
+  if (isCodexActivityStatusWorkEntry(workEntry) || workEntry.monitorNotification) {
     return true;
   }
   if (workEntry.itemType === "command_execution" || workEntry.command || workEntry.rawCommand) {
@@ -317,7 +322,9 @@ function toolWorkEntryHeading(
       classification.status,
     );
   }
-  if (workEntry.activityKind === "turn.tasks.updated") {
+  // Task progress and Monitor outcomes are semantic copy; the compact tool-label normalizer would
+  // strip their trailing status.
+  if (workEntry.activityKind === "turn.tasks.updated" || workEntry.monitorNotification) {
     return capitalizePhrase(workEntry.label);
   }
   if (workEntry.toolTitle && ownsToolTitle(workEntry)) {
@@ -496,6 +503,7 @@ function ToolWorkEntryRow(props: TimelineWorkEntryRowProps) {
   ) : undefined;
   const hasToolDetails = hasToolCallDetailsContent(workEntry.toolDetails, workEntry.liveActivity);
   const providerContextLifecycle = workEntry.providerContextLifecycle;
+  const monitorNotification = workEntry.monitorNotification;
   const opener = useWorkspaceFileOpener();
   const toolDiffStatsByPath = useMemo(
     () =>
@@ -516,7 +524,7 @@ function ToolWorkEntryRow(props: TimelineWorkEntryRowProps) {
   const canOpenToolDetails =
     !activityDetail &&
     !isReasoningUpdateWorkEntry(workEntry) &&
-    Boolean(providerContextLifecycle || hasToolDetails);
+    Boolean(providerContextLifecycle || monitorNotification || hasToolDetails);
   const openReadFile = readFilePath
     ? () => openWorkspaceFileReference(opener, readFilePath)
     : undefined;
@@ -607,7 +615,9 @@ function ToolWorkEntryRow(props: TimelineWorkEntryRowProps) {
                   className={cn(
                     "flex shrink-0 items-center justify-center",
                     WORK_ROW_MUTED_HOVER_TONE["tool-row"],
-                    workEntry.toolStatus === "failed" && "text-destructive/85",
+                    (workEntry.toolStatus === "failed" ||
+                      monitorNotification?.outcome === "failed") &&
+                      "text-destructive/85",
                     compact ? "size-4" : "size-5",
                   )}
                   data-tool-icon={leftIconKind}
@@ -660,7 +670,13 @@ function ToolWorkEntryRow(props: TimelineWorkEntryRowProps) {
                 toolKind={workEntry.toolKind}
                 detailContent={
                   activityContent ??
-                  (providerContextLifecycle ? (
+                  (monitorNotification ? (
+                    <MonitorEventDetails
+                      notification={monitorNotification}
+                      createdAt={workEntry.createdAt}
+                      timestampFormat={timestampFormat}
+                    />
+                  ) : providerContextLifecycle ? (
                     <ProviderContextLifecycleDetails info={providerContextLifecycle} />
                   ) : undefined)
                 }

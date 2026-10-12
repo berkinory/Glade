@@ -1,7 +1,9 @@
 import { PROVIDER_DESCRIPTORS } from "@glade/shared/provider/providerMetadata";
 import { useCallback, useEffect, useRef, useState, type ReactElement, type ReactNode } from "react";
 
-import type { WorkLogEntry } from "../../workLog.types";
+import type { TimestampFormat } from "../../appSettings";
+import { formatTimestamp } from "../../timestampFormat";
+import type { WorkLogEntry, WorkLogMonitorNotification } from "../../workLog.types";
 import { DISCLOSURE_CLEANUP_BUFFER_MS, DISCLOSURE_TRANSITION_MS } from "~/lib/disclosureMotion";
 import { cn } from "~/lib/utils";
 import { ToolCallDetailsContent } from "./ToolCallDetailsDialog";
@@ -122,6 +124,25 @@ export function ProviderContextLifecycleDetails(props: {
             </p>
           ) : null}
         </section>
+      ) : null}
+    </div>
+  );
+}
+
+export function MonitorEventDetails(props: {
+  notification: WorkLogMonitorNotification;
+  createdAt: string;
+  timestampFormat: TimestampFormat;
+}) {
+  return (
+    <div className="space-y-1.5" data-monitor-event-details="true">
+      <time className="text-ui-xs text-muted-foreground/56" dateTime={props.createdAt}>
+        {formatTimestamp(props.createdAt, props.timestampFormat)}
+      </time>
+      {props.notification.output ? (
+        <pre className="max-h-56 overflow-auto whitespace-pre-wrap break-words rounded-lg border border-border/45 bg-background/60 px-3 py-2.5 font-chat-code text-chat-code leading-relaxed text-foreground/84">
+          {props.notification.output}
+        </pre>
       ) : null}
     </div>
   );

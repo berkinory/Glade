@@ -87,6 +87,8 @@ export interface WorkLogEntry {
   turnStopped?: true;
   // An answered agent question with the user's answers; it stays visible outside a settled turn's fold.
   userInputExchange?: ReadonlyArray<WorkLogUserInputExchangeItem>;
+  // A Claude Monitor update that woke the agent; it marks where the reply it prompted starts.
+  monitorNotification?: WorkLogMonitorNotification;
 
   providerContextLifecycle?: ProviderContextLifecycleInfo;
   providerTransition?: {
@@ -101,6 +103,12 @@ export interface WorkLogEntry {
   activityKind?: OrchestrationThreadActivity["kind"];
 
   nativeEventType?: string;
+}
+
+export interface WorkLogMonitorNotification {
+  name: string;
+  output: string;
+  outcome: "updated" | "completed" | "failed" | "stopped";
 }
 
 export interface WorkLogUserInputExchangeItem {

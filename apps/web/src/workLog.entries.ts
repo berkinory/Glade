@@ -58,6 +58,7 @@ import {
 import { classifyWorkLogToolKind } from "./workLog.toolKind";
 import { deriveTurnFailureEntries, isTurnFailureActivity } from "./workLog.turnFailures";
 import { deriveTurnStopEntries } from "./workLog.turnStops";
+import { monitorNotificationEntryFields } from "./workLog.monitorEvents";
 import { pairAnsweredUserInputs } from "./workLog.userInput";
 import {
   collabPayloadItem,
@@ -502,6 +503,8 @@ function normalizeWorkLogActivity(activity: OrchestrationThreadActivity): Derive
     entry.preview = runtimeWarningMessage;
     entry.runtimeWarningMessage = entry.detail ?? runtimeWarningMessage;
   }
+  const monitorFields = monitorNotificationEntryFields(activity);
+  if (monitorFields) Object.assign(entry, monitorFields);
   if (activity.kind === "turn.tasks.updated") {
     const tasks = parseTaskListTasks(payload);
     if (tasks && tasks.length > 0) {
@@ -624,10 +627,9 @@ function normalizeWorkLogActivity(activity: OrchestrationThreadActivity): Derive
       payload,
       isRunning: activity.kind !== "tool.completed",
     });
-  // Task-list rows derive their own progress heading above. The generic activity summary ("Tasks
-  // updated") would otherwise become toolTitle and take precedence over that progress label in
-  // TimelineWorkEntryRow.
-  if (readableTitle && activity.kind !== "turn.tasks.updated") {
+  // Task-list and Monitor rows derive their own heading above. A generic title would otherwise
+  // become toolTitle and take precedence over that label in TimelineWorkEntryRow.
+  if (readableTitle && activity.kind !== "turn.tasks.updated" && !monitorFields) {
     entry.toolTitle = readableTitle;
   }
   const liveActivity = deriveWorkLogLiveActivity(activity, payload, entry);
