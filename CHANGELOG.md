@@ -13,6 +13,7 @@
 - Everything that opens and closes in the chat uses the same motion, including tool details, subagent cards, pasted text, error details and long messages.
 - Icons of tool calls, tool groups, subagent cards and notices in the chat line up in one column.
 - Command details show the command and its output in separate boxes.
+- Details of a failed tool call read in the normal text color; the red icon marks the failure.
 - Thinking gets its own row that says how long the agent thought, instead of riding inside tool call groups, and opens to the full reasoning.
 - A turn's edited files list shows about six files and scrolls the rest, with each file's name followed by its folder.
 - The pull request dialog says once that an empty title and description are generated, instead of repeating it in both fields.

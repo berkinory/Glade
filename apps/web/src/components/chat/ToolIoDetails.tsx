@@ -81,7 +81,7 @@ export function ToolIoDetails({
         </div>
       ) : null}
       {output?.format === "error" ? (
-        <p className="whitespace-pre-wrap break-words font-chat-code text-chat-code text-destructive/85">
+        <p className="whitespace-pre-wrap break-words font-chat-code text-chat-code text-foreground/84">
           {output.text}
         </p>
       ) : output?.format === "markdown" ? (

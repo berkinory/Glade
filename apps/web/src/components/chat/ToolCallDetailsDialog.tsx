@@ -134,33 +134,18 @@ function ToolOutputSection({ output }: { output: WorkLogToolOutputDetails }) {
         {output.output ? (
           <MarkdownToolCodeBlock language="text">{output.output}</MarkdownToolCodeBlock>
         ) : null}
-        {output.stdout ? (
-          <LabeledCodeBlock title="Stdout" tone="output">
-            {output.stdout}
-          </LabeledCodeBlock>
-        ) : null}
-        {output.stderr ? (
-          <LabeledCodeBlock title="Stderr" tone="error">
-            {output.stderr}
-          </LabeledCodeBlock>
-        ) : null}
+        {output.stdout ? <LabeledCodeBlock title="Stdout">{output.stdout}</LabeledCodeBlock> : null}
+        {output.stderr ? <LabeledCodeBlock title="Stderr">{output.stderr}</LabeledCodeBlock> : null}
         <ToolOutputMetadata output={output} />
       </div>
     </ToolDetailSection>
   );
 }
 
-function LabeledCodeBlock(props: { title: string; tone: "output" | "error"; children: string }) {
+function LabeledCodeBlock(props: { title: string; children: string }) {
   return (
     <div className="overflow-hidden rounded-lg border border-border/45 bg-background/58">
-      <div
-        className={cn(
-          DETAIL_HEADER_CLASS_NAME,
-          props.tone === "error" ? "text-rose-200/88" : "text-muted-foreground/60",
-        )}
-      >
-        {props.title}
-      </div>
+      <div className={cn(DETAIL_HEADER_CLASS_NAME, "text-muted-foreground/60")}>{props.title}</div>
       <ToolCodeBlock bare>{props.children}</ToolCodeBlock>
     </div>
   );

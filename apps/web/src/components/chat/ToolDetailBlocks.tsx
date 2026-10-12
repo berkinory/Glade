@@ -26,21 +26,10 @@ export function MarkdownToolCodeBlock(props: {
   );
 }
 
-export function ToolDetailSection(props: {
-  title: string;
-  tone?: "default" | "error";
-  children: ReactNode;
-}) {
+export function ToolDetailSection(props: { title: string; children: ReactNode }) {
   return (
     <section className="space-y-2">
-      <h3
-        className={cn(
-          "text-ui-sm font-medium",
-          props.tone === "error" ? "text-destructive/85" : "text-muted-foreground/56",
-        )}
-      >
-        {props.title}
-      </h3>
+      <h3 className="text-ui-sm font-medium text-muted-foreground/56">{props.title}</h3>
       {props.children}
     </section>
   );
