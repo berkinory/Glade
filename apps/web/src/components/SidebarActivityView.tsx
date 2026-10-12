@@ -233,24 +233,23 @@ function ActivityThreadRow({
               <FolderIcon className="size-[1em] shrink-0" aria-hidden />
             )}
 
-            <span className="min-w-0 truncate text-ui-sm text-muted-foreground/80">
+            {/* The branch shrinks long before the folder name does. */}
+            <span className="mr-auto min-w-0 truncate text-ui-sm text-muted-foreground/80">
               {resolveThreadProjectLabel(project)}
             </span>
-            <span className="ml-auto flex min-w-0 shrink-0 items-center gap-1.5">
-              {pr ? (
-                <PrStateChip
-                  pr={pr}
-                  className="[&_svg]:size-[0.91em]"
-                  onOpen={(event) => onOpenPullRequest(event, pr)}
-                />
-              ) : null}
-              {branch ? (
-                <span className="flex min-w-0 items-center gap-1 text-ui-sm text-muted-foreground/70">
-                  <WorkflowCircle04Icon className="size-[1em] shrink-0" aria-hidden />
-                  <span className="max-w-36 truncate">{branch}</span>
-                </span>
-              ) : null}
-            </span>
+            {pr ? (
+              <PrStateChip
+                pr={pr}
+                className="shrink-0 [&_svg]:size-[0.91em]"
+                onOpen={(event) => onOpenPullRequest(event, pr)}
+              />
+            ) : null}
+            {branch ? (
+              <span className="flex min-w-0 shrink-[100] items-center gap-1 text-ui-sm text-muted-foreground/70">
+                <WorkflowCircle04Icon className="size-[1em] shrink-0" aria-hidden />
+                <span className="min-w-0 max-w-36 truncate">{branch}</span>
+              </span>
+            ) : null}
           </span>
         </button>
         {trailingStatus ? (
