@@ -68,6 +68,7 @@ import { makeThreadReadTools } from "../threadReadTools.ts";
 import { makeThreadDiagnosticTools } from "../threadDiagnosticTools.ts";
 import { pruneProjectedArchivedManagedWorktrees } from "../../git/managedWorktrees.ts";
 import { resolveThreadWorkspaceCwd } from "../../checkpointing/Utils.ts";
+import { threadNotFoundMessage } from "../threadNotFound";
 
 // Providers already receive the versioned host policy exactly once in their private prompt. MCP
 // clients prepend initialize.instructions to every exposed tool definition, so repeating the full
@@ -175,7 +176,7 @@ const makeAgentGateway = Effect.gen(function* () {
       Effect.mapError((error) => new ToolInputError(errorText(error))),
       Effect.flatMap(
         Option.match({
-          onNone: () => Effect.fail(new ToolInputError(`Thread "${threadId}" was not found.`)),
+          onNone: () => Effect.fail(new ToolInputError(threadNotFoundMessage(threadId))),
           onSome: (shell) => Effect.succeed(shell),
         }),
       ),

@@ -38,6 +38,7 @@ import {
   ToolInputError,
 } from "./toolInput.ts";
 import { READ_ONLY_TOOL_ANNOTATIONS, type ToolEntry } from "./toolRuntime.ts";
+import { threadNotFoundMessage } from "./threadNotFound";
 
 const DIAGNOSTIC_EVENT_SCAN_CHUNK_SIZE = 250;
 const DIAGNOSTIC_EVENT_MAX_COALESCING_SCAN = 10_000;
@@ -215,8 +216,7 @@ export function makeThreadDiagnosticTools(input: {
           .pipe(
             Effect.flatMap(
               Option.match({
-                onNone: () =>
-                  Effect.fail(new ToolInputError(`Thread "${threadId}" was not found.`)),
+                onNone: () => Effect.fail(new ToolInputError(threadNotFoundMessage(threadId))),
                 onSome: Effect.succeed,
               }),
             ),

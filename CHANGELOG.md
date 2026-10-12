@@ -12,6 +12,7 @@
 ### Fixed
 
 - Claude subagents no longer add a "Moved to background" row each; their card marks the ones running in the background.
+- When an agent looks up a chat that runs on an SSH host or a paired machine, Glade tells it the chat is only visible from that machine instead of saying it was not found.
 
 ### Removed
 

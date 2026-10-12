@@ -45,6 +45,7 @@ import {
   READ_ONLY_TOOL_ANNOTATIONS,
   type ToolEntry,
 } from "./toolRuntime.ts";
+import { threadNotFoundMessage } from "./threadNotFound";
 
 export interface ThreadReadToolsInput {
   readonly discovery: AgentGatewayDiscoveryShape;
@@ -350,7 +351,7 @@ export function makeThreadReadTools(input: ThreadReadToolsInput): ReadonlyArray<
           Effect.mapError((error) => new ToolInputError(errorText(error))),
           Effect.flatMap(
             Option.match({
-              onNone: () => Effect.fail(new ToolInputError(`Thread "${threadId}" was not found.`)),
+              onNone: () => Effect.fail(new ToolInputError(threadNotFoundMessage(threadId))),
               onSome: (thread) => Effect.succeed(thread),
             }),
           ),
@@ -427,7 +428,7 @@ Assistant summaries are capped at ${WAIT_THREAD_SUMMARY_MAX_CHARS} characters. U
               Option.match({
                 onNone: () =>
                   Effect.fail(
-                    new GatewayToolError("thread_not_found", `Thread "${threadId}" was not found.`),
+                    new GatewayToolError("thread_not_found", threadNotFoundMessage(threadId)),
                   ),
                 onSome: (thread) =>
                   Effect.succeed({
@@ -468,7 +469,7 @@ Assistant summaries are capped at ${WAIT_THREAD_SUMMARY_MAX_CHARS} characters. U
                   return Effect.fail(
                     new GatewayToolError(
                       "thread_not_found",
-                      `Thread "${missing.threadId}" was not found.`,
+                      threadNotFoundMessage(missing.threadId),
                     ),
                   );
                 }
@@ -530,7 +531,7 @@ Assistant summaries are capped at ${WAIT_THREAD_SUMMARY_MAX_CHARS} characters. U
                     Effect.fail(
                       new GatewayToolError(
                         "thread_not_found",
-                        `Thread "${result.threadId}" was not found.`,
+                        threadNotFoundMessage(result.threadId),
                       ),
                     ),
                   onSome: Effect.succeed,
