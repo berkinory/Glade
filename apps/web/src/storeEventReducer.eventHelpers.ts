@@ -5,12 +5,14 @@ import type { OrchestrationPendingInteraction } from "@glade/contracts/orchestra
 import type { ThreadId } from "@glade/contracts/core/baseSchemas";
 import { mergeAsyncUserInput } from "@glade/shared/threads/asyncUserInput";
 import { resolveHumanMessageAt } from "@glade/shared/threads/threadSummary";
-import {
-  createStalePendingInteractionMatcher,
-  isPendingInteractionResponseClaimable,
-} from "@glade/shared/threads/pendingInteractions";
+import { isPendingInteractionResponseClaimable } from "@glade/shared/threads/pendingInteractions";
+import { advanceMessageTextSegments } from "./messageTextSegments";
 import { isSessionRunningTurn } from "./session-logic";
-import { arraysShallowEqual, providerReferenceArraysEqual } from "./storeNormalization.shared";
+import {
+  arraysShallowEqual,
+  providerReferenceArraysEqual,
+  textSegmentArraysEqual,
+} from "./storeNormalization.shared";
 import { normalizeChatMessage, retainChatMessageWindow } from "./storeNormalization.messages";
 import { normalizeTurnDiffFiles } from "./storeNormalization.activity";
 import type { ChatMessage, Thread } from "./types";
@@ -145,34 +147,23 @@ export function reconcilePendingInteractionsFromActivity(
     activity.kind === "provider.approval.respond.failed" ||
     activity.kind === "provider.user-input.respond.failed"
   ) {
-    // Mirrors the server projector: a stale failure settles its row terminally, and snapshots omit
-    // terminal rows.
-    const isStale = createStalePendingInteractionMatcher([activity]);
     const responseCommandId = payload?.responseCommandId;
     if (typeof responseCommandId !== "string" || responseCommandId.length === 0) {
-      const next = existing.filter(
-        (interaction) =>
-          interaction.interactionKind !== interactionKind ||
-          interaction.status === "confirmed" ||
-          !isStale(interaction),
-      );
-      return next.length === existing.length ? pendingInteractions : next;
+      return pendingInteractions;
     }
     const settlementStatus: OrchestrationPendingInteraction["status"] =
       payload?.settlementStatus === "retryable" ? "retryable" : "uncertain";
     let changed = false;
-    const next = existing.flatMap((interaction) => {
+    const next = existing.map((interaction) => {
       if (
         !matchesIdentity(interaction) ||
         interaction.status !== "responding" ||
         interaction.responseCommandId !== responseCommandId
       ) {
-        return [interaction];
+        return interaction;
       }
       changed = true;
-      return isStale(interaction)
-        ? []
-        : [{ ...interaction, status: settlementStatus, resolvedAt: null }];
+      return { ...interaction, status: settlementStatus, resolvedAt: null };
     });
     return changed ? next : pendingInteractions;
   }
@@ -546,6 +537,10 @@ function describeStreamText(text: string): {
 function mergeStreamingMessage(
   existingMessage: ChatMessage,
   incomingMessage: ChatMessage,
+  segmentBoundary: {
+    readonly segmentStartedAt: string | undefined;
+    readonly segmentSequence: number;
+  },
 ): ChatMessage | null {
   let nextText: string;
   if (
@@ -605,9 +600,24 @@ function mergeStreamingMessage(
       ? incomingMessage.startsNewTurn
       : existingMessage.startsNewTurn;
   const nextSource = incomingMessage.source ?? existingMessage.source;
+  const advancedTextSegments = advanceMessageTextSegments(existingMessage.textSegments, {
+    streaming: incomingMessage.streaming,
+    deltaText: incomingMessage.text,
+    nextText,
+    segmentStartedAt: segmentBoundary.segmentStartedAt,
+    segmentSequence: segmentBoundary.segmentSequence,
+    updatedAt: nextUpdatedAt,
+  });
+  const nextTextSegments = textSegmentArraysEqual(
+    existingMessage.textSegments,
+    advancedTextSegments,
+  )
+    ? existingMessage.textSegments
+    : advancedTextSegments;
 
   if (
     existingMessage.text === nextText &&
+    existingMessage.textSegments === nextTextSegments &&
     existingMessage.asyncUserInput === nextAsyncUserInput &&
     existingMessage.streaming === incomingMessage.streaming &&
     existingMessage.attachments === nextAttachments &&
@@ -626,8 +636,11 @@ function mergeStreamingMessage(
     return null;
   }
 
+  const { textSegments: _previousTextSegments, ...existingMessageWithoutSegments } =
+    existingMessage;
   return {
-    ...existingMessage,
+    ...existingMessageWithoutSegments,
+    ...(nextTextSegments !== undefined ? { textSegments: nextTextSegments } : {}),
     ...((existingMessage.modelSelection ?? incomingMessage.modelSelection)
       ? { modelSelection: existingMessage.modelSelection ?? incomingMessage.modelSelection }
       : {}),
@@ -685,7 +698,10 @@ export function applyThreadMessageSentEvent(thread: Thread, event: ThreadMessage
   let messages = thread.messages;
 
   if (existingMessage) {
-    const mergedMessage = mergeStreamingMessage(existingMessage, incomingMessage);
+    const mergedMessage = mergeStreamingMessage(existingMessage, incomingMessage, {
+      segmentStartedAt: payload.segmentStartedAt,
+      segmentSequence: payload.segmentSequence ?? event.sequence,
+    });
     if (mergedMessage !== null) {
       messages = thread.messages.with(existingIndex, mergedMessage);
     }
