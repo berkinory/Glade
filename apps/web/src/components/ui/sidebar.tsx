@@ -35,8 +35,11 @@ const SIDEBAR_RESIZE_DEFAULT_MIN_WIDTH = 16 * 16;
  * front-loads the motion and settles softly. Apply to BOTH the sliding container
  * (Sidebar `className`) and the layout `gapClassName` so they animate in lockstep.
  * Shared by the thread sidebar (left) and the right dock so the two slides match.
+ * No standing `will-change`: Chromium promotes the layer while the transition runs, and a
+ * permanent hint keeps the panel's text rasterized at the old scale after a display or zoom
+ * change.
  */
-const SIDEBAR_OFFCANVAS_MOTION_CLASS = `will-change-[translate] ${UI_MOTION_LONG_CLASS}`;
+const SIDEBAR_OFFCANVAS_MOTION_CLASS = UI_MOTION_LONG_CLASS;
 
 /**
  * Suppresses the slide entirely — for first mount or a reposition/remount where

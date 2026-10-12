@@ -251,7 +251,6 @@
 
 .chat-pane-enter {
   animation: chat-pane-enter 120ms ease-out;
-  will-change: opacity;
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -331,8 +330,10 @@
 }
 
 .sidebar-surface-enter {
-  animation: sidebar-surface-enter 120ms ease-out both;
-  will-change: opacity, transform;
+  /* Fill `backwards` and no `will-change`, here and on the other entry animations: a retained
+     transform or standing hint keeps the element on its own layer, which Chromium does not
+     re-rasterize after a display-scale or zoom change, so its text stays blurry. */
+  animation: sidebar-surface-enter 120ms ease-out backwards;
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -356,8 +357,7 @@
 }
 
 .chat-message-send-enter {
-  animation: chat-message-send-enter 120ms ease-out both;
-  will-change: opacity, transform;
+  animation: chat-message-send-enter 120ms ease-out backwards;
 }
 
 @media (prefers-reduced-motion: reduce) {
