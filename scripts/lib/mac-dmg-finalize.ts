@@ -1,4 +1,9 @@
-import { notarizeMacPayload, recordStapledPayload, runMacCommand } from "./mac-notarization.ts";
+import {
+  notarizeMacPayload,
+  recordStapledPayload,
+  runMacCommand,
+  runStapler,
+} from "./mac-notarization.ts";
 import { existsSync, mkdtempSync, readdirSync, rmSync, statSync, symlinkSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -122,7 +127,16 @@ function buildMacDmgFinalizationCommands(
 }
 
 function runCommand(command: MacDmgCommand, _verbose: boolean): void {
-  runMacCommand(command.command, command.args, `dmg-${command.command}-${command.args[0]}`);
+  const stage = `dmg-${command.command}-${command.args[0]}`;
+  const [tool, action, path] = command.args;
+  if (
+    command.command === "xcrun" &&
+    tool === "stapler" &&
+    (action === "staple" || action === "validate") &&
+    path
+  )
+    runStapler(action, path, stage);
+  else runMacCommand(command.command, command.args, stage);
 }
 
 function findFirstMacAppBundle(root: string): string | null {

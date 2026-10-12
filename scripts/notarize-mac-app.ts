@@ -14,6 +14,7 @@ import {
   appNotaryStateDirectory,
   notarizeMacPayload,
   runMacCommand,
+  runStapler,
 } from "./lib/mac-notarization.ts";
 
 const app = process.argv[2];
@@ -69,7 +70,7 @@ await notarizeMacPayload(
   root,
   "app",
 );
-runMacCommand("xcrun", ["stapler", "staple", app], "app-staple");
+runStapler("staple", app, "app-staple");
 writeFileSync(
   inputPath,
   JSON.stringify({
@@ -77,7 +78,7 @@ writeFileSync(
     stapled: await appDigest(app),
   }) + "\n",
 );
-runMacCommand("xcrun", ["stapler", "validate", app], "app-staple-validation");
+runStapler("validate", app, "app-staple-validation");
 runMacCommand(
   "codesign",
   ["--verify", "--deep", "--strict", "--verbose=4", app],

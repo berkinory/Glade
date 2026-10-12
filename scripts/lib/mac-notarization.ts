@@ -45,6 +45,29 @@ export function runMacCommand(command: string, args: readonly string[], stage: s
   });
 }
 
+// stapler fetches the ticket from Apple's CloudKit service. On CI runners that connection drops now
+// and then (NSURLErrorDomain -1005), and stapler exits 68 for it as it does for a ticket that has not
+// propagated yet; both clear up after a pause.
+const STAPLER_RETRY_DELAYS_MS = [15_000, 30_000, 60_000, 120_000];
+
+export function runStapler(action: "staple" | "validate", path: string, stage: string): void {
+  timeBuildStage(
+    stage,
+    () => {
+      for (const delay of [...STAPLER_RETRY_DELAYS_MS, null]) {
+        const result = spawnSync("xcrun", ["stapler", action, path], { stdio: "inherit" });
+        if (result.error) throw result.error;
+        if (result.status === 0) return;
+        if (result.status !== 68 || delay === null)
+          throw new Error(`${stage} failed with exit code ${result.status ?? "unknown"}.`);
+        console.warn(`${stage} exited with code 68; retrying in ${delay / 1000}s.`);
+        Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, delay);
+      }
+    },
+    "external",
+  );
+}
+
 export async function notarizeMacPayload(
   payload: string,
   credentials: MacDmgNotaryCredentials,
