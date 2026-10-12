@@ -139,9 +139,9 @@ export function createStreamProjection(
       );
       advanceThreadDetailResumeCursor(threadId, snapshot.snapshotSequence);
 
-      const stateBeforeProjectionApply = context.store.getState();
-
       const catchupEntryBeforeApply = policy.resolveThreadCatchupBackoff(threadId);
+      batching.flushQueuedDomainEventsNow();
+      const stateBeforeProjectionApply = context.store.getState();
       context.syncServerThreadDetailHotPath(snapshot.thread, snapshot.snapshotSequence);
       reconcilePromotedDraftFromThreadDetail(snapshot.thread);
       policy.flushThreadBuffer(threadId, snapshot.snapshotSequence);

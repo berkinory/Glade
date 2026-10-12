@@ -87,6 +87,14 @@ export function createStreamBatching(context: StreamContext, state: StreamState)
     invalidateGitQueriesForEvents(resolveCwd);
   };
 
+  // Every queued event already advanced its thread cursor, so a snapshot accepted at or past that cursor
+  // contains it. Flushing the queue on top of the snapshot would re-append streamed deltas and regress
+  // newer session state, so callers apply the queue first.
+  const flushQueuedDomainEventsNow = () => {
+    domainEventFlushThrottler.cancel();
+    flushPendingDomainEvents();
+  };
+
   const queueDomainEvent = (event: OrchestrationEvent) => {
     state.pendingDomainEvents.push(event);
     const checkpointDiffThreadId = getCheckpointDiffInvalidationThreadIdForEvent(event);
@@ -108,8 +116,7 @@ export function createStreamBatching(context: StreamContext, state: StreamState)
       }
     }
     if (shouldFlushDomainEventImmediately(event, state.immediatelyFlushedAssistantMessageIds)) {
-      domainEventFlushThrottler.cancel();
-      flushPendingDomainEvents();
+      flushQueuedDomainEventsNow();
       return;
     }
     domainEventFlushThrottler.maybeExecute();
@@ -125,5 +132,10 @@ export function createStreamBatching(context: StreamContext, state: StreamState)
       trailing: true,
     },
   );
-  return { flushPendingDomainEvents, queueDomainEvent, domainEventFlushThrottler };
+  return {
+    flushPendingDomainEvents,
+    flushQueuedDomainEventsNow,
+    queueDomainEvent,
+    domainEventFlushThrottler,
+  };
 }

@@ -171,6 +171,7 @@ export function subscribeStreamEvents(
         clearThreadDetailResumeCursor(threadId);
         return;
       }
+      batching.flushQueuedDomainEventsNow();
       context.syncServerThreadDetailHotPath(item.snapshot.thread, item.snapshot.snapshotSequence);
       // The projection can discard a tombstoned snapshot (deleted thread or project) instead of applying
       // it; committing the cursor or the stream fence first would leave resume bookkeeping vouching for
