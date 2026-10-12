@@ -117,25 +117,14 @@ export function makeProviderConversationNaming(input: {
       }
     }
 
+    // Only the local rename holds the mutation lock. A push can wait on credentials or the
+    // network indefinitely and must not block branch or worktree creation elsewhere.
     const renamed = yield* git.withMutation(
       input.cwd,
-      Effect.gen(function* () {
-        const result = yield* git.renameBranch({
-          cwd: input.cwd,
-          oldBranch: input.oldBranch,
-          newBranch: input.targetBranch,
-        });
-        yield* git.publishBranch({ cwd: input.cwd, branch: result.branch }).pipe(
-          Effect.catchCause((cause) =>
-            Effect.logWarning("provider command reactor failed to publish renamed branch", {
-              threadId: input.threadId,
-              cwd: input.cwd,
-              branch: result.branch,
-              cause: Cause.pretty(cause),
-            }),
-          ),
-        );
-        return result;
+      git.renameBranch({
+        cwd: input.cwd,
+        oldBranch: input.oldBranch,
+        newBranch: input.targetBranch,
       }),
     );
     yield* orchestrationEngine.dispatch({
@@ -148,6 +137,16 @@ export function makeProviderConversationNaming(input: {
       associatedWorktreeBranch: renamed.branch,
       associatedWorktreeRef: renamed.branch,
     });
+    yield* git.publishBranch({ cwd: input.cwd, branch: renamed.branch }).pipe(
+      Effect.catchCause((cause) =>
+        Effect.logWarning("provider command reactor failed to publish renamed branch", {
+          threadId: input.threadId,
+          cwd: input.cwd,
+          branch: renamed.branch,
+          cause: Cause.pretty(cause),
+        }),
+      ),
+    );
   });
 
   const resolveFirstTurnThread = Effect.fnUntraced(function* (
