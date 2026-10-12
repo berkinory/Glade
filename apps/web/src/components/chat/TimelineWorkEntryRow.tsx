@@ -1,5 +1,6 @@
 import { subagentToolHeading } from "./SubagentToolPresentation";
 import { SubagentRunCard } from "./SubagentRunCard";
+import { Spinner } from "../ui/spinner";
 import {
   WORK_ROW_GAP_CLASS_NAME,
   WORK_ROW_ICON_CLASS_NAME,
@@ -438,6 +439,10 @@ function ToolWorkEntryRow(props: TimelineWorkEntryRowProps) {
   const isPlainRuntimeNoticeRow = isPlainRuntimeNoticeWorkEntry(workEntry);
   const EntryIcon = workEntryIcon(workEntry);
   const linkIconUrl = workEntryLinkIconUrl(workEntry);
+  // A launch that has not reported its subagents yet shows the run card's spinner, so the icon does
+  // not change when the card takes this row's place.
+  const isPendingSubagentLaunch =
+    workEntry.toolKind === "agent" && workEntry.toolStatus === "running";
   const classification = classifyWorkEntryTool(workEntry);
   const isGitHubToolRow = classification.isGitHub;
   const isGladeToolRow = !isGitHubToolRow && classification.gladeTitle !== null;
@@ -469,7 +474,11 @@ function ToolWorkEntryRow(props: TimelineWorkEntryRowProps) {
       onImageExpand={onImageExpand}
     />
   ) : undefined;
-  const hasToolDetails = hasToolCallDetailsContent(workEntry.toolDetails, workEntry.liveActivity);
+  const hasToolDetails = hasToolCallDetailsContent(
+    workEntry.toolDetails,
+    workEntry.liveActivity,
+    workEntry.toolKind,
+  );
   const providerContextLifecycle = workEntry.providerContextLifecycle;
   const monitorNotification = workEntry.monitorNotification;
   const opener = useWorkspaceFileOpener();
@@ -587,6 +596,8 @@ function ToolWorkEntryRow(props: TimelineWorkEntryRowProps) {
                 >
                   {linkIconUrl ? (
                     <LinkChipIcon url={linkIconUrl} className={WORK_ROW_ICON_CLASS_NAME} />
+                  ) : isPendingSubagentLaunch ? (
+                    <Spinner variant="subagent" className={WORK_ROW_ICON_CLASS_NAME} />
                   ) : (
                     renderWorkEntryIcon(LeftIcon, WORK_ROW_ICON_CLASS_NAME)
                   )}

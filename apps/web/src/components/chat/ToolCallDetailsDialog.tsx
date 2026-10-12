@@ -32,7 +32,7 @@ export function ToolCallDetailsContent({
   const nowMs = useLiveActivityNow(activity);
   const elapsed = activity ? formatLiveActivityElapsed(activity, nowMs) : null;
 
-  if (!hasToolCallDetailsContent(details, activity)) return null;
+  if (!hasToolCallDetailsContent(details, activity, toolKind)) return null;
   if (details?.kind === "tool") return <ToolIoDetails details={details} toolKind={toolKind} />;
   const commandOutputText = details?.command ? formatToolOutputText(details.output) : null;
 

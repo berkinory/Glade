@@ -15,6 +15,7 @@
 - Icons of tool calls, tool groups, subagent cards and notices in the chat line up in one column.
 - Command details show the command and its output in separate boxes.
 - Details of a failed tool call read in the normal text color; the red icon marks the failure.
+- A subagent launch shows the subagent spinner from its first moment instead of a robot icon that turned into a spinner.
 - Thinking gets its own row that says how long the agent thought, instead of riding inside tool call groups, and opens to the full reasoning.
 - A turn's edited files list shows about six files and scrolls the rest, with each file's name followed by its folder.
 - The pull request dialog says once that an empty title and description are generated, instead of repeating it in both fields.
@@ -22,6 +23,7 @@
 
 ### Fixed
 
+- Reading an image no longer shows an expand arrow that opens nothing.
 - The chat stays scrolled to the end while a turn runs tools, opens tool groups or asks for approval, until you scroll away.
 - Actions in the commit and pull request dialogs have space between them, so a hovered action no longer merges with the highlighted one.
 - Starting a chat in a collapsed project expands the project, so a project's first chat no longer stays hidden.
