@@ -341,7 +341,7 @@ export function CreateProjectDialog(props: {
         </DialogHeader>
         <DialogPanel className="space-y-4 px-5">
           {isElectron ? (
-            <div className="mt-4 space-y-2">
+            <div className="mt-4 flex flex-col gap-2">
               <span
                 id={machineLabelId}
                 className={cn("block", dialogFieldLabelClassName, "text-ui text-foreground")}
