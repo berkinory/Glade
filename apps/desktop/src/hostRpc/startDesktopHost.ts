@@ -56,6 +56,12 @@ export async function startDesktopHost(input: {
     onChanged: (states) => notify(BROWSER_TABS_CHANGED_NOTIFICATION, { tabs: states }),
     blocker,
     parking,
+    windowVisible: () => {
+      const window = input.mainWindow();
+      return (
+        window !== null && !window.isDestroyed() && window.isVisible() && !window.isMinimized()
+      );
+    },
   });
   const browserDispatch = createBrowserHostDispatch(tabs, input.gladePorts, blocker);
   const killSwitch = createComputerKillSwitch({

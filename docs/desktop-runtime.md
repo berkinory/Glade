@@ -65,6 +65,12 @@ the backend. `browser` owns the agent browser's tabs, CDP sessions and panel pla
 (renderer IPC `desktop:computer-permissions-get`, `-request` and `-open-settings`). Desktop shutdown
 stops the driver after the backend has exited.
 
+Each live agent browser tab is its own renderer. At most four stay live across all chats; beyond
+that the least recently used give up their renderer, as do tabs left idle for ten minutes, or
+five when their chat's browser panel is not on screen in a visible window. A suspended tab
+reloads its page on next use. Tabs an agent or the user is in the middle of using are never
+suspended.
+
 Keeping the Mac awake is not a desktop primitive. The backend owns the assertion because it owns
 agent activity; see [provider architecture](provider-architecture.md#keeping-the-host-awake).
 

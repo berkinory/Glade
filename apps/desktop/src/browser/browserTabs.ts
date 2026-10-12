@@ -20,17 +20,14 @@ import {
 import type { BrowserViewParking } from "./browserViewParking";
 import type { ContentBlocker } from "./contentBlocker";
 import { browserUrlBlockReason } from "./browserUrlPolicy";
+import { tabsToSuspend } from "./tabSuspension";
 
 // Hidden views still lay out at these bounds, so pages render a desktop viewport before the panel
 // ever shows them.
 const DEFAULT_BOUNDS = { x: 0, y: 0, width: 1280, height: 800 };
 const CHANGE_DEBOUNCE_MS = 100;
 const ERR_BLOCKED_BY_CLIENT = -20;
-// Like Chrome's tab discarding: a tab nobody touched for this long, or beyond the per-thread cap
-// of live tabs (least recently used first), gives up its renderer until it is used again.
-const SUSPEND_IDLE_MS = 10 * 60_000;
 const SUSPEND_SWEEP_MS = 60_000;
-const MAX_LIVE_TABS_PER_THREAD = 8;
 
 // A tab whose view and debugger were released. It keeps its place, page and ref numbering, and
 // comes back on the next agent call or when the user selects it.
@@ -63,7 +60,7 @@ export class BrowserTabs {
   private readonly activeByThread = new Map<ThreadId, string>();
   private nextId = 1;
   private changeTimer: NodeJS.Timeout | null = null;
-  private readonly sweepTimer = setInterval(() => this.sweep(), SUSPEND_SWEEP_MS);
+  private readonly sweepTimer = setInterval(() => this.suspendUnused(), SUSPEND_SWEEP_MS);
   private readonly syncViewBackgrounds = () => {
     const color = opaqueWindowBackgroundColor();
     for (const entry of this.tabs.values()) if (isLive(entry)) entry.view.setBackgroundColor(color);
@@ -75,6 +72,7 @@ export class BrowserTabs {
       readonly onChanged: (tabs: BrowserTabsChanged["tabs"]) => void;
       readonly blocker: ContentBlocker;
       readonly parking: BrowserViewParking;
+      readonly windowVisible: () => boolean;
     },
   ) {
     nativeTheme.on("updated", this.syncViewBackgrounds);
@@ -191,24 +189,24 @@ export class BrowserTabs {
     if (isLive(entry)) this.release(entry);
   }
 
-  private sweep(): void {
-    const idleSince = Date.now() - SUSPEND_IDLE_MS;
-    for (const entry of [...this.tabs.values()]) {
-      if (isLive(entry) && entry.lastUsed() < idleSince && entry.canSuspend()) this.suspend(entry);
-    }
-  }
-
-  private enforceLiveCap(threadId: ThreadId, keep: BrowserTab): void {
-    const candidates = this.entries(threadId)
-      .filter(isLive)
-      .toSorted((a, b) => a.lastUsed() - b.lastUsed());
-    let excess = candidates.length - MAX_LIVE_TABS_PER_THREAD;
-    for (const tab of candidates) {
-      if (excess <= 0) return;
-      if (tab === keep || !tab.canSuspend()) continue;
-      this.suspend(tab);
-      excess -= 1;
-    }
+  private suspendUnused(keep?: BrowserTab): void {
+    const live = [...this.tabs.values()].filter(isLive);
+    const onScreenThreads = new Set(
+      this.options.windowVisible()
+        ? live.filter((tab) => tab.isShownInPanel()).map((tab) => tab.threadId)
+        : [],
+    );
+    const chosen = tabsToSuspend(
+      live.map((tab) => ({
+        id: tab.id,
+        lastUsed: tab.lastUsed(),
+        onScreen: onScreenThreads.has(tab.threadId),
+        suspendable: tab.canSuspend(),
+      })),
+      Date.now(),
+      keep?.id,
+    );
+    for (const tab of live) if (chosen.has(tab.id)) this.suspend(tab);
   }
 
   // The entry replaces the tab in place before the view goes, so its `destroyed` event does not
@@ -300,7 +298,7 @@ export class BrowserTabs {
         },
       };
     });
-    this.enforceLiveCap(threadId, tab);
+    this.suspendUnused(tab);
     this.changed();
     return tab;
   }

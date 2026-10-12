@@ -141,6 +141,10 @@ export class BrowserTab {
     this.lastUsedAt = Date.now();
   }
 
+  isShownInPanel(): boolean {
+    return this.shownInPanel;
+  }
+
   // Loads the page a suspended tab showed into this fresh view.
   restore(url: string): void {
     const loading = this.webContents.loadURL(url || "about:blank");

@@ -8,6 +8,7 @@
 - Long Claude sessions use less memory.
 - The visual reply preview browser loads only when a preview is first needed, so Glade starts lighter.
 - Busy terminals use less CPU.
+- The agent browser uses less memory: at most four tabs stay loaded, and idle tabs in chats you are not looking at unload sooner.
 
 ### Fixed
 
