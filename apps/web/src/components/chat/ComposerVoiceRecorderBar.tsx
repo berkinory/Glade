@@ -29,7 +29,10 @@ export function ComposerVoiceRecorderBar(props: ComposerVoiceRecorderBarProps) {
       if (width <= 0) {
         return;
       }
-      setVisibleBarCount(Math.max(8, Math.floor(width / (BAR_WIDTH_PX + BAR_GAP_PX))));
+      // n bars need n widths and n - 1 gaps.
+      setVisibleBarCount(
+        Math.max(8, Math.floor((width + BAR_GAP_PX) / (BAR_WIDTH_PX + BAR_GAP_PX))),
+      );
     };
     computeVisibleBars();
     const observer = new ResizeObserver(computeVisibleBars);

@@ -23,7 +23,8 @@ interface RecorderRuntime {
   sampleRateHz: number;
 }
 
-const MAX_WAVEFORM_SAMPLES = 160;
+// Enough bars to fill the recorder track in Wide chat mode (about 300 at 4px per bar).
+const MAX_WAVEFORM_SAMPLES = 300;
 
 class VoiceRecordingCancelledError extends Error {
   override readonly name = "VoiceRecordingCancelledError";
