@@ -77,7 +77,11 @@ export const GIT_DIALOG_FIELD_CLASS =
   "w-full bg-transparent py-1 font-system-ui text-ui leading-snug outline-none placeholder:text-muted-foreground/70";
 
 export function GitDialogActionList({ children }: { children: ReactNode }) {
-  return <div className="border-[color:var(--color-border)] border-t p-2">{children}</div>;
+  return (
+    <div className="flex flex-col gap-0.5 border-[color:var(--color-border)] border-t p-2">
+      {children}
+    </div>
+  );
 }
 
 export function GitDialogActionRow({
