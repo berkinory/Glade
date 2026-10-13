@@ -103,6 +103,8 @@ Resume is fenced by a high-water mark. The server trusts a cursor only when the 
 
 The `afterSequence` field is optional on the subscribe input, so an older client simply never sends it and receives full snapshots exactly as before.
 
+The client's projection pollers (after a turn settles, after a quiet gap, and periodically while a thread runs) verify a subscribed thread with `orchestration.getThreadDetailHead` before reading its full detail. The head is read in one transaction with the projection cursor and carries that cursor, the last thread-detail event at or below it, the session, the latest turn, whether that turn's assistant message is stored, the ids of messages still streaming and the open interactions. The client reads the full detail only when the head shows an event its cursor has not applied, or any of those fields disagree with its own projection, or the head request fails. Servers advertise the method as `orchestration.thread-detail-head`; against an older server the client reads the full detail as before. The head uses the same `orchestration:read` scope as the full detail and the standard request class, since it reads a few indexed rows and no transcript.
+
 Cursor state also gates sidebar prewarming: a speculative prewarm subscription is only cheap when it can resume from a cursor, so threads without cached detail are not prewarmed from scroll position and pay their first full snapshot when actually opened. That trades a slightly colder first open of a never-viewed thread for not spending the per-client thread-stream budget on full-history streams the user may never look at.
 
 [1]: ../apps/server/src/server/http/nodeHttpServer.ts

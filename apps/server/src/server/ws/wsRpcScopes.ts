@@ -15,6 +15,7 @@ export const WS_RPC_REQUIRED_SCOPES: Record<WsFeatureRpcTag, AuthScope> = {
   [ORCHESTRATION_WS_METHODS.getSnapshot]: "orchestration:read",
   [ORCHESTRATION_WS_METHODS.getShellSnapshot]: "orchestration:read",
   [ORCHESTRATION_WS_METHODS.getThreadDetailSnapshot]: "orchestration:read",
+  [ORCHESTRATION_WS_METHODS.getThreadDetailHead]: "orchestration:read",
   [ORCHESTRATION_WS_METHODS.searchThreadMessages]: "orchestration:read",
   [ORCHESTRATION_WS_METHODS.getTurnDiff]: "orchestration:read",
   [ORCHESTRATION_WS_METHODS.previewWorkspaceRestore]: "orchestration:read",

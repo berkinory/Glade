@@ -28,6 +28,7 @@
 - Large file writes and edits from Claude no longer slow Glade down while their input streams.
 - On macOS, Glade no longer re-applies its app icon on every launch, so it starts quicker.
 - Long replies stream smoothly, and switching back to a recent chat renders its messages faster.
+- Finishing a turn no longer re-downloads the whole chat, so long chats stay responsive when an answer lands.
 
 ### Fixed
 

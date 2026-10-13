@@ -45,7 +45,10 @@ import { WS_CHANNELS, WS_METHODS, type WsWelcomePayload } from "@glade/contracts
 import { BROWSER_WS_METHODS } from "@glade/contracts/transport/ws/browserRpc";
 import { COMPUTER_WS_METHODS } from "@glade/contracts/transport/ws/computerRpc";
 import { REMOTE_ACCESS_WS_METHODS } from "@glade/contracts/transport/ws/remoteAccessRpc";
-import type { WsBootstrapNegotiateResult } from "@glade/contracts/transport/ws/wsCompatibility";
+import {
+  WS_THREAD_DETAIL_HEAD_CAPABILITY,
+  type WsBootstrapNegotiateResult,
+} from "@glade/contracts/transport/ws/wsCompatibility";
 import { VOICE_TRANSCRIPTION_UPLOAD_ROUTE_PATH } from "@glade/shared/transport/binaryTransfer";
 import { Option, Schema } from "effect";
 import { showConfirmDialogFallback } from "./confirmDialogFallback";
@@ -693,6 +696,11 @@ function buildNativeApi(transport: WsTransport, listeners: NativeApiListeners): 
       getShellSnapshot: () => transport.request(ORCHESTRATION_WS_METHODS.getShellSnapshot),
       getThreadDetailSnapshot: (input) =>
         transport.request(ORCHESTRATION_WS_METHODS.getThreadDetailSnapshot, input),
+      // An older server does not know the method; its caller then reads the full detail instead.
+      getThreadDetailHead: (input) =>
+        transport.getCompatibility()?.capabilities.includes(WS_THREAD_DETAIL_HEAD_CAPABILITY)
+          ? transport.request(ORCHESTRATION_WS_METHODS.getThreadDetailHead, input)
+          : Promise.reject(new Error("This server has no thread detail head.")),
       searchThreadMessages: (input, options) =>
         transport.request(ORCHESTRATION_WS_METHODS.searchThreadMessages, input, options),
       dispatchCommand: (command) => {

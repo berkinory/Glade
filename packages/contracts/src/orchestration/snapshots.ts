@@ -1,5 +1,12 @@
 import { Schema } from "effect";
-import { NonNegativeInt, IsoDateTime, SpaceId, ProjectId, ThreadId } from "../core/baseSchemas";
+import {
+  NonNegativeInt,
+  IsoDateTime,
+  MessageId,
+  SpaceId,
+  ProjectId,
+  ThreadId,
+} from "../core/baseSchemas";
 import {
   OrchestrationSpace,
   OrchestrationProject,
@@ -7,6 +14,9 @@ import {
   OrchestrationSpaceShell,
   OrchestrationProjectShell,
   OrchestrationThreadShell,
+  OrchestrationSession,
+  OrchestrationLatestTurn,
+  OrchestrationPendingInteraction,
 } from "./threadEntities";
 import { OrchestrationEvent } from "./events";
 
@@ -90,6 +100,27 @@ export const OrchestrationThreadDetailSnapshot = Schema.Struct({
 });
 
 export type OrchestrationThreadDetailSnapshot = typeof OrchestrationThreadDetailSnapshot.Type;
+
+// The parts of a thread detail a client compares with its live projection to decide whether it must
+// read the full detail again. Read in one transaction, so every field reflects `snapshotSequence`.
+export const OrchestrationThreadDetailHead = Schema.Struct({
+  snapshotSequence: NonNegativeInt,
+  // The last thread-detail event of this thread at or below `snapshotSequence`. A client cursor below
+  // it has missed events.
+  detailSequence: NonNegativeInt,
+  session: Schema.NullOr(OrchestrationSession),
+  latestTurn: Schema.NullOr(OrchestrationLatestTurn),
+  // A turn can name its final assistant message before that message is stored.
+  latestTurnAssistantMessageStored: Schema.Boolean,
+  // Stored messages and activities of the latest turn. A client holding fewer lost one of their events,
+  // which no sequence comparison can show because later events moved its cursor past the gap.
+  latestTurnMessageCount: NonNegativeInt,
+  latestTurnActivityCount: NonNegativeInt,
+  streamingMessageIds: Schema.Array(MessageId),
+  pendingInteractions: Schema.Array(OrchestrationPendingInteraction),
+});
+
+export type OrchestrationThreadDetailHead = typeof OrchestrationThreadDetailHead.Type;
 
 export const OrchestrationThreadStreamItem = Schema.Union([
   Schema.Struct({

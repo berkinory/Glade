@@ -46,7 +46,7 @@ export interface StreamOperations {
   queueDomainEvent: (event: OrchestrationEvent) => void;
   reconcileThreadProjection: (
     id: ThreadId,
-    options?: { readonly queueIfInFlight?: boolean },
+    options?: { readonly queueIfInFlight?: boolean; readonly verifyWithHead?: boolean },
   ) => Promise<void>;
   removeOrphanedTerminalsForCurrentState: () => void;
   refreshThreadSnapshot: (id: ThreadId) => Promise<void>;

@@ -81,6 +81,7 @@ const RULES: { readonly [N in Namespace]: { readonly default: Rule } & Record<st
     default: toLocal,
     dispatchCommand: dispatchTarget,
     getThreadDetailSnapshot: byThreadInput,
+    getThreadDetailHead: byThreadInput,
     getTurnDiff: byThreadInput,
     getFullThreadDiff: byThreadInput,
     previewWorkspaceRestore: byThreadInput,

@@ -1,7 +1,9 @@
 import { ThreadId } from "@glade/contracts/core/baseSchemas";
+import { hasPendingTurnDispatch } from "../pendingTurnDispatch";
 import { getThreadFromState } from "../threadDerivation";
 import { advanceThreadDetailResumeCursor } from "../threadDetailResumeCursors";
 import {
+  isPendingInteractionDetailMissing,
   isThreadDetailEventForThread,
   reconcilePromotedDraftFromThreadDetail,
   shouldReconcileThreadProjection,
@@ -10,8 +12,19 @@ import type { createStreamBatching } from "./-streamBatching";
 import type { StreamContext } from "./-streamContracts";
 import type { createStreamPolicy } from "./-streamPolicy";
 import type { StreamState } from "./-streamState";
+import { doesThreadDetailHeadMatch } from "./-threadDetailHead";
 import { canApplyThreadSnapshot } from "./-threadDetailOwnership";
 import { doesSnapshotSatisfyTerminalFence } from "./-threadTerminalFence";
+
+type HeadVerdict =
+  | {
+      readonly kind: "in-sync";
+      readonly snapshotSequence: number;
+      readonly fenceSatisfied: boolean;
+    }
+  | { readonly kind: "superseded" }
+  | { readonly kind: "needs-detail" };
+
 export function createStreamProjection(
   context: StreamContext,
   state: StreamState,
@@ -72,9 +85,80 @@ export function createStreamProjection(
       });
   };
 
+  const terminalFenceSatisfied = (
+    threadId: ThreadId,
+    evidence: Pick<
+      Parameters<typeof doesSnapshotSatisfyTerminalFence>[0],
+      "snapshotSequence" | "sessionStatus" | "latestTurn" | "assistantMessageStored"
+    >,
+  ): boolean =>
+    state.threadProjectionTerminalFencePending.has(threadId) &&
+    doesSnapshotSatisfyTerminalFence({
+      ...evidence,
+      fenceSequence: state.threadProjectionTerminalFenceSequenceById.get(threadId) ?? -1,
+      armedAtMs: state.threadProjectionTerminalFenceArmedAtById.get(threadId) ?? Date.now(),
+      nowMs: Date.now(),
+    });
+
+  // The head answers whether the live projection is current without shipping the transcript. Repairs
+  // the head cannot judge (a draft awaiting its thread, an unconfirmed send, interaction detail the
+  // shell says is missing) and any failure fall back to the full detail.
+  const verifyWithHead = async (
+    threadId: ThreadId,
+    subscriptionGeneration: number,
+  ): Promise<HeadVerdict> => {
+    const appliedSequence = state.threadSnapshotSequenceById.get(threadId);
+    if (
+      appliedSequence === undefined ||
+      policy.isDraftThreadAwaitingProjection(threadId) ||
+      hasPendingTurnDispatch(threadId) ||
+      isPendingInteractionDetailMissing(threadId)
+    ) {
+      return { kind: "needs-detail" };
+    }
+    const head = await context.api.orchestration
+      .getThreadDetailHead({ threadId })
+      .catch(() => null);
+    if (
+      state.disposed ||
+      state.threadSubscriptionGenerationById.get(threadId) !== subscriptionGeneration ||
+      !canApplyThreadSnapshot({ threadId, leasedThreadIds: state.subscribedThreadIds })
+    ) {
+      return { kind: "superseded" };
+    }
+    const thread = getThreadFromState(context.store.getState(), threadId);
+    if (head === null || thread === undefined) {
+      return { kind: "needs-detail" };
+    }
+    const currentSequence = state.threadSnapshotSequenceById.get(threadId) ?? -1;
+    // Like a full read, a head older than the live cursor says nothing about what has been applied.
+    if (head.snapshotSequence < currentSequence) {
+      return { kind: "superseded" };
+    }
+    if (!doesThreadDetailHeadMatch({ head, appliedSequence: currentSequence, thread })) {
+      return { kind: "needs-detail" };
+    }
+    return {
+      kind: "in-sync",
+      snapshotSequence: head.snapshotSequence,
+      fenceSatisfied: terminalFenceSatisfied(threadId, {
+        snapshotSequence: head.snapshotSequence,
+        sessionStatus: head.session?.status,
+        latestTurn: head.latestTurn,
+        assistantMessageStored: head.latestTurnAssistantMessageStored,
+      }),
+    };
+  };
+
+  const noteTurnSettledRepair = (threadId: ThreadId): void => {
+    state.pendingCheckpointDiffThreadIds.add(threadId);
+    state.pendingGitInvalidationThreadIds.add(threadId);
+    batching.domainEventFlushThrottler.maybeExecute();
+  };
+
   const reconcileThreadProjection = async (
     threadId: ThreadId,
-    options?: { readonly queueIfInFlight?: boolean },
+    options?: { readonly queueIfInFlight?: boolean; readonly verifyWithHead?: boolean },
   ): Promise<void> => {
     const subscriptionGeneration = state.threadSubscriptionGenerationById.get(threadId);
     if (
@@ -96,6 +180,32 @@ export function createStreamProjection(
     let projectionSatisfiesTerminalFence = false;
     let projectionAttemptFailed = false;
     try {
+      const projectionRepairsTerminalFence =
+        state.threadProjectionTerminalFencePending.has(threadId);
+      if (options?.verifyWithHead === true) {
+        const verdict = await verifyWithHead(threadId, subscriptionGeneration);
+        if (verdict.kind === "superseded") {
+          return;
+        }
+        if (verdict.kind === "in-sync") {
+          // The head proved no detail event of this thread lies between the cursor and its sequence.
+          const currentSequence = state.threadSnapshotSequenceById.get(threadId) ?? -1;
+          state.threadSnapshotSequenceById.set(
+            threadId,
+            Math.max(currentSequence, verdict.snapshotSequence),
+          );
+          advanceThreadDetailResumeCursor(threadId, verdict.snapshotSequence);
+          projectionConfirmed = true;
+          projectionSatisfiesTerminalFence = verdict.fenceSatisfied;
+          policy.resolveThreadCatchupBackoff(threadId).lastProjectionReconciledAt = Date.now();
+          policy.noteThreadReconcileResult(threadId, true);
+          if (projectionRepairsTerminalFence) {
+            noteTurnSettledRepair(threadId);
+          }
+          return;
+        }
+      }
+
       const snapshot = await context.api.orchestration.getThreadDetailSnapshot({ threadId });
       if (
         snapshot === null ||
@@ -111,29 +221,21 @@ export function createStreamProjection(
         return;
       }
       const currentThread = getThreadFromState(context.store.getState(), threadId);
-      const projectionRepairsTerminalFence =
-        state.threadProjectionTerminalFencePending.has(threadId);
       const projectionSettlesCurrentTurn =
         currentThread?.latestTurn?.state === "running" &&
         snapshot.thread.latestTurn !== null &&
         snapshot.thread.latestTurn.turnId === currentThread.latestTurn.turnId &&
         snapshot.thread.latestTurn.state !== "running" &&
         snapshot.thread.latestTurn.completedAt !== null;
-      const fenceIsPending = state.threadProjectionTerminalFencePending.has(threadId);
-      const fenceSequence = state.threadProjectionTerminalFenceSequenceById.get(threadId) ?? -1;
-      const fenceArmedAtMs =
-        state.threadProjectionTerminalFenceArmedAtById.get(threadId) ?? Date.now();
-      projectionSatisfiesTerminalFence =
-        fenceIsPending &&
-        doesSnapshotSatisfyTerminalFence({
-          snapshotSequence: snapshot.snapshotSequence,
-          fenceSequence,
-          sessionStatus: snapshot.thread.session?.status,
-          latestTurn: snapshot.thread.latestTurn,
-          messages: snapshot.thread.messages,
-          armedAtMs: fenceArmedAtMs,
-          nowMs: Date.now(),
-        });
+      const assistantMessageId = snapshot.thread.latestTurn?.assistantMessageId ?? null;
+      projectionSatisfiesTerminalFence = terminalFenceSatisfied(threadId, {
+        snapshotSequence: snapshot.snapshotSequence,
+        sessionStatus: snapshot.thread.session?.status,
+        latestTurn: snapshot.thread.latestTurn,
+        assistantMessageStored:
+          assistantMessageId !== null &&
+          snapshot.thread.messages.some((message) => message.id === assistantMessageId),
+      });
       state.threadSnapshotSequenceById.set(
         threadId,
         Math.max(currentSequence, snapshot.snapshotSequence),
@@ -156,9 +258,7 @@ export function createStreamProjection(
           context.store.getState() === stateBeforeProjectionApply,
       );
       if (projectionSettlesCurrentTurn || projectionRepairsTerminalFence) {
-        state.pendingCheckpointDiffThreadIds.add(threadId);
-        state.pendingGitInvalidationThreadIds.add(threadId);
-        batching.domainEventFlushThrottler.maybeExecute();
+        noteTurnSettledRepair(threadId);
       }
     } catch (error) {
       projectionAttemptFailed = true;

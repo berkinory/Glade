@@ -936,6 +936,13 @@ const makeWsRpcHandlersLayer = () =>
               .pipe(Effect.map(Option.getOrNull)),
             "Failed to load orchestration thread detail snapshot",
           ),
+        [ORCHESTRATION_WS_METHODS.getThreadDetailHead]: (input) =>
+          rpcEffect(
+            projectionReadModelQuery
+              .getThreadDetailHeadById(input.threadId)
+              .pipe(Effect.map(Option.getOrNull)),
+            "Failed to load orchestration thread detail head",
+          ),
         [ORCHESTRATION_WS_METHODS.searchThreadMessages]: (input) =>
           rpcEffect(threadMessageSearch.search(input), "Failed to search chat messages"),
         [ORCHESTRATION_WS_METHODS.repairState]: () =>

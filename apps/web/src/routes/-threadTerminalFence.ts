@@ -14,7 +14,8 @@ export function doesSnapshotSatisfyTerminalFence(input: {
     readonly state: string;
     readonly assistantMessageId: string | null;
   } | null;
-  readonly messages: ReadonlyArray<{ readonly id: string }>;
+  // Whether the message `latestTurn.assistantMessageId` names is stored.
+  readonly assistantMessageStored: boolean;
   readonly armedAtMs: number;
   readonly nowMs: number;
 }): boolean {
@@ -36,10 +37,7 @@ export function doesSnapshotSatisfyTerminalFence(input: {
     return true;
   }
 
-  if (
-    latestTurn.assistantMessageId !== null &&
-    input.messages.some((message) => message.id === latestTurn.assistantMessageId)
-  ) {
+  if (latestTurn.assistantMessageId !== null && input.assistantMessageStored) {
     return true;
   }
 

@@ -14,6 +14,7 @@ import { makeSnapshotReadModels } from "../projection/snapshotReadModels";
 import { makeSnapshotProjectLookup } from "../projection/snapshotProjectLookup";
 import { makeSnapshotThreadLookup } from "../projection/snapshotThreadLookup";
 import { makeSnapshotThreadDetails } from "../projection/snapshotThreadDetails";
+import { makeSnapshotThreadHead } from "../projection/snapshotThreadHead";
 
 const makeProjectionSnapshotQuery = Effect.gen(function* () {
   const sql = yield* SqlClient.SqlClient;
@@ -154,6 +155,13 @@ const makeProjectionSnapshotQuery = Effect.gen(function* () {
     countThreadMessageRows,
     listProjectionStateRows,
   });
+  const { getThreadDetailHeadById } = makeSnapshotThreadHead({
+    sql,
+    listProjectionStateRows,
+    getLatestTurnRowByThread,
+    getThreadSessionRowByThread,
+    listPendingInteractionRowsByThread,
+  });
 
   return {
     getCommandReadModel,
@@ -179,6 +187,7 @@ const makeProjectionSnapshotQuery = Effect.gen(function* () {
     getThreadMentionContextById,
     getThreadDetailForExportById,
     getThreadDetailSnapshotById,
+    getThreadDetailHeadById,
   } satisfies ProjectionSnapshotQueryShape;
 });
 

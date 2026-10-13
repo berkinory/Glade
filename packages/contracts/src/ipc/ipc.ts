@@ -226,6 +226,8 @@ import type {
   OrchestrationGetFullThreadDiffResult,
   OrchestrationGetThreadDetailSnapshotInput,
   OrchestrationGetThreadDetailSnapshotResult,
+  OrchestrationGetThreadDetailHeadInput,
+  OrchestrationGetThreadDetailHeadResult,
   OrchestrationSearchThreadMessagesInput,
   OrchestrationSearchThreadMessagesResult,
   OrchestrationListProviderDeliveryBlockersInput,
@@ -775,6 +777,9 @@ export interface NativeApi {
     getThreadDetailSnapshot: (
       input: OrchestrationGetThreadDetailSnapshotInput,
     ) => Promise<OrchestrationGetThreadDetailSnapshotResult>;
+    getThreadDetailHead: (
+      input: OrchestrationGetThreadDetailHeadInput,
+    ) => Promise<OrchestrationGetThreadDetailHeadResult>;
     searchThreadMessages: (
       input: OrchestrationSearchThreadMessagesInput,
       options?: { readonly signal?: AbortSignal },

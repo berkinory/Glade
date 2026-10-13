@@ -10,6 +10,7 @@ import type {
 import type {
   OrchestrationReadModel,
   OrchestrationShellSnapshot,
+  OrchestrationThreadDetailHead,
   OrchestrationThreadDetailSnapshot,
 } from "@glade/contracts/orchestration/snapshots";
 import type {
@@ -188,6 +189,10 @@ export interface ProjectionSnapshotQueryShape {
   readonly getThreadDetailSnapshotById: (
     threadId: ThreadId,
   ) => Effect.Effect<Option.Option<OrchestrationThreadDetailSnapshot>, ProjectionRepositoryError>;
+
+  readonly getThreadDetailHeadById: (
+    threadId: ThreadId,
+  ) => Effect.Effect<Option.Option<OrchestrationThreadDetailHead>, ProjectionRepositoryError>;
 }
 
 export class ProjectionSnapshotQuery extends ServiceMap.Service<

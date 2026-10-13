@@ -64,14 +64,16 @@ export const makeAppendAndProject =
 
 type DistributiveOmit<T, K extends PropertyKey> = T extends unknown ? Omit<T, K> : never;
 
-export const makeScenarioAppender = (
-  appendAndProject: ReturnType<typeof makeAppendAndProject>,
+type AppendableEvent = Parameters<OrchestrationEventStoreShape["append"]>[0];
+
+export const makeScenarioAppender = <A, E, R>(
+  appendAndProject: (event: AppendableEvent) => Effect.Effect<A, E, R>,
   prefix: string,
 ) => {
   let scenarioSequence = 0;
   return (
     event: DistributiveOmit<
-      Parameters<typeof appendAndProject>[0],
+      AppendableEvent,
       "eventId" | "commandId" | "correlationId" | "causationEventId" | "metadata"
     >,
   ) =>

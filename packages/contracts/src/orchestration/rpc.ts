@@ -11,6 +11,7 @@ import {
 import {
   OrchestrationReadModel,
   OrchestrationShellSnapshot,
+  OrchestrationThreadDetailHead,
   OrchestrationThreadDetailSnapshot,
 } from "./snapshots";
 import { TurnCountRange, ThreadTurnDiff } from "./threadEntities";
@@ -21,6 +22,7 @@ export const ORCHESTRATION_WS_METHODS = {
   getSnapshot: "orchestration.getSnapshot",
   getShellSnapshot: "orchestration.getShellSnapshot",
   getThreadDetailSnapshot: "orchestration.getThreadDetailSnapshot",
+  getThreadDetailHead: "orchestration.getThreadDetailHead",
   searchThreadMessages: "orchestration.searchThreadMessages",
   dispatchCommand: "orchestration.dispatchCommand",
   settleTurnDispatch: "orchestration.settleTurnDispatch",
@@ -244,6 +246,18 @@ export const OrchestrationGetThreadDetailSnapshotResult = Schema.NullOr(
 export type OrchestrationGetThreadDetailSnapshotResult =
   typeof OrchestrationGetThreadDetailSnapshotResult.Type;
 
+export const OrchestrationGetThreadDetailHeadInput = Schema.Struct({
+  threadId: ThreadId,
+});
+
+export type OrchestrationGetThreadDetailHeadInput =
+  typeof OrchestrationGetThreadDetailHeadInput.Type;
+
+export const OrchestrationGetThreadDetailHeadResult = Schema.NullOr(OrchestrationThreadDetailHead);
+
+export type OrchestrationGetThreadDetailHeadResult =
+  typeof OrchestrationGetThreadDetailHeadResult.Type;
+
 export const THREAD_MESSAGE_SEARCH_MIN_QUERY_LENGTH = 2;
 export const THREAD_MESSAGE_SEARCH_MAX_QUERY_LENGTH = 200;
 export const THREAD_MESSAGE_SEARCH_MAX_LIMIT = 50;
@@ -297,6 +311,10 @@ export const OrchestrationRpcSchemas = {
   getThreadDetailSnapshot: {
     input: OrchestrationGetThreadDetailSnapshotInput,
     output: OrchestrationGetThreadDetailSnapshotResult,
+  },
+  getThreadDetailHead: {
+    input: OrchestrationGetThreadDetailHeadInput,
+    output: OrchestrationGetThreadDetailHeadResult,
   },
   searchThreadMessages: {
     input: OrchestrationSearchThreadMessagesInput,

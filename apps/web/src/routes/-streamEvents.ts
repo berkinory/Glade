@@ -559,7 +559,9 @@ export function subscribeStreamEvents(
         now >= nextProjectionReconcileAt
       ) {
         availableProjectionReconcileSlots -= 1;
-        void operations.reconcileThreadProjection(threadId).catch(() => undefined);
+        void operations
+          .reconcileThreadProjection(threadId, { verifyWithHead: true })
+          .catch(() => undefined);
       }
     }
   }, THREAD_DETAIL_CATCHUP_INTERVAL_MS);
