@@ -86,7 +86,10 @@ function providerSetupStatusLabel(input: {
   if (status.authStatus === "unauthenticated") return "Needs sign-in";
   if (status.status === "update-required") return "Update required";
   if (status.status !== "ready") return "Needs attention";
-  if (status.authStatus === "unknown") return "Installed · sign-in not verified";
+  // A provider that runs without a sign-in, such as OpenCode's free models, names what it offers.
+  if (status.authStatus === "unknown") {
+    return status.authLabel ? `Ready · ${status.authLabel}` : "Installed · sign-in not verified";
+  }
   return "Connected";
 }
 function ProviderDocsLinks({ docs }: { docs: ProviderInstallSettings["docs"] }) {

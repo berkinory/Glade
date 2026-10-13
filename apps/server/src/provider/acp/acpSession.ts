@@ -127,19 +127,40 @@ function acpPromptFailure(cause: unknown): ProviderFailure {
   };
 }
 
-function usageDraft(response: PromptResponse): AcpRuntimeEventDraft | undefined {
-  const usage = response.usage;
-  if (!usage) return undefined;
+interface AcpContextUsage {
+  readonly used: number;
+  readonly size: number;
+}
+
+// `usage_update` reports how full the context window is; a turn's own usage counts what the turn
+// consumed, which equals the fill only for a single model call, so it stands in only when the
+// agent never reported the window.
+function usageDraft(
+  context: AcpContextUsage | undefined,
+  response?: PromptResponse,
+): AcpRuntimeEventDraft | undefined {
+  const turn = response?.usage ?? undefined;
+  const usedTokens = context?.used ?? turn?.totalTokens;
+  if (usedTokens === undefined) return undefined;
   return {
     type: "thread.token-usage.updated",
     payload: {
       usage: {
-        usedTokens: usage.totalTokens,
-        inputTokens: usage.inputTokens,
-        outputTokens: usage.outputTokens,
-        ...(usage.cachedReadTokens != null ? { cachedInputTokens: usage.cachedReadTokens } : {}),
-        ...(usage.thoughtTokens != null ? { reasoningOutputTokens: usage.thoughtTokens } : {}),
-        lastUsedTokens: usage.totalTokens,
+        usedTokens,
+        ...(context && context.size > 0 ? { maxTokens: context.size } : {}),
+        ...(turn
+          ? {
+              lastUsedTokens: turn.totalTokens,
+              lastInputTokens: turn.inputTokens,
+              lastOutputTokens: turn.outputTokens,
+              ...(turn.cachedReadTokens != null
+                ? { lastCachedInputTokens: turn.cachedReadTokens }
+                : {}),
+              ...(turn.thoughtTokens != null
+                ? { lastReasoningOutputTokens: turn.thoughtTokens }
+                : {}),
+            }
+          : {}),
       },
     },
   };
@@ -157,6 +178,7 @@ export function openAcpSession(input: {
   let commands: ReadonlyArray<AvailableCommand> = [];
   let runtimeMode = input.runtimeMode;
   let active: ActiveTurn | undefined;
+  let context: AcpContextUsage | undefined;
   const pending = new Map<string, PendingPermission>();
 
   const onUpdate = (notification: SessionNotification) => {
@@ -168,6 +190,12 @@ export function openAcpSession(input: {
       case "config_option_update":
         configOptions = update.configOptions;
         return;
+      case "usage_update": {
+        context = { used: update.used, size: update.size };
+        const draft = usageDraft(context);
+        if (draft) sink.emit(draft, active?.turnId);
+        return;
+      }
       case "session_info_update":
         if (update.title)
           sink.emit(
@@ -264,7 +292,7 @@ export function openAcpSession(input: {
       };
       try {
         const response = await connection.agent.prompt({ sessionId, prompt: [...blocks] });
-        const usage = usageDraft(response);
+        const usage = usageDraft(context, response);
         const state =
           response.stopReason === "cancelled"
             ? "interrupted"
