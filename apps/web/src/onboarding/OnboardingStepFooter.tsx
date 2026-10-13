@@ -52,14 +52,16 @@ export function OnboardingStepFooter(props: {
           ))}
         </div>
         {showSkip ? (
-          <button
-            type="button"
+          <Button
+            variant="ghost"
+            size="sm"
+            shape="capsule"
+            className="-ml-2"
             disabled={props.navigationLocked}
-            className="text-ui text-muted-foreground transition-colors hover:text-foreground disabled:opacity-60 motion-reduce:transition-none"
             onClick={props.onSkip}
           >
             Skip setup
-          </button>
+          </Button>
         ) : null}
       </div>
       {showBack ? (
