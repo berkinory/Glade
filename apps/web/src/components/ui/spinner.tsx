@@ -112,7 +112,7 @@ function foldingGrid(animate: boolean): ReactNode {
 
 function morphingSquare(animate: boolean): ReactNode {
   return (
-    <rect x="-7" y="-7" width="14" height="14" rx="1.5" stroke="currentColor" strokeWidth="2.5">
+    <rect x="-7" y="-7" width="14" height="14" rx="1.5" fill="currentColor">
       {animate && (
         <>
           <animateTransform
