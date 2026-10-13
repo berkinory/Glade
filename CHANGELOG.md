@@ -1,71 +1,49 @@
 # Glade Changelog
 
-## Unreleased
+## 0.2.6 - 2026-10-14
 
 ### New
 
-- OpenCode, Grok Build and Cursor are available as providers, including OpenCode's free models. Their models, each model's own effort levels and their native slash commands appear in the composer, their chats get generated titles, they can write commit messages, pull requests and branch names, and Supervised mode asks before they edit files or run commands. Their chats can be forked, compacted, edited and rewound, and Usage & limits shows Cursor, Grok and OpenCode Go limits from your own sign-in.
-- Chats stopped by a usage limit continue on their own once the limit resets. Cancel the wait from the chat, or turn it off in Settings.
-- The Environment panel lists the chat's background tasks, such as test runs and builds, with how long they have run, and can stop them. A server an agent starts shows once, under Local Servers, marked with the chat and task that started it.
-- One Update all button in the sidebar updates provider CLIs on this computer and every connected host, then installs the Glade update. Running chats can resume automatically after the restart, and hosts get the new version when they reconnect.
+- OpenCode, Grok Build and Cursor are available as providers, including OpenCode's free models. They bring their own models, effort levels and slash commands, get generated titles, can write commit messages, pull requests and branch names, and ask before editing files or running commands in Supervised mode. Their chats can be forked, compacted, edited and rewound, and Usage & limits shows their limits from your own sign-in. ([cd1e8aa0a](https://github.com/berkinory/Glade/commit/cd1e8aa0a8e95e84c926955cc4a9d190273d6d82), [b856112e7](https://github.com/berkinory/Glade/commit/b856112e763fb41fe68bac53268760d51dce4f66), [abb1b4a26](https://github.com/berkinory/Glade/commit/abb1b4a262b38a5c35501b2d85c67c5272ddcce6), [bec06597c](https://github.com/berkinory/Glade/commit/bec06597ce76e92a6eecda6766e589ac80f04dff), [86ff5e324](https://github.com/berkinory/Glade/commit/86ff5e324bf1b6392dfe0517c6e7a60ab2028adc), [b210f2f4a](https://github.com/berkinory/Glade/commit/b210f2f4abd87e8b726cfcd30557e3884d7b06e6))
+- Chats stopped by a usage limit continue on their own once the limit resets. Cancel the wait from the chat, or turn it off in Settings. ([c7342d39d](https://github.com/berkinory/Glade/commit/c7342d39d47904dbe808f59d5af84ddecf2f249b))
+- The Environment panel lists the chat's background tasks, such as test runs and builds, with how long they have run, and can stop them. A server an agent starts shows once, under Local Servers, marked with the chat and task that started it. ([d26379dda](https://github.com/berkinory/Glade/commit/d26379dda4603cedf8036b5f27877a07da9354fe), [7f7836aed](https://github.com/berkinory/Glade/commit/7f7836aed4fd8faf4f94d2b5b86b96d12a8c4155))
+- One Update all button in the sidebar updates provider CLIs on this computer and every connected host, then installs the Glade update. Running chats can resume after the restart, and hosts get the new version when they reconnect. ([8e5f3f537](https://github.com/berkinory/Glade/commit/8e5f3f537cebaf00e829be9ddb718377b704b2f0))
 
 ### Improved
 
-- Finished shell commands say how they went next to their name: test totals such as "451 passed" or "2 failed, 449 passed", type and lint errors, the number of search matches, or the line that explains a failure.
-- Search commands list their matches in the details, and each one opens its file at that line.
-- A read of part of a file shows the lines it covered, such as "L20–40", and opens the file there.
-- A file a shell command changed can be opened in the turn's diff from the command's details.
-- The same command run several times in a row shows once, with how many times it ran and its latest result.
-- Model search ignores case, spacing, punctuation and word order, so "gpt5" finds GPT-5.
-- Typing @ suggests only a few recent chats from the current project, below files and agents, and no longer lists subagent chats. Type a name to search more.
-- Shell commands that write files read as edits: a Python or JavaScript script that writes a file, `sed -i`, `perl -pi` and `cat > file` show "Edited", "Wrote" or "Appended to" with the file, and count as edited files in their tool group.
-- Scripts show their language's icon, such as Python, Node or Bun, and code passed to a command through a heredoc is highlighted in its own language under the command.
-- Several searches in one command say what they looked for and where, such as "Searched for visibility, LevelDto +3 in Game/Runtime", instead of "Searched 2 times".
-- Glade starts faster and uses much less memory, and Codex replies take far less work to process.
-- Long Claude sessions use less memory.
-- Searches in tool calls say what they look for in plain words and count every folder they search.
-- A shell command that reads files shows them like a Read tool call: one file as its file chip, several as a count with each file listed in its details to open with a click, and every one counted in its tool group.
-- Retried requests to a provider show as one row with an icon and the latest attempt, such as "Connection lost · retry 5/10", and open to every attempt.
-- A command left running in the background says so on its own row and updates when it finishes, fails or is stopped, instead of adding a separate "Moved to background" row.
-- The visual reply preview browser loads only when a preview is first needed, so Glade starts lighter.
-- Busy terminals use less CPU.
-- The agent browser uses less memory: at most four tabs stay loaded, and idle tabs in chats you are not looking at unload sooner.
-- Glade opens faster: its local server now starts before other startup work.
-- The Dock icon uses less memory on macOS.
-- Live activity labels use less CPU while agents work.
-- Diffs use less memory, and it is freed once diffs have been closed for a while.
-- Opening a busy chat or starting Glade no longer downloads the same data twice, and live chats stop polling while updates stream in.
-- Long chats stay smoother while a reply streams.
-- The branch picker and subagent list do less work while a reply streams.
-- Chats open faster: math, file previews and code reviews load the first time they are needed.
-- Long chats open faster, and opening one no longer pauses other chats' streaming.
-- Tool output takes much less space in the local database.
-- The local database drops replay records it no longer needs, and its write log shrinks back after large writes.
-- Streaming replies do far less database reading per update.
-- Server memory no longer grows with every chat used during a session.
-- Running chats write far fewer status updates, so the sidebar and server stay calm during long turns.
-- Streaming replies write far less to disk and send fewer updates, with the same text.
-- Codex subagent progress refreshes no longer re-read the subagent's whole conversation.
-- Large file writes and edits from Claude no longer slow Glade down while their input streams.
-- On macOS, Glade no longer re-applies its app icon on every launch, so it starts quicker.
-- Long replies stream smoothly, and switching back to a recent chat renders its messages faster.
-- Finishing a turn no longer re-downloads the whole chat, so long chats stay responsive when an answer lands.
+- Agents reply in the language you write in, and leave code, commands and quotations as they are. ([d09863b07](https://github.com/berkinory/Glade/commit/d09863b07659aef4419077958cdfe74c8b50d3ed))
+- Finished shell commands say how they went next to their name: test totals, type and lint errors, the number of search matches, or the line that explains a failure. Long output keeps its last lines, where totals and errors usually are. ([428585081](https://github.com/berkinory/Glade/commit/428585081629c5f9812fbfa33bb99bef9393ec1c))
+- Searches say in plain words what they looked for and where, count every folder they search, and list their matches in the details, each opening its file at that line. ([98745880e](https://github.com/berkinory/Glade/commit/98745880e734a157a7497143dbc9cbf608b6478d), [b588fc082](https://github.com/berkinory/Glade/commit/b588fc0827556e31422b8419e5a717031b4bbf28), [428585081](https://github.com/berkinory/Glade/commit/428585081629c5f9812fbfa33bb99bef9393ec1c))
+- A shell command that reads files shows them like a Read tool call, and a read of part of a file shows the lines it covered and opens the file there. ([8678dab4d](https://github.com/berkinory/Glade/commit/8678dab4d3ab072ec2a8a1b70f05bad49dbbdf3b), [428585081](https://github.com/berkinory/Glade/commit/428585081629c5f9812fbfa33bb99bef9393ec1c))
+- Shell commands that write files, such as scripts, `sed -i` or `cat > file`, read as edits, count as edited files in their group, and open the file in the turn's diff from their details. ([b588fc082](https://github.com/berkinory/Glade/commit/b588fc0827556e31422b8419e5a717031b4bbf28), [428585081](https://github.com/berkinory/Glade/commit/428585081629c5f9812fbfa33bb99bef9393ec1c))
+- Scripts show their language's icon, and code passed to a command through a heredoc is highlighted in its own language. ([b588fc082](https://github.com/berkinory/Glade/commit/b588fc0827556e31422b8419e5a717031b4bbf28))
+- The same command run several times in a row shows once, with how many times it ran and its latest result. ([428585081](https://github.com/berkinory/Glade/commit/428585081629c5f9812fbfa33bb99bef9393ec1c))
+- Retried requests to a provider show as one row with the latest attempt, and open to every attempt. ([44812f9e7](https://github.com/berkinory/Glade/commit/44812f9e718353c30d0ad20d021f66835e0fae1b))
+- A command left running in the background says so on its own row and updates when it finishes, fails or is stopped, instead of adding a separate row. ([d26379dda](https://github.com/berkinory/Glade/commit/d26379dda4603cedf8036b5f27877a07da9354fe))
+- Model search ignores case, spacing, punctuation and word order, so "gpt5" finds GPT-5. ([3f6953108](https://github.com/berkinory/Glade/commit/3f69531084ed27bfe9b04f966e90caf849052742))
+- Typing @ suggests a few recent chats from the current project, below files and agents, and no longer lists subagent chats. Type a name to search more. ([62496d762](https://github.com/berkinory/Glade/commit/62496d762899b4cd667e0e4d7c41ed622ea843e0))
+- Glade starts and opens chats faster: its local server starts first, the visual reply preview, math, file previews and code reviews load when they are first needed, and macOS no longer re-applies the app icon on every launch. ([dce689e0f](https://github.com/berkinory/Glade/commit/dce689e0fec7c38b9995385ace74c11654536e04), [723da9868](https://github.com/berkinory/Glade/commit/723da9868ba7e98dd23a3f6df0cf087f17388daf), [0c87b2ac0](https://github.com/berkinory/Glade/commit/0c87b2ac09ba1b3234d3b5230cb5b1a2c821fb12), [7e126cbff](https://github.com/berkinory/Glade/commit/7e126cbff16969ebe85d2fd9e0c478e0cd4e2de2))
+- Glade uses much less memory, in long Claude sessions, across many chats in one session, in the agent browser, which unloads idle tabs sooner, in diffs, and for the Dock icon on macOS. ([2a079616c](https://github.com/berkinory/Glade/commit/2a079616c14f3db58b521f9b3189fc5d0ffbf42a), [eb0047070](https://github.com/berkinory/Glade/commit/eb00470701513dd650069780d798da6c95640f5c), [9bd75b00a](https://github.com/berkinory/Glade/commit/9bd75b00a1fdeb9a17d57db225c4c2635a81ba74), [2da2e8979](https://github.com/berkinory/Glade/commit/2da2e8979f4e36738c02b6049f6a0d6363fac2fc), [8beddc1eb](https://github.com/berkinory/Glade/commit/8beddc1ebbb44f513c55d8c5b680442734288dda))
+- Long chats open faster and stay smooth while a reply streams, and opening one no longer pauses other chats' streaming. ([77dbfc527](https://github.com/berkinory/Glade/commit/77dbfc52719a5b39d57295c8cb1e2fefa3dee49a), [65d87c12e](https://github.com/berkinory/Glade/commit/65d87c12ebe239374876728cc6c51e9c4c8c4bbe), [92bf538f1](https://github.com/berkinory/Glade/commit/92bf538f1c070f2c1f0116997109c85a41283025), [0b0565e6f](https://github.com/berkinory/Glade/commit/0b0565e6f66460673e2eebe87156863b7cb2a7e6))
+- Finishing a turn, opening a busy chat or starting Glade no longer downloads the same chat data again, and live chats stop polling while updates stream in. ([53091fc76](https://github.com/berkinory/Glade/commit/53091fc7683fed48293875078ea9a2aa77749a2d), [224f47190](https://github.com/berkinory/Glade/commit/224f47190ca873182ac2b72d2c5f9a117b823645))
+- Streaming replies and running chats read and write far less to the local database and disk, so the sidebar and server stay calm during long turns. ([531362d75](https://github.com/berkinory/Glade/commit/531362d757c3994f53cdca0db78936107109ed38), [ca2b7ecd7](https://github.com/berkinory/Glade/commit/ca2b7ecd78b64d2f638fd7a2f2c8d108987ab437), [09f7e2f74](https://github.com/berkinory/Glade/commit/09f7e2f747feea85cb9627911874d26dc0b1316b))
+- The local database stays smaller: tool output takes much less space, replay records it no longer needs are dropped, and its write log shrinks back after large writes. ([a98f82ae3](https://github.com/berkinory/Glade/commit/a98f82ae33fc82344729441d4448f454a27967e0), [3ca86c5e9](https://github.com/berkinory/Glade/commit/3ca86c5e9cfc2618d2639f309dd4fdb1ffee20ab))
+- Codex replies and subagent progress take far less work to process, and large Claude file writes no longer slow Glade down while they stream. ([6a20b61f0](https://github.com/berkinory/Glade/commit/6a20b61f05b1d96596ecab6449e5f780048f8c83), [c0838f369](https://github.com/berkinory/Glade/commit/c0838f36979919891c0ddf4cfe58888d1fae3a1f), [463291452](https://github.com/berkinory/Glade/commit/463291452d0bd19678b3dce1f2f0c6d92ccf0928))
+- Busy terminals and live activity labels use less CPU. ([527ae8d06](https://github.com/berkinory/Glade/commit/527ae8d06ab500a30c6f1a90f5a8025c2f1e0e22), [a48bfc446](https://github.com/berkinory/Glade/commit/a48bfc446bbe5ebe6167b3b01ec4adec64a2bc86))
 
 ### Fixed
 
-- Opening an edited file's diff from a tool call shows that file instead of the whole turn when the tool named it with a full path.
-- Long command output keeps its last lines, where test totals and errors usually are, instead of only its first.
-- A visual reply that arrives while a reply streams no longer sometimes says it tried to navigate away.
-- An approved request no longer leaves an extra unnamed tool row in the chat.
-- After a chat switches to another provider, the new provider can use Glade's tools from its first reply.
-- Editing a message or rewinding a chat no longer plays the turn finished sound or shows a completion notification.
-- Progress updates from background tasks and subagents no longer appear in the chat as "Reasoning update" rows; their cards and the Environment panel show them.
-- Forking a chat from an earlier reply works while the chat is still running. Only the reply that is still being written cannot be forked, and its fork button stays hidden until it finishes.
-- Opening the rewind or edit confirmation no longer expands and collapses the previous reply.
-- Live change counts no longer touch the Git index while an agent works, which could make the agent's own Git commands fail.
-- Chats in folders that are not Git repositories no longer retry Git every few seconds, and running git init in one is picked up right away.
-- A chat whose turn changed thousands of files no longer slows down typing and switching chats. Long file lists in chats, diffs, commits and restore prompts show a page at a time.
-- SSH hosts and Linux servers no longer freeze for seconds when an agent rewrites many files, and watching a large repository there takes far less memory.
+- Opening an edited file's diff from a tool call shows that file instead of the whole turn when the tool named it with a full path. ([428585081](https://github.com/berkinory/Glade/commit/428585081629c5f9812fbfa33bb99bef9393ec1c))
+- A visual reply that arrives while a reply streams no longer sometimes says it tried to navigate away. ([8501cb6d3](https://github.com/berkinory/Glade/commit/8501cb6d36726cbefa1a9972cbac25f8b523adfe))
+- An approved request no longer leaves an extra unnamed tool row in the chat. ([0b4ee48f2](https://github.com/berkinory/Glade/commit/0b4ee48f28a1c4a5ea3fa580b79d5ef96ee3836c))
+- After a chat switches to another provider, the new provider can use Glade's tools from its first reply. ([a0ecf6410](https://github.com/berkinory/Glade/commit/a0ecf64107b99b92161ffd8cb06241666f17a1e2))
+- Editing a message or rewinding a chat no longer plays the turn finished sound or shows a notification, and opening its confirmation no longer makes the previous reply jump. ([d7b369459](https://github.com/berkinory/Glade/commit/d7b369459d1bae2ddc36a639c49903362b6d3eb2), [82be20043](https://github.com/berkinory/Glade/commit/82be20043f25e78b1ee3e875e4b58e13ca3be89c))
+- Progress updates from background tasks and subagents no longer appear in the chat as "Reasoning update" rows; their cards and the Environment panel show them. ([8678dab4d](https://github.com/berkinory/Glade/commit/8678dab4d3ab072ec2a8a1b70f05bad49dbbdf3b))
+- Forking a chat from an earlier reply works while the chat is still running; only the reply still being written cannot be forked. ([c119f609e](https://github.com/berkinory/Glade/commit/c119f609ed7d76a23e8a49d950ec740446e7982c))
+- Live change counts no longer touch the Git index while an agent works, which could make the agent's own Git commands fail. ([3ce8e87d1](https://github.com/berkinory/Glade/commit/3ce8e87d147fb7a9cba5e5f13c22e4e88cc6eb58))
+- Chats in folders that are not Git repositories no longer retry Git every few seconds, and running git init in one is picked up right away. ([773436dbc](https://github.com/berkinory/Glade/commit/773436dbc427cd2eda47efc5a226118d36709a57))
+- A chat whose turn changed thousands of files no longer slows down typing and switching chats, and long file lists show a page at a time. ([d1d456b29](https://github.com/berkinory/Glade/commit/d1d456b2950a04185957b356afe62e24fd677834))
+- SSH hosts and Linux servers no longer freeze for seconds when an agent rewrites many files, and watching a large repository there takes far less memory. ([5c1eb3532](https://github.com/berkinory/Glade/commit/5c1eb3532c711337901165239677608f1af8686d))
 
 ## 0.2.5 - 2026-10-13
 

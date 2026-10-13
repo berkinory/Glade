@@ -16,19 +16,31 @@ import CloudUploadGlyph from "@hugeicons/core-free-icons/CloudUploadIcon";
 import Comment01Glyph from "@hugeicons/core-free-icons/Comment01Icon";
 import ComputerTerminal01Glyph from "@hugeicons/core-free-icons/ComputerTerminal01Icon";
 import Copy01Glyph from "@hugeicons/core-free-icons/Copy01Icon";
+import CpuGlyph from "@hugeicons/core-free-icons/CpuIcon";
+import DashboardSpeed02Glyph from "@hugeicons/core-free-icons/DashboardSpeed02Icon";
+import Database01Glyph from "@hugeicons/core-free-icons/Database01Icon";
 import File02Glyph from "@hugeicons/core-free-icons/File02Icon";
 import Folder01Glyph from "@hugeicons/core-free-icons/Folder01Icon";
 import GitCommitHorizontalGlyph from "@hugeicons/core-free-icons/GitCommitHorizontalIcon";
 import GitPullRequestGlyph from "@hugeicons/core-free-icons/GitPullRequestIcon";
+import Globe02Glyph from "@hugeicons/core-free-icons/Globe02Icon";
+import HelpCircleGlyph from "@hugeicons/core-free-icons/HelpCircleIcon";
+import LanguageSkillGlyph from "@hugeicons/core-free-icons/LanguageSkillIcon";
 import LayoutAlignLeftGlyph from "@hugeicons/core-free-icons/LayoutAlignLeftIcon";
 import MagicWand01Glyph from "@hugeicons/core-free-icons/MagicWand01Icon";
 import PencilEdit02Glyph from "@hugeicons/core-free-icons/PencilEdit02Icon";
+import PlusGlyph from "@hugeicons/core-free-icons/PlusIcon";
 import PlusMinusSquare01Glyph from "@hugeicons/core-free-icons/PlusMinusSquare01Icon";
 import RefreshCwGlyph from "@hugeicons/core-free-icons/RefreshCwIcon";
+import Rocket01Glyph from "@hugeicons/core-free-icons/Rocket01Icon";
 import Search01Glyph from "@hugeicons/core-free-icons/Search01Icon";
 import ServerStack01Glyph from "@hugeicons/core-free-icons/ServerStack01Icon";
+import Settings01Glyph from "@hugeicons/core-free-icons/Settings01Icon";
 import SparklesGlyph from "@hugeicons/core-free-icons/SparklesIcon";
+import SquareGlyph from "@hugeicons/core-free-icons/SquareIcon";
 import SquarePenGlyph from "@hugeicons/core-free-icons/SquarePenIcon";
+import StarGlyph from "@hugeicons/core-free-icons/StarIcon";
+import Tick02Glyph from "@hugeicons/core-free-icons/Tick02Icon";
 import ToolsGlyph from "@hugeicons/core-free-icons/ToolsIcon";
 import TriangleAlertGlyph from "@hugeicons/core-free-icons/TriangleAlertIcon";
 import UndoGlyph from "@hugeicons/core-free-icons/UndoIcon";
@@ -70,19 +82,31 @@ const GLYPHS = {
   Comment: Comment01Glyph,
   ComputerTerminal: ComputerTerminal01Glyph,
   Copy: Copy01Glyph,
+  Cpu: CpuGlyph,
+  Database: Database01Glyph,
   File02: File02Glyph,
   Folder: Folder01Glyph,
   GitCommitHorizontal: GitCommitHorizontalGlyph,
   GitPullRequest: GitPullRequestGlyph,
+  Globe: Globe02Glyph,
+  HelpCircle: HelpCircleGlyph,
+  Language: LanguageSkillGlyph,
   LayoutAlignLeft: LayoutAlignLeftGlyph,
   MagicWand: MagicWand01Glyph,
   PencilEdit02: PencilEdit02Glyph,
+  Plus: PlusGlyph,
   PlusMinusSquare: PlusMinusSquare01Glyph,
   RefreshCw: RefreshCwGlyph,
+  Rocket: Rocket01Glyph,
   Search: Search01Glyph,
   ServerStack: ServerStack01Glyph,
+  Settings01: Settings01Glyph,
   Sparkles: SparklesGlyph,
+  Speed: DashboardSpeed02Glyph,
+  Square: SquareGlyph,
   SquarePen: SquarePenGlyph,
+  Star: StarGlyph,
+  Tick: Tick02Glyph,
   Tools: ToolsGlyph,
   TriangleAlert: TriangleAlertGlyph,
   Undo: UndoGlyph,
@@ -119,19 +143,28 @@ export function fileIcon(symbol: string, size = 14): string {
   return `<img src="${dataUri(join(WEB_PUBLIC, "symbols/files", `${symbol}.svg`))}" width="${size}" height="${size}" alt="">`;
 }
 
+const WEB_ASSETS = join(import.meta.dirname, "../../apps/web/src/assets");
+
+// Brand logos as apps/web/src/lib/brandIcons.tsx draws them: tinted ones are a mask in the text
+// color, the rest keep their own colors.
 const LOGOS = {
-  github: join(WEB_PUBLIC, "brands/github_light.svg"),
-  claude: join(WEB_PUBLIC, "brands/claude-ai-icon.svg"),
-  openai: join(import.meta.dirname, "../../apps/web/src/assets/brands/openai.svg"),
+  github: { path: join(WEB_PUBLIC, "brands/github_light.svg"), tinted: true },
+  claude: { path: join(WEB_PUBLIC, "brands/claude-ai-icon.svg"), tinted: false },
+  openai: { path: join(WEB_ASSETS, "brands/openai.svg"), tinted: true },
+  opencode: { path: join(WEB_ASSETS, "brands/opencode.svg"), tinted: true },
+  grok: { path: join(WEB_ASSETS, "brands/grok.svg"), tinted: true },
+  cursor: { path: join(WEB_PUBLIC, "brands/cursor_light.svg"), tinted: true },
 } as const;
 
-/** A brand logo as the app shows it; GitHub and OpenAI take the text color. */
-export function logo(name: keyof typeof LOGOS, size = 15): string {
-  const svg = readFileSync(LOGOS[name], "utf8")
-    .replace(/fill="#1b1f23"/g, 'fill="currentColor"')
-    .replace(/<svg([^>]*?) fill="none"/, '<svg$1 fill="currentColor"')
-    .replace(/ width="\d+" height="\d+"/, "");
-  return svg.replace("<svg", `<svg class="ic" width="${size}" height="${size}"`);
+export type LogoName = keyof typeof LOGOS;
+
+export function logo(name: LogoName, size = 15): string {
+  const { path, tinted } = LOGOS[name];
+  const src = dataUri(path);
+  if (!tinted) {
+    return `<img class="ic" src="${src}" width="${size}" height="${size}" style="object-fit:contain" alt="">`;
+  }
+  return `<span class="ic" style="width:${size}px;height:${size}px;background:currentColor;-webkit-mask:url(${src}) center/contain no-repeat;mask:url(${src}) center/contain no-repeat"></span>`;
 }
 
 /** The macOS app icon, rendered by scripts/generate-brand-assets.ts. */
