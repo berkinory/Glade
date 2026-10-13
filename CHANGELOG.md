@@ -11,6 +11,7 @@
 - Glade starts faster and uses much less memory, and Codex replies take far less work to process.
 - Long Claude sessions use less memory.
 - Searches in tool calls say what they look for in plain words and count every folder they search.
+- Retried requests to a provider show as one row with an icon and the latest attempt, such as "Connection lost · retry 5/10", and open to every attempt.
 - The visual reply preview browser loads only when a preview is first needed, so Glade starts lighter.
 - Busy terminals use less CPU.
 - The agent browser uses less memory: at most four tabs stay loaded, and idle tabs in chats you are not looking at unload sooner.

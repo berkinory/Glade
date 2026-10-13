@@ -33,6 +33,7 @@ import {
   parseClaudeWorkflowProgressAgents,
 } from "../claudeWorkflowScript.ts";
 import { readClaudeWorkflowOutputText } from "../claudeWorkflowRuntime.ts";
+import { claudeRequestRetryFailure } from "./failures.ts";
 
 // Task events belong to the turn that started the task, so late updates from a stopped turn do not
 // land in the next one. Untracked tasks fall back to the active turn.
@@ -322,16 +323,18 @@ export function makeClaudeSystemMessages(input: {
         case "api_retry": {
           const reason =
             message.error_status === null ? "connection error" : `HTTP ${message.error_status}`;
+          const retry = {
+            attempt: message.attempt,
+            maxRetries: message.max_retries,
+            retryDelayMs: message.retry_delay_ms,
+            httpStatus: message.error_status,
+          };
+          const text = `Request retry ${retry.attempt}/${retry.maxRetries} in ${Math.ceil(retry.retryDelayMs / 1000)}s (${reason}).`;
           yield* emitRuntimeWarning(
             context,
-            `Request retry ${message.attempt}/${message.max_retries} in ${Math.ceil(message.retry_delay_ms / 1000)}s (${reason}).`,
-            {
-              subtype: message.subtype,
-              attempt: message.attempt,
-              maxRetries: message.max_retries,
-              retryDelayMs: message.retry_delay_ms,
-              httpStatus: message.error_status,
-            },
+            text,
+            { subtype: message.subtype, ...retry },
+            claudeRequestRetryFailure(retry, text),
           );
           return;
         }

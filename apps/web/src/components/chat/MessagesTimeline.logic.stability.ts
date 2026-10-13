@@ -175,6 +175,8 @@ function workLogEntryContentEqual(a: WorkLogEntry, b: WorkLogEntry): boolean {
     workLogSubagentActionsEqual(a.subagentAction, b.subagentAction) &&
     workLogSubagentsEqual(a.subagents, b.subagents) &&
     deepEqualJson(a.subagentRun, b.subagentRun) &&
+    deepEqualJson(a.reasoning, b.reasoning) &&
+    deepEqualJson(a.requestRetries, b.requestRetries) &&
     workLogGladeThreadCreationsEqual(a.gladeThreadCreation, b.gladeThreadCreation) &&
     workLogLiveActivitiesEqual(a.liveActivity, b.liveActivity) &&
     workLogToolDetailsEqual(a.toolDetails, b.toolDetails)

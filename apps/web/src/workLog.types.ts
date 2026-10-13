@@ -1,5 +1,6 @@
 import type { VisualReply } from "@glade/contracts/orchestration/visualReply";
 import type { ToolLifecycleItemType } from "@glade/contracts/provider/runtimeMetadata";
+import type { ProviderFailureKind } from "@glade/contracts/provider/providerFailure";
 import type { OrchestrationThreadActivity } from "@glade/contracts/orchestration/threadEntities";
 import type {
   HandoffStrategy,
@@ -90,6 +91,8 @@ export interface WorkLogEntry {
   turnStopped?: true;
   // An answered agent question with the user's answers; it stays visible outside a settled turn's fold.
   userInputExchange?: ReadonlyArray<WorkLogUserInputExchangeItem>;
+  // Consecutive retries of one provider request, oldest first.
+  requestRetries?: ReadonlyArray<WorkLogRequestRetry>;
   // A provider thinking block: still streaming while live, and how long it took once known.
   reasoning?: { live: boolean; durationMs?: number };
   // A Claude Monitor update that woke the agent; it marks where the reply it prompted starts.
@@ -109,6 +112,15 @@ export interface WorkLogEntry {
   activityKind?: OrchestrationThreadActivity["kind"];
 
   nativeEventType?: string;
+}
+
+export interface WorkLogRequestRetry {
+  reason: ProviderFailureKind;
+  // Null when the request failed without a response, such as a dropped connection.
+  httpStatus: number | null;
+  attempt?: number;
+  maxAttempts?: number;
+  delayMs?: number;
 }
 
 export interface WorkLogMonitorNotification {

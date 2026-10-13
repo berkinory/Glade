@@ -39,3 +39,36 @@ export function claudeAssistantFailure(
     message: claudeAssistantErrorMessage(code),
   };
 }
+
+// The SDK retries a failed API request on its own and reports each attempt before it waits.
+export function claudeRequestRetryFailure(
+  retry: {
+    readonly attempt: number;
+    readonly maxRetries: number;
+    readonly retryDelayMs: number;
+    readonly httpStatus: number | null;
+  },
+  message: string,
+): ProviderFailure {
+  const { httpStatus } = retry;
+  return {
+    kind:
+      httpStatus === null
+        ? "connection_lost"
+        : httpStatus === 429
+          ? "rate_limited"
+          : httpStatus === 503 || httpStatus === 529
+            ? "overloaded"
+            : "internal",
+    retry: {
+      state: "retrying",
+      ...(retry.attempt >= 1 ? { attempt: Math.round(retry.attempt) } : {}),
+      ...(retry.maxRetries >= 1 ? { maxAttempts: Math.round(retry.maxRetries) } : {}),
+      retryDelayMs: Math.max(0, Math.round(retry.retryDelayMs)),
+    },
+    action: null,
+    resetsAt: null,
+    httpStatus,
+    message,
+  };
+}

@@ -66,6 +66,7 @@ import { classifyWorkLogToolKind } from "./workLog.toolKind";
 import { deriveTurnFailureEntries, isTurnFailureActivity } from "./workLog.turnFailures";
 import { deriveTurnStopEntries } from "./workLog.turnStops";
 import { monitorNotificationEntryFields } from "./workLog.monitorEvents";
+import { requestRetryFromActivity } from "./workLog.requestRetries";
 import { pairAnsweredUserInputs } from "./workLog.userInput";
 import {
   collabPayloadItem,
@@ -480,6 +481,8 @@ function normalizeWorkLogActivity(activity: OrchestrationThreadActivity): Derive
     entry.preview = runtimeWarningMessage;
     entry.runtimeWarningMessage = entry.detail ?? runtimeWarningMessage;
   }
+  const requestRetry = requestRetryFromActivity(activity);
+  if (requestRetry) entry.requestRetries = [requestRetry];
   const monitorFields = monitorNotificationEntryFields(activity);
   if (monitorFields) Object.assign(entry, monitorFields);
   if (commandPreview.command) {

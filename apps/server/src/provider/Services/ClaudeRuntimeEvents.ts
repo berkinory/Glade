@@ -21,6 +21,7 @@ export interface ClaudeRuntimeEventsShape {
     context: ClaudeSessionContext,
     message: string,
     detail?: unknown,
+    failure?: ProviderFailure,
   ) => Effect.Effect<void>;
   readonly updateResumeCursor: (
     context: ClaudeSessionContext,

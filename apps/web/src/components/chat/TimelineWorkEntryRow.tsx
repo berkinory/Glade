@@ -60,6 +60,7 @@ import { cn } from "~/lib/utils";
 import { isFileChangeWorkLogEntry, type WorkLogEntry } from "../../workLog.types";
 import { isStatusOnlyCommandWorkEntry, isPlainRuntimeNoticeWorkEntry } from "./agentActivity.logic";
 import { ReasoningWorkRow } from "./ReasoningWorkRow";
+import { RequestRetryRow } from "./RequestRetryRow";
 import { DiffStatLabel } from "./DiffStatLabel";
 import { type ExpandedImagePreview } from "./ExpandedImagePreview";
 import { LinkChipIcon } from "../LinkChipIcon";
@@ -385,6 +386,9 @@ export const TimelineWorkEntryRow = memo(function TimelineWorkEntryRow(
         fontSizePx={fontSizePx}
       />
     );
+  }
+  if (props.workEntry.requestRetries) {
+    return <RequestRetryRow retries={props.workEntry.requestRetries} fontSizePx={fontSizePx} />;
   }
   if (props.workEntry.reasoning) {
     return (

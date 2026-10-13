@@ -225,6 +225,7 @@ export function makeClaudeRuntimeEventsLive(options?: ClaudeAdapterLiveOptions) 
         context: ClaudeSessionContext,
         message: string,
         detail?: unknown,
+        failure?: ProviderFailure,
       ): Effect.Effect<void> =>
         Effect.gen(function* () {
           const turnState = context.turnState;
@@ -238,6 +239,7 @@ export function makeClaudeRuntimeEventsLive(options?: ClaudeAdapterLiveOptions) 
             ...(turnState ? { turnId: asCanonicalTurnId(turnState.turnId) } : {}),
             payload: {
               message,
+              ...(failure ? { failure } : {}),
               ...(detail !== undefined ? { detail } : {}),
             },
             providerRefs: nativeProviderRefs(context),

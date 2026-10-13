@@ -36,6 +36,13 @@ export function collapseDerivedWorkLogEntries(
       seenRuntimeReconciliationKeys.add(runtimeReconciliationKey);
     }
     const previous = collapsed.at(-1);
+    if (previous?.requestRetries && entry.requestRetries && previous.turnId === entry.turnId) {
+      collapsed[collapsed.length - 1] = {
+        ...previous,
+        requestRetries: [...previous.requestRetries, ...entry.requestRetries],
+      };
+      continue;
+    }
     if (previous && shouldCollapseRuntimeWarningEntries(previous, entry)) {
       collapsed[collapsed.length - 1] = mergeRuntimeWarningEntries(previous, entry);
       continue;

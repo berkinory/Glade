@@ -271,9 +271,9 @@ export function projectProviderRuntimeActivities(
       const detailSubtype = asString((asRecord(event.payload.detail) ?? undefined)?.subtype);
       const isBackgroundMove = detailSubtype === "background_tasks_changed";
       // A warning the provider will retry keeps the turn alive; it is not a failure.
+      const failure = event.payload.failure;
       const willRetry =
-        event.payload.failure?.retry.state === "retrying" ||
-        asRecord(event.payload.detail)?.willRetry === true;
+        failure?.retry.state === "retrying" || asRecord(event.payload.detail)?.willRetry === true;
       const detail = truncateDetail(
         sanitizeUnmappedProviderDetail(event.payload.message, MAX_ACTIVITY_DATA_STRING_CHARS)!,
         MAX_ACTIVITY_DATA_STRING_CHARS,
@@ -300,6 +300,24 @@ export function projectProviderRuntimeActivities(
             message,
             detail,
             ...(willRetry ? { willRetry: true } : {}),
+            // Any provider's retry, in one shape: the transcript folds consecutive ones into a row.
+            ...(failure?.retry.state === "retrying"
+              ? {
+                  requestRetry: {
+                    reason: failure.kind,
+                    httpStatus: failure.httpStatus,
+                    ...(failure.retry.attempt !== undefined
+                      ? { attempt: failure.retry.attempt }
+                      : {}),
+                    ...(failure.retry.maxAttempts !== undefined
+                      ? { maxAttempts: failure.retry.maxAttempts }
+                      : {}),
+                    ...(failure.retry.retryDelayMs !== undefined
+                      ? { delayMs: failure.retry.retryDelayMs }
+                      : {}),
+                  },
+                }
+              : {}),
             ...(isBackgroundMove
               ? { nativeEventType: detailSubtype }
               : nativeType
