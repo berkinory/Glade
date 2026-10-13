@@ -128,6 +128,7 @@ export function TimelineAssistantMessage({
   const showForkAction =
     Boolean(onForkFromMessage) &&
     assistantCopyState.visible &&
+    !row.assistantTurnInProgress &&
     Boolean(
       controller.props.forkProvider === "codex"
         ? row.message.turnId

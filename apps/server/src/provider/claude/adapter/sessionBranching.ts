@@ -161,12 +161,14 @@ export function makeClaudeSessionBranching(input: {
     Effect.gen(function* () {
       const liveSource = sessions.get(input.sourceThreadId);
 
-      if (liveSource?.turnState !== undefined) {
+      // Without a fork point the fork ends at the latest reply, which a running turn is still writing.
+      // A fork point in a settled turn is already in the transcript, so a later running turn cannot
+      // touch it; orchestration refuses fork points inside the running turn.
+      if (!input.forkPoint && liveSource?.turnState !== undefined) {
         return yield* new ProviderAdapterValidationError({
           provider: PROVIDER,
           operation: "forkThread",
-          issue:
-            "The source Claude session has a turn in flight; wait for it to finish before forking.",
+          issue: "This chat is still running. Fork once its turn finishes.",
         });
       }
       const sourceState = readClaudeResumeState(input.sourceResumeCursor);

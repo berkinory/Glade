@@ -83,14 +83,23 @@ describe("ClaudeAdapterLive forkThread", () => {
     );
   });
 
-  it.effect("refuses a native fork while the source turn is in flight", () => {
+  // A settled fork point is already in the transcript; only "fork at the latest reply" depends on the
+  // running turn.
+  it.effect.each([
+    { name: "refuses a fork without a fork point", forkPoint: undefined, forked: false },
+    {
+      name: "forks at a settled message",
+      forkPoint: { provider: "claudeAgent" as const, messageId: "settled-assistant-uuid" },
+      forked: true,
+    },
+  ])("$name while the source turn is running", ({ forkPoint, forked }) => {
     const query = new FakeClaudeQuery();
     let forkCalls = 0;
     const layer = makeClaudeAdapterTestLayer({
       createQuery: () => query,
       forkNativeSession: async () => {
         forkCalls += 1;
-        return { sessionId: "unexpected" };
+        return { sessionId: "forked-session" };
       },
     });
 
@@ -115,16 +124,13 @@ describe("ClaudeAdapterLive forkThread", () => {
           threadId: String(THREAD_ID),
           resume: SOURCE_SESSION_ID,
         },
+        ...(forkPoint ? { forkPoint } : {}),
       }).pipe(Effect.result);
 
-      assert.equal(forkCalls, 0);
-      assert.equal(result._tag, "Failure");
-      if (result._tag !== "Failure") {
-        return;
-      }
-      assert.instanceOf(result.failure, ProviderAdapterValidationError);
-      if (Schema.is(ProviderAdapterValidationError)(result.failure)) {
-        assert.include(result.failure.issue, "turn in flight");
+      assert.equal(forkCalls, forked ? 1 : 0);
+      assert.equal(result._tag, forked ? "Success" : "Failure");
+      if (result._tag === "Failure") {
+        assert.instanceOf(result.failure, ProviderAdapterValidationError);
       }
     }).pipe(
       Effect.provideService(Random.Random, makeDeterministicRandomService()),

@@ -41,6 +41,7 @@
 
 ### Fixed
 
+- Forking a chat from an earlier reply works while the chat is still running. Only the reply that is still being written cannot be forked, and its fork button stays hidden until it finishes.
 - Opening the rewind or edit confirmation no longer expands and collapses the previous reply.
 - Live change counts no longer touch the Git index while an agent works, which could make the agent's own Git commands fail.
 - Chats in folders that are not Git repositories no longer retry Git every few seconds, and running git init in one is picked up right away.

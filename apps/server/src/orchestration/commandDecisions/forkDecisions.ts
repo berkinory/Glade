@@ -66,6 +66,17 @@ export const decideForkCreate = Effect.fnUntraced(function* ({
       detail: "Choose a completed native assistant message from the same provider.",
     });
   }
+  // A turn still running is not settled in the provider's history yet: forking inside it would copy a
+  // half-written turn, such as a tool call without its result. Earlier turns are settled and safe.
+  const runningTurnId =
+    sourceThread.session?.activeTurnId ??
+    (sourceThread.latestTurn?.state === "running" ? sourceThread.latestTurn.turnId : null);
+  if (forkMessage.turnId !== null && forkMessage.turnId === runningTurnId) {
+    return yield* new OrchestrationCommandInvariantError({
+      commandType: command.type,
+      detail: "This reply is still running. Fork from it once its turn finishes.",
+    });
+  }
   const forkPoint =
     sourceThread.modelSelection.provider === "codex" && forkMessage.turnId
       ? { provider: "codex" as const, turnId: forkMessage.turnId }

@@ -55,14 +55,27 @@ export function useComposerForkCommands(input: {
         return true;
       }
 
+      // A running turn is not settled yet; the default fork point is the latest settled reply.
+      const runningTurnId =
+        activeThread.session?.activeTurnId ??
+        (activeThread.latestTurn?.state === "running" ? activeThread.latestTurn.turnId : null);
       const forkMessage = inputOptions?.throughMessageId
         ? activeThread.messages.find((message) => message.id === inputOptions.throughMessageId)
         : activeThread.messages.findLast(
             (message) =>
               message.role === "assistant" &&
               !message.streaming &&
+              (runningTurnId === null || message.turnId !== runningTurnId) &&
               (selectedProvider === "codex" ? message.turnId : message.providerMessageId),
           );
+      if (forkMessage && runningTurnId !== null && forkMessage.turnId === runningTurnId) {
+        toastManager.add({
+          type: "warning",
+          title: "This reply is still running",
+          description: "Fork from it once its turn finishes.",
+        });
+        return false;
+      }
       if (
         !forkMessage ||
         selectedProvider !== activeThread.modelSelection.provider ||
