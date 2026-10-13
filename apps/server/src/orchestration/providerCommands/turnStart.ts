@@ -27,6 +27,7 @@ import { makeProviderQueuedTurns } from "./queuedTurns";
 import { makeProviderTaskControl } from "./taskControl";
 import { makeProviderConversationNaming } from "./conversationNaming";
 import { makeProviderTurnDispatch } from "./turnDispatch";
+import { isPromptTurnCompaction } from "../compactionPolicy.ts";
 
 export function makeProviderTurnStart(input: {
   readonly handoffTransitions: Option.Option<ServiceMap.Service.Shape<typeof HandoffTransitions>>;
@@ -192,10 +193,7 @@ export function makeProviderTurnStart(input: {
       // dispatched right as another turn begins (e.g. the gap between a steer interrupt and the steered
       // turn's start) would race a live provider turn.
       const providerName = thread.session?.providerName ?? thread.modelSelection.provider;
-      if (
-        providerCapabilities(providerName).compaction === "promptTurn" &&
-        /^\/compact(?:\s|$)/u.test(message.text.trim())
-      ) {
+      if (isPromptTurnCompaction(providerName, message.text)) {
         if ((message.attachments?.length ?? 0) > 0) {
           return yield* new ProviderAdapterValidationError({
             provider: providerName as ProviderKind,

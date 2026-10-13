@@ -25,16 +25,22 @@ export const AcpAdaptersLive = Layer.effect(
           defaultCwd: config.cwd,
           attachmentsDir: config.attachmentsDir,
           gatewayCredentials,
-          spawn: ({ cwd, runtimeMode, binaryPath }) =>
-            spawnProcess(binaryPath ?? descriptor.cli.command, profile.args, {
-              requireExecutable: true,
-              cwd,
-              env: buildProviderChildEnvironment({
-                credentialGrants: descriptor.environment.credentialGrants,
-                ...(profile.env ? { overrides: profile.env({ runtimeMode }) } : {}),
-              }),
-              stdio: ["pipe", "pipe", "pipe"],
-            }),
+          spawn: ({ cwd, runtimeMode, binaryPath, systemPrompt }) =>
+            spawnProcess(
+              binaryPath ?? descriptor.cli.command,
+              systemPrompt && profile.argsWithSystemPrompt
+                ? profile.argsWithSystemPrompt(systemPrompt)
+                : profile.args,
+              {
+                requireExecutable: true,
+                cwd,
+                env: buildProviderChildEnvironment({
+                  credentialGrants: descriptor.environment.credentialGrants,
+                  ...(profile.env ? { overrides: profile.env({ runtimeMode }) } : {}),
+                }),
+                stdio: ["pipe", "pipe", "pipe"],
+              },
+            ),
         }),
     );
   }),

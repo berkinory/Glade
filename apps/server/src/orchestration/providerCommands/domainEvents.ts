@@ -3,7 +3,7 @@ import { providerCapabilities } from "@glade/shared/provider/providerMetadata";
 import type { ProviderServiceError } from "../../provider/core/Errors";
 import { withCompactionAdmission } from "./compactionAdmission";
 import type { OrchestrationEngineShape } from "../Services/OrchestrationEngine";
-import { compactionBlockedReason } from "../compactionPolicy.ts";
+import { compactionBlockedReason, isPromptTurnCompaction } from "../compactionPolicy.ts";
 import { OrchestrationCommandInvariantError } from "../Errors.ts";
 import type { ProviderServiceShape } from "../../provider/Services/ProviderService.ts";
 import type { ServiceMap } from "effect";
@@ -331,8 +331,7 @@ export function makeProviderDomainEvents(input: {
             thread?.session?.providerName ?? thread?.modelSelection.provider;
           const isCompaction =
             compactionProvider !== undefined &&
-            providerCapabilities(compactionProvider).compaction === "promptTurn" &&
-            /^\/compact(?:\s|$)/u.test(message?.text.trim() ?? "");
+            isPromptTurnCompaction(compactionProvider, message?.text);
           yield* isCompaction
             ? runCompaction(
                 event,

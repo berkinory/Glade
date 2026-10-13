@@ -6,7 +6,7 @@ import { EventId, ThreadId, TurnId, type ProviderKind } from "@glade/contracts/c
 import type { ProviderSession } from "@glade/contracts/provider/provider";
 import type { ProviderRuntimeEvent } from "@glade/contracts/provider/runtimeEvents";
 import type { ModelSelection, RuntimeMode } from "@glade/contracts/provider/sessionPolicy";
-import { Effect, Queue, Stream } from "effect";
+import { Effect, Option, Queue, Stream } from "effect";
 
 import { renderGladeHarnessPolicy } from "../../agentGateway/harnessPolicy.ts";
 import { GLADE_MCP_SERVER_NAME } from "../../agentGateway/mcpInjection.ts";
@@ -27,6 +27,7 @@ import {
   type ProviderAdapterShape,
   type ProviderStructuredRequestInput,
 } from "../Services/ProviderAdapter.ts";
+import { CompactionAdmission } from "../Services/CompactionAdmission.ts";
 import { openAcpConnection, type AcpConnection } from "./acpConnection.ts";
 import { makeAcpConnectionPool } from "./acpConnectionPool.ts";
 import { withEphemeralAcpSession } from "./acpEphemeralSession.ts";
@@ -66,6 +67,8 @@ interface AcpThread {
   // The harness policy rides on the first prompt of a fresh native session; a loaded session
   // already carries it in its history.
   policyPending: boolean;
+  // Glade's MCP server reached the agent, so the policy can offer its tools.
+  readonly gatewayToolsPassed: boolean;
   stopping: boolean;
 }
 
@@ -75,6 +78,7 @@ export interface AcpAdapterDependencies {
     readonly cwd: string;
     readonly runtimeMode: RuntimeMode;
     readonly binaryPath: string | undefined;
+    readonly systemPrompt?: string;
   }) => ChildProcessWithoutNullStreams;
   readonly defaultCwd: string;
   readonly attachmentsDir: string;
@@ -187,17 +191,31 @@ export const makeAcpAdapter = (dependencies: AcpAdapterDependencies) =>
         if (existing) yield* retire(input.threadId, existing, "Session replaced");
         const cwd = input.cwd ?? dependencies.defaultCwd;
         const binaryPath = input.providerOptions?.[provider]?.binaryPath;
-        // Sessions carry their own working directory, so the process key is what the spawn
-        // environment depends on: the executable and the runtime mode's environment.
+        // Agents with a system prompt channel serve Glade's tools over HTTP MCP, so the policy can
+        // promise them before the process is up.
+        const systemPrompt = profile.argsWithSystemPrompt
+          ? renderGladeHarnessPolicy({
+              gatewayControlAvailable: dependencies.gatewayCredentials !== undefined,
+              computerUseAllowed: false,
+            })
+          : undefined;
+        // Sessions carry their own working directory, so the process key is what the spawn depends
+        // on: the executable, the runtime mode's environment and the system prompt.
         const poolKey = JSON.stringify([
           binaryPath ?? null,
           profile.env?.({ runtimeMode: input.runtimeMode }) ?? {},
+          systemPrompt ?? null,
         ]);
         const { connection, release: releaseConnection } = yield* Effect.tryPromise({
           try: () =>
             connections.lease(poolKey, () =>
               openAcpConnection({
-                child: dependencies.spawn({ cwd, runtimeMode: input.runtimeMode, binaryPath }),
+                child: dependencies.spawn({
+                  cwd,
+                  runtimeMode: input.runtimeMode,
+                  binaryPath,
+                  ...(systemPrompt ? { systemPrompt } : {}),
+                }),
                 profile,
                 ...teardown,
               }),
@@ -261,7 +279,8 @@ export const makeAcpAdapter = (dependencies: AcpAdapterDependencies) =>
           session,
           gatewayLease,
           lifecycleGeneration,
-          policyPending: !opened.resumed,
+          policyPending: !opened.resumed && systemPrompt === undefined,
+          gatewayToolsPassed: servers.length > 0,
           stopping: false,
           record: {
             provider,
@@ -316,7 +335,12 @@ export const makeAcpAdapter = (dependencies: AcpAdapterDependencies) =>
         return thread.record;
       });
 
-    const sendTurn: ProviderAdapterShape<ProviderAdapterError>["sendTurn"] = (input) =>
+    // A compaction turn runs the agent's native compact command; its successful end tells Glade the
+    // context was compacted, as a native compaction event does for other providers.
+    const startTurn = (
+      input: Parameters<ProviderAdapterShape<ProviderAdapterError>["sendTurn"]>[0],
+      compaction: boolean,
+    ) =>
       Effect.gen(function* () {
         const thread = yield* requireThread(input.threadId);
         if (thread.session.activeTurnId()) {
@@ -337,7 +361,7 @@ export const makeAcpAdapter = (dependencies: AcpAdapterDependencies) =>
           blocks.push({
             type: "text",
             text: renderGladeHarnessPolicy({
-              gatewayControlAvailable: thread.gatewayLease !== undefined,
+              gatewayControlAvailable: thread.gatewayToolsPassed,
               computerUseAllowed: false,
             }),
           });
@@ -364,6 +388,13 @@ export const makeAcpAdapter = (dependencies: AcpAdapterDependencies) =>
           ...(model ? { model } : {}),
           updatedAt: new Date().toISOString(),
         };
+        if (compaction) {
+          const admission = yield* Effect.serviceOption(CompactionAdmission);
+          if (Option.isSome(admission)) {
+            yield* admission.value.check;
+            admission.value.admitted();
+          }
+        }
         emit(
           input.threadId,
           thread.lifecycleGeneration,
@@ -372,6 +403,18 @@ export const makeAcpAdapter = (dependencies: AcpAdapterDependencies) =>
         );
         runFork(
           Effect.promise(() => thread.session.prompt(turnId, blocks)).pipe(
+            Effect.tap((state) =>
+              Effect.sync(() => {
+                if (compaction && state === "completed") {
+                  emit(
+                    input.threadId,
+                    thread.lifecycleGeneration,
+                    { type: "thread.state.changed", payload: { state: "compacted" } },
+                    turnId,
+                  );
+                }
+              }),
+            ),
             Effect.ensuring(
               Effect.sync(() => {
                 const { activeTurnId: _ended, ...idle } = thread.record;
@@ -386,6 +429,9 @@ export const makeAcpAdapter = (dependencies: AcpAdapterDependencies) =>
           resumeCursor: thread.record.resumeCursor,
         };
       });
+
+    const sendTurn: ProviderAdapterShape<ProviderAdapterError>["sendTurn"] = (input) =>
+      startTurn(input, false);
 
     const structuredRequest = (input: ProviderStructuredRequestInput) =>
       Effect.tryPromise({
@@ -429,7 +475,7 @@ export const makeAcpAdapter = (dependencies: AcpAdapterDependencies) =>
           supportsPluginMentions: false,
           supportsPluginDiscovery: false,
           supportsRuntimeModelList: true,
-          supportsThreadCompaction: false,
+          supportsThreadCompaction: profile.compactCommand !== undefined,
         }),
       // Agents announce their commands once a session opens, so only a chat with a live session
       // lists them.
@@ -456,6 +502,18 @@ export const makeAcpAdapter = (dependencies: AcpAdapterDependencies) =>
         }),
       startSession,
       sendTurn,
+      ...(profile.compactCommand
+        ? {
+            compactThread: (threadId: ThreadId, instructions?: string) =>
+              startTurn(
+                {
+                  threadId,
+                  input: [`/${profile.compactCommand}`, instructions].filter(Boolean).join(" "),
+                },
+                true,
+              ).pipe(Effect.asVoid),
+          }
+        : {}),
       canResumeNativeConversation: (cursor) => readResumeCursor(cursor) !== undefined,
       interruptTurn: (threadId) =>
         requireThread(threadId).pipe(

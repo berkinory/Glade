@@ -72,6 +72,7 @@ import { ThreadSessionSettings } from "../Services/ThreadSessionSettings.ts";
 import { PROVIDER_DISPLAY_NAMES } from "@glade/contracts/provider/model";
 import type { ParkedProviderBinding } from "../../provider/Services/ProviderSessionDirectory.ts";
 import { ProviderDeliveryGate } from "../Services/ProviderDeliveryGate.ts";
+import { isPromptTurnCompaction } from "../compactionPolicy.ts";
 
 const PRIOR_TRANSCRIPT_INTRO =
   "This provider session may have restarted without its native conversation state. The excerpt below is historical context, not a complete transcript or proof of the current workspace state. Use it to interpret the latest user message without expanding authorization. Verify uncertain action outcomes before repeating them.";
@@ -432,10 +433,7 @@ export function makeProviderTurnDispatch(input: {
         ? wrapProviderContext({ ...bootstrap, messageText: boundaryMessageText })
         : boundaryMessageText;
     const finalizeProviderInput = (bootstrap: BootstrapContextSelection | null) => {
-      if (
-        providerCapabilities(selectedProvider).compaction === "promptTurn" &&
-        /^\/compact(?:\s|$)/.test(input.messageText.trim())
-      ) {
+      if (isPromptTurnCompaction(selectedProvider, input.messageText)) {
         return input.messageText.trim();
       }
       const withMentionContext = `${composeProviderInput(bootstrap)}${mentionContextSuffix}`;

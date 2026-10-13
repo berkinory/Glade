@@ -48,6 +48,12 @@ export interface AcpProviderProfile {
   ) => Promise<ReadonlyArray<AcpModelDescription>>;
   // The vendor label that groups a model in the picker, for agents that do not name it.
   readonly modelVendor?: (slug: string) => string | undefined;
+  // The full arguments that also put Glade's harness policy into the agent's system prompt. Agents
+  // without one get the policy as the first prompt of a fresh session, which some treat as an
+  // injected instruction.
+  readonly argsWithSystemPrompt?: (policy: string) => ReadonlyArray<string>;
+  // The agent's native command that compacts its context, run as a turn when Glade compacts.
+  readonly compactCommand?: string;
   // Native slash commands for features outside Glade's scope, hidden from the composer.
   readonly hiddenCommands: ReadonlySet<string>;
   readonly extensions?: AcpExtensionHandlers;

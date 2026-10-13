@@ -52,7 +52,10 @@ export interface AcpSession {
   readonly activeTurnId: () => string | undefined;
   readonly setConfigOption: (configId: string, value: string | boolean) => Promise<void>;
   // Resolves when the turn ends; the turn's events go to the sink as they arrive.
-  readonly prompt: (turnId: string, blocks: ReadonlyArray<ContentBlock>) => Promise<void>;
+  readonly prompt: (
+    turnId: string,
+    blocks: ReadonlyArray<ContentBlock>,
+  ) => Promise<"completed" | "interrupted" | "failed">;
   readonly cancel: () => Promise<void>;
   readonly respondToPermission: (requestId: string, decision: ProviderApprovalDecision) => boolean;
   readonly setRuntimeMode: (mode: RuntimeMode) => void;
@@ -310,6 +313,7 @@ export function openAcpSession(input: {
             },
           },
         ]);
+        return state;
       } catch (cause) {
         const failure = acpPromptFailure(cause);
         finish([
@@ -317,6 +321,7 @@ export function openAcpSession(input: {
           { type: "runtime.error", payload: { message: failure.message, failure } },
           { type: "turn.completed", payload: { state: "failed", errorMessage: failure.message } },
         ]);
+        return "failed";
       }
     },
     cancel: async () => {
