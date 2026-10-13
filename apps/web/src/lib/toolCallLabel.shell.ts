@@ -32,6 +32,8 @@ export function extractSearchPatternAndPath(args: string): {
   pattern: string | null;
   // The words the pattern looks for, one per alternative.
   terms: string[];
+  // The searched paths as written, for opening them.
+  rawPaths: string[];
   paths: string[];
   // `-l` lists the files that match instead of the matching lines.
   listsFiles: boolean;
@@ -73,6 +75,7 @@ export function extractSearchPatternAndPath(args: string): {
   return {
     pattern: pattern === null ? null : readableSearchPattern(pattern),
     terms: pattern === null ? [] : searchTerms(pattern),
+    rawPaths: positional.map((path) => path.trim()).filter(Boolean),
     paths: positional.map((path) => compactPath(path.trim())).filter(Boolean),
     listsFiles,
   };

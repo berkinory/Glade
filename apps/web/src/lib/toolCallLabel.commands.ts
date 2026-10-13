@@ -91,6 +91,59 @@ export function deriveReadableCommandDisplay(
   return segmentDisplay(primary, rawCommand, isRunning);
 }
 
+/**
+ * How to read a command's output as search results, when every step is a grep, rg or find: whether
+ * it lists files (`-l`), and the one file it searched, whose matches carry no file name.
+ */
+export function commandSearchShape(
+  rawCommand: string,
+): { listsFiles: boolean; singleFile: string | null } | null {
+  const segments = meaningfulSegments(rawCommand);
+  if (segments.length === 0) return null;
+  const searches = segments.map((segment) => {
+    const kind = inspectPresentation(segment)?.[2];
+    return kind === "search" ? extractSearchPatternAndPath(splitToolAndArgs(segment)[1]) : null;
+  });
+  if (searches.some((search) => search === null)) return null;
+  const only = searches.length === 1 ? searches[0]! : null;
+  const singlePath = only?.paths.length === 1 ? only.rawPaths[0]! : null;
+  return {
+    listsFiles: searches.every((search) => search!.listsFiles),
+    // grep and rg only print the file name when they search more than one file.
+    singleFile: singlePath && /\.[A-Za-z0-9]{1,8}$/.test(singlePath) ? singlePath : null,
+  };
+}
+
+export type ReadRange = { start: number; end: number | null } | { lastLines: number };
+
+/** The lines a single-file read shows: `sed -n 40,80p`, `head -n 20` or `tail -n 30`. */
+export function commandReadRange(rawCommand: string): ReadRange | null {
+  const segments = meaningfulSegments(rawCommand).filter(
+    (segment) => inspectPresentation(segment)?.[2] === "file",
+  );
+  if (segments.length !== 1 || readFilesOf(segments).length !== 1) return null;
+  const [tool, args] = splitToolAndArgs(segments[0]!);
+  const tokens = tokenizeCommandArgs(args);
+  if (tool === "sed") {
+    const script = tokens.find((token) => /^\d+(?:,(?:\d+|\$))?p$/.test(token));
+    const match = script ? /^(\d+)(?:,(\d+|\$))?p$/.exec(script) : null;
+    if (!match) return null;
+    const end =
+      match[2] === undefined ? Number(match[1]) : match[2] === "$" ? null : Number(match[2]);
+    return { start: Number(match[1]), end };
+  }
+  const countIndex = tokens.findIndex(
+    (token) => token === "-n" || /^-\d+$/.test(token) || /^-n\d+$/.test(token),
+  );
+  if (countIndex < 0) return null;
+  const token = tokens[countIndex]!;
+  const count = Number(token === "-n" ? tokens[countIndex + 1] : token.replace(/^-n?/, ""));
+  if (!Number.isInteger(count) || count <= 0) return null;
+  if (tool === "head") return { start: 1, end: count };
+  if (tool === "tail") return { lastLines: count };
+  return null;
+}
+
 /** The program a command is named after: its first step that does more than look around. */
 export function commandPrimaryTool(rawCommand: string): string | null {
   const segments = meaningfulSegments(rawCommand);

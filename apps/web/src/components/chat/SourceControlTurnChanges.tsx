@@ -6,7 +6,11 @@ import { useStore } from "~/store";
 import { createThreadSelector } from "~/storeSelectors";
 import { inferCheckpointTurnCountByTurnId } from "~/session-logic";
 import { checkpointDiffQueryOptions } from "~/lib/providerReactQuery";
-import { getRenderablePatch, resolveFileDiffPath } from "~/lib/diffRendering";
+import {
+  getRenderablePatch,
+  resolveDiffEntryByPath,
+  resolveFileDiffPath,
+} from "~/lib/diffRendering";
 import { useTheme } from "~/hooks/useTheme";
 import { FileDiffCard, FileDiffSurface } from "./FileDiffView";
 import { WorkspaceDiffFile } from "./WorkspaceDiffFile";
@@ -49,9 +53,14 @@ export function SourceControlTurnChanges(props: {
       Current changes
     </Button>
   );
+  // Tool rows name files the way the tool did, often as absolute paths; the diff holds repo-relative
+  // ones, so the two are matched by path suffix.
   const selectedFile =
-    patch?.kind === "files"
-      ? patch.files.find((file) => resolveFileDiffPath(file) === props.filePath)
+    patch?.kind === "files" && props.filePath
+      ? resolveDiffEntryByPath(
+          new Map(patch.files.map((file) => [resolveFileDiffPath(file), file])),
+          props.filePath,
+        )
       : null;
   if (!query.error && turn && count !== undefined && selectedFile) {
     return (

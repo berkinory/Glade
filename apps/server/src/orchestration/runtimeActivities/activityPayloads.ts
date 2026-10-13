@@ -144,7 +144,24 @@ export function stringifyJsonLike(value: unknown): string {
 }
 
 export function truncateJsonString(value: string, limit: number): string {
-  return value.length > limit ? `${value.slice(0, Math.max(0, limit - 15))}... [truncated]` : value;
+  return keepHeadAndTail(value, limit, TRUNCATION_MARKER);
+}
+
+const TRUNCATION_MARKER = "\n... [truncated] ...\n";
+// Command output ends with what matters most: test totals, the error that stopped a build.
+const TAIL_SHARE = 0.4;
+
+/**
+ * Shortens text to `limit` characters by dropping its middle: the start says what ran, the end says
+ * how it went. Applied again to text it already shortened, the start and the marker stay in place.
+ */
+export function keepHeadAndTail(value: string, limit: number, marker: string): string {
+  if (value.length <= limit) return value;
+  if (limit <= marker.length) return marker.slice(0, Math.max(0, limit));
+  const room = limit - marker.length;
+  const tailLength = Math.floor(room * TAIL_SHARE);
+  const headLength = room - tailLength;
+  return `${value.slice(0, headLength)}${marker}${tailLength > 0 ? value.slice(-tailLength) : ""}`;
 }
 
 function activityPayloadKeyRank(key: string): number {

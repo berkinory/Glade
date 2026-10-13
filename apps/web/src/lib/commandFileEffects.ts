@@ -55,10 +55,11 @@ export function inlineScriptOf(rawCommand: string): InlineScript | null {
   const flagIndex = tokens.findIndex((token) => INLINE_CODE_FLAGS.has(token));
   const heredoc = /<<-?\s*['"]?\w+/.test(primary) ? (splitHeredoc(rawCommand)?.body ?? null) : null;
   const code = heredoc ?? (flagIndex >= 0 ? (tokens[flagIndex + 1] ?? null) : null);
+  // The script file is the interpreter's first argument: `python3 scripts/migrate.py`, `bun x.ts`.
+  // In `bun run test src/a.test.ts` the file only filters a package script.
+  const firstArgument = tokens.find((token) => !token.startsWith("-"));
   const file =
-    code === null
-      ? (tokens.find((token) => !token.startsWith("-") && /\.[a-z]{1,4}$/i.test(token)) ?? null)
-      : null;
+    code === null && firstArgument && /\.[a-z]{1,4}$/i.test(firstArgument) ? firstArgument : null;
   if (code === null && file === null) return null;
   return { interpreter: tool, language, code, file };
 }

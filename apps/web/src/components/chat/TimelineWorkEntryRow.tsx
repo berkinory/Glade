@@ -64,6 +64,7 @@ import {
 import { formatClockDuration } from "../../session-logic";
 import { isStatusOnlyCommandWorkEntry, isPlainRuntimeNoticeWorkEntry } from "./agentActivity.logic";
 import { ReasoningWorkRow } from "./ReasoningWorkRow";
+import { commandRowMetaParts } from "./commandRowMeta.logic";
 import { RequestRetryRow } from "./RequestRetryRow";
 import { ShowMoreFilesButton, usePagedFiles } from "./ShowMoreFilesButton";
 import { DiffStatLabel } from "./DiffStatLabel";
@@ -71,7 +72,11 @@ import { type ExpandedImagePreview } from "./ExpandedImagePreview";
 import { LinkChipIcon } from "../LinkChipIcon";
 import { normalizeCompactToolLabel } from "./MessagesTimeline.logic.rowTypes";
 import { GladeLogo } from "../GladeLogo";
-import { fileDiffStatsByPath, resolveFileDiffStatByChangedPath } from "~/lib/diffRendering";
+import {
+  fileDiffStatsByPath,
+  resolveDiffEntryByPath,
+  resolveFileDiffStatByChangedPath,
+} from "~/lib/diffRendering";
 import {
   extractToolArgumentField,
   isPrefixedToolArgumentSummary,
@@ -520,11 +525,17 @@ function ToolWorkEntryRow(props: TimelineWorkEntryRowProps) {
   );
   const liveActivityNowMs = useLiveActivityNow(workEntry.liveActivity);
   const backgroundTask = workEntry.backgroundTask;
-  const liveActivityMetaText = backgroundTask
-    ? formatBackgroundTaskMeta(backgroundTask)
-    : workEntry.liveActivity
-      ? formatLiveActivityMeta(workEntry.liveActivity, liveActivityNowMs)
-      : null;
+  const liveActivityMetaText =
+    [
+      ...commandRowMetaParts(workEntry),
+      backgroundTask
+        ? formatBackgroundTaskMeta(backgroundTask)
+        : workEntry.liveActivity
+          ? formatLiveActivityMeta(workEntry.liveActivity, liveActivityNowMs)
+          : null,
+    ]
+      .filter(Boolean)
+      .join(" · ") || null;
   const readFilePath =
     opener !== null &&
     !activityDetail &&
@@ -684,6 +695,15 @@ function ToolWorkEntryRow(props: TimelineWorkEntryRowProps) {
                 details={workEntry.toolDetails}
                 activity={workEntry.liveActivity}
                 toolKind={workEntry.toolKind}
+                fileDiffOpener={
+                  turnId && onOpenTurnDiff && fileDiffStatByPath
+                    ? {
+                        has: (path) =>
+                          resolveDiffEntryByPath(fileDiffStatByPath, path) !== undefined,
+                        open: (path) => onOpenTurnDiff(turnId, path),
+                      }
+                    : undefined
+                }
                 detailContent={
                   activityContent ??
                   (monitorNotification ? (

@@ -91,6 +91,8 @@ export interface WorkLogEntry {
   turnStopped?: true;
   // An answered agent question with the user's answers; it stays visible outside a settled turn's fold.
   userInputExchange?: ReadonlyArray<WorkLogUserInputExchangeItem>;
+  // How many times in a row the same command ran; the entry shows the latest run.
+  repeatCount?: number;
   // Set on the tool call that started background work, such as a test run left running.
   backgroundTask?: WorkLogBackgroundTask;
   // Consecutive retries of one provider request, oldest first.

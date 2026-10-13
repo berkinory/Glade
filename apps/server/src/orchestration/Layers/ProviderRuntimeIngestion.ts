@@ -112,7 +112,7 @@ import { ProjectionThreadActivityRepositoryLive } from "../../persistence/Layers
 import { ProjectionThreadActivityRepository } from "../../persistence/Services/ProjectionThreadActivities";
 import { ProjectionThreadMessageRepositoryLive } from "../../persistence/Layers/ProjectionThreadMessages.ts";
 import { ProjectionThreadMessageRepository } from "../../persistence/Services/ProjectionThreadMessages.ts";
-import { runtimePayloadRecord } from "../runtimeActivities/activityPayloads.ts";
+import { keepHeadAndTail, runtimePayloadRecord } from "../runtimeActivities/activityPayloads.ts";
 
 const providerTurnKey = (threadId: ThreadId, turnId: TurnId) => `${threadId}:${turnId}`;
 const providerCommandId = (event: ProviderRuntimeEvent, tag: string, target = "event"): CommandId =>
@@ -154,7 +154,7 @@ const MAX_BUFFERED_ASSISTANT_CHARS = 24_000;
 const MAX_BUFFERED_TOOL_OUTPUT_CHARS = 24_000;
 const MAX_BUFFERED_REASONING_SUMMARY_CHARS = 8_000;
 const MAX_BUFFERED_REASONING_SUMMARY_PARTS = 24;
-const BUFFERED_TEXT_TRUNCATION_MARKER = "... [truncated]";
+const BUFFERED_TEXT_TRUNCATION_MARKER = "\n... [truncated] ...\n";
 const STRICT_PROVIDER_LIFECYCLE_GUARD = process.env.GLADE_STRICT_PROVIDER_LIFECYCLE_GUARD !== "0";
 
 function nextRuntimeJournalSafetyPollDelayMs(currentDelayMs: number, hadBacklog: boolean): number {
@@ -279,17 +279,7 @@ function appendCappedBufferedText(existing: string, delta: string, limit: number
   if (normalizedLimit === 0) {
     return "";
   }
-  const next = `${existing}${delta}`;
-  if (next.length <= normalizedLimit) {
-    return next;
-  }
-  if (normalizedLimit <= BUFFERED_TEXT_TRUNCATION_MARKER.length) {
-    return BUFFERED_TEXT_TRUNCATION_MARKER.slice(0, normalizedLimit);
-  }
-  return `${next.slice(
-    0,
-    normalizedLimit - BUFFERED_TEXT_TRUNCATION_MARKER.length,
-  )}${BUFFERED_TEXT_TRUNCATION_MARKER}`;
+  return keepHeadAndTail(`${existing}${delta}`, normalizedLimit, BUFFERED_TEXT_TRUNCATION_MARKER);
 }
 
 function isRowMakingProviderRuntimeEvent(event: ProviderRuntimeEvent): boolean {

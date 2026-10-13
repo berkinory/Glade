@@ -68,6 +68,7 @@ import { deriveTurnStopEntries } from "./workLog.turnStops";
 import { monitorNotificationEntryFields } from "./workLog.monitorEvents";
 import { requestRetryFromActivity } from "./workLog.requestRetries";
 import { deriveBackgroundTasks } from "./workLog.backgroundTasks";
+import { foldRepeatedCommands } from "./workLog.repeatedCommands";
 import { pairAnsweredUserInputs } from "./workLog.userInput";
 import {
   collabPayloadItem,
@@ -189,6 +190,7 @@ export function deriveWorkLogEntries(
         return backgroundTask ? { ...entry, backgroundTask } : entry;
       },
     );
+  const folded = foldRepeatedCommands(derived);
   const outcomes = [
     ...deriveTurnFailureEntries(ordered, isVisible),
     ...deriveTurnStopEntries(ordered, isVisible, {
@@ -197,7 +199,7 @@ export function deriveWorkLogEntries(
       completedAt: options.latestTurnCompletedAt,
     }),
   ];
-  return outcomes.length > 0 ? [...derived, ...outcomes] : derived;
+  return outcomes.length > 0 ? [...folded, ...outcomes] : folded;
 }
 
 // A running task or subagent reports what it is doing as task progress; its card and the

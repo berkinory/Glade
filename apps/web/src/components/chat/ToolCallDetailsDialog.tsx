@@ -5,7 +5,9 @@ import {
   commandScriptParts,
   resolveCommandPaths,
 } from "~/lib/commandFileEffects";
-import { commandReadFilePaths } from "~/lib/toolCallLabel.commands";
+import { commandReadFilePaths, commandReadRange } from "~/lib/toolCallLabel.commands";
+import { commandSearchMatches, type SearchMatch } from "~/lib/commandOutcome";
+import { basenameOfPath } from "~/file-icons";
 import { openWorkspaceFileReference, useWorkspaceFileOpener } from "~/lib/workspaceFileOpener";
 import { FileNameChip } from "./FileNameChip";
 import { cn } from "~/lib/utils";
@@ -32,17 +34,27 @@ export function ToolCallDetailsContent({
   details,
   activity,
   toolKind,
+  fileDiffOpener,
 }: {
   details: WorkLogToolDetails | undefined;
   activity?: WorkLogLiveActivity | undefined;
   toolKind?: WorkLogToolKind | undefined;
+  fileDiffOpener?: FileDiffOpener | undefined;
 }) {
   const nowMs = useLiveActivityNow(activity);
   const elapsed = activity ? formatLiveActivityElapsed(activity, nowMs) : null;
 
   if (!hasToolCallDetailsContent(details, activity, toolKind)) return null;
   if (details?.kind === "tool") return <ToolIoDetails details={details} toolKind={toolKind} />;
-  const commandOutputText = details?.command ? formatToolOutputText(details.output) : null;
+  const searchMatches = details?.command
+    ? commandSearchMatches(details.command, details.output)
+    : null;
+  // A search's output is its matches; listed as links, the raw text would only repeat them unless
+  // there are more than the list shows.
+  const commandOutputText =
+    details?.command && (!searchMatches?.length || searchMatches.length > MAX_LISTED_SEARCH_MATCHES)
+      ? formatToolOutputText(details.output)
+      : null;
 
   return (
     <>
@@ -54,8 +66,11 @@ export function ToolCallDetailsContent({
 
       {details?.command ? (
         <div className="space-y-2">
-          <CommandFiles command={details.command} />
+          <CommandFiles command={details.command} fileDiffOpener={fileDiffOpener} />
           <CommandScript command={details.command} elapsed={elapsed} />
+          {searchMatches?.length ? (
+            <CommandSearchMatches command={details.command} matches={searchMatches} />
+          ) : null}
           {commandOutputText ? (
             <MarkdownToolCodeBlock language="text">{commandOutputText}</MarkdownToolCodeBlock>
           ) : null}
@@ -114,26 +129,114 @@ export function ToolCallDetailsContent({
   );
 }
 
-// A shell command names the files it wrote or read, each opening like a Read or Edit tool's file.
-function CommandFiles({ command }: { command: string }) {
+// A shell command names the files it wrote or read, each opening like a Read or Edit tool's file;
+// a file it changed also opens in the turn's diff.
+export interface FileDiffOpener {
+  has: (path: string) => boolean;
+  open: (path: string) => void;
+}
+
+function CommandFiles({
+  command,
+  fileDiffOpener,
+}: {
+  command: string;
+  fileDiffOpener: FileDiffOpener | undefined;
+}) {
   const opener = useWorkspaceFileOpener();
   const effects = commandFileEffects(command);
+  const written = new Set(resolveCommandPaths(command, effects.written));
   const files = [
     ...new Set([
-      ...resolveCommandPaths(command, [...effects.written, ...effects.read]),
+      ...written,
+      ...resolveCommandPaths(command, effects.read),
       ...commandReadFilePaths(command),
     ]),
   ];
   if (files.length === 0) return null;
+  // A read of one range opens where it starts.
+  const range = files.length === 1 ? commandReadRange(command) : null;
+  const line = range && "start" in range ? range.start : null;
   return (
-    <div className="flex flex-wrap gap-1.5 text-ui-sm" data-command-read-files="true">
+    <div className="flex flex-wrap items-center gap-1.5 text-ui-sm" data-command-files="true">
       {files.map((file) => (
-        <FileNameChip
-          key={file}
-          path={file}
-          onOpen={opener ? () => openWorkspaceFileReference(opener, file) : undefined}
-        />
+        <span key={file} className="inline-flex min-w-0 items-center gap-1">
+          <FileNameChip
+            path={file}
+            onOpen={
+              opener
+                ? () => openWorkspaceFileReference(opener, line ? `${file}:${line}` : file)
+                : undefined
+            }
+          />
+          {written.has(file) && fileDiffOpener?.has(file) ? (
+            <button
+              type="button"
+              className="rounded-md px-1 text-ui-xs text-muted-foreground hover:bg-[var(--color-background-button-secondary-hover)] hover:text-foreground"
+              onClick={() => fileDiffOpener.open(file)}
+            >
+              Diff
+            </button>
+          ) : null}
+        </span>
       ))}
+    </div>
+  );
+}
+
+const MAX_LISTED_SEARCH_MATCHES = 40;
+
+// Each match opens its file at the matching line.
+function CommandSearchMatches({
+  command,
+  matches,
+}: {
+  command: string;
+  matches: readonly SearchMatch[];
+}) {
+  const opener = useWorkspaceFileOpener();
+  const listed = matches.slice(0, MAX_LISTED_SEARCH_MATCHES);
+  const paths = resolveCommandPaths(
+    command,
+    listed.map((match) => match.file),
+  );
+  const resolvedPath = new Map(listed.map((match, index) => [match, paths[index] ?? match.file]));
+  return (
+    <div
+      className="max-h-[min(16lh,40vh)] space-y-0.5 overflow-y-auto rounded-lg border border-border/45 px-2 py-1.5 text-ui-sm"
+      data-command-search-matches="true"
+    >
+      {listed.map((match, index) => {
+        const path = resolvedPath.get(match) ?? match.file;
+        const target = match.line !== null ? `${path}:${match.line}` : path;
+        return (
+          <button
+            // Matches repeat; the position keeps keys unique.
+            key={`${index}:${target}`}
+            type="button"
+            disabled={!opener}
+            className="flex w-full min-w-0 items-baseline gap-1.5 rounded-md px-1 text-left hover:bg-[var(--color-background-button-secondary-hover)]"
+            onClick={() => openWorkspaceFileReference(opener, target)}
+          >
+            <span className="shrink-0 font-chat-code text-chat-code text-foreground/85">
+              {basenameOfPath(match.file)}
+              {match.line !== null ? (
+                <span className="text-muted-foreground">:{match.line}</span>
+              ) : null}
+            </span>
+            {match.text ? (
+              <span className="min-w-0 truncate font-chat-code text-chat-code text-muted-foreground">
+                {match.text}
+              </span>
+            ) : null}
+          </button>
+        );
+      })}
+      {matches.length > listed.length ? (
+        <p className="px-1 text-ui-xs text-muted-foreground">
+          {matches.length - listed.length} more in the output below
+        </p>
+      ) : null}
     </div>
   );
 }

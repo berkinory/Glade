@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import {
   classifyInspectCommand,
   commandReadFilePaths,
+  commandReadRange,
   deriveReadableCommandDisplay,
   resolveCommandVisualKind,
 } from "./toolCallLabel.commands";
@@ -55,6 +56,7 @@ describe("command labels", () => {
     ["cd /repo && perl -pi -e 's/a/b/' a.ts b.ts", "Edited 2 files"],
     ["node -e \"require('fs').writeFileSync('out.json', '{}')\"", "Edited out.json"],
     ["python3 scripts/migrate.py --dry-run", "Ran scripts/migrate.py"],
+    ["cd /repo && bun run test src/a.test.ts 2>&1 | tail -6", "Ran bun run test src/a.test.ts"],
     ["sqlite3 state.sqlite <<'EOF'\nselect 1;\nEOF", "Queried state.sqlite"],
     ["cd /repo && bun run check > /tmp/check.log 2>&1", "Ran bun run check"],
     ["cat <<'EOF' | wc -l\nlorem\nEOF", "Ran cat <<'EOF'"],
@@ -70,6 +72,17 @@ describe("command labels", () => {
     ["cd /repo && grep -n x a.ts; git log -3", []],
   ] as const)("reads files of %s", (command, files) => {
     expect(commandReadFilePaths(command)).toEqual(files);
+  });
+
+  it.each([
+    ["sed -n 40,80p a.ts", { start: 40, end: 80 }],
+    ["sed -n '120,$p' a.ts", { start: 120, end: null }],
+    ["head -n 20 a.ts", { start: 1, end: 20 }],
+    ["tail -30 a.ts", { lastLines: 30 }],
+    ["cat a.ts", null],
+    ["sed -n 1,5p a.ts b.ts", null],
+  ] as const)("reads the range of %s", (command, range) => {
+    expect(commandReadRange(command)).toEqual(range);
   });
 
   it.each([

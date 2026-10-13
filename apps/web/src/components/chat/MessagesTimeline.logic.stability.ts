@@ -178,6 +178,7 @@ function workLogEntryContentEqual(a: WorkLogEntry, b: WorkLogEntry): boolean {
     deepEqualJson(a.reasoning, b.reasoning) &&
     deepEqualJson(a.requestRetries, b.requestRetries) &&
     deepEqualJson(a.backgroundTask, b.backgroundTask) &&
+    a.repeatCount === b.repeatCount &&
     workLogGladeThreadCreationsEqual(a.gladeThreadCreation, b.gladeThreadCreation) &&
     workLogLiveActivitiesEqual(a.liveActivity, b.liveActivity) &&
     workLogToolDetailsEqual(a.toolDetails, b.toolDetails)

@@ -11,6 +11,11 @@
 
 ### Improved
 
+- Finished shell commands say how they went next to their name: test totals such as "451 passed" or "2 failed, 449 passed", type and lint errors, the number of search matches, or the line that explains a failure.
+- Search commands list their matches in the details, and each one opens its file at that line.
+- A read of part of a file shows the lines it covered, such as "L20–40", and opens the file there.
+- A file a shell command changed can be opened in the turn's diff from the command's details.
+- The same command run several times in a row shows once, with how many times it ran and its latest result.
 - Model search ignores case, spacing, punctuation and word order, so "gpt5" finds GPT-5.
 - Typing @ suggests only a few recent chats from the current project, below files and agents, and no longer lists subagent chats. Type a name to search more.
 - Shell commands that write files read as edits: a Python or JavaScript script that writes a file, `sed -i`, `perl -pi` and `cat > file` show "Edited", "Wrote" or "Appended to" with the file, and count as edited files in their tool group.
@@ -48,6 +53,8 @@
 
 ### Fixed
 
+- Opening an edited file's diff from a tool call shows that file instead of the whole turn when the tool named it with a full path.
+- Long command output keeps its last lines, where test totals and errors usually are, instead of only its first.
 - A visual reply that arrives while a reply streams no longer sometimes says it tried to navigate away.
 - An approved request no longer leaves an extra unnamed tool row in the chat.
 - After a chat switches to another provider, the new provider can use Glade's tools from its first reply.

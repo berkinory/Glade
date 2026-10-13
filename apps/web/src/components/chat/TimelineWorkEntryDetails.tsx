@@ -6,7 +6,7 @@ import { formatTimestamp } from "../../timestampFormat";
 import type { WorkLogEntry, WorkLogMonitorNotification } from "../../workLog.types";
 import { cn } from "~/lib/utils";
 import { WORK_ROW_DETAILS_INSET_CLASS_NAME, WORK_ROW_GAP_CLASS_NAME } from "./workRowStyles";
-import { ToolCallDetailsContent } from "./ToolCallDetailsDialog";
+import { type FileDiffOpener, ToolCallDetailsContent } from "./ToolCallDetailsDialog";
 import { DisclosureChevron } from "../ui/DisclosureChevron";
 import { DisclosureRegion } from "../ui/DisclosureRegion";
 
@@ -134,6 +134,8 @@ export function ToolDetailsDisclosure(props: {
   details?: TimelineWorkEntry["toolDetails"] | undefined;
   activity?: TimelineWorkEntry["liveActivity"] | undefined;
   toolKind?: TimelineWorkEntry["toolKind"] | undefined;
+  // Opens the turn's diff at a file the tool changed, when the turn's diff has it.
+  fileDiffOpener?: FileDiffOpener | undefined;
   detailContent?: ReactNode;
   summaryClassName?: string | undefined;
 }) {
@@ -177,6 +179,7 @@ export function ToolDetailsDisclosure(props: {
               details={props.details}
               activity={props.activity}
               toolKind={props.toolKind}
+              fileDiffOpener={props.fileDiffOpener}
             />
           )}
         </div>
