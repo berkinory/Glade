@@ -65,6 +65,7 @@ const spawned: ChildProcessWithoutNullStreams[] = [];
 const makeAdapter = makeAcpAdapter({
   profile,
   defaultCwd: process.cwd(),
+  attachmentsDir: process.cwd(),
   gatewayCredentials: undefined,
   spawn: () => {
     const child = spawn(process.execPath, ["--input-type=module", "-e", FAKE_AGENT], {

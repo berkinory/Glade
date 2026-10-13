@@ -23,6 +23,7 @@ export const AcpAdaptersLive = Layer.effect(
         makeAcpAdapter({
           profile,
           defaultCwd: config.cwd,
+          attachmentsDir: config.attachmentsDir,
           gatewayCredentials,
           spawn: ({ cwd, runtimeMode, binaryPath }) =>
             spawnProcess(binaryPath ?? descriptor.cli.command, profile.args, {

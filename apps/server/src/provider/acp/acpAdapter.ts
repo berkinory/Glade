@@ -34,6 +34,7 @@ import { acpConfigIdFor, acpModelOption, acpOffersValue } from "./acpModelCatalo
 import { discoverAcpModels } from "./acpModelDiscovery.ts";
 import type { AcpProviderProfile } from "./acpProviderProfile.ts";
 import { openAcpSession, type AcpSession } from "./acpSession.ts";
+import { acpPromptBlocks } from "./acpPromptBlocks.ts";
 import { runAcpStructuredRequest } from "./acpStructuredRequest.ts";
 import type { AcpRuntimeEventDraft } from "./acpTurnProjection.ts";
 
@@ -76,6 +77,7 @@ export interface AcpAdapterDependencies {
     readonly binaryPath: string | undefined;
   }) => ChildProcessWithoutNullStreams;
   readonly defaultCwd: string;
+  readonly attachmentsDir: string;
   readonly gatewayCredentials: AgentGatewayCredentialsShape | undefined;
   readonly teardownProcessTree?: Parameters<typeof teardownChildProcessTree>[1];
 }
@@ -343,7 +345,20 @@ export const makeAcpAdapter = (dependencies: AcpAdapterDependencies) =>
             }),
           });
         }
-        if (input.input) blocks.push({ type: "text", text: input.input });
+        blocks.push(
+          ...(yield* Effect.tryPromise({
+            try: () =>
+              acpPromptBlocks({
+                text: input.input,
+                attachments: input.attachments,
+                attachmentsDir: dependencies.attachmentsDir,
+                acceptsImages:
+                  thread.connection.initialize.agentCapabilities?.promptCapabilities?.image ===
+                  true,
+              }),
+            catch: (cause) => requestError("session/prompt", cause),
+          })),
+        );
         const model = input.modelSelection?.model ?? thread.record.model;
         thread.record = {
           ...thread.record,
