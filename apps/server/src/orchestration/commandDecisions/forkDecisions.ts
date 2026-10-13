@@ -1,4 +1,6 @@
 import { Effect } from "effect";
+import type { ProviderForkPoint } from "@glade/contracts/provider/provider";
+import { providerCapabilities } from "@glade/shared/provider/providerMetadata";
 import { EventId } from "@glade/contracts/core/baseSchemas";
 import type { OrchestrationCommand } from "@glade/contracts/orchestration/commands";
 import type { OrchestrationEvent } from "@glade/contracts/orchestration/events";
@@ -66,11 +68,13 @@ export const decideForkCreate = Effect.fnUntraced(function* ({
       detail: "Choose a completed native assistant message from the same provider.",
     });
   }
-  const forkPoint =
-    sourceThread.modelSelection.provider === "codex" && forkMessage.turnId
-      ? { provider: "codex" as const, turnId: forkMessage.turnId }
-      : sourceThread.modelSelection.provider === "claudeAgent" && forkMessage.providerMessageId
-        ? { provider: "claudeAgent" as const, messageId: forkMessage.providerMessageId }
+  const provider = sourceThread.modelSelection.provider;
+  const forkBoundary = providerCapabilities(provider).forkBoundary;
+  const forkPoint: ProviderForkPoint | undefined =
+    forkBoundary === "turn" && forkMessage.turnId
+      ? { provider, turnId: forkMessage.turnId }
+      : forkBoundary === "message" && forkMessage.providerMessageId
+        ? { provider, messageId: forkMessage.providerMessageId }
         : undefined;
   if (!forkPoint)
     return yield* new OrchestrationCommandInvariantError({
@@ -80,7 +84,7 @@ export const decideForkCreate = Effect.fnUntraced(function* ({
   const laterNativeMessage = sourceThread.messages
     .slice(forkIndex + 1)
     .some((message) =>
-      forkPoint.provider === "codex"
+      "turnId" in forkPoint
         ? message.turnId === forkPoint.turnId
         : message.providerMessageId === forkPoint.messageId,
     );

@@ -1,4 +1,5 @@
 import type { OrchestrationEventStoreShape } from "../persistence/Services/OrchestrationEventStore";
+import { providerCapabilities } from "@glade/shared/provider/providerMetadata";
 import { CommandId, ThreadId } from "@glade/contracts/core/baseSchemas";
 import { GladeForkThreadInput } from "@glade/contracts/provider/agentGatewayTools";
 import { Effect, Option, Schema, Semaphore } from "effect";
@@ -51,8 +52,13 @@ export function makeForkThreadTool(
         const message = thread.messages.find((entry) => entry.id === input.messageId);
         if (!message || message.streaming || message.role !== "assistant")
           return yield* Effect.fail(new ToolInputError("Choose a completed assistant message."));
+        const forkBoundary = providerCapabilities(thread.modelSelection.provider).forkBoundary;
         const boundary =
-          thread.modelSelection.provider === "codex" ? message.turnId : message.providerMessageId;
+          forkBoundary === "turn"
+            ? message.turnId
+            : forkBoundary === "message"
+              ? message.providerMessageId
+              : undefined;
         if (!boundary)
           return yield* Effect.fail(
             new ToolInputError("This message has no native fork boundary."),
@@ -66,9 +72,9 @@ export function makeForkThreadTool(
         if (Option.isSome(existing)) {
           const fork = existing.value;
           const expectedPoint =
-            thread.modelSelection.provider === "codex"
-              ? { provider: "codex", turnId: boundary }
-              : { provider: "claudeAgent", messageId: boundary };
+            forkBoundary === "turn"
+              ? { provider: thread.modelSelection.provider, turnId: boundary }
+              : { provider: thread.modelSelection.provider, messageId: boundary };
           const creationEvents = yield* events.readThreadEvents({
             threadId,
             throughSequenceInclusive: yield* events.getThreadHighWaterSequence(threadId),

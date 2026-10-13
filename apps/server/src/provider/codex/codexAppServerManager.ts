@@ -1944,9 +1944,13 @@ export class CodexAppServerManager extends EventEmitter<CodexAppServerManagerEve
           : undefined;
       const serviceTier = resolveCodexServiceTier(input.modelSelection);
       signal?.throwIfAborted();
-      const lastTurnId = input.forkPoint?.provider === "codex" ? input.forkPoint.turnId : undefined;
-      if (input.forkPoint && input.forkPoint.provider !== "codex")
-        throw new Error("Invalid Codex fork point provider.");
+      if (
+        input.forkPoint &&
+        (input.forkPoint.provider !== "codex" || !("turnId" in input.forkPoint))
+      )
+        throw new Error("Invalid Codex fork point.");
+      const lastTurnId =
+        input.forkPoint && "turnId" in input.forkPoint ? input.forkPoint.turnId : undefined;
       const forkParams = {
         ...(gatewaySessionLease
           ? { config: buildCodexThreadGatewayConfig(gatewaySessionLease.connection) }

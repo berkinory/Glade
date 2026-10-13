@@ -1,4 +1,5 @@
 import { redactDiagnosticText } from "../../agentGateway/diagnosticSanitizer";
+import { providerCapabilities } from "@glade/shared/provider/providerMetadata";
 import { HandoffTransitions } from "../Services/HandoffTransitions";
 import type { ServiceMap } from "effect";
 import type { ProviderProjectionAccessShape } from "../Services/ProviderProjectionAccess.ts";
@@ -432,7 +433,7 @@ export function makeProviderTurnDispatch(input: {
         : boundaryMessageText;
     const finalizeProviderInput = (bootstrap: BootstrapContextSelection | null) => {
       if (
-        selectedProvider === "claudeAgent" &&
+        providerCapabilities(selectedProvider).compaction === "promptTurn" &&
         /^\/compact(?:\s|$)/.test(input.messageText.trim())
       ) {
         return input.messageText.trim();
@@ -519,7 +520,8 @@ export function makeProviderTurnDispatch(input: {
           specializedBootstrapCompletesFreshSessionContext);
 
       const tracksEscalationAcceptance =
-        interruptEscalation !== undefined && selectedProvider !== "codex";
+        interruptEscalation !== undefined &&
+        !providerCapabilities(selectedProvider).sendTurnConfirmsAcceptance;
       pendingContextBootstrapAttempt =
         tracksDurableContextAcceptance || tracksEscalationAcceptance
           ? {

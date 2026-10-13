@@ -3,6 +3,7 @@ import type { OrchestrationEngineShape } from "../Services/OrchestrationEngine";
 import type { ProviderIntentEvent } from "../providerIntentClassification";
 import { CompactionAdmission } from "../../provider/Services/CompactionAdmission";
 import { ProviderAdapterValidationError } from "../../provider/core/Errors";
+import type { ProviderKind } from "@glade/contracts/core/baseSchemas";
 
 const CANCELLING_EVENTS = [
   "thread.session-stop-requested",
@@ -18,6 +19,7 @@ const CANCELLING_EVENTS = [
 export function withCompactionAdmission<A, E, R>(
   engine: Pick<OrchestrationEngineShape, "getEventHighWaterSequence" | "readThreadEventsThrough">,
   event: ProviderIntentEvent,
+  provider: ProviderKind,
   work: Effect.Effect<A, E, R>,
 ) {
   return Effect.suspend(() => {
@@ -35,8 +37,8 @@ export function withCompactionAdmission<A, E, R>(
         );
       if (cancelled && !admitted)
         return yield* new ProviderAdapterValidationError({
-          provider: "claudeAgent",
-          operation: "startClaudeCompaction",
+          provider,
+          operation: "startCompaction",
           issue: "Compaction was cancelled before native delivery.",
         });
     }).pipe(
@@ -44,8 +46,8 @@ export function withCompactionAdmission<A, E, R>(
         Schema.is(ProviderAdapterValidationError)(cause)
           ? cause
           : new ProviderAdapterValidationError({
-              provider: "claudeAgent",
-              operation: "startClaudeCompaction",
+              provider,
+              operation: "startCompaction",
               issue: "Could not verify compaction admission. Try again.",
               cause,
             }),

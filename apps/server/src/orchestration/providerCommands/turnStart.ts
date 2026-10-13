@@ -13,7 +13,7 @@ import { ProviderService } from "../../provider/Services/ProviderService.ts";
 import { type ProviderIntentEvent } from "../providerIntentClassification.ts";
 import { TurnId, ProviderKind, CommandId } from "@glade/contracts/core/baseSchemas";
 import { turnStartKeyForEvent } from "./deliveryClaims";
-import { providerSupportsNativeTurnSteering } from "@glade/shared/provider/providerMetadata";
+import { providerCapabilities } from "@glade/shared/provider/providerMetadata";
 import { deriveTurnStartSession } from "../turnStartSession.ts";
 import { DEFAULT_RUNTIME_MODE } from "./contextLifecycle";
 import { resolveProviderDispatchAttachments } from "../../provider/core/providerAttachmentPaths.ts";
@@ -192,12 +192,15 @@ export function makeProviderTurnStart(input: {
       // dispatched right as another turn begins (e.g. the gap between a steer interrupt and the steered
       // turn's start) would race a live provider turn.
       const providerName = thread.session?.providerName ?? thread.modelSelection.provider;
-      if (providerName === "claudeAgent" && /^\/compact(?:\s|$)/u.test(message.text.trim())) {
+      if (
+        providerCapabilities(providerName).compaction === "promptTurn" &&
+        /^\/compact(?:\s|$)/u.test(message.text.trim())
+      ) {
         if ((message.attachments?.length ?? 0) > 0) {
           return yield* new ProviderAdapterValidationError({
-            provider: "claudeAgent",
-            operation: "startClaudeCompaction",
-            issue: "Remove attachments before compacting Claude context.",
+            provider: providerName as ProviderKind,
+            operation: "startCompaction",
+            issue: "Remove attachments before compacting the context.",
           });
         }
         const instructions = message.text.trim().replace(/^\/compact\s*/u, "");
@@ -212,7 +215,7 @@ export function makeProviderTurnStart(input: {
 
       const isNativeSteer =
         event.payload.dispatchMode === "steer" &&
-        providerSupportsNativeTurnSteering(providerName) &&
+        providerCapabilities(providerName).turnSteering &&
         hasLiveTurn;
       if (event.payload.dispatchMode === "steer") {
         // The decider records its projected decision on the message immediately, then this runtime check

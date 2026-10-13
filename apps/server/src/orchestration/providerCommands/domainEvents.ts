@@ -1,4 +1,5 @@
-import type { ThreadId } from "@glade/contracts/core/baseSchemas";
+import type { ProviderKind, ThreadId } from "@glade/contracts/core/baseSchemas";
+import { providerCapabilities } from "@glade/shared/provider/providerMetadata";
 import type { ProviderServiceError } from "../../provider/core/Errors";
 import { isStaleClaudeResumeError } from "./interactionPolicy";
 import { withCompactionAdmission } from "./compactionAdmission";
@@ -169,9 +170,10 @@ export function makeProviderDomainEvents(input: {
 
   const runCompaction = <A, E extends { readonly message: string }, R>(
     event: ProviderIntentEvent,
+    provider: ProviderKind,
     work: Effect.Effect<A, E, R>,
   ) =>
-    withCompactionAdmission(orchestrationEngine, event, work).pipe(
+    withCompactionAdmission(orchestrationEngine, event, provider, work).pipe(
       Effect.tapError((error) =>
         setThreadSessionError({
           threadId: event.payload.threadId,
@@ -327,11 +329,18 @@ export function makeProviderDomainEvents(input: {
           const message = thread?.messages.find(
             (message) => message.id === event.payload.messageId,
           );
+          const compactionProvider =
+            thread?.session?.providerName ?? thread?.modelSelection.provider;
           const isCompaction =
-            (thread?.session?.providerName ?? thread?.modelSelection.provider) === "claudeAgent" &&
+            compactionProvider !== undefined &&
+            providerCapabilities(compactionProvider).compaction === "promptTurn" &&
             /^\/compact(?:\s|$)/u.test(message?.text.trim() ?? "");
           yield* isCompaction
-            ? runCompaction(event, processTurnStartRequested(event))
+            ? runCompaction(
+                event,
+                compactionProvider as ProviderKind,
+                processTurnStartRequested(event),
+              )
             : processTurnStartRequested(event);
           return;
         }
@@ -350,9 +359,15 @@ export function makeProviderDomainEvents(input: {
               commandType: "thread.compact",
               detail,
             });
-          yield* (thread?.session?.providerName ?? thread?.modelSelection.provider) ===
-          "claudeAgent"
-            ? runCompaction(event, providerService.compactThread(event.payload))
+          const compactionProvider =
+            thread?.session?.providerName ?? thread?.modelSelection.provider;
+          yield* compactionProvider !== undefined &&
+          providerCapabilities(compactionProvider).compaction === "promptTurn"
+            ? runCompaction(
+                event,
+                compactionProvider as ProviderKind,
+                providerService.compactThread(event.payload),
+              )
             : providerService.compactThread(event.payload);
           return;
         }
