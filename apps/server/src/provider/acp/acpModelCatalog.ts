@@ -4,6 +4,7 @@ import type {
   SessionConfigSelectOption,
 } from "@agentclientprotocol/sdk";
 import type { ProviderOptionDescriptor } from "@glade/contracts/provider/model";
+import { formatEffortLabel } from "@glade/shared/provider/effortLabel";
 import type { ProviderModelDescriptor } from "@glade/contracts/provider/providerDiscovery";
 
 function flattenChoices(
@@ -23,6 +24,26 @@ const trimmed = (value: string | null | undefined) => {
 
 // The agent's session config options describe its models and their settings. Mode options are
 // left out: Glade always runs the agent's normal working mode.
+// The agent's reasoning level is offered under Glade's effort id, so every provider's effort picker
+// works the same; `acpConfigIdFor` maps it back to the agent's own id.
+const ACP_EFFORT_OPTION_ID = "effort";
+const THOUGHT_LEVEL = "thought_level";
+// "Let the agent decide" is not a rung of the effort ladder.
+const AGENT_DEFAULT_EFFORT_VALUES = new Set(["default", "auto"]);
+
+export function acpConfigIdFor(
+  options: ReadonlyArray<SessionConfigOption>,
+  optionId: string,
+): string | undefined {
+  if (optionId === ACP_EFFORT_OPTION_ID) {
+    return (
+      options.find((option) => option.category === THOUGHT_LEVEL)?.id ??
+      options.find((option) => option.id === optionId)?.id
+    );
+  }
+  return options.find((option) => option.id === optionId && option.category !== THOUGHT_LEVEL)?.id;
+}
+
 function optionDescriptors(
   options: ReadonlyArray<SessionConfigOption>,
 ): ReadonlyArray<ProviderOptionDescriptor> {
@@ -41,8 +62,15 @@ function optionDescriptors(
         },
       ];
     }
+    const effort = option.category === THOUGHT_LEVEL;
     const choices = flattenChoices(option.options).flatMap((choice) => {
-      const choiceLabel = trimmed(choice.name);
+      if (effort && AGENT_DEFAULT_EFFORT_VALUES.has(choice.value)) return [];
+      const name = trimmed(choice.name);
+      // Agents that only capitalize the raw value ("Xhigh") get Glade's effort wording.
+      const choiceLabel =
+        effort && name?.toLowerCase() === choice.value.toLowerCase()
+          ? formatEffortLabel(choice.value)
+          : name;
       return trimmed(choice.value) && choiceLabel
         ? [
             {
@@ -57,16 +85,35 @@ function optionDescriptors(
     return choices.length > 0
       ? [
           {
-            id: option.id,
+            id: effort ? ACP_EFFORT_OPTION_ID : option.id,
             label,
             ...(description ? { description } : {}),
             type: "select",
             options: choices,
-            ...(trimmed(option.currentValue) ? { currentValue: option.currentValue } : {}),
+            ...(trimmed(option.currentValue) &&
+            !AGENT_DEFAULT_EFFORT_VALUES.has(option.currentValue)
+              ? { currentValue: option.currentValue }
+              : {}),
           },
         ]
       : [];
   });
+}
+
+// Some agents fold a model's settings into its id, as in "model[effort=high,fast=false]"; each id is
+// one fixed variant, so the settings become a readable description.
+function variantDescription(slug: string): string | undefined {
+  const params = /\[([^\]]*)\]$/u.exec(slug)?.[1];
+  if (!params) return undefined;
+  const parts = params
+    .split(",")
+    .map((pair) => pair.split("=").map((part) => part.trim()))
+    .flatMap(([key, value]) =>
+      !key || value === undefined || value === "false"
+        ? []
+        : [value === "true" ? formatEffortLabel(key) : `${formatEffortLabel(key)} ${value}`],
+    );
+  return parts.length > 0 ? parts.join(" · ") : undefined;
 }
 
 export function acpModelCatalog(
@@ -81,13 +128,20 @@ export function acpModelCatalog(
     const slug = trimmed(choice.value);
     if (!slug) return [];
     const description = trimmed(choice.description);
+    // Multi-vendor agents name models "vendor/Model"; the vendor becomes the grouping label.
+    const label = trimmed(choice.name) ?? slug;
+    const separator = label.indexOf("/");
+    const vendor = separator > 0 ? label.slice(0, separator).trim() : undefined;
+    const name = separator > 0 ? label.slice(separator + 1).trim() || label : label;
+    const upstreamProviderName = choice.groupName ?? vendor;
+    const variant = variantDescription(slug);
     return [
       {
         slug,
-        name: trimmed(choice.name) ?? slug,
-        ...(description ? { description } : {}),
+        name,
+        ...((description ?? variant) ? { description: description ?? variant } : {}),
         ...(choice.value === modelOption.currentValue ? { isDefault: true } : {}),
-        ...(choice.groupName ? { upstreamProviderName: choice.groupName } : {}),
+        ...(upstreamProviderName ? { upstreamProviderName } : {}),
         ...(descriptors.length > 0 ? { optionDescriptors: descriptors } : {}),
       },
     ];

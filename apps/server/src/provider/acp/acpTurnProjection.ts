@@ -21,7 +21,7 @@ export type AcpRuntimeEventDraft = DistributiveOmit<
 >;
 
 interface TrackedToolCall {
-  readonly itemType: CanonicalItemType;
+  itemType: CanonicalItemType;
   title: string;
   kind: ToolKind | undefined;
   rawInput: unknown;
@@ -216,6 +216,8 @@ export function makeAcpTurnProjection(turnKey: string): AcpTurnProjection {
     }
     if (tool.completed) return [];
     if (update.title) tool.title = update.title;
+    // Some agents announce a call before they classify it; the first known kind decides its row.
+    if (update.kind && tool.kind === undefined) tool.itemType = acpToolItemType(update.kind);
     if (update.kind) tool.kind = update.kind;
     if (update.rawInput !== undefined) tool.rawInput = update.rawInput;
     const detail = toolCallDetail(update.content);

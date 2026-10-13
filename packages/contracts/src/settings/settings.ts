@@ -35,6 +35,16 @@ export const OpenCodeServerProviderSettings = Schema.Struct({
 });
 export type OpenCodeServerProviderSettings = typeof OpenCodeServerProviderSettings.Type;
 
+export const GrokServerProviderSettings = Schema.Struct({
+  ...ProviderSettingsBase,
+  binaryPath: StringSetting.pipe(Schema.withDecodingDefault(() => "grok")),
+});
+
+export const CursorServerProviderSettings = Schema.Struct({
+  ...ProviderSettingsBase,
+  binaryPath: StringSetting.pipe(Schema.withDecodingDefault(() => "cursor-agent")),
+});
+
 const DisabledSkillNames = Schema.Array(Schema.String.check(Schema.isMaxLength(256))).pipe(
   Schema.withDecodingDefault(() => []),
 );
@@ -69,6 +79,8 @@ export const ServerSettings = Schema.Struct({
     codex: CodexServerProviderSettings.pipe(Schema.withDecodingDefault(() => ({}))),
     claudeAgent: ClaudeServerProviderSettings.pipe(Schema.withDecodingDefault(() => ({}))),
     opencode: OpenCodeServerProviderSettings.pipe(Schema.withDecodingDefault(() => ({}))),
+    grok: GrokServerProviderSettings.pipe(Schema.withDecodingDefault(() => ({}))),
+    cursor: CursorServerProviderSettings.pipe(Schema.withDecodingDefault(() => ({}))),
   }).pipe(Schema.withDecodingDefault(() => ({}))),
   skills: SkillsServerSettings.pipe(Schema.withDecodingDefault(() => ({}))),
   // Both apply only to archived chats, and only to clean worktrees whose commits stay reachable.
@@ -126,6 +138,8 @@ export const ServerSettingsPatch = Schema.Struct({
         }),
       ),
       opencode: Schema.optionalKey(Schema.Struct(ProviderSettingsBasePatch)),
+      grok: Schema.optionalKey(Schema.Struct(ProviderSettingsBasePatch)),
+      cursor: Schema.optionalKey(Schema.Struct(ProviderSettingsBasePatch)),
     }),
   ),
   skills: Schema.optionalKey(

@@ -65,7 +65,7 @@ export function useComposerSlashCommands(input: ComposerSlashCommandInput) {
     supportsFastSlashCommand,
     canOfferCompactCommand,
     canOfferReviewCommand: true,
-    canOfferForkCommand: true,
+    canOfferForkCommand: providerCapabilities(selectedProvider).forkBoundary !== "none",
     canOfferExportCommand,
     canOfferComputerUseCommand: isLocalDesktop && allowComputerUse,
     providerNativeCommandNames,

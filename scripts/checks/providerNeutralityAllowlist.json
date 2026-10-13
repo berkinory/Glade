@@ -41,7 +41,7 @@
   "apps/web/src/routes/_chat.tsx": 2,
   "apps/web/src/terminalStateNormalization.ts": 2,
   "apps/web/src/theme/theme.logic.shared.ts": 5,
-  "packages/contracts/src/settings/settings.ts": 2,
+  "packages/contracts/src/settings/settings.ts": 3,
   "packages/contracts/src/terminal/terminal.ts": 1,
   "packages/shared/src/git/git.ts": 1,
   "packages/shared/src/provider/model.ts": 1,

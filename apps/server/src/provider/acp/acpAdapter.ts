@@ -27,7 +27,7 @@ import {
   type ProviderAdapterShape,
 } from "../Services/ProviderAdapter.ts";
 import { openAcpConnection, type AcpConnection } from "./acpConnection.ts";
-import { acpModelCatalog } from "./acpModelCatalog.ts";
+import { acpConfigIdFor, acpModelCatalog } from "./acpModelCatalog.ts";
 import type { AcpProviderProfile } from "./acpProviderProfile.ts";
 import { openAcpSession, type AcpSession } from "./acpSession.ts";
 import type { AcpRuntimeEventDraft } from "./acpTurnProjection.ts";
@@ -91,10 +91,9 @@ function selectionConfig(
   const updates: Array<{ configId: string; value: string }> = model
     ? [{ configId: model.id, value: selection.model }]
     : [];
-  for (const [configId, value] of Object.entries(selection.options ?? {})) {
-    if (typeof value === "string" && options.some((option) => option.id === configId)) {
-      updates.push({ configId, value });
-    }
+  for (const [optionId, value] of Object.entries(selection.options ?? {})) {
+    const configId = acpConfigIdFor(options, optionId);
+    if (typeof value === "string" && configId) updates.push({ configId, value });
   }
   return updates;
 }
@@ -373,7 +372,43 @@ export const makeAcpAdapter = (dependencies: AcpAdapterDependencies) =>
       capabilities: {
         supportsTurnSteering: false,
         supportsLiveTurnDiffPatch: false,
+        supportsNativeSlashCommandDiscovery: true,
+        supportsRuntimeModelList: true,
       },
+      getComposerCapabilities: () =>
+        Effect.succeed({
+          provider,
+          supportsSkillMentions: false,
+          supportsSkillDiscovery: false,
+          supportsNativeSlashCommandDiscovery: true,
+          supportsPluginMentions: false,
+          supportsPluginDiscovery: false,
+          supportsRuntimeModelList: true,
+          supportsThreadCompaction: false,
+        }),
+      // Agents announce their commands once a session opens, so only a chat with a live session
+      // lists them.
+      listCommands: (input) =>
+        Effect.sync(() => {
+          const thread = input.threadId
+            ? threads.get(ThreadId.makeUnsafe(input.threadId))
+            : undefined;
+          return {
+            commands: (thread?.session.availableCommands() ?? []).flatMap((command) =>
+              profile.hiddenCommands.has(command.name)
+                ? []
+                : [
+                    {
+                      name: command.name,
+                      ...(command.description.trim()
+                        ? { description: command.description.trim() }
+                        : {}),
+                    },
+                  ],
+            ),
+            source: "acp-session",
+          };
+        }),
       startSession,
       sendTurn,
       canResumeNativeConversation: (cursor) => readResumeCursor(cursor) !== undefined,

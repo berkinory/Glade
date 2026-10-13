@@ -98,4 +98,6 @@ export const PROVIDER_DISPLAY_NAMES: Record<ProviderKind, string> = {
   codex: "Codex",
   claudeAgent: "Claude",
   opencode: "OpenCode",
+  grok: "Grok",
+  cursor: "Cursor",
 };

@@ -10,7 +10,11 @@ const providerOwners = [
   { kind: "codex", owner: "codex" },
   { kind: "claudeAgent", owner: "claude" },
   { kind: "opencode", owner: "opencode" },
-] as const;
+  { kind: "grok", owner: "grok" },
+  // "cursor" is also a CSS property, a pagination field and an editor id, so it only counts where it
+  // is used as a provider: compared, matched in a case, or assigned to a provider or kind field.
+  { kind: "cursor", owner: "cursor", commonWord: true },
+] as const satisfies ReadonlyArray<{ kind: string; owner: string; commonWord?: boolean }>;
 
 // The registries are where provider kinds are declared, so they name every provider.
 const providerRegistries = new Set([
@@ -21,6 +25,29 @@ const providerRegistries = new Set([
 const root = path.resolve(import.meta.dirname, "../..");
 const allowlistPath = path.join(import.meta.dirname, "providerNeutralityAllowlist.json");
 const kinds = new Set<string>(providerOwners.map(({ kind }) => kind));
+const commonWordKinds = new Set<string>(
+  providerOwners.flatMap((owner) =>
+    "commonWord" in owner && owner.commonWord ? [owner.kind] : [],
+  ),
+);
+
+function isProviderUse(node: ts.Node): boolean {
+  const parent = node.parent;
+  if (ts.isCaseClause(parent)) return true;
+  if (ts.isBinaryExpression(parent)) {
+    const operator = parent.operatorToken.kind;
+    return (
+      operator === ts.SyntaxKind.EqualsEqualsEqualsToken ||
+      operator === ts.SyntaxKind.ExclamationEqualsEqualsToken ||
+      operator === ts.SyntaxKind.EqualsEqualsToken ||
+      operator === ts.SyntaxKind.ExclamationEqualsToken
+    );
+  }
+  if (ts.isPropertyAssignment(parent) && parent.initializer === node) {
+    return /provider|kind/iu.test(parent.name.getText());
+  }
+  return ts.isLiteralTypeNode(parent) && ts.isUnionTypeNode(parent.parent);
+}
 const owners = providerOwners.map(({ owner }) => owner);
 
 function isProviderOwned(file: string): boolean {
@@ -39,14 +66,15 @@ function countProviderLiterals(file: string): number {
     file,
     readFileSync(path.join(root, file), "utf8"),
     ts.ScriptTarget.Latest,
-    false,
+    true,
     file.endsWith("x") ? ts.ScriptKind.TSX : ts.ScriptKind.TS,
   );
   let count = 0;
   const visit = (node: ts.Node): void => {
     if (
       (ts.isStringLiteral(node) || ts.isNoSubstitutionTemplateLiteral(node)) &&
-      kinds.has(node.text)
+      kinds.has(node.text) &&
+      (!commonWordKinds.has(node.text) || isProviderUse(node))
     ) {
       count += 1;
     }

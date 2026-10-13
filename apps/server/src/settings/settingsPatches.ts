@@ -39,7 +39,8 @@ export function providerStartOptionsFromServerSettings(
   const codexBinaryPath = providers.codex.binaryPath.trim();
   const codexHomePath = providers.codex.homePath.trim();
   const claudeBinaryPath = providers.claudeAgent.binaryPath.trim();
-  const openCodeBinaryPath = providers.opencode.binaryPath.trim();
+  const binaryOnly = (binaryPath: string) =>
+    binaryPath.trim() ? { binaryPath: binaryPath.trim() } : {};
   return {
     codex: {
       ...(codexBinaryPath ? { binaryPath: codexBinaryPath } : {}),
@@ -49,7 +50,9 @@ export function providerStartOptionsFromServerSettings(
       ...(claudeBinaryPath ? { binaryPath: claudeBinaryPath } : {}),
       enableArtifacts: providers.claudeAgent.enableArtifacts,
     },
-    opencode: openCodeBinaryPath ? { binaryPath: openCodeBinaryPath } : {},
+    opencode: binaryOnly(providers.opencode.binaryPath),
+    grok: binaryOnly(providers.grok.binaryPath),
+    cursor: binaryOnly(providers.cursor.binaryPath),
     allowComputerUse: settings.allowComputerUse,
   };
 }
