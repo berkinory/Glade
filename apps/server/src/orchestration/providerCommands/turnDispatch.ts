@@ -63,7 +63,7 @@ import {
   type PreTurnBaseline,
 } from "./preTurnBaseline";
 import { type ProviderTurnStartResult } from "@glade/contracts/provider/provider";
-import { isStaleClaudeResumeError } from "./interactionPolicy";
+import { isStaleResumeError } from "./interactionPolicy";
 import { serverCommandId } from "./deliveryClaims";
 import { makeProviderSessionConfiguration } from "./sessionConfiguration";
 import { PendingInterruptEscalation, PendingContextBootstrapAttempt } from "./runtimeState";
@@ -594,11 +594,7 @@ export function makeProviderTurnDispatch(input: {
         Effect.catch((error) =>
           Effect.gen(function* () {
             // A fresh handoff session has no native resume to go stale.
-            if (
-              (pendingHandoff && !resumedHandoff) ||
-              selectedProvider !== "claudeAgent" ||
-              !isStaleClaudeResumeError(error)
-            ) {
+            if ((pendingHandoff && !resumedHandoff) || !isStaleResumeError(error)) {
               return yield* Effect.fail(error);
             }
 
@@ -621,16 +617,13 @@ export function makeProviderTurnDispatch(input: {
               .stopRuntimeSession({ threadId: input.threadId })
               .pipe(Effect.catch(() => Effect.void));
             yield* ensureSessionForStaleRetry;
-            yield* Effect.logWarning(
-              "provider command reactor retrying claude turn with native resume",
-              {
-                threadId: input.threadId,
-                messageId: input.messageId,
-              },
-            );
+            yield* Effect.logWarning("provider command reactor retrying turn with native resume", {
+              threadId: input.threadId,
+              messageId: input.messageId,
+            });
             return yield* sendQueuedProviderTurn(normalizedInput).pipe(
               Effect.catch((retryError) =>
-                isStaleClaudeResumeError(retryError)
+                isStaleResumeError(retryError)
                   ? replayWithTranscriptBootstrap(retryError)
                   : Effect.fail(retryError),
               ),

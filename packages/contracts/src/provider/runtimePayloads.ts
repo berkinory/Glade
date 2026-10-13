@@ -150,6 +150,11 @@ export const TurnStartedPayload = Schema.Struct({
 
 export type TurnStartedPayload = typeof TurnStartedPayload.Type;
 
+// A failure the provider classified natively so Glade can recover without parsing provider text.
+// `stale-resume`: the native resume id no longer names a conversation.
+export const ProviderFailureReason = Schema.Literal("stale-resume");
+export type ProviderFailureReason = typeof ProviderFailureReason.Type;
+
 export const TurnCompletedPayload = Schema.Struct({
   sessionState: Schema.optional(RuntimeSessionState),
   state: RuntimeTurnState,
@@ -164,6 +169,7 @@ export const TurnCompletedPayload = Schema.Struct({
   totalCostUsd: Schema.optional(Schema.Number),
   cumulativeCostUsd: Schema.optional(Schema.Number),
   errorMessage: Schema.optional(TrimmedNonEmptyStringSchema),
+  failureReason: Schema.optional(ProviderFailureReason),
 });
 
 export type TurnCompletedPayload = typeof TurnCompletedPayload.Type;

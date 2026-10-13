@@ -1,4 +1,5 @@
 import { readClaudeNativeTitle } from "./nativeHistory.ts";
+import { isClaudeMissingResumeConversationMessage } from "./streamErrors.ts";
 import { readClaudeResumeState } from "./sessionResume.ts";
 import { Effect } from "effect";
 import { EventId } from "@glade/contracts/core/baseSchemas";
@@ -230,6 +231,11 @@ export function makeClaudeTurnCompletion(input: {
               ? { totalCostUsd: turnResultUsage?.totalCostUsd ?? result.total_cost_usd }
               : {}),
             ...(errorMessage ? { errorMessage } : {}),
+            ...(status === "failed" &&
+            errorMessage &&
+            isClaudeMissingResumeConversationMessage(errorMessage)
+              ? { failureReason: "stale-resume" as const }
+              : {}),
           },
           providerRefs: {},
         });
@@ -405,6 +411,11 @@ export function makeClaudeTurnCompletion(input: {
             ? { totalCostUsd: turnResultUsage?.totalCostUsd ?? result.total_cost_usd }
             : {}),
           ...(errorMessage ? { errorMessage } : {}),
+          ...(status === "failed" &&
+          errorMessage &&
+          isClaudeMissingResumeConversationMessage(errorMessage)
+            ? { failureReason: "stale-resume" as const }
+            : {}),
         },
         providerRefs: nativeProviderRefs(context),
       });

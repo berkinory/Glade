@@ -76,10 +76,12 @@ export function isClaudeBenignTerminationCause(cause: Cause.Cause<Error>): boole
   return normalizeClaudeStreamMessages(cause).some(isClaudeBenignTerminationMessage);
 }
 
+export function isClaudeMissingResumeConversationMessage(message: string): boolean {
+  return message.toLowerCase().includes("no conversation found with session id");
+}
+
 export function isClaudeMissingResumeConversationCause(cause: Cause.Cause<Error>): boolean {
-  return normalizeClaudeStreamMessages(cause).some((message) =>
-    message.toLowerCase().includes("no conversation found with session id"),
-  );
+  return normalizeClaudeStreamMessages(cause).some(isClaudeMissingResumeConversationMessage);
 }
 
 export function resultErrorsText(result: SDKResultMessage): string {
@@ -232,10 +234,14 @@ export function toRequestError(
   if (sessionError) {
     return sessionError;
   }
+  const detail = toMessage(cause, `${method} failed`);
   return new ProviderAdapterRequestError({
     provider: PROVIDER,
     method,
-    detail: toMessage(cause, `${method} failed`),
+    detail,
+    ...(isClaudeMissingResumeConversationMessage(detail)
+      ? { reason: "stale-resume" as const }
+      : {}),
     cause,
   });
 }

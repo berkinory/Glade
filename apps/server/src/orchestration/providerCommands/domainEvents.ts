@@ -1,7 +1,6 @@
 import type { ProviderKind, ThreadId } from "@glade/contracts/core/baseSchemas";
 import { providerCapabilities } from "@glade/shared/provider/providerMetadata";
 import type { ProviderServiceError } from "../../provider/core/Errors";
-import { isStaleClaudeResumeError } from "./interactionPolicy";
 import { withCompactionAdmission } from "./compactionAdmission";
 import type { OrchestrationEngineShape } from "../Services/OrchestrationEngine";
 import { compactionBlockedReason } from "../compactionPolicy.ts";
@@ -135,12 +134,11 @@ export function makeProviderDomainEvents(input: {
   const { resolveProviderSessionThread, hasLiveProviderTurn, resolveThread } = projectionAccess;
   const processQueueDrainEvent = Effect.fnUntraced(function* (event: ProviderQueueDrainEvent) {
     if (
-      event.provider === "claudeAgent" &&
       event.type === "turn.completed" &&
       event.payload.state === "failed" &&
+      event.payload.failureReason === "stale-resume" &&
       event.lifecycleGeneration &&
-      event.turnId &&
-      isStaleClaudeResumeError(event.payload.errorMessage)
+      event.turnId
     ) {
       yield* clearStaleProviderResumeState({
         threadId: event.threadId,
