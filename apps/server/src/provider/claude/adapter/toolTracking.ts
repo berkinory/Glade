@@ -13,6 +13,7 @@ import { asCanonicalTurnId, asRuntimeItemId, nativeProviderRefs } from "./messag
 import type { ClaudeRuntimeEventsShape } from "../../Services/ClaudeRuntimeEvents.ts";
 import { makeClaudeMonitorEvents } from "./monitorEvents";
 import { markClaudeMonitorStarted } from "../claudeMonitorEvents.ts";
+import { emptyStreamedToolInput } from "./streamedToolInput";
 
 export function makeClaudeToolTracking(input: {
   readonly makeEventStamp: () => Effect.Effect<{ eventId: EventId; createdAt: string }>;
@@ -144,7 +145,7 @@ export function makeClaudeToolTracking(input: {
         title: titleForTool(itemType),
         ...(detail ? { detail } : {}),
         input: input.toolInput,
-        partialInputJson: "",
+        partialInput: emptyStreamedToolInput,
         ...(inputFingerprint ? { lastEmittedInputFingerprint: inputFingerprint } : {}),
       };
       context.inFlightTools.set(input.blockIndex, tool);

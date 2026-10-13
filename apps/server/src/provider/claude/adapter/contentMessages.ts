@@ -4,6 +4,7 @@ import { makeClaudeAssistantText } from "./assistantText";
 import { EventId, RuntimeTaskId } from "@glade/contracts/core/baseSchemas";
 import type { ClaudeRuntimeEventsShape } from "../../Services/ClaudeRuntimeEvents.ts";
 import { makeClaudeToolTracking } from "./toolTracking";
+import { appendStreamedToolInput } from "./streamedToolInput";
 import { makeClaudeWorkflowRuntime } from "./workflowRuntime";
 import { makeClaudeContextUsage } from "./contextUsage";
 import { ClaudeSessionContext, PROVIDER, ToolInFlight } from "./sessionTypes";
@@ -16,7 +17,6 @@ import {
   extractTextContent,
 } from "./messageContent";
 import {
-  tryParseCompleteJsonRecord,
   summarizeToolRequest,
   toolLifecycleEventData,
   isClientSurfacedClaudeTool,
@@ -124,14 +124,16 @@ export function makeClaudeContentMessages(input: {
             return;
           }
 
-          const partialInputJson = tool.partialInputJson + event.delta.partial_json;
-          const parsedInput = tryParseCompleteJsonRecord(partialInputJson);
+          const { input: partialInput, parsed: parsedInput } = appendStreamedToolInput(
+            tool.partialInput,
+            event.delta.partial_json,
+          );
           const detail = parsedInput
             ? summarizeToolRequest(tool.toolName, parsedInput.value, parsedInput.serialized)
             : tool.detail;
           let nextTool: ToolInFlight = {
             ...tool,
-            partialInputJson,
+            partialInput,
             ...(parsedInput ? { input: parsedInput.value } : {}),
             ...(detail ? { detail } : {}),
           };

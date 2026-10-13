@@ -192,29 +192,6 @@ export function titleForTool(itemType: CanonicalItemType): string {
   }
 }
 
-interface ParsedJsonRecord {
-  readonly value: Record<string, unknown>;
-  readonly serialized: string;
-}
-
-export function tryParseCompleteJsonRecord(value: string): ParsedJsonRecord | undefined {
-  if (!value.trimEnd().endsWith("}")) {
-    return undefined;
-  }
-  try {
-    const parsed = JSON.parse(value);
-    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
-      return undefined;
-    }
-    return {
-      value: parsed as Record<string, unknown>,
-      serialized: JSON.stringify(parsed),
-    };
-  } catch {
-    return undefined;
-  }
-}
-
 export function toolInputFingerprint(input: Record<string, unknown>): string | undefined {
   try {
     return JSON.stringify(input);

@@ -34,6 +34,7 @@ import { ClaudeRequestUsage } from "../claudeRequestUsage.ts";
 import { type ClaudeWorkflowRuntimeState } from "../claudeWorkflowRuntime.ts";
 import { ClaudeQueryRuntime, ClaudeProcessOwner } from "./adapterConfiguration";
 import type { ClaudeMonitorEventCursor } from "../claudeMonitorEvents.ts";
+import type { StreamedToolInput } from "./streamedToolInput";
 
 export const PROVIDER = "claudeAgent" as const;
 
@@ -137,7 +138,7 @@ export interface ToolInFlight {
   readonly title: string;
   readonly detail?: string;
   readonly input: Record<string, unknown>;
-  readonly partialInputJson: string;
+  readonly partialInput: StreamedToolInput;
   readonly lastEmittedInputFingerprint?: string;
 }
 

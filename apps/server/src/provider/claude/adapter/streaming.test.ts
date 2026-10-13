@@ -392,20 +392,24 @@ describe("Claude streaming", () => {
         },
       } as unknown as SDKMessage);
 
-      harness.query.emit({
-        type: "stream_event",
-        session_id: "sdk-session-tool-streams",
-        uuid: "stream-tool-input-1",
-        parent_tool_use_id: null,
-        event: {
-          type: "content_block_delta",
-          index: 1,
-          delta: {
-            type: "input_json_delta",
-            partial_json: '{"pattern":"foo","path":"src"}',
+      // Splits land inside an escape and after braces and quotes that belong to a string value.
+      for (const [index, partialJson] of [
+        '{"pattern":"foo\\',
+        '\\}\\"}',
+        '","path":"src"}',
+      ].entries()) {
+        harness.query.emit({
+          type: "stream_event",
+          session_id: "sdk-session-tool-streams",
+          uuid: `stream-tool-input-${index}`,
+          parent_tool_use_id: null,
+          event: {
+            type: "content_block_delta",
+            index: 1,
+            delta: { type: "input_json_delta", partial_json: partialJson },
           },
-        },
-      } as unknown as SDKMessage);
+        } as unknown as SDKMessage);
+      }
 
       harness.query.emit({
         type: "stream_event",
@@ -482,7 +486,7 @@ describe("Claude streaming", () => {
         (event) =>
           event.type === "item.updated" &&
           (event.payload.data as { input?: { pattern?: string; path?: string } } | undefined)?.input
-            ?.pattern === "foo",
+            ?.pattern === 'foo\\}"}',
       );
       assert.equal(toolInputUpdated?.type, "item.updated");
       if (toolInputUpdated?.type === "item.updated") {
@@ -491,7 +495,7 @@ describe("Claude streaming", () => {
           callId: "tool-grep-1",
           toolName: "Grep",
           input: {
-            pattern: "foo",
+            pattern: 'foo\\}"}',
             path: "src",
           },
         });
