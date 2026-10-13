@@ -110,6 +110,18 @@ function starredTraitsMatch(
   );
 }
 
+const searchKey = (text: string) => text.toLowerCase().replace(/[^\p{L}\p{N}]+/gu, "");
+
+// Every query word must appear, ignoring case, spacing and punctuation, so "gpt5" finds "GPT-5" and
+// "opus 55" finds "claude-opus-5-5".
+function matchesModelQuery(fields: ReadonlyArray<string | undefined>, query: string): boolean {
+  const haystack = searchKey(fields.join(""));
+  return query
+    .split(/\s+/u)
+    .map(searchKey)
+    .every((word) => haystack.includes(word));
+}
+
 export type ComposerModelPickerRow = {
   key: string;
   provider: ProviderKind;
@@ -135,10 +147,10 @@ export function buildProviderTabRows(input: {
     query.length > 0
       ? input.options.filter((option) =>
           // Descriptions are not shown, so they must not produce invisible matches.
-          [option.name, option.slug, option.upstreamProviderName, option.upstreamProviderId]
-            .join(" ")
-            .toLowerCase()
-            .includes(query),
+          matchesModelQuery(
+            [option.name, option.slug, option.upstreamProviderName, option.upstreamProviderId],
+            query,
+          ),
         )
       : input.options;
   return groupProviderModelOptions(filteredOptions).flatMap((group) =>
@@ -177,7 +189,7 @@ export function buildStarredTabRows(input: {
       formatProviderModelOptionName(entry.model);
     if (
       input.query.length > 0 &&
-      !`${name} ${entry.model} ${entry.provider}`.toLowerCase().includes(input.query)
+      !matchesModelQuery([name, entry.model, entry.provider], input.query)
     ) {
       return [];
     }
