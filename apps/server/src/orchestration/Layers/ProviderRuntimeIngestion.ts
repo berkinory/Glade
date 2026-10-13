@@ -2616,14 +2616,18 @@ const make = Effect.gen(function* () {
           nextAssistantDeliveryMode,
         );
       }
-      if (!deliveryTurnId || nextAssistantDeliveryMode !== "streaming") {
+      if (
+        !deliveryTurnId ||
+        nextAssistantDeliveryMode !== "streaming" ||
+        steerProvider === undefined
+      ) {
         return;
       }
 
       const flushEvent: ProviderRuntimeEvent = {
         type: "turn.started",
         eventId: event.eventId,
-        provider: (steerProvider ?? "codex") as ProviderKind,
+        provider: steerProvider as ProviderKind,
         createdAt: event.payload.createdAt,
         threadId: event.payload.threadId,
         turnId: deliveryTurnId,

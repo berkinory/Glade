@@ -249,7 +249,8 @@ export interface ComposerThreadMentionSource {
 }
 
 export interface ThreadSession {
-  provider: ProviderKind;
+  // Absent when the session names a provider this build does not know.
+  provider?: ProviderKind | undefined;
   status: SessionPhase | "error" | "closed";
   activeTurnId?: TurnId | undefined;
   createdAt: string;

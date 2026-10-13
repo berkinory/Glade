@@ -539,7 +539,7 @@ function readModelSessionFromThreadSession(
   return {
     threadId: previousThread?.id ?? incomingSession?.threadId ?? ThreadId.makeUnsafe("unknown"),
     status: previousSession.orchestrationStatus,
-    providerName: previousSession.provider,
+    providerName: previousSession.provider ?? incomingSession?.providerName ?? null,
     runtimeMode: previousThread?.runtimeMode ?? incomingSession?.runtimeMode ?? "full-access",
     activeTurnId: previousSession.activeTurnId ?? null,
     lastError: previousSession.lastError ?? null,
