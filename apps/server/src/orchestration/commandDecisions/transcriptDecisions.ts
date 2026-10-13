@@ -58,11 +58,14 @@ export function decideTranscriptCommand({
           createdAt: command.createdAt,
           updatedAt: command.createdAt,
         };
+        // Every projection keeps a stored message's model, so only a delta that may create the
+        // message repeats it.
+        const { modelSelection: _modelSelection, ...continuation } = payload;
         const deltaEvent: Omit<OrchestrationEvent, "sequence"> = {
           ...eventBase(),
           type: "thread.message-sent",
           payload: {
-            ...payload,
+            ...(existingMessage?.modelSelection === undefined ? payload : continuation),
             text: command.delta,
             ...(command.segmentStartedAt ? { segmentStartedAt: command.segmentStartedAt } : {}),
             ...(command.segmentSequence !== undefined
