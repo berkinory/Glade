@@ -7,6 +7,9 @@ import { layer as NodePtyLive } from "../../terminal/Layers/NodePTY";
 import { ProviderAuthentication } from "../Services/ProviderAuthentication";
 import { ProviderAuthenticationLive } from "./ProviderAuthentication";
 
+// A real PTY child can take seconds to spawn on a loaded machine; polling's 1 s default flakes.
+const PTY_EVENT_DEADLINE = { timeout: 10_000 };
+
 it.skipIf(process.platform === "win32").each(["claudeAgent", "codex"] as const)(
   "owns one transient %s attempt, fences stale attachments and stops a live process",
   async (provider) => {
@@ -59,6 +62,7 @@ it.skipIf(process.platform === "win32").each(["claudeAgent", "codex"] as const)(
         .poll(
           async () =>
             (await runtime.runPromise(service.request({ provider, action: "status" })))?.output,
+          PTY_EVENT_DEADLINE,
         )
         .toContain(provider === "claudeAgent" ? "AUTH_READY:auth:login" : "AUTH_READY:login:");
       await runtime.runPromise(
@@ -73,6 +77,7 @@ it.skipIf(process.platform === "win32").each(["claudeAgent", "codex"] as const)(
         .poll(
           async () =>
             (await runtime.runPromise(service.request({ provider, action: "status" })))?.status,
+          PTY_EVENT_DEADLINE,
         )
         .toBe("exited");
       expect(
