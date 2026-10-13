@@ -182,8 +182,11 @@ export function resolveComposerTraitsSummary(selection: ComposerTraitSelection):
   const primaryLabel =
     resolveComposerTraitStatusLabel(selection) ??
     (isFastOnlyControl ? (selection.fastModeEnabled ? "Fast" : "Default") : null);
-  const showsFastBadge = showsComposerFastModeBadge(selection) && !isFastOnlyControl;
+  // A fast-only control already says "Fast"; the bolt still marks it, as on every other trigger.
+  const showsFastBadge = showsComposerFastModeBadge(selection);
   const label = primaryLabel ?? "Options";
-  const summaryText = [label, showsFastBadge ? "Fast" : null].filter(Boolean).join(" · ");
+  const summaryText = [label, showsFastBadge && !isFastOnlyControl ? "Fast" : null]
+    .filter(Boolean)
+    .join(" · ");
   return { label, showsFastBadge, summaryText };
 }
