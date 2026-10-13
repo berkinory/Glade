@@ -18,6 +18,7 @@ import {
   runningChatsQuitCopy,
   type RunningChatQuitSummary,
   type RunningChatsQuitCopy,
+  type RunningChatsStopReason,
 } from "~/lib/runningChatsQuitConfirmation";
 import { cn } from "~/lib/utils";
 
@@ -27,7 +28,7 @@ export interface RunningChatsQuitDecision {
 
 export interface RunningChatsQuitDialogProps {
   readonly chats: ReadonlyArray<RunningChatQuitSummary> | null;
-
+  readonly reason?: RunningChatsStopReason;
   readonly quitting?: boolean;
   readonly onStay: () => void;
   readonly onQuit: (decision: RunningChatsQuitDecision) => void;
@@ -42,11 +43,13 @@ const KEY_HINT_CLASS = "text-ui-sm font-normal tabular-nums opacity-55";
 
 export function RunningChatsQuitDialog({
   chats,
+  reason = "quit",
   quitting = false,
   onStay,
   onQuit,
 }: RunningChatsQuitDialogProps) {
-  const copy = chats && chats.length > 0 ? runningChatsQuitCopy(chats, APP_DISPLAY_NAME) : null;
+  const copy =
+    chats && chats.length > 0 ? runningChatsQuitCopy(chats, APP_DISPLAY_NAME, reason) : null;
 
   return (
     <AlertDialog

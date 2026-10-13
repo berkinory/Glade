@@ -2,6 +2,7 @@ import { PlusIcon } from "~/lib/icons";
 import { isShortcutComposition } from "@glade/shared/settings/shortcutEvent";
 import { hasOpenKeyboardOverlay } from "~/lib/keyboardOverlay";
 import { useSidebarDesktopUpdate } from "./useSidebarDesktopUpdate";
+import { useUpdateEverything } from "./useUpdateEverything";
 import { useStore } from "../store";
 import { useProjectSpaceIdOf } from "../spacesUiStore";
 import { useSidebarStateStore } from "../sidebarStateStore";
@@ -373,6 +374,14 @@ export function useSidebarPanelEffects(context: ReturnType<typeof useSidebarDeri
     markThreadUnread,
   ]);
   const desktopUpdate = useSidebarDesktopUpdate();
+  const updateEverything = useUpdateEverything({
+    installReady:
+      desktopUpdate.showDesktopUpdateButton &&
+      desktopUpdate.desktopUpdateButtonAction === "install" &&
+      !desktopUpdate.desktopUpdateButtonDisabled,
+    version: desktopUpdate.desktopUpdateReadyVersion,
+    install: desktopUpdate.handleDesktopUpdateButtonClick,
+  });
   const searchPaletteProjects: SidebarSearchProject[] = projects
     .filter((project) =>
       isOrdinarySpaceProject(project, {
@@ -474,6 +483,7 @@ export function useSidebarPanelEffects(context: ReturnType<typeof useSidebarDeri
   return {
     ...context,
     desktopUpdate,
+    updateEverything,
     handleProjectTitleClick,
     handleProjectTitleKeyDown,
     searchPaletteProjects,

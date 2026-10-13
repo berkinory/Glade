@@ -25,7 +25,8 @@ import {
   getNotifiableProviderUpdateStatuses,
   isProviderUpdateActive,
   providerUpdateNotificationKey,
-  withProviderUpdateTimeout,
+  updateProviders,
+  type ProviderUpdateFailure,
 } from "../providerUpdates";
 import { prefetchModelsForNewThread } from "../lib/providerModelPrefetch";
 import { isRemoteClient } from "../lib/remoteClient";
@@ -224,36 +225,12 @@ async function runProviderUpdateAll(params: {
     timeout: 0,
   });
 
-  const failures: Array<{ provider: ServerProviderStatus; reason: string }> = [];
+  const failures: ProviderUpdateFailure[] = [];
 
   try {
-    const api = ensureEnvironmentNativeApi(environmentKey);
-    for (const provider of providers) {
-      try {
-        const result = await withProviderUpdateTimeout({
-          provider: provider.provider,
-          request: api.server.updateProvider({ provider: provider.provider }),
-        });
-        const refreshed = result.providers.find((entry) => entry.provider === provider.provider);
-        const updateState = refreshed?.updateState;
-        if (updateState?.status === "failed" || updateState?.status === "unchanged") {
-          failures.push({
-            provider,
-            reason: updateState.message ?? "The update command did not complete successfully.",
-          });
-        } else if (refreshed?.versionAdvisory?.status === "behind_latest") {
-          failures.push({
-            provider,
-            reason: "The provider still appears outdated after updating.",
-          });
-        }
-      } catch (error) {
-        failures.push({
-          provider,
-          reason: error instanceof Error ? error.message : "The update request failed.",
-        });
-      }
-    }
+    failures.push(
+      ...(await updateProviders(ensureEnvironmentNativeApi(environmentKey), providers)),
+    );
   } catch (error) {
     for (const provider of providers) {
       failures.push({

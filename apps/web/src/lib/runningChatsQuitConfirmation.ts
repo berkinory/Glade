@@ -81,16 +81,22 @@ export function listRunningChatsFromDesktopStore(
   return listRunningChatsForQuit(candidates);
 }
 
+export type RunningChatsStopReason = "quit" | "update";
+
 export function runningChatsQuitCopy(
   chats: ReadonlyArray<RunningChatQuitSummary>,
   appName = "Glade",
+  reason: RunningChatsStopReason = "quit",
 ): RunningChatsQuitCopy {
   return {
     title: chats.length === 1 ? "A chat is still running" : "Chats are still running",
-    description: `Work in progress will stop when ${appName} is closed.`,
+    description:
+      reason === "update"
+        ? `Work in progress will stop while ${appName} restarts to update.`
+        : `Work in progress will stop when ${appName} is closed.`,
     resumeLabel: chats.length === 1 ? "Resume chat automatically" : "Resume chats automatically",
     stayLabel: "Cancel",
-    quitLabel: "Quit",
+    quitLabel: reason === "update" ? "Update" : "Quit",
   };
 }
 

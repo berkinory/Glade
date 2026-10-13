@@ -2,7 +2,6 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import type { DesktopUpdateState } from "@glade/contracts/ipc/ipc";
 import { isElectron } from "../env";
 import { persistAppStateNow } from "../store";
-import { cn } from "~/lib/utils";
 import { toastManager } from "./ui/toast";
 import {
   getArm64IntelBuildWarningDescription,
@@ -146,21 +145,10 @@ export function useSidebarDesktopUpdate() {
       ? getArm64IntelBuildWarningDescription(desktopUpdateState)
       : null;
 
-  const desktopUpdateButtonInteractivityClasses = desktopUpdateButtonDisabled
-    ? "cursor-not-allowed opacity-60"
-    : "hover:brightness-110";
-
-  const desktopUpdateButtonHasSecondaryLabel =
-    desktopUpdateButtonPresentation.secondaryLabel !== null;
-
   const desktopUpdateDownloadPercent = getDesktopUpdateDownloadPercent(desktopUpdateState);
 
-  const desktopUpdateRowButtonClasses = cn(
-    "inline-flex h-6 shrink-0 items-center justify-center gap-1.5 rounded-full px-2.5 font-system-ui text-ui-xs font-medium leading-none text-white transition-colors",
-    "bg-[var(--info)]",
-    desktopUpdateButtonHasSecondaryLabel && "min-h-6 py-0.5",
-    desktopUpdateButtonInteractivityClasses,
-  );
+  const desktopUpdateReadyVersion =
+    desktopUpdateState?.downloadedVersion ?? desktopUpdateState?.availableVersion ?? null;
 
   const handleDesktopUpdateButtonClick = useCallback(() => {
     const bridge = window.desktopBridge;
@@ -323,7 +311,7 @@ export function useSidebarDesktopUpdate() {
     showArm64IntelBuildWarning,
     arm64IntelBuildWarningDescription,
     desktopUpdateDownloadPercent,
-    desktopUpdateRowButtonClasses,
+    desktopUpdateReadyVersion,
     handleDesktopUpdateButtonClick,
   };
 }

@@ -57,6 +57,7 @@ import {
   SIDEBAR_ROW_LABEL_TEXT_CLASS_NAME,
 } from "../sidebarRowStyles";
 import { SettingsSidebarNav } from "./SettingsSidebarNav";
+import { RunningChatsQuitDialog } from "./RunningChatsQuitDialog";
 import { SidebarVirtualChatList } from "./SidebarVirtualChatList";
 import { SpaceEmptyState } from "./SpaceEmptyState";
 import { SpaceSwitcher } from "./SpaceSwitcher";
@@ -76,6 +77,7 @@ export function SidebarView({ context }: { context: ReturnType<typeof useSidebar
     activeSpaceId,
     threadsHydrated,
     desktopUpdate,
+    updateEverything,
     navigate,
     isOnSettings,
     appSettings,
@@ -148,9 +150,21 @@ export function SidebarView({ context }: { context: ReturnType<typeof useSidebar
     showArm64IntelBuildWarning,
     arm64IntelBuildWarningDescription,
     desktopUpdateDownloadPercent,
-    desktopUpdateRowButtonClasses,
     handleDesktopUpdateButtonClick,
   } = desktopUpdate;
+  // Pending provider updates or a ready app update take the pill over; otherwise it reports the
+  // app update's download progress.
+  const everything = updateEverything.button;
+  const updateButton = everything
+    ? { ...everything, secondaryLabel: null, downloadPercent: null }
+    : {
+        label: desktopUpdateButtonPresentation.label,
+        secondaryLabel: desktopUpdateButtonPresentation.secondaryLabel,
+        downloadPercent: desktopUpdateDownloadPercent,
+        tooltip: desktopUpdateTooltip,
+        disabled: desktopUpdateButtonDisabled,
+        onClick: handleDesktopUpdateButtonClick,
+      };
   const {
     renderListSectionHeader,
     renderPinnedThreadsSection,
@@ -606,37 +620,43 @@ export function SidebarView({ context }: { context: ReturnType<typeof useSidebar
                   <span>{isOnSettings ? "Home" : "Settings"}</span>
                 </SidebarMenuButton>
                 <SidebarUsageIndicators />
-                {showDesktopUpdateButton ? (
+                {everything || showDesktopUpdateButton ? (
                   <Tooltip>
                     <TooltipTrigger
                       render={
                         <button
                           type="button"
-                          aria-label={desktopUpdateTooltip}
-                          aria-disabled={desktopUpdateButtonDisabled || undefined}
-                          disabled={desktopUpdateButtonDisabled}
-                          className={desktopUpdateRowButtonClasses}
-                          onClick={handleDesktopUpdateButtonClick}
+                          aria-label={updateButton.tooltip}
+                          aria-disabled={updateButton.disabled || undefined}
+                          disabled={updateButton.disabled}
+                          className={cn(
+                            "inline-flex h-6 shrink-0 items-center justify-center gap-1.5 rounded-full bg-[var(--info)] px-2.5 font-system-ui text-ui-xs font-medium leading-none text-white transition-colors",
+                            updateButton.secondaryLabel !== null && "min-h-6 py-0.5",
+                            updateButton.disabled
+                              ? "cursor-not-allowed opacity-60"
+                              : "hover:brightness-110",
+                          )}
+                          onClick={updateButton.onClick}
                         >
                           <span className="flex min-w-0 flex-1 items-center justify-between gap-1.5 leading-tight">
                             <span className="min-w-0 truncate text-center">
-                              {desktopUpdateButtonPresentation.label}
+                              {updateButton.label}
                             </span>
-                            {desktopUpdateButtonPresentation.secondaryLabel ? (
+                            {updateButton.secondaryLabel ? (
                               <span className="min-w-0 truncate text-center text-ui-xs text-white/80">
-                                {desktopUpdateButtonPresentation.secondaryLabel}
+                                {updateButton.secondaryLabel}
                               </span>
                             ) : null}
                           </span>
-                          {desktopUpdateDownloadPercent !== null ? (
+                          {updateButton.downloadPercent !== null ? (
                             <span className="rounded-full bg-white/20 px-1.5 py-0.5 text-ui-2xs font-semibold tabular-nums text-white/95">
-                              {desktopUpdateDownloadPercent}%
+                              {updateButton.downloadPercent}%
                             </span>
                           ) : null}
                         </button>
                       }
                     />
-                    <TooltipPopup side="top">{desktopUpdateTooltip}</TooltipPopup>
+                    <TooltipPopup side="top">{updateButton.tooltip}</TooltipPopup>
                   </Tooltip>
                 ) : (
                   <SidebarHelpMenu {...sidebarHelpMenuProps} />
@@ -648,6 +668,12 @@ export function SidebarView({ context }: { context: ReturnType<typeof useSidebar
       </SidebarFooter>
 
       <SidebarDialogs context={context} />
+      <RunningChatsQuitDialog
+        reason="update"
+        chats={updateEverything.runningChats}
+        onStay={updateEverything.cancelRestart}
+        onQuit={updateEverything.confirmRestart}
+      />
     </>
   );
 }

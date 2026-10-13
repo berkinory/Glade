@@ -1,5 +1,6 @@
 import { PROVIDER_DISPLAY_NAMES } from "@glade/contracts/provider/model";
 import { type ProviderKind } from "@glade/contracts/core/baseSchemas";
+import type { NativeApi } from "@glade/contracts/ipc/ipc";
 import { type ServerProviderStatus } from "@glade/contracts/server/server";
 import { type ServerSettings } from "@glade/contracts/settings/settings";
 
@@ -138,6 +139,45 @@ export function getNotifiableProviderUpdateStatuses(
     return [];
   }
   return getVisibleProviderUpdateStatuses({ ...input, oneClickOnly: true });
+}
+
+export interface ProviderUpdateFailure {
+  readonly provider: ServerProviderStatus;
+  readonly reason: string;
+}
+
+export async function updateProviders(
+  api: NativeApi,
+  providers: ReadonlyArray<ServerProviderStatus>,
+): Promise<ProviderUpdateFailure[]> {
+  const failures: ProviderUpdateFailure[] = [];
+  for (const provider of providers) {
+    try {
+      const result = await withProviderUpdateTimeout({
+        provider: provider.provider,
+        request: api.server.updateProvider({ provider: provider.provider }),
+      });
+      const refreshed = result.providers.find((entry) => entry.provider === provider.provider);
+      const updateState = refreshed?.updateState;
+      if (updateState?.status === "failed" || updateState?.status === "unchanged") {
+        failures.push({
+          provider,
+          reason: updateState.message ?? "The update command did not complete successfully.",
+        });
+      } else if (refreshed?.versionAdvisory?.status === "behind_latest") {
+        failures.push({
+          provider,
+          reason: "The provider still appears outdated after updating.",
+        });
+      }
+    } catch (error) {
+      failures.push({
+        provider,
+        reason: error instanceof Error ? error.message : "The update request failed.",
+      });
+    }
+  }
+  return failures;
 }
 
 export function providerUpdateNotificationKey(

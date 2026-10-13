@@ -1,15 +1,10 @@
-import { ThreadId } from "@glade/contracts/core/baseSchemas";
 import { useCallback, useEffect, useRef, useState } from "react";
 
-import { APP_DISPLAY_NAME } from "~/branding";
 import {
   listRunningChatsFromDesktopStore,
-  quitResumeContinuationPrompt,
-  stopRunningChatsForQuit,
   type RunningChatQuitSummary,
 } from "~/lib/runningChatsQuitConfirmation";
-import { newCommandId } from "~/lib/utils";
-import { readNativeApi } from "~/nativeApi";
+import { stopLocalRunningChats } from "~/lib/stopRunningChats";
 import { useStore } from "~/store";
 
 import { RunningChatsQuitDialog, type RunningChatsQuitDecision } from "./RunningChatsQuitDialog";
@@ -46,37 +41,7 @@ export function RunningChatsQuitCoordinator() {
         return;
       }
 
-      const stopped = stopRunningChatsForQuit({
-        chats: chatsToStop,
-        dispatchInterrupt: (threadId) => {
-          const api = readNativeApi();
-          if (!api) {
-            return;
-          }
-          return api.orchestration.dispatchCommand({
-            type: "thread.turn.interrupt",
-            commandId: newCommandId(),
-            threadId: ThreadId.makeUnsafe(threadId),
-            createdAt: new Date().toISOString(),
-          });
-        },
-        ...(decision.resume
-          ? {
-              resume: {
-                prepare: (threadIds: ReadonlyArray<string>) => {
-                  const api = readNativeApi();
-                  if (!api) {
-                    return Promise.reject(new Error("Native API unavailable"));
-                  }
-                  return api.orchestration.prepareQuitResume({
-                    threadIds: threadIds.map((threadId) => ThreadId.makeUnsafe(threadId)),
-                    continuationPrompt: quitResumeContinuationPrompt(APP_DISPLAY_NAME),
-                  });
-                },
-              },
-            }
-          : {}),
-      });
+      const stopped = stopLocalRunningChats(chatsToStop, decision.resume);
 
       if (decision.resume) {
         setQuitting(true);
