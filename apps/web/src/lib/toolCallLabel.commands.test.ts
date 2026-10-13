@@ -59,7 +59,8 @@ describe("command labels", () => {
 
   it.each([
     ["cd /repo && sed -n 1,20p a.ts; cat b.ts", "read", "inspect"],
-    ["cd /repo && cat a.ts; grep -n x b.ts", "search", "inspect"],
+    ["cd /repo && cat a.ts; grep -n x b.ts", "read", "inspect"],
+    ["cd /repo && grep -n x a.ts; ls src", "search", "inspect"],
     ["cd /repo && ls src; ls lib", "list", "inspect"],
     ["cd /repo && cat a.ts; git log -5", null, "git"],
     ["cd /repo && sed -i '' 's/a/b/' a.ts", null, "terminal"],

@@ -137,6 +137,7 @@ export function deriveWorkLogEntries(
         isVisible(activity) &&
         !isTurnFailureActivity(activity) &&
         activity.kind !== "task.started" &&
+        !isTaskProgressPing(activity) &&
         activity.kind !== "task.updated" &&
         activity.kind !== "task.completed" &&
         !isQuietTurnLifecycleActivity(activity) &&
@@ -189,6 +190,12 @@ export function deriveWorkLogEntries(
     }),
   ];
   return outcomes.length > 0 ? [...derived, ...outcomes] : derived;
+}
+
+// A running task or subagent reports what it is doing as task progress; its card and the
+// Environment panel show that. Only reasoning, which shares the activity kind, is a transcript row.
+function isTaskProgressPing(activity: OrchestrationThreadActivity): boolean {
+  return activity.kind === "task.progress" && activity.summary !== "Reasoning trace";
 }
 
 // Stored chats still hold the notice older servers wrote when work moved to the background; the

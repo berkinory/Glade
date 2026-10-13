@@ -366,7 +366,8 @@ export function classifyInspectCommand(rawCommand: string): "read" | "search" | 
     kinds.add(inspect[2]);
   }
   if (kinds.size === 0) return null;
-  if (kinds.size === 1 && kinds.has("file")) return "read";
+  // A chain that reads files counts them, even when it also searches or lists.
+  if (kinds.has("file")) return "read";
   if (kinds.size === 1 && kinds.has("directory")) return "list";
   return "search";
 }

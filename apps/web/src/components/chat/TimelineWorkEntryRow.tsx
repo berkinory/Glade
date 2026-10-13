@@ -76,6 +76,8 @@ import {
   isPrefixedToolArgumentSummary,
 } from "../../lib/toolArgumentSummary";
 import {
+  classifyInspectCommand,
+  commandReadFilePaths,
   deriveFriendlyCommandTarget,
   resolveCommandVisualKind,
 } from "../../lib/toolCallLabel.commands";
@@ -282,6 +284,11 @@ function classifyWorkEntryTool(workEntry: TimelineWorkEntry) {
       : deriveGladeMcpToolTitle(titleInput),
   };
 }
+function singleInspectedFile(command: string | undefined): string | null {
+  if (!command || classifyInspectCommand(command) === null) return null;
+  const files = commandReadFilePaths(command);
+  return files.length === 1 ? files[0]! : null;
+}
 function formatBackgroundTaskMeta(task: WorkLogBackgroundTask): string {
   const elapsed =
     task.settledAt === null
@@ -462,12 +469,14 @@ function ToolWorkEntryRow(props: TimelineWorkEntryRowProps) {
           ? "mcp"
           : undefined;
   const { heading, displayText } = workEntryDisplayParts(workEntry, classification);
-  // A shell read names its file through the command label; its raw command text is not a path.
   const isCommandRow = Boolean(
     workEntry.itemType === "command_execution" || workEntry.command || workEntry.rawCommand,
   );
-  const rowFilePath =
-    workEntry.toolKind === "read" && !isCommandRow
+  // A shell command that only looks around and reads one file shows that file the way a Read tool
+  // does. Its raw command text is never taken for a path.
+  const rowFilePath = isCommandRow
+    ? singleInspectedFile(workEntry.command ?? workEntry.rawCommand)
+    : workEntry.toolKind === "read"
       ? (toolInputFilePath(workEntry.toolDetails?.input) ??
         (workEntry.detail ? extractFilePathFromDetail(workEntry.detail) : null))
       : null;

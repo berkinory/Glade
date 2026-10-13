@@ -413,7 +413,7 @@ export function projectProviderRuntimeActivities(
           createdAt: event.createdAt,
           tone: "info",
           kind: "task.progress",
-          summary: "Reasoning update",
+          summary: "Task progress",
           payload: toActivityPayload({
             taskId: event.payload.taskId,
             detail: truncateDetail(event.payload.summary ?? event.payload.description),

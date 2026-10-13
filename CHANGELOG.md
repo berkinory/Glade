@@ -12,7 +12,7 @@
 - Glade starts faster and uses much less memory, and Codex replies take far less work to process.
 - Long Claude sessions use less memory.
 - Searches in tool calls say what they look for in plain words and count every folder they search.
-- A shell command that reads several files says how many, lists each one in its details to open with a click, and counts every one of them in its tool group.
+- A shell command that reads files shows them like a Read tool call: one file as its file chip, several as a count with each file listed in its details to open with a click, and every one counted in its tool group.
 - Retried requests to a provider show as one row with an icon and the latest attempt, such as "Connection lost · retry 5/10", and open to every attempt.
 - A command left running in the background says so on its own row and updates when it finishes, fails or is stopped, instead of adding a separate "Moved to background" row.
 - The visual reply preview browser loads only when a preview is first needed, so Glade starts lighter.
@@ -41,6 +41,7 @@
 
 ### Fixed
 
+- Progress updates from background tasks and subagents no longer appear in the chat as "Reasoning update" rows; their cards and the Environment panel show them.
 - Forking a chat from an earlier reply works while the chat is still running. Only the reply that is still being written cannot be forked, and its fork button stays hidden until it finishes.
 - Opening the rewind or edit confirmation no longer expands and collapses the previous reply.
 - Live change counts no longer touch the Git index while an agent works, which could make the agent's own Git commands fail.
