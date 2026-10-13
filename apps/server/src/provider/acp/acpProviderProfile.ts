@@ -2,16 +2,6 @@ import type { ClientSideConnection, SessionConfigOption } from "@agentclientprot
 import type { ProviderKind } from "@glade/contracts/core/baseSchemas";
 import type { RuntimeMode } from "@glade/contracts/provider/sessionPolicy";
 
-// Answers an agent's own JSON-RPC methods (for example `x.ai/*` or `cursor/*`). Returning
-// undefined declines the method with an error, so the agent never waits on a request Glade does
-// not render.
-interface AcpExtensionHandlers {
-  readonly request?: (
-    method: string,
-    params: Record<string, unknown>,
-  ) => Promise<Record<string, unknown> | undefined> | undefined;
-}
-
 export interface AcpModelDescription {
   readonly slug: string;
   readonly name: string;
@@ -60,5 +50,4 @@ export interface AcpProviderProfile {
   readonly compactCommand?: string;
   // Native slash commands for features outside Glade's scope, hidden from the composer.
   readonly hiddenCommands: ReadonlySet<string>;
-  readonly extensions?: AcpExtensionHandlers;
 }

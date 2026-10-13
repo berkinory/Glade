@@ -83,15 +83,6 @@ export async function openAcpConnection(input: {
           outcome: "cancelled",
         },
       }),
-      ...(profile.extensions?.request
-        ? {
-            extMethod: async (method: string, params: Record<string, unknown>) => {
-              const result = await profile.extensions?.request?.(method, params);
-              if (result === undefined) throw new Error(`${method} is not supported by Glade.`);
-              return result;
-            },
-          }
-        : {}),
     }),
     ndJsonStream(Writable.toWeb(child.stdin), Readable.toWeb(child.stdout) as ReadableStream),
   );
