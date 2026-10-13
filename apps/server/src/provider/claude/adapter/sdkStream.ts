@@ -109,7 +109,9 @@ export function makeClaudeSdkStream(input: {
           context,
           errorMessage ?? "Claude turn failed.",
           undefined,
-          assistantError ? claudeAssistantFailure(assistantError.code) : undefined,
+          assistantError
+            ? claudeAssistantFailure(assistantError.code, context.usageLimitResetsAt)
+            : undefined,
         );
       }
 

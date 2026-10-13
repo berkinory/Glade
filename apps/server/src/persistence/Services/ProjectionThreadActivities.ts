@@ -29,6 +29,12 @@ export const ListProjectionThreadActivitiesInput = Schema.Struct({
 });
 export type ListProjectionThreadActivitiesInput = typeof ListProjectionThreadActivitiesInput.Type;
 
+export const ListProjectionActivitiesByKindsInput = Schema.Struct({
+  kinds: Schema.Array(Schema.String),
+  createdSince: IsoDateTime,
+});
+export type ListProjectionActivitiesByKindsInput = typeof ListProjectionActivitiesByKindsInput.Type;
+
 export const DeleteProjectionThreadActivitiesInput = Schema.Struct({
   threadId: ThreadId,
 });
@@ -46,6 +52,11 @@ export interface ProjectionThreadActivityRepositoryShape {
 
   readonly listByThreadId: (
     input: ListProjectionThreadActivitiesInput,
+  ) => Effect.Effect<ReadonlyArray<ProjectionThreadActivity>, ProjectionRepositoryError>;
+
+  // Across all threads, chronological within each thread.
+  readonly listByKinds: (
+    input: ListProjectionActivitiesByKindsInput,
   ) => Effect.Effect<ReadonlyArray<ProjectionThreadActivity>, ProjectionRepositoryError>;
 
   readonly deleteByThreadId: (

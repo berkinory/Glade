@@ -356,6 +356,21 @@ A failed model refresh keeps the last successful native catalog for the exact
 provider, executable, endpoint, workspace and credential context. A successful empty
 catalog remains authoritative; a new context does not inherit another context's list.
 
+### Continue after a usage limit
+
+When a Claude or Codex subscription limit stops a chat, Glade waits for the reset
+and then sends a visible message asking the agent to resume the task. Claude reports
+the reset time with the failure; otherwise Glade reads it from the provider's usage
+windows. The chat shows when it will continue, and **Cancel** ends the wait. Sending
+a message, archiving the chat or turning off **Continue after usage limits** in
+Chat settings ends it too. Waits survive a Glade restart.
+
+Before sending, Glade checks the provider's usage again and keeps waiting while a
+window is still used up. It does not wait for a reset more than 24 hours away, in
+subagent chats, or after two automatic resumes in a row run into the limit again.
+A reset missed by more than 30 minutes, because the computer slept or Glade was
+closed, is left for you to continue.
+
 ## Glade agent tools
 
 Glade injects its authenticated MCP gateway into provider sessions. Inputs are validated

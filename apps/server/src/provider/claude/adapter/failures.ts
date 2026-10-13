@@ -2,7 +2,10 @@ import type { SDKAssistantMessageError } from "@anthropic-ai/claude-agent-sdk";
 import type { ProviderFailure } from "@glade/contracts/provider/providerFailure";
 import { claudeAssistantErrorMessage } from "./streamErrors.ts";
 
-export function claudeAssistantFailure(code: SDKAssistantMessageError): ProviderFailure {
+export function claudeAssistantFailure(
+  code: SDKAssistantMessageError,
+  usageLimitResetsAt: string | undefined,
+): ProviderFailure {
   const classification = (() => {
     switch (code) {
       case "authentication_failed":
@@ -31,7 +34,7 @@ export function claudeAssistantFailure(code: SDKAssistantMessageError): Provider
   return {
     ...classification,
     retry: { state: "none" },
-    resetsAt: null,
+    resetsAt: code === "rate_limit" ? (usageLimitResetsAt ?? null) : null,
     httpStatus: null,
     message: claudeAssistantErrorMessage(code),
   };

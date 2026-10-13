@@ -7,6 +7,7 @@ import { toPersistenceSqlError, toPersistenceSqlOrDecodeError } from "../Errors.
 
 import {
   DeleteProjectionThreadActivitiesInput,
+  ListProjectionActivitiesByKindsInput,
   ListProjectionThreadActivitiesInput,
   ProjectionThreadActivity,
   ProjectionThreadActivityRepository,
@@ -19,6 +20,14 @@ const ProjectionThreadActivityDbRowSchema = ProjectionThreadActivity.mapFields(
     sequence: Schema.NullOr(NonNegativeInt),
   }),
 );
+
+const toProjectionThreadActivity = ({
+  sequence,
+  ...row
+}: typeof ProjectionThreadActivityDbRowSchema.Type): ProjectionThreadActivity => ({
+  ...row,
+  ...(sequence !== null ? { sequence } : {}),
+});
 
 const makeProjectionThreadActivityRepository = Effect.gen(function* () {
   const sql = yield* SqlClient.SqlClient;
@@ -73,12 +82,7 @@ const makeProjectionThreadActivityRepository = Effect.gen(function* () {
   });
   const getById: ProjectionThreadActivityRepositoryShape["getById"] = (input) =>
     getProjectionThreadActivityRow(input).pipe(
-      Effect.map(
-        Option.map(({ sequence, ...row }) => ({
-          ...row,
-          ...(sequence !== null ? { sequence } : {}),
-        })),
-      ),
+      Effect.map(Option.map(toProjectionThreadActivity)),
       Effect.mapError(
         toPersistenceSqlOrDecodeError(
           "ProjectionThreadActivityRepository.getById:query",
@@ -105,6 +109,32 @@ const makeProjectionThreadActivityRepository = Effect.gen(function* () {
         FROM projection_thread_activities
         WHERE thread_id = ${threadId}
         ORDER BY
+          CASE WHEN sequence IS NULL THEN 0 ELSE 1 END ASC,
+          sequence ASC,
+          created_at ASC,
+          activity_id ASC
+      `,
+  });
+
+  const listProjectionActivityRowsByKinds = SqlSchema.findAll({
+    Request: ListProjectionActivitiesByKindsInput,
+    Result: ProjectionThreadActivityDbRowSchema,
+    execute: ({ kinds, createdSince }) =>
+      sql`
+        SELECT
+          activity_id AS "activityId",
+          thread_id AS "threadId",
+          turn_id AS "turnId",
+          tone,
+          kind,
+          summary,
+          payload_json AS "payload",
+          sequence,
+          created_at AS "createdAt"
+        FROM projection_thread_activities
+        WHERE kind IN ${sql.in(kinds)} AND created_at >= ${createdSince}
+        ORDER BY
+          thread_id ASC,
           CASE WHEN sequence IS NULL THEN 0 ELSE 1 END ASC,
           sequence ASC,
           created_at ASC,
@@ -139,19 +169,18 @@ const makeProjectionThreadActivityRepository = Effect.gen(function* () {
           "ProjectionThreadActivityRepository.listByThreadId:decodeRows",
         ),
       ),
-      Effect.map((rows) =>
-        rows.map((row) => ({
-          activityId: row.activityId,
-          threadId: row.threadId,
-          turnId: row.turnId,
-          tone: row.tone,
-          kind: row.kind,
-          summary: row.summary,
-          payload: row.payload,
-          ...(row.sequence !== null ? { sequence: row.sequence } : {}),
-          createdAt: row.createdAt,
-        })),
+      Effect.map((rows) => rows.map(toProjectionThreadActivity)),
+    );
+
+  const listByKinds: ProjectionThreadActivityRepositoryShape["listByKinds"] = (input) =>
+    listProjectionActivityRowsByKinds(input).pipe(
+      Effect.mapError(
+        toPersistenceSqlOrDecodeError(
+          "ProjectionThreadActivityRepository.listByKinds:query",
+          "ProjectionThreadActivityRepository.listByKinds:decodeRows",
+        ),
       ),
+      Effect.map((rows) => rows.map(toProjectionThreadActivity)),
     );
 
   const deleteByThreadId: ProjectionThreadActivityRepositoryShape["deleteByThreadId"] = (input) =>
@@ -165,6 +194,7 @@ const makeProjectionThreadActivityRepository = Effect.gen(function* () {
     getById,
     upsert,
     listByThreadId,
+    listByKinds,
     deleteByThreadId,
   } satisfies ProjectionThreadActivityRepositoryShape;
 });

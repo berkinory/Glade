@@ -22,6 +22,8 @@ import { ProviderCommandReactorLive } from "./orchestration/Layers/ProviderComma
 import { ProviderRuntimeIngestionLive } from "./orchestration/Layers/ProviderRuntimeIngestion";
 import { RuntimeReceiptBusLive } from "./orchestration/Layers/RuntimeReceiptBus";
 import { ThreadDeletionReactorLive } from "./orchestration/Layers/ThreadDeletionReactor";
+import { UsageLimitResumeLive } from "./orchestration/Layers/UsageLimitResume";
+import { ProjectionThreadActivityRepositoryLive } from "./persistence/Layers/ProjectionThreadActivities";
 import { TurnCheckpointCoordinatorLive } from "./orchestration/Layers/TurnCheckpointCoordinator";
 import { OrchestrationLayerLive } from "./orchestration/runtimeLayer";
 import { KeybindingsLive } from "./settings/Layers/Keybindings";
@@ -128,6 +130,11 @@ function makeServerRuntimeServicesLayer(
     Layer.provideMerge(OrchestrationLayerLive),
     Layer.provideMerge(ServerSettingsLive),
   );
+  const usageLimitResumeLayer = UsageLimitResumeLive.pipe(
+    Layer.provideMerge(OrchestrationLayerLive),
+    Layer.provideMerge(ServerSettingsLive),
+    Layer.provide(ProjectionThreadActivityRepositoryLive),
+  );
 
   const sessionCredentialLayer = SessionCredentialServiceLive.pipe(
     Layer.provide(ServerSecretStoreLive),
@@ -185,6 +192,7 @@ function makeServerRuntimeServicesLayer(
     threadGitMetadataReactorLayer,
     threadDeletionReactorLayer,
     keepAwakeLayer,
+    usageLimitResumeLayer,
     GitLayerLive,
     gitActionRunsLayer,
     TextGenerationLayerLive,

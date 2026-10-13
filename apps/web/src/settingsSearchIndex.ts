@@ -253,6 +253,13 @@ const SETTINGS_SEARCH_ENTRIES: readonly SettingsSearchEntry[] = [
     keywords: "Show token-by-token output while a response is in progress. streaming",
   },
   {
+    id: "behavior:auto-continue-usage-limit",
+    section: "behavior",
+    title: "Continue after usage limits",
+    target: "setting-autoContinueAtUsageLimit",
+    keywords: "usage limit rate limit session limit reset resume continue automatically quota",
+  },
+  {
     id: "behavior:keep-awake",
     section: "behavior",
     title: "Keep Mac awake",

@@ -747,6 +747,15 @@ function SettingsRouteView() {
         })}
 
         {renderBooleanSettingRow({
+          settingKey: "autoContinueAtUsageLimit",
+          title: "Continue after usage limits",
+          description:
+            "When a usage limit stops a chat, continue it automatically once the limit resets.",
+          resetLabel: "continue after usage limits",
+          ariaLabel: "Continue automatically after usage limits reset",
+        })}
+
+        {renderBooleanSettingRow({
           settingKey: "voiceSendOnEnter",
           title: "Send dictation with Enter",
           description:

@@ -804,6 +804,12 @@ export function makeClaudeSystemMessages(input: {
       }
 
       if (message.type === "rate_limit_event") {
+        const { status, resetsAt } = message.rate_limit_info;
+        if (status === "rejected" && typeof resetsAt === "number" && Number.isFinite(resetsAt)) {
+          context.usageLimitResetsAt = new Date(resetsAt * 1000).toISOString();
+        } else {
+          delete context.usageLimitResetsAt;
+        }
         yield* offerRuntimeEvent(context, {
           ...base,
           type: "account.rate-limits.updated",

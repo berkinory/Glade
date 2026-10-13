@@ -35,6 +35,7 @@ import { ProjectionSnapshotQuery } from "../../orchestration/Services/Projection
 import { ProjectionPendingInteractionRepository } from "../../persistence/Services/ProjectionPendingInteractions";
 import { ThreadDeletionReactor } from "../../orchestration/Services/ThreadDeletionReactor";
 import { KeepAwake } from "../../keepAwake/Services/KeepAwake";
+import { UsageLimitResume } from "../../orchestration/Services/UsageLimitResume";
 import { RemoteAccess } from "../../remoteAccess/Services/RemoteAccess";
 import {
   isRemoteRequest,
@@ -87,6 +88,7 @@ export interface ServerShape {
     | ServerSettingsService
     | ThreadDeletionReactor
     | KeepAwake
+    | UsageLimitResume
     | SqlClient.SqlClient
   >;
   readonly stopSignal: Effect.Effect<void, never>;
@@ -171,6 +173,7 @@ export const createEffectServer = Effect.fn(function* (
   const serverSettings = yield* ServerSettingsService;
   const threadDeletionReactor = yield* ThreadDeletionReactor;
   const keepAwake = yield* KeepAwake;
+  const usageLimitResume = yield* UsageLimitResume;
   const remoteAccess = yield* RemoteAccess;
   const readiness = yield* makeServerReadiness;
 
@@ -260,7 +263,13 @@ export const createEffectServer = Effect.fn(function* (
     reconcileRestartStuckTurns: reconcileRestartStuckTurns.pipe(
       Effect.provide(ProjectionPendingInteractionRepositoryLive),
     ),
-    reactors: [threadDeletionReactor, providerSessionReaper, providerRuntimeReconciler, keepAwake],
+    reactors: [
+      threadDeletionReactor,
+      providerSessionReaper,
+      providerRuntimeReconciler,
+      keepAwake,
+      usageLimitResume,
+    ],
     subscriptionsScope,
   });
   yield* readiness.markOrchestrationSubscriptionsReady;

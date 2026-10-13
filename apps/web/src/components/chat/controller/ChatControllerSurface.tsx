@@ -31,6 +31,7 @@ import {
 } from "~/components/chat/composerPickerStyles";
 import { EnvironmentPanel } from "~/components/chat/environment/EnvironmentPanel";
 import { SidebarHeaderTrigger } from "~/components/ui/sidebar";
+import { toastManager } from "~/components/ui/toast";
 import { isElectron } from "~/env";
 import { stripDiffSearchParams } from "~/diffRouteSearch";
 import { startSelectionChat } from "~/lib/selectionChat";
@@ -38,7 +39,7 @@ import { cn } from "~/lib/utils";
 import { findLatestTurnFailure, isSameFailureMessage } from "~/workLog.turnFailures";
 import { ChatComposerSurface } from "./ChatComposerSurface";
 import { deriveBackgroundWait } from "../BackgroundWaitRow.logic";
-import { undoTurnFiles } from "../chatTaskActions";
+import { cancelUsageLimitResume, undoTurnFiles } from "../chatTaskActions";
 import { createChatPresentation } from "./chatPresentation";
 import { MAX_DISMISSED_PROVIDER_HEALTH_BANNERS } from "./chatViewSupport";
 import type { ChatController } from "./useChatController";
@@ -84,6 +85,7 @@ export function ChatControllerSurface({ controller }: { controller: ChatControll
     setRenameDialogOpen,
     renameDialogOpen,
     visibleActiveRateLimitStatus,
+    activeUsageLimitResume,
     onRespondToAsyncUserInput,
     closePullRequestDialog,
     handlePreparedPullRequestThread,
@@ -406,6 +408,23 @@ export function ChatControllerSurface({ controller }: { controller: ChatControll
       <RateLimitBanner
         rateLimitStatus={visibleActiveRateLimitStatus}
         onDismiss={dismissActiveRateLimitBanner}
+        usageLimitResume={
+          activeUsageLimitResume
+            ? {
+                resetsAt: activeUsageLimitResume.resetsAt,
+                timestampFormat,
+                onCancel: () =>
+                  void cancelUsageLimitResume(activeThread.id, activeUsageLimitResume.turnId).catch(
+                    (error: unknown) =>
+                      toastManager.add({
+                        type: "error",
+                        title: "Could not cancel automatic continue",
+                        description: error instanceof Error ? error.message : "An error occurred.",
+                      }),
+                  ),
+              }
+            : null
+        }
       />
       <div className="relative flex min-h-0 min-w-0 flex-1 overflow-hidden">
         <div className="relative flex min-h-0 min-w-0 flex-1 flex-col">

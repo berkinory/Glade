@@ -1,7 +1,10 @@
 import { AlertCircleIcon, XIcon } from "~/lib/icons";
 import { asObjectRecord } from "@glade/shared/transport/payloadValues";
 import type { OrchestrationThreadActivity } from "@glade/contracts/orchestration/threadEntities";
+import type { TimestampFormat } from "~/appSettings";
+import { formatDayAwareTimestamp } from "~/timestampFormat";
 import { Alert, AlertAction, AlertDescription } from "../ui/alert";
+import { Button } from "../ui/button";
 import { IconButton } from "../ui/icon-button";
 import { ChatColumnBannerFrame } from "./ChatColumnBannerFrame";
 export type RateLimitStatus = {
@@ -51,10 +54,35 @@ function formatResetsAt(resetsAt: string): string {
 export const RateLimitBanner = function RateLimitBanner({
   onDismiss,
   rateLimitStatus,
+  usageLimitResume,
 }: {
   onDismiss?: () => void;
   rateLimitStatus: RateLimitStatus | null;
+  usageLimitResume?: {
+    readonly resetsAt: string;
+    readonly timestampFormat: TimestampFormat;
+    readonly onCancel: () => void;
+  } | null;
 }) {
+  if (usageLimitResume) {
+    const message =
+      Date.parse(usageLimitResume.resetsAt) > Date.now()
+        ? `Usage limit reached. Continuing automatically at ${formatDayAwareTimestamp(usageLimitResume.resetsAt, usageLimitResume.timestampFormat)}.`
+        : "Usage limit reset. Continuing shortly.";
+    return (
+      <ChatColumnBannerFrame>
+        <Alert variant="info">
+          <AlertCircleIcon />
+          <AlertDescription>{message}</AlertDescription>
+          <AlertAction>
+            <Button size="xs" variant="outline" onClick={usageLimitResume.onCancel}>
+              Cancel
+            </Button>
+          </AlertAction>
+        </Alert>
+      </ChatColumnBannerFrame>
+    );
+  }
   if (!rateLimitStatus) return null;
   const { status, resetsAt, utilization } = rateLimitStatus;
   const isRejected = status === "rejected";

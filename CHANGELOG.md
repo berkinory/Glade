@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+### New
+
+- Chats stopped by a usage limit continue on their own once the limit resets. Cancel the wait from the chat, or turn it off in Settings.
+
 ### Improved
 
 - Glade starts faster and uses much less memory, and Codex replies take far less work to process.

@@ -20,6 +20,10 @@ import { stripTerminalControlSequences } from "@glade/shared/text/text";
 import { PROVIDER_DESCRIPTORS } from "@glade/shared/provider/providerMetadata";
 import { deriveReadableToolTitle } from "./lib/toolCallLabel.commands";
 import { COMPUTER_ACCESS_REQUEST_PREFIX } from "@glade/contracts/computer/computerUse";
+import {
+  USAGE_LIMIT_RESUME_CANCELLED_ACTIVITY_KIND,
+  USAGE_LIMIT_RESUME_SCHEDULED_ACTIVITY_KIND,
+} from "@glade/contracts/orchestration/usageLimitResume";
 import type { ProviderApprovalDecision } from "@glade/contracts/provider/sessionPolicy";
 import {
   deriveGladeMcpToolAction,
@@ -137,6 +141,8 @@ export function deriveWorkLogEntries(
         !isRoutineApprovalAcceptance(activity) &&
         !isUninformativeActivity(activity) &&
         activity.kind !== "account.rate-limits.updated" &&
+        activity.kind !== USAGE_LIMIT_RESUME_SCHEDULED_ACTIVITY_KIND &&
+        activity.kind !== USAGE_LIMIT_RESUME_CANCELLED_ACTIVITY_KIND &&
         activity.kind !== "context-window.updated" &&
         activity.kind !== "context-window.configured" &&
         activity.kind !== "fast-mode.updated" &&

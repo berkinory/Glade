@@ -1,8 +1,9 @@
 import { requestWorkspaceRestoreDecision } from "./workspaceRestoreDecision";
-import type { ThreadId } from "@glade/contracts/core/baseSchemas";
+import { EventId, type ThreadId, type TurnId } from "@glade/contracts/core/baseSchemas";
+import { USAGE_LIMIT_RESUME_CANCELLED_ACTIVITY_KIND } from "@glade/contracts/orchestration/usageLimitResume";
 import type { PendingFileUndo } from "~/components/ChatView.logic.session";
 import { holdQueuedComposerTurnsForStop } from "~/lib/queuedComposerDrain";
-import { newCommandId } from "~/lib/utils";
+import { newCommandId, randomUUID } from "~/lib/utils";
 import { readNativeApi } from "~/nativeApi";
 import type { Thread } from "~/types";
 
@@ -21,6 +22,25 @@ export async function interruptThreadTurn(threadId: ThreadId): Promise<void> {
       releaseQueueHold();
       throw error;
     });
+}
+
+export async function cancelUsageLimitResume(threadId: ThreadId, turnId: TurnId): Promise<void> {
+  const createdAt = new Date().toISOString();
+  await readNativeApi()?.orchestration.dispatchCommand({
+    type: "thread.activity.append",
+    commandId: newCommandId(),
+    threadId,
+    activity: {
+      id: EventId.makeUnsafe(randomUUID()),
+      tone: "info",
+      kind: USAGE_LIMIT_RESUME_CANCELLED_ACTIVITY_KIND,
+      summary: "Automatic continue cancelled",
+      payload: {},
+      turnId,
+      createdAt,
+    },
+    createdAt,
+  });
 }
 
 export async function stopWorkflowTask(threadId: ThreadId, taskId: string): Promise<void> {

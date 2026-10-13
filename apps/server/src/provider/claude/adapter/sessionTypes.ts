@@ -192,6 +192,8 @@ export interface ClaudeSessionQuery {
 export interface ClaudeSessionTurn {
   settledReasoningMessageIds?: Set<string>;
   authenticationInProgress?: boolean;
+  // A rejected subscription limit can arrive between turns, ahead of the turn that fails on it.
+  usageLimitResetsAt?: string;
   backgroundReplySourceTurnId?: TurnId;
   backgroundReplySource?: { providerThreadId: string; nickname: string };
   taskTurnIds?: Map<string, TurnId>;

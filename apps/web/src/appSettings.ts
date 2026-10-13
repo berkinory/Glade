@@ -233,6 +233,7 @@ const AppSettingsSchema = Schema.Struct({
 
   voiceSendOnEnter: Schema.Boolean.pipe(withDefaults(() => false)),
   enableProviderUpdateChecks: Schema.Boolean.pipe(withDefaults(() => true)),
+  autoContinueAtUsageLimit: Schema.Boolean.pipe(withDefaults(() => true)),
   enableNativeFontSmoothing: Schema.Boolean.pipe(withDefaults(getDefaultNativeFontSmoothing)),
   desktopAppIcon: PersistedDesktopAppIcon.pipe(withDefaults(() => "default" as const)),
 
@@ -412,6 +413,7 @@ function serverSettingsToAppSettings(settings: ServerSettingsView): Partial<AppS
     defaultThreadEnvMode: settings.defaultThreadEnvMode,
     enableAssistantStreaming: settings.enableAssistantStreaming,
     enableProviderUpdateChecks: settings.enableProviderUpdateChecks,
+    autoContinueAtUsageLimit: settings.autoContinueAtUsageLimit,
     disabledProviders: getServerDisabledProviders(settings),
     textGenerationProvider: settings.textGenerationModelSelection?.provider ?? "codex",
     textGenerationModel: settings.textGenerationModelSelection?.model ?? undefined,
@@ -478,6 +480,9 @@ function appSettingsPatchToServerSettingsPatch(
   }
   if (hasOwn(patch, "enableProviderUpdateChecks")) {
     serverPatch.enableProviderUpdateChecks = Boolean(patch.enableProviderUpdateChecks);
+  }
+  if (hasOwn(patch, "autoContinueAtUsageLimit")) {
+    serverPatch.autoContinueAtUsageLimit = Boolean(patch.autoContinueAtUsageLimit);
   }
   if (patch.defaultThreadEnvMode === "local" || patch.defaultThreadEnvMode === "worktree") {
     serverPatch.defaultThreadEnvMode = patch.defaultThreadEnvMode;

@@ -1,4 +1,5 @@
 import { ThreadId } from "@glade/contracts/core/baseSchemas";
+import { pendingUsageLimitResume } from "@glade/shared/threads/usageLimitResume";
 import { deriveAssociatedWorktreeMetadata } from "@glade/shared/threads/threadWorkspace";
 import { useEffect, useMemo, useState } from "react";
 import { buildThreadBreadcrumbs } from "../../ChatView.logic.subagents";
@@ -156,6 +157,12 @@ export function useChatWorkspaceController({
   const activeCumulativeCostUsd = deriveCumulativeCostUsd(threadActivities);
 
   const activeRateLimitStatus = deriveLatestRateLimitStatus(threadActivities);
+
+  const activeUsageLimitResume = pendingUsageLimitResume({
+    latestTurn: activeLatestTurn,
+    activities: threadActivities,
+    nowMs: Date.now(),
+  });
 
   const activeRateLimitBannerDismissalKey = getRateLimitBannerDismissalKey(
     activeRateLimitStatus,
@@ -407,6 +414,7 @@ export function useChatWorkspaceController({
     activeRateLimitStatus,
     activeRateLimitBannerDismissalKey,
     visibleActiveRateLimitStatus,
+    activeUsageLimitResume,
     latestTurnSettled,
     latestTurnLive,
     activeProjectId,
