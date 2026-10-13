@@ -8,6 +8,7 @@ import { cn } from "~/lib/utils";
 import { type ProviderOptions } from "../../providerModelOptions";
 import { Button } from "../ui/button";
 import { ShortcutKbd } from "../ui/kbd";
+import { Separator } from "../ui/separator";
 import {
   Menu,
   MenuCheckboxItem,
@@ -205,7 +206,7 @@ export function ComposerTraitsPicker(props: {
       size="sm"
       variant="chrome"
       className={cn(
-        "min-w-0 shrink-0 gap-1.5 whitespace-nowrap ps-1 pe-2 [&_svg]:mx-0",
+        "min-w-0 shrink-0 gap-1.5 whitespace-nowrap ps-1.5 pe-2 [&_svg]:mx-0",
         COMPOSER_PICKER_TRIGGER_TEXT_CLASS_NAME,
       )}
       aria-label={`Change reasoning and speed, currently ${summary.summaryText}`}
@@ -214,10 +215,12 @@ export function ComposerTraitsPicker(props: {
   );
   const triggerContent = (
     <span className={cn("flex items-center gap-1.5", COMPOSER_MUTED_ACCENT_TEXT_CLASS_NAME)}>
-      <TriggerIcon
-        aria-hidden="true"
-        className={TriggerIcon === EnergyFilledIcon ? fastBadgeClassName : "size-3.5 shrink-0"}
-      />
+      {props.hideLabel ? (
+        <TriggerIcon
+          aria-hidden="true"
+          className={TriggerIcon === EnergyFilledIcon ? fastBadgeClassName : "size-3.5 shrink-0"}
+        />
+      ) : null}
       <span className={props.hideLabel ? "sr-only" : "text-ui-xs"}>{summary.label}</span>
       {summary.showsFastBadge ? (
         <EnergyFilledIcon aria-hidden="true" className={fastBadgeClassName} />
@@ -227,59 +230,62 @@ export function ComposerTraitsPicker(props: {
   );
 
   return (
-    <Menu open={props.open} onOpenChange={props.onOpenChange}>
-      <Tooltip>
-        <TooltipTrigger render={<MenuTrigger render={triggerButton} />}>
-          {triggerContent}
-        </TooltipTrigger>
-        {!props.open && props.shortcutLabel ? (
-          <TooltipPopup side="top" sideOffset={6} variant="picker">
-            <span className="inline-flex items-center gap-2 px-1 py-0.5">
-              <span>Reasoning and speed</span>
-              <ShortcutKbd shortcutLabel={props.shortcutLabel} />
-            </span>
-          </TooltipPopup>
-        ) : null}
-      </Tooltip>
-      <ComposerPickerMenuPopup
-        align="start"
-        side="top"
-        className="w-[min(12rem,92vw)] bg-popover/55 backdrop-blur-3xl backdrop-saturate-200"
-        {...{ [TRAITS_PICKER_POPUP_ATTRIBUTE]: "" }}
-      >
-        {reasoning ? renderSection(reasoning) : null}
-        {speed !== null ? (
-          <>
-            {reasoning ? <MenuSeparator /> : null}
-            <MenuCheckboxItem
-              variant="switch"
-              checked={speed.checked}
-              onCheckedChange={(checked) => commitTrait(speed.patchFor(checked))}
-            >
-              <span className="flex items-center gap-2">
-                <EnergyFilledIcon className="size-3.5 shrink-0" />
-                Fast mode
+    <>
+      <Separator orientation="vertical" className="mx-1.5 h-3.5" />
+      <Menu open={props.open} onOpenChange={props.onOpenChange}>
+        <Tooltip>
+          <TooltipTrigger render={<MenuTrigger render={triggerButton} />}>
+            {triggerContent}
+          </TooltipTrigger>
+          {!props.open && props.shortcutLabel ? (
+            <TooltipPopup side="top" sideOffset={6} variant="picker">
+              <span className="inline-flex items-center gap-2 px-1 py-0.5">
+                <span>Reasoning and speed</span>
+                <ShortcutKbd shortcutLabel={props.shortcutLabel} />
               </span>
-            </MenuCheckboxItem>
-            {fastModeNotice || provider === "claudeAgent" ? (
-              <div
-                className={cn(
-                  "px-2 pb-1 text-ui-xs leading-snug",
-                  fastModeNotice ? "text-warning" : "text-muted-foreground",
-                )}
+            </TooltipPopup>
+          ) : null}
+        </Tooltip>
+        <ComposerPickerMenuPopup
+          align="start"
+          side="top"
+          className="w-[min(12rem,92vw)] bg-popover/55 backdrop-blur-3xl backdrop-saturate-200"
+          {...{ [TRAITS_PICKER_POPUP_ATTRIBUTE]: "" }}
+        >
+          {reasoning ? renderSection(reasoning) : null}
+          {speed !== null ? (
+            <>
+              {reasoning ? <MenuSeparator /> : null}
+              <MenuCheckboxItem
+                variant="switch"
+                checked={speed.checked}
+                onCheckedChange={(checked) => commitTrait(speed.patchFor(checked))}
               >
-                {fastModeNotice ?? CLAUDE_FAST_MODE_BILLING_NOTE}
-              </div>
-            ) : null}
-          </>
-        ) : null}
-        {otherSections.map((section, index) => (
-          <Fragment key={section.id}>
-            {index > 0 || reasoning || speed ? <MenuSeparator /> : null}
-            {renderSection(section)}
-          </Fragment>
-        ))}
-      </ComposerPickerMenuPopup>
-    </Menu>
+                <span className="flex items-center gap-2">
+                  <EnergyFilledIcon className="size-3.5 shrink-0" />
+                  Fast mode
+                </span>
+              </MenuCheckboxItem>
+              {fastModeNotice || provider === "claudeAgent" ? (
+                <div
+                  className={cn(
+                    "px-2 pb-1 text-ui-xs leading-snug",
+                    fastModeNotice ? "text-warning" : "text-muted-foreground",
+                  )}
+                >
+                  {fastModeNotice ?? CLAUDE_FAST_MODE_BILLING_NOTE}
+                </div>
+              ) : null}
+            </>
+          ) : null}
+          {otherSections.map((section, index) => (
+            <Fragment key={section.id}>
+              {index > 0 || reasoning || speed ? <MenuSeparator /> : null}
+              {renderSection(section)}
+            </Fragment>
+          ))}
+        </ComposerPickerMenuPopup>
+      </Menu>
+    </>
   );
 }

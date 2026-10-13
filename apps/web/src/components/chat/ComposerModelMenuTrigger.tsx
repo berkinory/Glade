@@ -25,7 +25,7 @@ export function ComposerModelMenuTrigger(props: {
       variant="chrome"
       disabled={props.loading || (props.disabled ?? false)}
       className={cn(
-        "min-w-0 shrink-0 justify-start gap-1.5 whitespace-nowrap ps-2 pe-1 sm:ps-2.5 [&_svg]:mx-0",
+        "min-w-0 shrink-0 justify-start gap-1.5 whitespace-nowrap ps-1.5 pe-1 sm:ps-2 [&_svg]:mx-0",
         COMPOSER_PICKER_TRIGGER_TEXT_CLASS_NAME,
       )}
       aria-label={props.loading ? "Loading models" : `Change model, currently ${props.modelLabel}`}
