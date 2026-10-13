@@ -782,6 +782,7 @@ export function useSidebarRows(context: ReturnType<typeof useSidebarPanelEffects
         {projectSidebarData.visibleEntries.length > 0 || projectSidebarData.canShowMoreThreads ? (
           <DisclosureRegion
             open={project.expanded}
+            lazy
             contentClassName={SIDEBAR_NESTED_LIST_OFFSET_CLASS_NAME}
           >
             <SidebarMenuSub

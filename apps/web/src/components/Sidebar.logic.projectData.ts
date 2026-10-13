@@ -139,7 +139,7 @@ export function groupSidebarThreadsByProjectId(
 }
 
 export function deriveSidebarProjectData(input: {
-  projects: readonly Pick<Project, "id" | "cwd" | "expanded">[];
+  projects: readonly Pick<Project, "id" | "cwd">[];
   sortedSidebarThreadsByProjectId: ReadonlyMap<ProjectId, SidebarThreadSummary[]>;
   pinnedThreadIds: readonly ThreadId[];
   threadListExtraPagesByProjectCwd: ReadonlyMap<string, number>;
@@ -170,38 +170,6 @@ export function deriveSidebarProjectData(input: {
     const requestedExtraPages =
       input.threadListExtraPagesByProjectCwd.get(input.normalizeProjectCwd(project.cwd)) ?? 0;
     const orderedProjectThreadIds = projectThreads.map((thread) => thread.id);
-
-    if (!project.expanded) {
-      const activeThread =
-        input.activeSidebarThreadId === undefined
-          ? null
-          : (projectThreads.find((thread) => thread.id === input.activeSidebarThreadId) ?? null);
-      const visibleEntries =
-        activeThread === null
-          ? []
-          : [
-              {
-                kind: "thread" as const,
-                rowId: activeThread.id,
-                rootRowId: activeThread.id,
-                thread: activeThread,
-                depth: 0,
-              },
-            ];
-
-      byProjectId.set(project.id, {
-        allProjectThreadCount: allProjectThreads.length,
-        projectThreads,
-        orderedProjectThreadIds,
-        visibleEntries,
-
-        threadListExtraPages: 0,
-        canShowMoreThreads: false,
-        activeEntryId: activeThread?.id ?? null,
-        projectStatus,
-      });
-      continue;
-    }
 
     const projectThreadTree = buildProjectThreadTree({
       threads: projectThreads,

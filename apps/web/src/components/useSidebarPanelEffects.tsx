@@ -53,7 +53,6 @@ export function useSidebarPanelEffects(context: ReturnType<typeof useSidebarDeri
     dragInProgressRef,
     suppressProjectClickAfterDragRef,
     activeSidebarThreadId,
-    projectById,
     handleBackToThreads,
     handleStartAddProject,
     activateThreadFromSidebarIntent,
@@ -77,17 +76,6 @@ export function useSidebarPanelEffects(context: ReturnType<typeof useSidebarDeri
     (state) => state.setThreadListExtraPagesByProjectCwd,
   );
   const activityViewEnabled = useSidebarStateStore((state) => state.activityViewEnabled);
-  const resetProjectThreadPagingOnClose = (projectId: ProjectId) => {
-    const project = projectById.get(projectId);
-    if (!project?.expanded) return;
-    const cwdKey = normalizeSidebarProjectThreadListCwd(project.cwd);
-    setThreadListExtraPagesByProjectCwd((current) => {
-      if (!current.has(cwdKey)) return current;
-      const next = new Map(current);
-      next.delete(cwdKey);
-      return next;
-    });
-  };
   const handleProjectTitleClick = (
     event: React.MouseEvent<HTMLButtonElement>,
     projectId: ProjectId,
@@ -106,7 +94,6 @@ export function useSidebarPanelEffects(context: ReturnType<typeof useSidebarDeri
     if (selectedThreadIds.size > 0) {
       clearSelection();
     }
-    resetProjectThreadPagingOnClose(projectId);
     toggleProject(projectId);
   };
   const handleProjectTitleKeyDown = (
@@ -118,7 +105,6 @@ export function useSidebarPanelEffects(context: ReturnType<typeof useSidebarDeri
     if (dragInProgressRef.current) {
       return;
     }
-    resetProjectThreadPagingOnClose(projectId);
     toggleProject(projectId);
   };
   useEffect(() => {

@@ -1,5 +1,11 @@
 # Glade Changelog
 
+## Unreleased
+
+### Fixed
+
+- Every project in the sidebar now opens and closes with the same animation, not only the project of the open chat.
+
 ## 0.2.6 - 2026-10-14
 
 ### New

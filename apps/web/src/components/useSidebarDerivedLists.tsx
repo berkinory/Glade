@@ -32,6 +32,7 @@ import {
 } from "./Sidebar.logic.projectData";
 import { pruneProjectThreadListPagingForCollapsedProjects } from "./Sidebar.logic.statusTypes";
 import { isTerminalFocused } from "../lib/terminalFocus";
+import { DISCLOSURE_CLEANUP_BUFFER_MS, DISCLOSURE_TRANSITION_MS } from "../lib/disclosureMotion";
 import { hasThreadDetailResumeCursor } from "../threadDetailResumeCursors";
 import { retainThreadDetailSubscription } from "../threadDetailSubscriptionRetention";
 import type { useSidebarProjectCommands } from "./useSidebarProjectCommands";
@@ -198,6 +199,8 @@ export function useSidebarDerivedLists(context: ReturnType<typeof useSidebarProj
   const allProjectsExpanded =
     standardProjects.length > 0 && standardProjects.every((project) => project.expanded);
   useEffect(() => {
+    // Reset paging only once the collapse motion ends; trimming the list earlier makes it jump
+    // to the base page before it closes.
     const settle = window.setTimeout(() => {
       setThreadListExtraPagesByProjectCwd((current) =>
         pruneProjectThreadListPagingForCollapsedProjects({
@@ -206,7 +209,7 @@ export function useSidebarDerivedLists(context: ReturnType<typeof useSidebarProj
           normalizeProjectCwd: normalizeSidebarProjectThreadListCwd,
         }),
       );
-    }, 0);
+    }, DISCLOSURE_TRANSITION_MS + DISCLOSURE_CLEANUP_BUFFER_MS);
     return () => window.clearTimeout(settle);
   }, [standardProjects, setThreadListExtraPagesByProjectCwd]);
   useEffect(() => {
