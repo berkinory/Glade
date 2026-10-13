@@ -22,7 +22,11 @@ describe("command labels", () => {
     ["sed -n 1,30p a.ts b.ts", "Read 2 files"],
     ["sed -ne 's/x/y/p' a.ts", "Read a.ts"],
     ['cd /repo && grep -rn "needle" apps/web/src | head -20', "Searched for needle in web/src"],
-    ['cd /repo && rg -n "a" src; grep -n "b" lib', "Searched 2 times"],
+    ['cd /repo && rg -n "a" src; grep -n "b" lib', "Searched for a, b"],
+    [
+      "cd /x && grep -rln 'visibility' apps/game/Runtime --include='*.cs' | head -8; grep -rn 'class .*Level.*Dto\\|class LevelPayload\\|class ShelfDto\\|class BookDto' apps/game/Runtime --include='*.cs' | head -8",
+      "Searched for visibility, class LevelDto +3 in game/Runtime",
+    ],
     [
       `cd /repo && grep -rEln "[\\"'](claudeAgent|codex)[\\"']" apps/web/src apps/server/src/orchestration packages/shared/src | grep -v "\\.test\\." | while read f; do echo "$(grep -cE x $f) $f"; done | sort -rn | head -30`,
       "Found files with claudeAgent or codex in web/src +2",
@@ -41,7 +45,18 @@ describe("command labels", () => {
     ["cd /repo && bun run test 2>&1 | tail -20", "Ran bun run test"],
     ["cd /repo && sed -i '' 's/old value/new value/' apps/web/src/a.ts", "Edited src/a.ts"],
     ["cd /repo && for f in *.png; do magick $f info:; done", "Ran magick $f info:"],
-    ["cd /repo && python3 - <<'EOF'\nprint(1)\nEOF", "Ran python script"],
+    ["cd /repo && python3 - <<'EOF'\nprint(1)\nEOF", "Ran Python script"],
+    [
+      "cd /repo && python3 - <<'EOF'\np='CHANGELOG.md'; s=open(p).read()\nopen(p,'w').write(s.replace('a','b'))\nEOF",
+      "Edited CHANGELOG.md",
+    ],
+    ["cd /repo && cat > src/page.tsx <<'EOF'\nexport const a = 1;\nEOF", "Wrote src/page.tsx"],
+    ["echo done >> notes.txt", "Appended to notes.txt"],
+    ["cd /repo && perl -pi -e 's/a/b/' a.ts b.ts", "Edited 2 files"],
+    ["node -e \"require('fs').writeFileSync('out.json', '{}')\"", "Edited out.json"],
+    ["python3 scripts/migrate.py --dry-run", "Ran scripts/migrate.py"],
+    ["sqlite3 state.sqlite <<'EOF'\nselect 1;\nEOF", "Queried state.sqlite"],
+    ["cd /repo && bun run check > /tmp/check.log 2>&1", "Ran bun run check"],
     ["cat <<'EOF' | wc -l\nlorem\nEOF", "Ran cat <<'EOF'"],
     ["/bin/zsh -lc 'cd /repo && cat package.json'", "Read package.json"],
   ])("%s", (command, label) => {

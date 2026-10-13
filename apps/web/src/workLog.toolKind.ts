@@ -1,4 +1,5 @@
 import type { ToolLifecycleItemType } from "@glade/contracts/provider/runtimeMetadata";
+import { commandFileEffects } from "./lib/commandFileEffects";
 import { classifyInspectCommand } from "./lib/toolCallLabel.commands";
 import type { WorkLogEntry, WorkLogToolKind } from "./workLog.types";
 
@@ -52,7 +53,9 @@ export function classifyWorkLogToolKind(input: {
   if (nativeKind) return nativeKind;
   if (requestKind === "file-read") return "read";
   if (itemType === "command_execution" || requestKind === "command" || command) {
-    return (command ? classifyInspectCommand(command) : null) ?? "command";
+    if (!command) return "command";
+    if (commandFileEffects(command).written.length > 0) return "edit";
+    return classifyInspectCommand(command) ?? "command";
   }
   if (itemType === "mcp_tool_call") return "mcp";
   if (itemType === "dynamic_tool_call" || requestKind === "tool" || toolName) return "tool";

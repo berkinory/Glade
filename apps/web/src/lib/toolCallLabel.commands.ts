@@ -8,8 +8,15 @@ import {
 } from "./toolCallLabel.descriptors";
 import type { CommandVisualKind, ReadableCommandDisplay } from "./toolCallLabel.descriptors";
 import {
-  commandDirectory,
+  type CommandFileEffects,
+  type ScriptLanguage,
+  commandFileEffects,
+  inlineScriptOf,
+  resolveCommandPaths,
+} from "./commandFileEffects";
+import {
   commandSegments,
+  formatSearchTerms,
   compactPath,
   containsHeredoc,
   extractSearchPatternAndPath,
@@ -63,6 +70,17 @@ export function deriveReadableCommandDisplay(
   rawCommand: string,
   isRunning = false,
 ): ReadableCommandDisplay {
+  const effects = commandFileEffects(rawCommand);
+  if (effects.writeKind) {
+    const [running, completed] = WRITE_VERBS[effects.writeKind];
+    return commandDisplay(
+      running,
+      completed,
+      filesTarget(effects.written, ""),
+      rawCommand,
+      isRunning,
+    );
+  }
   const segments = meaningfulSegments(rawCommand);
   const inspections = segments.map(inspectPresentation);
   if (segments.length > 1 && inspections.every(Boolean)) {
@@ -71,6 +89,13 @@ export function deriveReadableCommandDisplay(
   // A chain that does more than look around is named by the first thing it does.
   const primary = segments.find((_, index) => !inspections[index]) ?? segments[0] ?? rawCommand;
   return segmentDisplay(primary, rawCommand, isRunning);
+}
+
+/** The program a command is named after: its first step that does more than look around. */
+export function commandPrimaryTool(rawCommand: string): string | null {
+  const segments = meaningfulSegments(rawCommand);
+  const primary = segments.find((segment) => !inspectPresentation(segment)) ?? segments[0];
+  return primary ? splitToolAndArgs(primary)[0] : null;
 }
 
 function segmentDisplay(
@@ -104,10 +129,6 @@ function segmentDisplay(
   }
 
   switch (tool) {
-    case "sed":
-      return isInPlaceSed(args)
-        ? commandDisplay("Editing", "Edited", inPlaceSedTarget(args), rawCommand, isRunning)
-        : commandDisplay("Running", "Ran", compactInlineCommand(segment), rawCommand, isRunning);
     case "mkdir":
       return commandDisplay(
         "Creating",
@@ -142,15 +163,10 @@ function segmentDisplay(
     case "python3":
     case "ruby":
     case "perl":
-      return commandDisplay(
-        "Running",
-        "Ran",
-        inlineScriptTarget(tool, segment, args) ?? compactInlineCommand(segment),
-        rawCommand,
-        isRunning,
-      );
+    case "php":
+    case "sqlite3":
     case "osascript":
-      return commandDisplay("Running", "Ran", "AppleScript", rawCommand, isRunning);
+      return scriptDisplay(segment, rawCommand, isRunning);
     default:
       return commandDisplay("Running", "Ran", compactInlineCommand(segment), rawCommand, isRunning);
   }
@@ -169,13 +185,7 @@ function combinedInspectDisplay(
     return commandDisplay("Reading", "Read", fileTarget, rawCommand, isRunning);
   }
   if ([...kinds].every((kind) => kind === "search" || kind === "find")) {
-    return commandDisplay(
-      "Searching",
-      "Searched",
-      `${segments.length} times`,
-      rawCommand,
-      isRunning,
-    );
+    return combinedSearchDisplay(segments, rawCommand, isRunning);
   }
   if (kinds.size === 1 && kinds.has("directory")) {
     return commandDisplay("Listing", "Listed", `${segments.length} folders`, rawCommand, isRunning);
@@ -187,6 +197,82 @@ function combinedInspectDisplay(
     rawCommand,
     isRunning,
   );
+}
+
+const WRITE_VERBS: Record<NonNullable<CommandFileEffects["writeKind"]>, [string, string]> = {
+  edit: ["Editing", "Edited"],
+  write: ["Writing", "Wrote"],
+  append: ["Appending to", "Appended to"],
+};
+
+const SCRIPT_LABELS: Record<ScriptLanguage, string> = {
+  python: "Python script",
+  javascript: "JavaScript",
+  typescript: "TypeScript",
+  ruby: "Ruby script",
+  perl: "Perl script",
+  php: "PHP script",
+  sql: "SQL",
+  applescript: "AppleScript",
+};
+
+// Code handed to an interpreter is named by its language, or by the script file it runs. What it
+// does inside is only claimed when its text shows it: the files it writes are labelled before this.
+function scriptDisplay(
+  segment: string,
+  rawCommand: string,
+  isRunning: boolean,
+): ReadableCommandDisplay {
+  const [tool, args] = splitToolAndArgs(segment);
+  if (tool === "sqlite3") {
+    const database = tokenizeCommandArgs(args).find((token) => !token.startsWith("-"));
+    if (database) {
+      // `file:…/state.sqlite?mode=ro` opens the same database read-only.
+      const path = database.replace(/^file:/, "").replace(/\?.*$/, "");
+      return commandDisplay("Querying", "Queried", compactPath(path), rawCommand, isRunning);
+    }
+  }
+  const script = inlineScriptOf(rawCommand);
+  if (!script) {
+    return commandDisplay("Running", "Ran", compactInlineCommand(segment), rawCommand, isRunning);
+  }
+  if (script.file) {
+    return commandDisplay("Running", "Ran", compactPath(script.file), rawCommand, isRunning);
+  }
+  const read = commandFileEffects(rawCommand).read;
+  if (read.length > 0) {
+    return commandDisplay("Reading", "Read", filesTarget(read, ""), rawCommand, isRunning);
+  }
+  return commandDisplay("Running", "Ran", SCRIPT_LABELS[script.language], rawCommand, isRunning);
+}
+
+// Several searches name what they looked for and, when they share it, where.
+function combinedSearchDisplay(
+  segments: readonly string[],
+  rawCommand: string,
+  isRunning: boolean,
+): ReadableCommandDisplay {
+  const searches = segments.map((segment) =>
+    extractSearchPatternAndPath(splitToolAndArgs(segment)[1]),
+  );
+  const terms = [...new Set(searches.flatMap((search) => search.terms))];
+  const folders = new Set(searches.map((search) => search.paths[0] ?? ""));
+  const sharedFolder = folders.size === 1 ? [...folders][0] : "";
+  const where = sharedFolder ? ` in ${sharedFolder}` : "";
+  const listsFiles = searches.every((search) => search.listsFiles);
+  if (terms.length === 0) {
+    return commandDisplay(
+      "Searching",
+      "Searched",
+      `${segments.length} times${where}`,
+      rawCommand,
+      isRunning,
+    );
+  }
+  const named = formatSearchTerms(terms);
+  return listsFiles
+    ? commandDisplay("Finding files", "Found files", `with ${named}${where}`, rawCommand, isRunning)
+    : commandDisplay("Searching", "Searched", `for ${named}${where}`, rawCommand, isRunning);
 }
 
 function filesTarget(files: readonly string[], args: string): string {
@@ -243,12 +329,7 @@ function readFilesOf(segments: readonly string[]): string[] {
  * `cd <absolute folder>` are resolved against it; others stay as written.
  */
 export function commandReadFilePaths(rawCommand: string): string[] {
-  const directory = commandDirectory(rawCommand);
-  return readFilesOf(meaningfulSegments(rawCommand)).map((file) =>
-    directory && !file.startsWith("/") && !file.startsWith("~")
-      ? `${directory.replace(/\/+$/, "")}/${file.replace(/^\.\//, "")}`
-      : file,
-  );
+  return resolveCommandPaths(rawCommand, readFilesOf(meaningfulSegments(rawCommand)));
 }
 
 // Output plumbing that only shapes what another command printed.
@@ -261,6 +342,7 @@ const PASSTHROUGH_TOOLS: ReadonlySet<string> = new Set([
   "uniq",
   "cut",
   "tr",
+  "sleep",
 ]);
 
 function meaningfulSegments(rawCommand: string): string[] {
@@ -269,20 +351,6 @@ function meaningfulSegments(rawCommand: string): string[] {
     (segment) => !PASSTHROUGH_TOOLS.has(splitToolAndArgs(segment)[0]),
   );
   return meaningful.length > 0 ? meaningful : segments;
-}
-
-// The file is the last argument that is not the sed script itself (`s/old/new/`, `s#a#b#g`).
-function inPlaceSedTarget(args: string): string {
-  const file = tokenizeCommandArgs(args)
-    .toReversed()
-    .find(
-      (token) =>
-        token.length > 0 &&
-        !token.startsWith("-") &&
-        !/\s/.test(token) &&
-        !/^s(.).*\1.*\1[a-zA-Z0-9]*$/.test(token),
-    );
-  return file ? compactPath(file) : "file";
 }
 
 function isInPlaceSed(args: string): boolean {
@@ -504,19 +572,6 @@ function compactInlineCommand(command: string): string {
     return normalized;
   }
   return `${normalized.slice(0, 137).trimEnd()}...`;
-}
-
-function inlineScriptTarget(tool: string, command: string, args: string): string | null {
-  const normalizedTool = tool === "python3" ? "python" : tool;
-  if (containsHeredoc(command) || hasInlineScriptFlag(args)) {
-    return `${normalizedTool} script`;
-  }
-  return null;
-}
-
-function hasInlineScriptFlag(args: string): boolean {
-  const tokens = tokenizeCommandArgs(args);
-  return tokens.some((token) => token === "-e" || token === "-c" || token.startsWith("-e="));
 }
 
 function searchSummary(args: string): string {

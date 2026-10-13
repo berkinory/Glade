@@ -30,6 +30,8 @@ const SEARCH_PATTERN_OPTIONS = new Set(["-e", "--regexp"]);
 
 export function extractSearchPatternAndPath(args: string): {
   pattern: string | null;
+  // The words the pattern looks for, one per alternative.
+  terms: string[];
   paths: string[];
   // `-l` lists the files that match instead of the matching lines.
   listsFiles: boolean;
@@ -70,6 +72,7 @@ export function extractSearchPatternAndPath(args: string): {
   }
   return {
     pattern: pattern === null ? null : readableSearchPattern(pattern),
+    terms: pattern === null ? [] : searchTerms(pattern),
     paths: positional.map((path) => compactPath(path.trim())).filter(Boolean),
     listsFiles,
   };
@@ -80,31 +83,44 @@ const MAX_SEARCH_PATTERN_CHARS = 40;
 // Agents search with regular expressions; the row names what they looked for. `["'](claudeAgent|codex)["']`
 // reads as "claudeAgent or codex". A pattern with no words left keeps its raw text.
 function readableSearchPattern(pattern: string): string | null {
-  const literalDot = "\u0000";
-  const alternatives = pattern
-    .replace(/\\\|/g, "|")
-    .replace(/\[[^\]]*\]/g, "")
-    .replace(/\\[bBsSwWdD]/g, "")
-    .replace(/\\\./g, literalDot)
-    .replace(/\{\d*,?\d*\}/g, "")
-    .replace(/\\(.)/g, "$1")
-    .replace(/[()^$*+?.]/g, "")
-    .replaceAll(literalDot, ".")
-    .split("|")
-    .map((alternative) => alternative.trim())
-    .filter((alternative) => /[a-z0-9]/i.test(alternative));
+  const alternatives = searchTerms(pattern);
+  // One pattern's two alternatives read as a choice; more are counted like several searches.
   const readable =
     alternatives.length === 0
       ? pattern.trim()
-      : alternatives.length <= 2
+      : alternatives.length === 2
         ? alternatives.join(" or ")
-        : `${alternatives.slice(0, 2).join(", ")} or ${alternatives.length - 2} more`;
+        : formatSearchTerms(alternatives);
   if (!/[a-z0-9]/i.test(readable)) {
     return null;
   }
   return readable.length > MAX_SEARCH_PATTERN_CHARS
     ? `${readable.slice(0, MAX_SEARCH_PATTERN_CHARS - 3)}...`
     : readable;
+}
+
+/** Up to two terms by name and how many more: `a`, `a, b`, `a, b +3`. */
+export function formatSearchTerms(terms: readonly string[]): string {
+  return terms.length <= 2
+    ? terms.join(", ")
+    : `${terms.slice(0, 2).join(", ")} +${terms.length - 2}`;
+}
+
+function searchTerms(pattern: string): string[] {
+  return (
+    pattern
+      .replace(/\\\|/g, "|")
+      .replace(/\[[^\]]*\]/g, "")
+      .replace(/\\[bBsSwWdD]/g, "")
+      .replace(/\{\d*,?\d*\}/g, "")
+      // `.*`, `.+` and `.?` match anything; a lone dot is usually the literal one in `a.b`.
+      .replace(/\.[*+?]/g, "")
+      .replace(/\\(.)/g, "$1")
+      .replace(/[()^$*+?"'`]/g, "")
+      .split("|")
+      .map((alternative) => alternative.trim())
+      .filter((alternative) => /[a-z0-9]/i.test(alternative))
+  );
 }
 
 function looksLikeSearchPath(token: string): boolean {
@@ -128,7 +144,14 @@ export function tokenizeCommandArgs(args: string): string[] {
       index += 1;
       let token = "";
       while (index < args.length && args[index] !== quote) {
-        if (args[index] === "\\" && index + 1 < args.length) {
+        // Single quotes keep every backslash; double quotes only escape $ ` " \ and newlines, so a
+        // regex's `\b` or `\|` reaches the command as written.
+        if (
+          quote === '"' &&
+          args[index] === "\\" &&
+          index + 1 < args.length &&
+          '$`"\\\n'.includes(args[index + 1]!)
+        ) {
           token += args[index + 1];
           index += 2;
           continue;
@@ -197,40 +220,123 @@ const SHELL_INVOCATION_PREFIXES = ["/usr/bin/", "/bin/", ""].flatMap((directory)
 // control-flow keywords are dropped. A heredoc's body is text rather than commands, so parsing
 // stops at the end of the line that opens it.
 export function commandSegments(rawCommand: string): string[] {
-  return splitShellCommands(unwrapShellInvocation(rawCommand)).flatMap((segment) => {
-    const normalized = normalizeCommandSegment(segment);
+  return splitShellCommands(unwrapShellInvocation(rawCommand)).flatMap(({ producer }) => {
+    const normalized = normalizeCommandSegment(producer);
     return normalized ? [normalized] : [];
   });
 }
 
-/** The folder a script's commands run in when it starts with `cd <absolute path>`. */
+/**
+ * The folder a script's file paths are relative to: its last `cd <absolute path>`, such as the one in
+ * `mkdir -p /tmp/x && cd /tmp/x && cat > notes.md`. A relative `cd` leaves it unknown.
+ */
 export function commandDirectory(rawCommand: string): string | null {
   let directory: string | null = null;
-  for (const segment of splitShellCommands(unwrapShellInvocation(rawCommand))) {
-    const cd = /^\s*(?:builtin\s+)?cd\s+(\S+)\s*$/.exec(segment);
-    if (cd) {
-      const target = cd[1]!.replace(/^(['"])(.*)\1$/, "$2");
-      directory = target.startsWith("/") ? target : null;
-      continue;
-    }
-    if (normalizeCommandSegment(segment)) break;
+  for (const { producer } of splitShellCommands(unwrapShellInvocation(rawCommand))) {
+    const cd = /^\s*(?:builtin\s+)?cd\s+(\S+)\s*$/.exec(producer);
+    if (!cd) continue;
+    const target = cd[1]!.replace(/^(['"])(.*)\1$/, "$2");
+    directory = target.startsWith("/") ? target : null;
   }
   return directory;
 }
 
-function splitShellCommands(command: string): string[] {
-  const segments: string[] = [];
-  let current = "";
+export interface ShellWriteTarget {
+  path: string;
+  append: boolean;
+}
+
+// Commands whose only job is to produce text, so redirecting their output writes a file.
+const CONTENT_WRITERS = new Set(["cat", "echo", "printf"]);
+const STDOUT_REDIRECTION = /(?:^|\s)1?(>>?)\s*([^\s&|;<>]+)/g;
+
+/**
+ * Files a script writes with plain shell: `cat > a.ts <<EOF`, `echo x >> log`, `… | tee a b`.
+ * Other commands redirected to a file (a build piped into a log) only run; they are not writes.
+ */
+export function shellWriteTargets(rawCommand: string): ShellWriteTarget[] {
+  const targets: ShellWriteTarget[] = [];
+  // A file another program's output went to is a log: `echo exit=$? >> test.log` annotates it.
+  const logs = new Set<string>();
+  for (const { producer, consumers } of splitShellCommands(unwrapShellInvocation(rawCommand))) {
+    const core = stripControlFlow(producer);
+    if (!core || isShellSetupPreamble(core)) continue;
+    const [tool] = splitToolAndArgs(core);
+    // Quoted text is the content being written, never a redirection.
+    const unquoted = core.replace(/'[^']*'|"(?:\\.|[^"\\])*"/g, " ");
+    for (const match of unquoted.matchAll(STDOUT_REDIRECTION)) {
+      const path = match[2]!;
+      if (path === "/dev/null") continue;
+      if (CONTENT_WRITERS.has(tool)) targets.push({ path, append: match[1] === ">>" });
+      else logs.add(path);
+    }
+    for (const consumer of [core, ...consumers]) {
+      const [consumerTool, args] = splitToolAndArgs(stripControlFlow(consumer));
+      if (consumerTool !== "tee") continue;
+      const tokens = tokenizeCommandArgs(args);
+      const append = tokens.some((token) => token === "-a" || token === "--append");
+      for (const token of tokens) {
+        if (!token.startsWith("-") && token !== "/dev/null") targets.push({ path: token, append });
+      }
+    }
+  }
+  return targets.filter((target) => !logs.has(target.path));
+}
+
+/** `NAME=value` assignments a script makes before its commands, such as `f=src/a.ts`. */
+export function shellAssignments(rawCommand: string): Map<string, string> {
+  const assignments = new Map<string, string>();
+  for (const { producer } of splitShellCommands(unwrapShellInvocation(rawCommand))) {
+    const match = /^\s*(?:export\s+)?([A-Za-z_]\w*)=(\S+)\s*$/.exec(producer);
+    if (match) assignments.set(match[1]!, match[2]!.replace(/^(['"])(.*)\1$/, "$2"));
+  }
+  return assignments;
+}
+
+/**
+ * A script that opens a heredoc, split at it: the lines up to the one that opens it, the text it
+ * feeds its command, and whatever follows the terminator.
+ */
+export function splitHeredoc(
+  rawCommand: string,
+): { head: string; body: string; tail: string } | null {
+  const lines = unwrapShellInvocation(rawCommand).split("\n");
+  const openIndex = lines.findIndex((line) => HEREDOC_OPENER.test(line));
+  if (openIndex < 0) return null;
+  const terminator = HEREDOC_OPENER.exec(lines[openIndex]!)![2]!;
+  const rest = lines.slice(openIndex + 1);
+  const closeIndex = rest.findIndex((line) => line.trim() === terminator);
+  const body = closeIndex < 0 ? rest : rest.slice(0, closeIndex);
+  const tail = closeIndex < 0 ? [] : rest.slice(closeIndex + 1);
+  return {
+    head: lines.slice(0, openIndex + 1).join("\n"),
+    body: body.join("\n"),
+    tail: tail.join("\n").trim(),
+  };
+}
+
+const HEREDOC_OPENER = /<<-?\s*(['"]?)([A-Za-z0-9_]+)\1/;
+
+interface ShellSegment {
+  // The command that produces the segment's output; pipe consumers are listed apart.
+  producer: string;
+  consumers: string[];
+}
+
+function splitShellCommands(command: string): ShellSegment[] {
+  const segments: ShellSegment[] = [];
+  let producer = "";
+  let consumers: string[] = [];
   let quote: '"' | "'" | null = null;
-  let inPipeConsumer = false;
   let opensHeredoc = false;
   const flush = () => {
-    segments.push(current);
-    current = "";
-    inPipeConsumer = false;
+    segments.push({ producer, consumers });
+    producer = "";
+    consumers = [];
   };
   const keep = (text: string) => {
-    if (!inPipeConsumer) current += text;
+    if (consumers.length > 0) consumers[consumers.length - 1] += text;
+    else producer += text;
   };
 
   for (let index = 0; index < command.length; index += 1) {
@@ -269,7 +375,7 @@ function splitShellCommands(command: string): string[] {
       continue;
     }
     if (char === "|") {
-      inPipeConsumer = true;
+      consumers.push("");
       continue;
     }
     keep(char);
@@ -281,7 +387,7 @@ function splitShellCommands(command: string): string[] {
 const CONTROL_FLOW_PREFIX = /^(?:do|then|else)\s+/;
 const CONTROL_FLOW_STATEMENT = /^(?:for|while|until|if|elif|case|select)\b|^(?:done|fi|esac|[{}])$/;
 
-function normalizeCommandSegment(segment: string): string | null {
+function stripControlFlow(segment: string): string {
   let current = segment
     .trim()
     .replace(/^\(\s*/, "")
@@ -289,7 +395,12 @@ function normalizeCommandSegment(segment: string): string | null {
   while (CONTROL_FLOW_PREFIX.test(current)) {
     current = current.replace(CONTROL_FLOW_PREFIX, "");
   }
-  if (!current || CONTROL_FLOW_STATEMENT.test(current) || isShellSetupPreamble(current)) {
+  return CONTROL_FLOW_STATEMENT.test(current) ? "" : current;
+}
+
+function normalizeCommandSegment(segment: string): string | null {
+  const current = stripControlFlow(segment);
+  if (!current || isShellSetupPreamble(current)) {
     return null;
   }
   return stripCommandDisplayWrappers(current.replace(OUTPUT_REDIRECTION, "")) || null;

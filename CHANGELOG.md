@@ -10,6 +10,9 @@
 
 ### Improved
 
+- Shell commands that write files read as edits: a Python or JavaScript script that writes a file, `sed -i`, `perl -pi` and `cat > file` show "Edited", "Wrote" or "Appended to" with the file, and count as edited files in their tool group.
+- Scripts show their language's icon, such as Python, Node or Bun, and code passed to a command through a heredoc is highlighted in its own language under the command.
+- Several searches in one command say what they looked for and where, such as "Searched for visibility, LevelDto +3 in Game/Runtime", instead of "Searched 2 times".
 - Glade starts faster and uses much less memory, and Codex replies take far less work to process.
 - Long Claude sessions use less memory.
 - Searches in tool calls say what they look for in plain words and count every folder they search.

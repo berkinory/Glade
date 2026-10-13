@@ -76,8 +76,11 @@ import {
   extractToolArgumentField,
   isPrefixedToolArgumentSummary,
 } from "../../lib/toolArgumentSummary";
+import { commandFileEffects, resolveCommandPaths } from "../../lib/commandFileEffects";
+import { SCRIPT_INTERPRETER_ICONS } from "../../lib/scriptInterpreterIcons";
 import {
   classifyInspectCommand,
+  commandPrimaryTool,
   commandReadFilePaths,
   deriveFriendlyCommandTarget,
   resolveCommandVisualKind,
@@ -208,6 +211,10 @@ function workEntryIcon(workEntry: TimelineWorkEntry): IconComponent {
       ? AlertCircleIcon
       : HistoryIcon;
   }
+  const command = workEntry.command ?? workEntry.rawCommand;
+  const interpreter = command ? commandPrimaryTool(command) : null;
+  const scriptIcon = interpreter ? SCRIPT_INTERPRETER_ICONS[interpreter] : undefined;
+  if (scriptIcon) return scriptIcon;
   switch (workEntry.toolKind) {
     case "command":
       return commandWorkEntryIcon(workEntry);
@@ -285,8 +292,12 @@ function classifyWorkEntryTool(workEntry: TimelineWorkEntry) {
       : deriveGladeMcpToolTitle(titleInput),
   };
 }
-function singleInspectedFile(command: string | undefined): string | null {
-  if (!command || classifyInspectCommand(command) === null) return null;
+// The one file a shell command writes, or the one it reads while only looking around.
+function singleCommandFile(command: string | undefined): string | null {
+  if (!command) return null;
+  const written = resolveCommandPaths(command, commandFileEffects(command).written);
+  if (written.length > 0) return written.length === 1 ? written[0]! : null;
+  if (classifyInspectCommand(command) === null) return null;
   const files = commandReadFilePaths(command);
   return files.length === 1 ? files[0]! : null;
 }
@@ -473,10 +484,10 @@ function ToolWorkEntryRow(props: TimelineWorkEntryRowProps) {
   const isCommandRow = Boolean(
     workEntry.itemType === "command_execution" || workEntry.command || workEntry.rawCommand,
   );
-  // A shell command that only looks around and reads one file shows that file the way a Read tool
-  // does. Its raw command text is never taken for a path.
+  // A shell command that writes one file, or only looks around and reads one, shows that file the
+  // way a Read or Edit tool does. Its raw command text is never taken for a path.
   const rowFilePath = isCommandRow
-    ? singleInspectedFile(workEntry.command ?? workEntry.rawCommand)
+    ? singleCommandFile(workEntry.command ?? workEntry.rawCommand)
     : workEntry.toolKind === "read"
       ? (toolInputFilePath(workEntry.toolDetails?.input) ??
         (workEntry.detail ? extractFilePathFromDetail(workEntry.detail) : null))

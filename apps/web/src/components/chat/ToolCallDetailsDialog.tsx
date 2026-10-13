@@ -1,5 +1,10 @@
 import { lazy, Suspense } from "react";
 import { formatShellCommand, formatToolOutputText } from "~/lib/toolCallDetailsFormatting";
+import {
+  commandFileEffects,
+  commandScriptParts,
+  resolveCommandPaths,
+} from "~/lib/commandFileEffects";
 import { commandReadFilePaths } from "~/lib/toolCallLabel.commands";
 import { openWorkspaceFileReference, useWorkspaceFileOpener } from "~/lib/workspaceFileOpener";
 import { FileNameChip } from "./FileNameChip";
@@ -49,10 +54,8 @@ export function ToolCallDetailsContent({
 
       {details?.command ? (
         <div className="space-y-2">
-          <CommandReadFiles command={details.command} />
-          <MarkdownToolCodeBlock language="bash" elapsed={elapsed} wrap>
-            {formatShellCommand(details.command)}
-          </MarkdownToolCodeBlock>
+          <CommandFiles command={details.command} />
+          <CommandScript command={details.command} elapsed={elapsed} />
           {commandOutputText ? (
             <MarkdownToolCodeBlock language="text">{commandOutputText}</MarkdownToolCodeBlock>
           ) : null}
@@ -111,10 +114,16 @@ export function ToolCallDetailsContent({
   );
 }
 
-// A shell read names the files it read, each opening like a Read tool's file.
-function CommandReadFiles({ command }: { command: string }) {
+// A shell command names the files it wrote or read, each opening like a Read or Edit tool's file.
+function CommandFiles({ command }: { command: string }) {
   const opener = useWorkspaceFileOpener();
-  const files = commandReadFilePaths(command);
+  const effects = commandFileEffects(command);
+  const files = [
+    ...new Set([
+      ...resolveCommandPaths(command, [...effects.written, ...effects.read]),
+      ...commandReadFilePaths(command),
+    ]),
+  ];
   if (files.length === 0) return null;
   return (
     <div className="flex flex-wrap gap-1.5 text-ui-sm" data-command-read-files="true">
@@ -126,6 +135,27 @@ function CommandReadFiles({ command }: { command: string }) {
         />
       ))}
     </div>
+  );
+}
+
+// A heredoc's body is code in its own language: the command line stays bash, the body gets its own
+// box so a Python edit or a written file reads as itself.
+function CommandScript({ command, elapsed }: { command: string; elapsed: string | null }) {
+  const parts = commandScriptParts(command);
+  return (
+    <>
+      <MarkdownToolCodeBlock language="bash" elapsed={elapsed} wrap>
+        {formatShellCommand(parts?.head ?? command)}
+      </MarkdownToolCodeBlock>
+      {parts ? (
+        <MarkdownToolCodeBlock language={parts.language}>{parts.body}</MarkdownToolCodeBlock>
+      ) : null}
+      {parts?.tail ? (
+        <MarkdownToolCodeBlock language="bash" wrap>
+          {parts.tail}
+        </MarkdownToolCodeBlock>
+      ) : null}
+    </>
   );
 }
 
