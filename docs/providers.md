@@ -160,6 +160,19 @@ The session may preserve provider-specific behavior such as:
 
 Capabilities vary. Do not assume a control available for one provider exists for all of them.
 
+### Forks and compaction on every provider
+
+Every provider can fork a chat from a finished reply. Codex and Claude fork natively. OpenCode,
+Grok Build, Cursor, Muse Code and Droid fork by transcript: Glade copies the chat up to that reply,
+and the fork's first turn starts a fresh native session with the copied conversation as context.
+
+`/compact` and the context popover's **Compact now** work on Codex, Claude, OpenCode, Grok Build,
+Cursor and Droid. OpenCode and Grok Build run their own native `/compact`. Cursor and Droid have
+none, so the agent writes a continuation summary, the chat moves into a fresh native session, and
+the summary opens it; if that fails the chat keeps its session and says why. Muse Code does not
+compact yet. Grok Build and Cursor report no context usage, so they show no context meter; type
+`/compact` there.
+
 ### Native subagents
 
 Provider-assigned names are preserved. Claude task descriptions are kept in task details; helpers without a native name receive a stable Glade name derived from their identity. Compact rows show the name and reported model or requested alias without agent-type suffixes or task prompts. Requested aliases do not establish which exact model version ran.
@@ -204,6 +217,10 @@ link in its reply.
 **Settings > Plugins** separates installed plugins from plugins loaded in the selected session. Claude changes use the native CLI and reload API. The Codex plugin library retains marketplace and detail views. Native reload failures remain visible even when installation succeeded.
 
 Shared skills load through each provider's native loader. Claude uses a local skills-only plugin bridge that links the original folders, preserving bundled resources; Codex receives additional native skill roots. Skill contents are not pasted into outgoing prompts. Claude enablement controls apply to Glade sessions, with changes taking effect in a new session. The allowlist governs Skill tool invocation; it does not restrict filesystem access through other tools.
+
+OpenCode, Grok Build, Cursor and Droid load their own MCP servers, plugins and skills from their own
+configuration; the Settings pages above manage Codex and Claude. Glade's own tools reach every
+provider that accepts an HTTP MCP server (all but Droid).
 
 Glade reads a skill's name, description, short description (top level or under `metadata`) and `disable-model-invocation` from its `SKILL.md` YAML frontmatter, including block scalars. Only top-level string and boolean values count. Frontmatter that is not valid YAML falls back to unindented single-line `key: value` pairs. Frontmatter that does not close within the first 64 KiB, or that expands too many aliases, is ignored, and the skill is listed under its folder name.
 
@@ -365,7 +382,11 @@ and discard the attempt; reopening a retained running or exited attempt shows it
 current state. Credentials remain managed by the official CLI. Authentication has
 to be verified by provider status even when the command exits successfully.
 
-Usage settings can show either provider in the sidebar, with five-hour, weekly or
+Cursor, Grok Build and OpenCode usage comes from [OpenUsage](https://www.openusage.ai/), a local
+app that reads each provider's limits; Glade reads its loopback API while it runs, and their usage
+cards say when it is not running. Droid and Muse Code report no usage.
+
+Usage settings can show any provider that reports usage in the sidebar, with five-hour, weekly or
 both windows. With both selected, the outer track is five-hour and the inner track
 is weekly. Hover or click opens the shared usage panel, including banked reset
 details and actions when available. Keyboard users can open it with Enter.
