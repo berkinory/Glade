@@ -27,6 +27,7 @@ import {
   type ProviderAdapterShape,
 } from "../Services/ProviderAdapter.ts";
 import { openAcpConnection, type AcpConnection } from "./acpConnection.ts";
+import { makeAcpConnectionPool } from "./acpConnectionPool.ts";
 import { withEphemeralAcpSession } from "./acpEphemeralSession.ts";
 import { acpConfigIdFor, acpModelOption, acpOffersValue } from "./acpModelCatalog.ts";
 import { discoverAcpModels } from "./acpModelDiscovery.ts";
@@ -54,6 +55,8 @@ function readResumeCursor(value: unknown): AcpResumeCursor | undefined {
 
 interface AcpThread {
   readonly connection: AcpConnection;
+  readonly releaseConnection: () => Promise<void>;
+  unwatchExit: () => void;
   readonly session: AcpSession;
   readonly gatewayLease: AgentGatewaySessionLease | undefined;
   readonly lifecycleGeneration: string | undefined;
@@ -102,6 +105,7 @@ export const makeAcpAdapter = (dependencies: AcpAdapterDependencies) =>
       PROVIDER_ADAPTER_RUNTIME_EVENT_BUFFER_CAPACITY,
     );
     const threads = new Map<ThreadId, AcpThread>();
+    const connections = makeAcpConnectionPool();
     const teardown = dependencies.teardownProcessTree
       ? { teardownProcessTree: dependencies.teardownProcessTree }
       : {};
@@ -141,12 +145,21 @@ export const makeAcpAdapter = (dependencies: AcpAdapterDependencies) =>
           : Effect.fail(new ProviderAdapterSessionNotFoundError({ provider, threadId }));
       });
 
-    const retire = (threadId: ThreadId, thread: AcpThread, reason: string) =>
+    // Without a reason the chat never announced a session, so it ends silently.
+    const retire = (threadId: ThreadId, thread: AcpThread, reason: string | undefined) =>
       Effect.promise(async () => {
         if (threads.get(threadId) === thread) threads.delete(threadId);
+        thread.unwatchExit();
         thread.session.detach();
         thread.gatewayLease?.release();
-        await thread.connection.close().catch(() => undefined);
+        // The process may host other chats, so only this session ends unless it was the last.
+        if (thread.connection.initialize.agentCapabilities?.sessionCapabilities?.close) {
+          await thread.connection.agent
+            .closeSession({ sessionId: thread.session.sessionId })
+            .catch(() => undefined);
+        }
+        await thread.releaseConnection().catch(() => undefined);
+        if (reason === undefined) return;
         emit(threadId, thread.lifecycleGeneration, {
           type: "session.exited",
           payload: { reason, exitKind: "graceful" },
@@ -173,17 +186,22 @@ export const makeAcpAdapter = (dependencies: AcpAdapterDependencies) =>
         const existing = threads.get(input.threadId);
         if (existing) yield* retire(input.threadId, existing, "Session replaced");
         const cwd = input.cwd ?? dependencies.defaultCwd;
-        const connection = yield* Effect.tryPromise({
+        const binaryPath = input.providerOptions?.[provider]?.binaryPath;
+        // Sessions carry their own working directory, so the process key is what the spawn
+        // environment depends on: the executable and the runtime mode's environment.
+        const poolKey = JSON.stringify([
+          binaryPath ?? null,
+          profile.env?.({ runtimeMode: input.runtimeMode }) ?? {},
+        ]);
+        const { connection, release: releaseConnection } = yield* Effect.tryPromise({
           try: () =>
-            openAcpConnection({
-              child: dependencies.spawn({
-                cwd,
-                runtimeMode: input.runtimeMode,
-                binaryPath: input.providerOptions?.[provider]?.binaryPath,
+            connections.lease(poolKey, () =>
+              openAcpConnection({
+                child: dependencies.spawn({ cwd, runtimeMode: input.runtimeMode, binaryPath }),
+                profile,
+                ...teardown,
               }),
-              profile,
-              ...teardown,
-            }),
+            ),
           catch: (cause) => requestError("initialize", cause),
         });
         const gatewayLease = acquireAgentGatewaySessionLease(
@@ -221,7 +239,7 @@ export const makeAcpAdapter = (dependencies: AcpAdapterDependencies) =>
           Effect.tapError(() =>
             Effect.promise(async () => {
               gatewayLease?.release();
-              await connection.close().catch(() => undefined);
+              await releaseConnection().catch(() => undefined);
             }),
           ),
         );
@@ -238,6 +256,8 @@ export const makeAcpAdapter = (dependencies: AcpAdapterDependencies) =>
         const now = new Date().toISOString();
         const thread: AcpThread = {
           connection,
+          releaseConnection,
+          unwatchExit: () => undefined,
           session,
           gatewayLease,
           lifecycleGeneration,
@@ -256,11 +276,12 @@ export const makeAcpAdapter = (dependencies: AcpAdapterDependencies) =>
           },
         };
         threads.set(input.threadId, thread);
-        connection.onExit((error) => {
+        thread.unwatchExit = connection.onExit((error) => {
           if (thread.stopping || threads.get(input.threadId) !== thread) return;
           threads.delete(input.threadId);
           session.detach();
           gatewayLease?.release();
+          void releaseConnection();
           emit(input.threadId, lifecycleGeneration, {
             type: "session.exited",
             payload: { reason: error.message, exitKind: "error" },
@@ -279,7 +300,7 @@ export const makeAcpAdapter = (dependencies: AcpAdapterDependencies) =>
             await applySelection(session, input.modelSelection);
           },
           catch: (cause) => requestError("session/set_config_option", cause),
-        });
+        }).pipe(Effect.tapError(() => retire(input.threadId, thread, undefined)));
         emit(input.threadId, lifecycleGeneration, {
           type: "session.started",
           payload: input.resumeCursor !== undefined ? { resume: input.resumeCursor } : {},

@@ -1,4 +1,4 @@
-import { spawn } from "node:child_process";
+import { spawn, type ChildProcessWithoutNullStreams } from "node:child_process";
 import path from "node:path";
 
 import { assert, describe, it } from "@effect/vitest";
@@ -21,11 +21,12 @@ const configOptions = (model = "m1") => [
     currentValue: "low", options: [{ value: "low", name: "Low" }, { value: "high", name: "High" }] }] : []),
 ];
 let model = "m1";
+let sessions = 0;
 let cancelTurn;
 new AgentSideConnection((client) => ({
   initialize: () => ({ protocolVersion: 1, agentCapabilities: { loadSession: true }, authMethods: [] }),
   authenticate: () => ({}),
-  newSession: () => ({ sessionId: "native-1", configOptions: configOptions(model) }),
+  newSession: () => ({ sessionId: "native-" + ++sessions, configOptions: configOptions(model) }),
   loadSession: async ({ sessionId }) => {
     await client.sessionUpdate({ sessionId, update: { sessionUpdate: "agent_message_chunk", content: { type: "text", text: "replayed" } } });
     return { configOptions: configOptions(model) };
@@ -59,18 +60,24 @@ const profile: AcpProviderProfile = {
   hiddenCommands: new Set(),
 };
 
+const spawned: ChildProcessWithoutNullStreams[] = [];
+
 const makeAdapter = makeAcpAdapter({
   profile,
   defaultCwd: process.cwd(),
   gatewayCredentials: undefined,
-  spawn: () =>
-    spawn(process.execPath, ["--input-type=module", "-e", FAKE_AGENT], {
+  spawn: () => {
+    const child = spawn(process.execPath, ["--input-type=module", "-e", FAKE_AGENT], {
       cwd: path.resolve(import.meta.dirname, "../../.."),
       stdio: ["pipe", "pipe", "pipe"],
-    }),
+    });
+    spawned.push(child);
+    return child;
+  },
 });
 
 const THREAD = ThreadId.makeUnsafe("thread-acp");
+const OTHER_THREAD = ThreadId.makeUnsafe("thread-acp-other");
 
 const assistantText = (events: ReadonlyArray<ProviderRuntimeEvent>) =>
   events
@@ -150,6 +157,51 @@ describe("ACP adapter over stdio", () => {
       const resumed = [...(yield* Fiber.join(resumedTurn))];
       assert.notInclude(assistantText(resumed), "replayed");
       yield* adapter.stopAll();
+    }),
+  );
+
+  it.effect("shares one agent process between chats until the last one stops", () =>
+    Effect.gen(function* () {
+      const adapter = yield* makeAdapter;
+      const before = spawned.length;
+      yield* adapter.startSession({ threadId: THREAD, runtimeMode: "full-access" });
+      yield* adapter.startSession({ threadId: OTHER_THREAD, runtimeMode: "full-access" });
+      assert.equal(spawned.length - before, 1);
+      const agent = spawned.at(-1)!;
+
+      // One reader: the adapter's event queue hands each event to a single consumer.
+      const turns = (count: number) =>
+        adapter.streamEvents.pipe(
+          Stream.filter(
+            (event) => event.type === "content.delta" || event.type === "turn.completed",
+          ),
+          Stream.scan({ done: 0, events: [] as ProviderRuntimeEvent[] }, (state, event) => ({
+            done: state.done + (event.type === "turn.completed" ? 1 : 0),
+            events: [...state.events, event],
+          })),
+          Stream.takeUntil((state) => state.done === count),
+          Stream.runLast,
+          Effect.map((state) => (state._tag === "Some" ? state.value.events : [])),
+          Effect.forkChild,
+        );
+      const textOf = (events: ReadonlyArray<ProviderRuntimeEvent>, threadId: ThreadId) =>
+        assistantText(events.filter((event) => event.threadId === threadId));
+
+      const both = yield* turns(2);
+      yield* adapter.sendTurn({ threadId: THREAD, input: "one" });
+      yield* adapter.sendTurn({ threadId: OTHER_THREAD, input: "two" });
+      const bothEvents = yield* Fiber.join(both);
+      assert.equal(textOf(bothEvents, THREAD), "hello from m1");
+      assert.equal(textOf(bothEvents, OTHER_THREAD), "hello from m1");
+
+      yield* adapter.stopSession(THREAD);
+      assert.isNull(agent.exitCode ?? agent.signalCode);
+      const afterStop = yield* turns(1);
+      yield* adapter.sendTurn({ threadId: OTHER_THREAD, input: "three" });
+      assert.equal(textOf(yield* Fiber.join(afterStop), OTHER_THREAD), "hello from m1");
+
+      yield* adapter.stopSession(OTHER_THREAD);
+      assert.isNotNull(agent.exitCode ?? agent.signalCode);
     }),
   );
 
