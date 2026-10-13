@@ -73,6 +73,7 @@ export function TimelineControllerSurface({ controller }: { controller: Timeline
     onMessagesPointerUp,
     onTrailHighlightsChange,
     onMessagesTouchEnd,
+    onMessagesScrollGesture,
   } = controller.props;
   const {
     handleMessagesPointerCancel,
@@ -117,7 +118,13 @@ export function TimelineControllerSurface({ controller }: { controller: Timeline
       }
     >
       {forkDividerBeforeRowId === row.id ? forkSourceDivider : null}
-      {row.kind === "visual-reply" && <VisualReplyCard reply={row.reply} activityId={row.id} />}
+      {row.kind === "visual-reply" && (
+        <VisualReplyCard
+          reply={row.reply}
+          activityId={row.id}
+          onScrollGesture={onMessagesScrollGesture}
+        />
+      )}
       {row.kind === "turn-stop" && (
         <div
           className={cn("pl-[2px]", MUTED_LABEL_TEXT_CLASS_NAME)}

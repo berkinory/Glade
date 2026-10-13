@@ -116,6 +116,36 @@ export function visualReplyDocument(input: {
         parent.postMessage({ channel: settings.channel, kind: 'open-link', url: link.href }, '*');
       }
     }, true);
+    // Gestures over the frame never reach the transcript, so the host would keep following a
+    // live reply the reader is scrolling away from. One message per frame keeps the channel quiet.
+    let intentQueued = false;
+    let intentUpward = false;
+    const reportScrollIntent = upward => {
+      if (upward) intentUpward = true;
+      if (intentQueued) return;
+      intentQueued = true;
+      requestAnimationFrame(() => {
+        const upward = intentUpward;
+        intentQueued = false;
+        intentUpward = false;
+        parent.postMessage({ channel: settings.channel, kind: 'scroll-intent', upward }, '*');
+      });
+    };
+    addEventListener('wheel', event => {
+      if (event.ctrlKey || event.deltaY === 0) return;
+      reportScrollIntent(event.deltaY < 0);
+    }, { capture: true, passive: true });
+    let touchY = null;
+    addEventListener('touchstart', event => {
+      touchY = event.touches.length === 1 ? event.touches[0].clientY : null;
+    }, { capture: true, passive: true });
+    addEventListener('touchmove', event => {
+      if (touchY === null || event.touches.length !== 1) return;
+      const y = event.touches[0].clientY;
+      if (y === touchY) return;
+      reportScrollIntent(y > touchY);
+      touchY = y;
+    }, { capture: true, passive: true });
     addEventListener('DOMContentLoaded', () => {
       let previous = 0;
       const reportHeight = () => {

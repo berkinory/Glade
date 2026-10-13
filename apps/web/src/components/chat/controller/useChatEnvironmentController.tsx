@@ -259,6 +259,7 @@ export function useChatEnvironmentController({
     onMessagesTouchMoveBase,
     onMessagesTouchStartBase,
     onMessagesWheelBase,
+    onMessagesScrollGesture,
   } = useChatTranscriptScroll({
     activeThreadId,
     legendListRef,
@@ -611,6 +612,7 @@ export function useChatEnvironmentController({
     onMessagesTouchMove,
     onMessagesTouchStart,
     onMessagesWheel,
+    onMessagesScrollGesture,
     closeExpandedImage,
     navigateExpandedImage,
     envMode,

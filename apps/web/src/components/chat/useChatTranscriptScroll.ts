@@ -688,5 +688,8 @@ export function useChatTranscriptScroll({
     onMessagesTouchMoveBase,
     onMessagesTouchStartBase,
     onMessagesWheelBase,
+    // Visual replies forward gestures from their frames here: the wheel path, so a gesture can
+    // detach follow but never re-arm a transcript the reader already left.
+    onMessagesScrollGesture,
   };
 }

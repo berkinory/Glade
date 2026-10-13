@@ -11,10 +11,12 @@ export function VisualReplyFrame({
   html,
   title,
   onContentHeight,
+  onScrollGesture,
 }: {
   readonly html: string;
   readonly title: string;
   readonly onContentHeight?: ((height: number) => void) | undefined;
+  readonly onScrollGesture?: ((upward: boolean) => void) | undefined;
 }) {
   const frame = useRef<HTMLIFrameElement>(null);
   const [channel] = useState(() => crypto.randomUUID());
@@ -75,6 +77,8 @@ export function VisualReplyFrame({
         event.data.height >= 0
       ) {
         onContentHeight?.(event.data.height);
+      } else if (event.data.kind === "scroll-intent" && typeof event.data.upward === "boolean") {
+        onScrollGesture?.(event.data.upward);
       } else if (
         event.data.kind === "open-link" &&
         typeof event.data.url === "string" &&
@@ -90,7 +94,7 @@ export function VisualReplyFrame({
     };
     window.addEventListener("message", receive);
     return () => window.removeEventListener("message", receive);
-  }, [channel, onContentHeight]);
+  }, [channel, onContentHeight, onScrollGesture]);
   useEffect(() => {
     if (!theme) return;
     if (initialDocument === null) setInitialDocument(visualReplyDocument({ html, channel, theme }));

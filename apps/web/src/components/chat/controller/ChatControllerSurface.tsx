@@ -130,6 +130,7 @@ export function ChatControllerSurface({ controller }: { controller: ChatControll
     onMessagesClickCapture,
     onMessagesMouseUp,
     onMessagesWheel,
+    onMessagesScrollGesture,
     onMessagesPointerDown,
     onMessagesPointerUp,
     onMessagesPointerCancel,
@@ -589,6 +590,7 @@ export function ChatControllerSurface({ controller }: { controller: ChatControll
                     onMessagesClickCapture={onMessagesClickCapture}
                     onMessagesMouseUp={onMessagesMouseUp}
                     onMessagesWheel={onMessagesWheel}
+                    onMessagesScrollGesture={onMessagesScrollGesture}
                     onMessagesPointerDown={onMessagesPointerDown}
                     onMessagesPointerUp={onMessagesPointerUp}
                     onMessagesPointerCancel={onMessagesPointerCancel}

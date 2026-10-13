@@ -279,6 +279,7 @@ export interface MessagesTimelineProps {
   onMessagesTouchMove?: ComponentProps<typeof LegendList>["onTouchMove"];
   onMessagesTouchStart?: ComponentProps<typeof LegendList>["onTouchStart"];
   onMessagesWheel?: ComponentProps<typeof LegendList>["onWheel"];
+  onMessagesScrollGesture?: (upward: boolean) => void;
   markdownCwd: string | undefined;
   resolvedTheme: "light" | "dark";
   chatFontSizePx?: number;

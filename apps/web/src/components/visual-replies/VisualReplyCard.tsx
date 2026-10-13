@@ -20,9 +20,11 @@ import { VisualReplyFrame } from "./VisualReplyFrame";
 export function VisualReplyCard({
   reply,
   activityId,
+  onScrollGesture,
 }: {
   readonly reply: VisualReply;
   readonly activityId: string;
+  readonly onScrollGesture?: ((upward: boolean) => void) | undefined;
 }) {
   const container = useRef<HTMLDivElement>(null);
   const [visible, setVisible] = useState(false);
@@ -146,6 +148,7 @@ export function VisualReplyCard({
         html={source.data}
         title={reply.title}
         onContentHeight={expanded ? undefined : setContentHeight}
+        onScrollGesture={expanded ? undefined : onScrollGesture}
       />
     );
   };
