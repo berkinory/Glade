@@ -139,6 +139,37 @@ export const makeAcpAdapter = (dependencies: AcpAdapterDependencies) =>
       ? { teardownProcessTree: dependencies.teardownProcessTree }
       : {};
 
+    // Sessions carry their own working directory, so the process key is what the spawn depends on:
+    // the executable, the runtime mode's environment and the system prompt. Chats, titles, Git
+    // writing and model discovery with the same key share one process instead of spawning their own.
+    const leaseConnection = (input: {
+      readonly cwd: string;
+      readonly runtimeMode: RuntimeMode;
+      readonly binaryPath: string | undefined;
+      readonly systemPrompt?: string;
+      // A chat whose MCP servers would leak into other sessions of the process gets its own.
+      readonly privateTo?: ThreadId;
+    }) =>
+      connections.lease(
+        JSON.stringify([
+          input.binaryPath ?? null,
+          profile.env?.({ runtimeMode: input.runtimeMode }) ?? {},
+          input.systemPrompt ?? null,
+          input.privateTo ?? null,
+        ]),
+        () =>
+          openAcpConnection({
+            child: dependencies.spawn({
+              cwd: input.cwd,
+              runtimeMode: input.runtimeMode,
+              binaryPath: input.binaryPath,
+              ...(input.systemPrompt ? { systemPrompt: input.systemPrompt } : {}),
+            }),
+            profile,
+            ...teardown,
+          }),
+      );
+
     const emit = (
       threadId: ThreadId,
       lifecycleGeneration: string | undefined,
@@ -282,30 +313,18 @@ export const makeAcpAdapter = (dependencies: AcpAdapterDependencies) =>
               computerUseAllowed: false,
             })
           : undefined;
-        // Sessions carry their own working directory, so the process key is what the spawn depends
-        // on: the executable, the runtime mode's environment and the system prompt.
-        const poolKey = JSON.stringify([
-          binaryPath ?? null,
-          profile.env?.({ runtimeMode: input.runtimeMode }) ?? {},
-          systemPrompt ?? null,
-          profile.sharesMcpServersAcrossSessions && dependencies.gatewayCredentials !== undefined
-            ? input.threadId
-            : null,
-        ]);
         const { connection, release: releaseConnection } = yield* Effect.tryPromise({
           try: () =>
-            connections.lease(poolKey, () =>
-              openAcpConnection({
-                child: dependencies.spawn({
-                  cwd,
-                  runtimeMode: input.runtimeMode,
-                  binaryPath,
-                  ...(systemPrompt ? { systemPrompt } : {}),
-                }),
-                profile,
-                ...teardown,
-              }),
-            ),
+            leaseConnection({
+              cwd,
+              runtimeMode: input.runtimeMode,
+              binaryPath,
+              ...(systemPrompt ? { systemPrompt } : {}),
+              ...(profile.sharesMcpServersAcrossSessions &&
+              dependencies.gatewayCredentials !== undefined
+                ? { privateTo: input.threadId }
+                : {}),
+            }),
           catch: (cause) => requestError("initialize", cause),
         });
         const gatewayLease = acquireAgentGatewaySessionLease(
@@ -550,16 +569,15 @@ export const makeAcpAdapter = (dependencies: AcpAdapterDependencies) =>
       Effect.tryPromise({
         try: (signal) =>
           withEphemeralAcpSession({
-            profile,
             // Supervised, so the agent asks before any tool and the request rejects it.
-            child: dependencies.spawn({
-              cwd: input.cwd,
-              runtimeMode: "approval-required",
-              binaryPath: input.binaryPath,
-            }),
+            lease: () =>
+              leaseConnection({
+                cwd: input.cwd,
+                runtimeMode: "approval-required",
+                binaryPath: input.binaryPath,
+              }),
             cwd: input.cwd,
             signal,
-            ...teardown,
             use: (connection, session) =>
               runAcpStructuredRequest(
                 connection,
@@ -673,21 +691,17 @@ export const makeAcpAdapter = (dependencies: AcpAdapterDependencies) =>
         if (input.action.type !== "delete" || !cursor) return Effect.void;
         return Effect.tryPromise({
           try: async () => {
-            const connection = await openAcpConnection({
-              child: dependencies.spawn({
-                cwd: input.cwd ?? dependencies.defaultCwd,
-                runtimeMode: "full-access",
-                binaryPath: input.providerOptions?.[provider]?.binaryPath,
-              }),
-              profile,
-              ...teardown,
+            const { connection, release } = await leaseConnection({
+              cwd: input.cwd ?? dependencies.defaultCwd,
+              runtimeMode: "full-access",
+              binaryPath: input.providerOptions?.[provider]?.binaryPath,
             });
             try {
               if (connection.initialize.agentCapabilities?.sessionCapabilities?.delete) {
                 await connection.agent.deleteSession({ sessionId: cursor.sessionId });
               }
             } finally {
-              await connection.close();
+              await release();
             }
           },
           catch: (cause) => requestError("session/delete", cause),
@@ -725,15 +739,10 @@ export const makeAcpAdapter = (dependencies: AcpAdapterDependencies) =>
           try: (signal) => {
             const cwd = input.cwd ?? dependencies.defaultCwd;
             return withEphemeralAcpSession({
-              profile,
-              child: dependencies.spawn({
-                cwd,
-                runtimeMode: "full-access",
-                binaryPath: input.binaryPath,
-              }),
+              lease: () =>
+                leaseConnection({ cwd, runtimeMode: "full-access", binaryPath: input.binaryPath }),
               cwd,
               signal,
-              ...teardown,
               use: async (connection, session) => ({
                 models: await discoverAcpModels({ profile, connection, session, signal }),
                 source: "acp-session",

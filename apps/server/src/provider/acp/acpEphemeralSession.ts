@@ -1,32 +1,29 @@
-import type { ChildProcessWithoutNullStreams } from "node:child_process";
-
 import type { NewSessionResponse } from "@agentclientprotocol/sdk";
 
-import type { teardownChildProcessTree } from "../../platform/supervisedProcessTeardown.ts";
-import { openAcpConnection, type AcpConnection } from "./acpConnection.ts";
-import type { AcpProviderProfile } from "./acpProviderProfile.ts";
+import type { AcpConnection } from "./acpConnection.ts";
+import type { AcpConnectionLease } from "./acpConnectionPool.ts";
 
-// A private agent process with one session that leaves nothing behind: the session is removed from
-// the agent's own history and the process tree is torn down, including when `signal` aborts.
+// One session that leaves nothing behind: it is removed from the agent's own history afterwards.
+// The agent process may serve chats too, so `signal` cancels this session's prompt instead of
+// ending the process; the last lease still ends it.
 export async function withEphemeralAcpSession<A>(input: {
-  readonly profile: AcpProviderProfile;
-  readonly child: ChildProcessWithoutNullStreams;
+  readonly lease: () => Promise<AcpConnectionLease>;
   readonly cwd: string;
   readonly signal: AbortSignal;
-  readonly teardownProcessTree?: Parameters<typeof teardownChildProcessTree>[1];
   readonly use: (connection: AcpConnection, session: NewSessionResponse) => Promise<A>;
 }): Promise<A> {
-  const connection = await openAcpConnection({
-    child: input.child,
-    profile: input.profile,
-    ...(input.teardownProcessTree ? { teardownProcessTree: input.teardownProcessTree } : {}),
-  });
-  const abort = () => void connection.close();
+  const { connection, release } = await input.lease();
+  let sessionId: string | undefined;
+  const abort = () => {
+    if (sessionId) void connection.agent.cancel({ sessionId }).catch(() => undefined);
+  };
   input.signal.addEventListener("abort", abort, { once: true });
   try {
     input.signal.throwIfAborted();
     const session = await connection.agent.newSession({ cwd: input.cwd, mcpServers: [] });
+    sessionId = session.sessionId;
     try {
+      input.signal.throwIfAborted();
       return await input.use(connection, session);
     } finally {
       const capabilities = connection.initialize.agentCapabilities?.sessionCapabilities;
@@ -42,6 +39,6 @@ export async function withEphemeralAcpSession<A>(input: {
     }
   } finally {
     input.signal.removeEventListener("abort", abort);
-    await connection.close();
+    await release();
   }
 }

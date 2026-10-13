@@ -1,6 +1,6 @@
 import type { AcpConnection } from "./acpConnection.ts";
 
-interface AcpConnectionLease {
+export interface AcpConnectionLease {
   readonly connection: AcpConnection;
   readonly release: () => Promise<void>;
 }
