@@ -727,13 +727,15 @@ export function describeGitActionContext(
   if (!gitStatus) return null;
   const fileCount = gitStatus.workingTree.files.length;
   const parts = [
-    fileCount > 0 ? `${fileCount} ${fileCount === 1 ? "file" : "files"} changed` : null,
-    gitStatus.aheadCount > 0 ? `${gitStatus.aheadCount} to push` : null,
-    gitStatus.behindCount > 0 ? `${gitStatus.behindCount} to pull` : null,
-    !hasOriginRemote ? "No remote" : gitStatus.hasUpstream ? null : "Not published",
-    gitStatus.pr?.state === "open" ? `PR #${gitStatus.pr.number} open` : null,
+    fileCount > 0 ? `${fileCount} ${fileCount === 1 ? "change" : "changes"}` : null,
+    gitStatus.aheadCount > 0 ? `${gitStatus.aheadCount} push` : null,
+    gitStatus.behindCount > 0 ? `${gitStatus.behindCount} pull` : null,
+    !hasOriginRemote ? "no remote" : gitStatus.hasUpstream ? null : "not published",
+    gitStatus.pr?.state === "open" ? `PR #${gitStatus.pr.number}` : null,
   ].filter((part) => part !== null);
-  return parts.length > 0 ? parts.join(" · ") : "Up to date";
+  if (parts.length === 0) return "Up to date";
+  const summary = parts.join(", ");
+  return summary.charAt(0).toUpperCase() + summary.slice(1);
 }
 
 export function resolveCreatePrActionAvailability(input: {
