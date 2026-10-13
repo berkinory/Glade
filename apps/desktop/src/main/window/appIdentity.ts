@@ -38,6 +38,8 @@ import {
 } from "./macIconCacheRefresh";
 
 const MAC_DOCK_ICON_PX = 512;
+const MAC_APP_ICON_CACHE_DIRECTORY = Path.join(STATE_DIR, "mac-app-icons");
+const MAC_APP_ICON_APPLIED_PATH = Path.join(MAC_APP_ICON_CACHE_DIRECTORY, "applied");
 
 export interface IdentityResources {
   resolveAboutCommitHash(): string | null;
@@ -49,7 +51,6 @@ export function createAppIdentity(
 ) {
   const windowsIcon = createWindowsTaskbarIconController();
   const windowsTaskbarIcoBytesCache = new Map<string, Buffer>();
-  let lastPersistedMacAppIcon: DesktopAppIcon | null = null;
   let windowsShellStampTimer: NodeJS.Immediate | null = null;
   let windowsShellStampResolve: (() => void) | null = null;
   let desktopAppIconApplyTail = Promise.resolve();
@@ -227,19 +228,34 @@ export function createAppIdentity(
     }
   }
 
+  // An update or reinstall replaces the bundle and drops its custom icon file, so the recorded key
+  // alone does not prove the bundle still shows the icon.
+  function isMacAppBundleIconApplied(bundlePath: string, key: string): boolean {
+    try {
+      return (
+        FS.readFileSync(MAC_APP_ICON_APPLIED_PATH, "utf8") === key &&
+        FS.existsSync(Path.join(bundlePath, "Icon\r"))
+      );
+    } catch {
+      return false;
+    }
+  }
+
   async function syncMacAppBundleIcon(
     icon: DesktopAppIcon,
     image: Electron.NativeImage,
   ): Promise<void> {
-    if (!app.isPackaged || lastPersistedMacAppIcon === icon) return;
+    if (!app.isPackaged) return;
     const bundlePath = resolveMacAppBundlePath(process.execPath, process.platform);
     if (!bundlePath) return;
+    const key = `${app.getVersion()}:${icon}`;
+    if (isMacAppBundleIconApplied(bundlePath, key)) return;
     await persistMacAppIcon({
       bundlePath,
-      cacheDirectory: Path.join(STATE_DIR, "mac-app-icons"),
+      cacheDirectory: MAC_APP_ICON_CACHE_DIRECTORY,
       png: image.toPNG(),
     });
-    lastPersistedMacAppIcon = icon;
+    FS.writeFileSync(MAC_APP_ICON_APPLIED_PATH, key, "utf8");
   }
 
   function cancelDeferredWindowsShellStamp(): void {

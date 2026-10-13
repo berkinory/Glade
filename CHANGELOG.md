@@ -26,6 +26,7 @@
 - Streaming replies write far less to disk and send fewer updates, with the same text.
 - Codex subagent progress refreshes no longer re-read the subagent's whole conversation.
 - Large file writes and edits from Claude no longer slow Glade down while their input streams.
+- On macOS, Glade no longer re-applies its app icon on every launch, so it starts quicker.
 
 ### Fixed
 
