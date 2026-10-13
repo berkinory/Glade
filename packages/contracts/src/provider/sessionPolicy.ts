@@ -52,6 +52,7 @@ export const ProviderStartOptions = Schema.Struct({
   opencode: Schema.optional(BinaryProviderStartOptions),
   grok: Schema.optional(BinaryProviderStartOptions),
   cursor: Schema.optional(BinaryProviderStartOptions),
+  museCode: Schema.optional(BinaryProviderStartOptions),
   // Settings allows Computer Use, so the harness policy carries the computer guidance.
   allowComputerUse: Schema.optional(Schema.Boolean),
 });

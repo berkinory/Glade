@@ -13,9 +13,13 @@ consistent workspace.
 | OpenCode    | Your installed `opencode` CLI, its connected providers and its free models |
 | Grok Build  | Your installed and authenticated `grok` CLI                                |
 | Cursor      | Your installed and authenticated Cursor CLI (`cursor-agent`)               |
+| Muse Code   | Your installed and authenticated `muse` CLI                                |
 
 OpenCode, Grok Build and Cursor run through the Agent Client Protocol on one shared adapter, so
-their chats, tool activity, approvals and slash commands behave the same way. Use provider settings to check installation and authentication status. Glade requires Codex 0.158.0 or newer, Claude Code 2.1.267 or newer, OpenCode 2.0.0 or newer, Grok Build 1.0.0 or newer and Cursor CLI 2026.1.0 or newer. An older runtime shows Update required and cannot start a session. Codex status checks run from the configured Codex home, so project configuration in the server's working directory cannot change them; a missing Codex home is reported instead of created.
+their chats, tool activity, approvals and slash commands behave the same way. Muse Code runs through
+its own Muse Session Protocol host (`muse serve`): Supervised mode routes Muse's approvals to you
+instead of its AI reviewer, Full Access runs without prompts or sandbox, and the session's skills are
+its slash commands. Use provider settings to check installation and authentication status. Glade requires Codex 0.158.0 or newer, Claude Code 2.1.267 or newer, OpenCode 2.0.0 or newer, Grok Build 1.0.0 or newer, Cursor CLI 2026.1.0 or newer and Muse Code 1.4.7 or newer. An older runtime shows Update required and cannot start a session. Codex status checks run from the configured Codex home, so project configuration in the server's working directory cannot change them; a missing Codex home is reported instead of created.
 
 ## What Glade manages
 
@@ -70,17 +74,19 @@ Claude uses a short-lived CLI request. OpenCode, Grok Build and Cursor use a sho
 session that rejects every tool request and is removed from the agent's history afterwards where the
 agent allows it. Codex prefers `gpt-6-luna`; Claude prefers `claude-sonnet-5-5`; Grok Build prefers
 `grok-4.7-build-fast`. Cursor saves every model switch as its CLI default, so its title request stays
-on Cursor's current model. If the preferred model
+on Cursor's current model. Muse Code uses a short-lived host that stores nothing and cannot run
+commands or write files, in a session that refuses every tool call. If the preferred model
 is unavailable, Glade uses the triggering message's model with the lowest supported effort other
 than `none`. A short message-based title remains visible if generation fails.
 
 Manual renames always win over generated titles. Native title notifications do not replace a title
 owned by Glade. Renaming a Codex or Claude chat also renames its native session; a rename made before
 the session exists is applied when the provider first supplies a title. The protocol behind OpenCode,
-Grok Build and Cursor has no rename, so their native sessions keep the agent's own title. Use `/rename <title>` to choose your own.
+Grok Build and Cursor has no rename, so their native sessions keep the agent's own title; Muse Code
+lowercases renamed sessions, so Glade leaves its session names alone too. Use `/rename <title>` to choose your own.
 
-Deleting a chat also deletes its Codex, Claude or OpenCode session history; Grok Build and Cursor
-offer no way to delete a session, so theirs stays in the CLI's own storage. Codex chats archive and
+Deleting a chat also deletes its Codex, Claude or OpenCode session history; Grok Build, Cursor and
+Muse Code offer no way to delete a session, so theirs stays in the CLI's own storage. Codex chats archive and
 unarchive in Codex too; the other providers have no native archive operation, so archiving stays
 local. If native deletion fails, Glade still deletes the chat and records the failure in the server log without retrying it.
 
@@ -117,6 +123,7 @@ selects each model in a throwaway session to read its own effort levels, for up 
 models it does not reach are listed without options. Cursor is never probed this way, because it
 saves every model switch as its CLI default. Each Cursor model ID is one fixed variant, such as
 `claude-opus-5[thinking=true,effort=high]`. A setting the selected model does not offer is not sent.
+Muse Code lists each model's effort tiers in its catalog and takes the chosen tier with each turn.
 
 Claude aliases and context variants retain their native IDs. Codex reasoning effort and service tiers follow its model discovery response. Claude effort, fast mode and adaptive thinking appear only when native model metadata advertises them. Live Claude effort and speed changes no longer require a separate model-profile restart. User-written Ultrathink text is sent unchanged; Glade does not insert a prefix.
 

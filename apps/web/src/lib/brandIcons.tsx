@@ -1,5 +1,6 @@
 import openaiMark from "../assets/brands/openai.svg?url";
 import grokMark from "../assets/brands/grok.svg?url";
+import museMark from "../assets/brands/muse.svg?url";
 import opencodeMark from "../assets/brands/opencode.svg?url";
 import { createBrandIcon } from "./createBrandIcon";
 
@@ -17,6 +18,7 @@ export const Iterm2Icon = createBrandIcon("/brands/iterm2-color.svg");
 export const OpenAIIcon = createBrandIcon(openaiMark, true);
 export const OpenCodeIcon = createBrandIcon(opencodeMark, true);
 export const GrokIcon = createBrandIcon(grokMark, true);
+export const MuseCodeIcon = createBrandIcon(museMark, true);
 export const PhpStormIcon = createBrandIcon("/brands/phpstorm.svg");
 export const PyCharmIcon = createBrandIcon("/brands/pycharm.svg");
 export const RiderIcon = createBrandIcon("/brands/rider.svg");

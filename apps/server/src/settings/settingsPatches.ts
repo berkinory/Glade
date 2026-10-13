@@ -53,6 +53,7 @@ export function providerStartOptionsFromServerSettings(
     opencode: binaryOnly(providers.opencode.binaryPath),
     grok: binaryOnly(providers.grok.binaryPath),
     cursor: binaryOnly(providers.cursor.binaryPath),
+    museCode: binaryOnly(providers.museCode.binaryPath),
     allowComputerUse: settings.allowComputerUse,
   };
 }

@@ -7,6 +7,7 @@ import { ProviderValidationError } from "./Errors";
 import { makeClaudeAdapterLive } from "../Layers/ClaudeAdapter";
 import { makeCodexAdapterLive } from "../Layers/CodexAdapter";
 import { AcpAdaptersLive } from "../Layers/AcpAdapters.ts";
+import { MuseAdapterLive } from "../Layers/MuseAdapter.ts";
 import { makeEventNdjsonLogger } from "../Layers/EventNdjsonLogger";
 import { ProviderAdapterRegistryLive } from "../Layers/ProviderAdapterRegistry";
 import { ProviderManagementLive } from "../Layers/ProviderManagement.ts";
@@ -47,10 +48,12 @@ export function makeServerProviderLayer(
       nativeEventLogger ? { nativeEventLogger } : undefined,
     ).pipe(Layer.provide(agentGatewayCredentialsLayer));
     const acpAdaptersLayer = AcpAdaptersLive.pipe(Layer.provide(agentGatewayCredentialsLayer));
+    const museAdapterLayer = MuseAdapterLive.pipe(Layer.provide(agentGatewayCredentialsLayer));
     const adapterRegistryLayer = ProviderAdapterRegistryLive.pipe(
       Layer.provide(codexAdapterLayer),
       Layer.provide(claudeAdapterLayer),
       Layer.provide(acpAdaptersLayer),
+      Layer.provide(museAdapterLayer),
       Layer.provideMerge(providerSessionDirectoryLayer),
     );
     const providerServiceLayer = makeDurableProviderServiceLive({

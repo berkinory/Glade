@@ -1,5 +1,12 @@
 import type { IconComponent } from "~/lib/iconComponent";
-import { ClaudeIcon, CursorIcon, GrokIcon, OpenAIIcon, OpenCodeIcon } from "~/lib/brandIcons";
+import {
+  ClaudeIcon,
+  CursorIcon,
+  GrokIcon,
+  MuseCodeIcon,
+  OpenAIIcon,
+  OpenCodeIcon,
+} from "~/lib/brandIcons";
 import { type ProviderKind } from "@glade/contracts/core/baseSchemas";
 import type { ReactNode, SVGProps } from "react";
 import { cn } from "~/lib/utils";
@@ -10,6 +17,7 @@ export const PROVIDER_ICON_COMPONENT_BY_PROVIDER: Record<ProviderKind, IconCompo
   opencode: OpenCodeIcon,
   grok: GrokIcon,
   cursor: CursorIcon,
+  museCode: MuseCodeIcon,
 };
 function providerIconToneClassName(
   provider: ProviderKind | null | undefined,

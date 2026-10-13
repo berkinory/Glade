@@ -55,5 +55,12 @@ export type ApprovalRequestId = typeof ApprovalRequestId.Type;
 export const CheckpointRef = makeEntityId("CheckpointRef");
 export type CheckpointRef = typeof CheckpointRef.Type;
 
-export const ProviderKind = Schema.Literals(["codex", "claudeAgent", "opencode", "grok", "cursor"]);
+export const ProviderKind = Schema.Literals([
+  "codex",
+  "claudeAgent",
+  "opencode",
+  "grok",
+  "cursor",
+  "museCode",
+]);
 export type ProviderKind = typeof ProviderKind.Type;

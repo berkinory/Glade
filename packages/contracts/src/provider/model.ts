@@ -100,4 +100,5 @@ export const PROVIDER_DISPLAY_NAMES: Record<ProviderKind, string> = {
   opencode: "OpenCode",
   grok: "Grok",
   cursor: "Cursor",
+  museCode: "Muse Code",
 };
