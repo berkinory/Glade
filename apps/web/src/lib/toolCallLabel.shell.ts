@@ -197,15 +197,35 @@ const SHELL_INVOCATION_PREFIXES = ["/usr/bin/", "/bin/", ""].flatMap((directory)
 // control-flow keywords are dropped. A heredoc's body is text rather than commands, so parsing
 // stops at the end of the line that opens it.
 export function commandSegments(rawCommand: string): string[] {
-  const command = unwrapShellInvocation(rawCommand);
+  return splitShellCommands(unwrapShellInvocation(rawCommand)).flatMap((segment) => {
+    const normalized = normalizeCommandSegment(segment);
+    return normalized ? [normalized] : [];
+  });
+}
+
+/** The folder a script's commands run in when it starts with `cd <absolute path>`. */
+export function commandDirectory(rawCommand: string): string | null {
+  let directory: string | null = null;
+  for (const segment of splitShellCommands(unwrapShellInvocation(rawCommand))) {
+    const cd = /^\s*(?:builtin\s+)?cd\s+(\S+)\s*$/.exec(segment);
+    if (cd) {
+      const target = cd[1]!.replace(/^(['"])(.*)\1$/, "$2");
+      directory = target.startsWith("/") ? target : null;
+      continue;
+    }
+    if (normalizeCommandSegment(segment)) break;
+  }
+  return directory;
+}
+
+function splitShellCommands(command: string): string[] {
   const segments: string[] = [];
   let current = "";
   let quote: '"' | "'" | null = null;
   let inPipeConsumer = false;
   let opensHeredoc = false;
   const flush = () => {
-    const segment = normalizeCommandSegment(current);
-    if (segment) segments.push(segment);
+    segments.push(current);
     current = "";
     inPipeConsumer = false;
   };

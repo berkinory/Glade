@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   classifyInspectCommand,
+  commandReadFilePaths,
   deriveReadableCommandDisplay,
   resolveCommandVisualKind,
 } from "./toolCallLabel.commands";
@@ -16,6 +17,10 @@ describe("command labels", () => {
       "Read a/conversationEdit.ts",
     ],
     ["cd /repo && sed -n 1,20p a.ts; cat b.ts | head -50", "Read 2 files"],
+    ["cat a.ts b.ts c.ts", "Read 3 files"],
+    ["head -n 20 a.ts b.ts", "Read 2 files"],
+    ["sed -n 1,30p a.ts b.ts", "Read 2 files"],
+    ["sed -ne 's/x/y/p' a.ts", "Read a.ts"],
     ['cd /repo && grep -rn "needle" apps/web/src | head -20', "Searched for needle in web/src"],
     ['cd /repo && rg -n "a" src; grep -n "b" lib', "Searched 2 times"],
     [
@@ -42,6 +47,14 @@ describe("command labels", () => {
   ])("%s", (command, label) => {
     const display = deriveReadableCommandDisplay(command);
     expect(`${display.verb} ${display.target}`).toBe(label);
+  });
+
+  it.each([
+    ["cd /repo && sed -n 1,20p a.ts; sed -n 5,9p a.ts; cat ./b.ts", ["/repo/a.ts", "/repo/b.ts"]],
+    ["head -n 20 src/a.ts /abs/b.ts", ["src/a.ts", "/abs/b.ts"]],
+    ["cd /repo && grep -n x a.ts; git log -3", []],
+  ] as const)("reads files of %s", (command, files) => {
+    expect(commandReadFilePaths(command)).toEqual(files);
   });
 
   it.each([

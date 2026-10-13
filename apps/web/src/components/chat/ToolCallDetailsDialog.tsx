@@ -1,5 +1,8 @@
 import { lazy, Suspense } from "react";
 import { formatShellCommand, formatToolOutputText } from "~/lib/toolCallDetailsFormatting";
+import { commandReadFilePaths } from "~/lib/toolCallLabel.commands";
+import { openWorkspaceFileReference, useWorkspaceFileOpener } from "~/lib/workspaceFileOpener";
+import { FileNameChip } from "./FileNameChip";
 import { cn } from "~/lib/utils";
 import type { WorkLogToolDetails, WorkLogToolOutputDetails } from "../../lib/toolCallDetails";
 import type { WorkLogLiveActivity, WorkLogToolKind } from "../../workLog.types";
@@ -46,6 +49,7 @@ export function ToolCallDetailsContent({
 
       {details?.command ? (
         <div className="space-y-2">
+          <CommandReadFiles command={details.command} />
           <MarkdownToolCodeBlock language="bash" elapsed={elapsed} wrap>
             {formatShellCommand(details.command)}
           </MarkdownToolCodeBlock>
@@ -104,6 +108,24 @@ export function ToolCallDetailsContent({
         <p className="text-ui-xs tabular-nums text-muted-foreground/68">{elapsed}</p>
       ) : null}
     </>
+  );
+}
+
+// A shell read names the files it read, each opening like a Read tool's file.
+function CommandReadFiles({ command }: { command: string }) {
+  const opener = useWorkspaceFileOpener();
+  const files = commandReadFilePaths(command);
+  if (files.length === 0) return null;
+  return (
+    <div className="flex flex-wrap gap-1.5 text-ui-sm" data-command-read-files="true">
+      {files.map((file) => (
+        <FileNameChip
+          key={file}
+          path={file}
+          onOpen={opener ? () => openWorkspaceFileReference(opener, file) : undefined}
+        />
+      ))}
+    </div>
   );
 }
 

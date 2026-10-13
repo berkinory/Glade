@@ -284,14 +284,11 @@ export function projectProviderRuntimeActivities(
           createdAt: event.createdAt,
           tone: "info",
           kind: "runtime.warning",
-          summary:
-            detailSubtype === "api_retry"
-              ? "Claude retrying"
-              : willRetry
-                ? "Provider retrying"
-                : detailSubtype === "informational" || detailSubtype === "notification"
-                  ? "Claude notice"
-                  : "Runtime warning",
+          summary: willRetry
+            ? "Provider retrying"
+            : detailSubtype === "informational" || detailSubtype === "notification"
+              ? "Claude notice"
+              : "Runtime warning",
 
           payload: toActivityPayload({
             message,

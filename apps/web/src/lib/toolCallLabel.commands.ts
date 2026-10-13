@@ -8,6 +8,7 @@ import {
 } from "./toolCallLabel.descriptors";
 import type { CommandVisualKind, ReadableCommandDisplay } from "./toolCallLabel.descriptors";
 import {
+  commandDirectory,
   commandSegments,
   compactPath,
   containsHeredoc,
@@ -92,11 +93,13 @@ function segmentDisplay(
       );
     }
     const target =
-      targetKind === "file" || targetKind === "directory"
-        ? lastPathComponents(args, targetKind)
-        : targetKind === "search"
-          ? searchSummary(args)
-          : findTarget(args, "files");
+      targetKind === "file"
+        ? filesTarget(readSegmentFiles(segment), args)
+        : targetKind === "directory"
+          ? lastPathComponents(args, targetKind)
+          : targetKind === "search"
+            ? searchSummary(args)
+            : findTarget(args, "files");
     return commandDisplay(running, completed, target, rawCommand, isRunning);
   }
 
@@ -160,14 +163,8 @@ function combinedInspectDisplay(
   isRunning: boolean,
 ): ReadableCommandDisplay {
   const kinds = new Set(segments.map((segment) => inspectPresentation(segment)![2]));
-  const files = [
-    ...new Set(
-      segments
-        .filter((segment) => inspectPresentation(segment)![2] === "file")
-        .map((segment) => lastPathComponents(splitToolAndArgs(segment)[1], "file")),
-    ),
-  ];
-  const fileTarget = files.length === 1 ? files[0]! : `${files.length} files`;
+  const files = readFilesOf(segments);
+  const fileTarget = filesTarget(files, "");
   if (kinds.size === 1 && kinds.has("file")) {
     return commandDisplay("Reading", "Read", fileTarget, rawCommand, isRunning);
   }
@@ -189,6 +186,68 @@ function combinedInspectDisplay(
     files.length > 0 ? fileTarget : "the project",
     rawCommand,
     isRunning,
+  );
+}
+
+function filesTarget(files: readonly string[], args: string): string {
+  if (files.length === 0) return lastPathComponents(args, "file");
+  return files.length === 1 ? compactPath(files[0]!) : `${files.length} files`;
+}
+
+// Options of read commands whose value is the next argument rather than a file.
+const READ_OPTIONS_WITH_VALUE: Record<string, ReadonlySet<string>> = {
+  head: new Set(["-n", "-c"]),
+  tail: new Set(["-n", "-c"]),
+  sed: new Set(["-e", "-f", "--expression", "--file"]),
+};
+
+// The files one read command names: `cat a b`, `head -n 20 a b`, `sed -n 1,30p a b`. Without `-e`
+// or `-f`, sed's first argument is its script.
+function readSegmentFiles(segment: string): string[] {
+  const [tool, args] = splitToolAndArgs(segment);
+  const valueOptions = READ_OPTIONS_WITH_VALUE[tool];
+  const positional: string[] = [];
+  let scriptGiven = false;
+  const tokens = tokenizeCommandArgs(args);
+  for (let index = 0; index < tokens.length; index += 1) {
+    const token = tokens[index]!;
+    if (valueOptions?.has(token)) {
+      scriptGiven ||= tool === "sed";
+      index += 1;
+      continue;
+    }
+    // `-ne SCRIPT` ends a cluster of short flags with the one that takes the script.
+    if (tool === "sed" && /^-[a-zA-Z]*[ef]$/.test(token)) {
+      scriptGiven = true;
+      index += 1;
+      continue;
+    }
+    if (token.startsWith("-")) continue;
+    positional.push(token);
+  }
+  return tool === "sed" && !scriptGiven ? positional.slice(1) : positional;
+}
+
+function readFilesOf(segments: readonly string[]): string[] {
+  return [
+    ...new Set(
+      segments
+        .filter((segment) => inspectPresentation(segment)?.[2] === "file")
+        .flatMap(readSegmentFiles),
+    ),
+  ];
+}
+
+/**
+ * Every file a shell command reads with cat, sed, head and the like. Paths relative to a leading
+ * `cd <absolute folder>` are resolved against it; others stay as written.
+ */
+export function commandReadFilePaths(rawCommand: string): string[] {
+  const directory = commandDirectory(rawCommand);
+  return readFilesOf(meaningfulSegments(rawCommand)).map((file) =>
+    directory && !file.startsWith("/") && !file.startsWith("~")
+      ? `${directory.replace(/\/+$/, "")}/${file.replace(/^\.\//, "")}`
+      : file,
   );
 }
 

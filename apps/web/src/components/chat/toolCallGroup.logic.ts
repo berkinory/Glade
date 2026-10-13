@@ -4,7 +4,10 @@ import {
   type WorkLogEntry,
   type WorkLogToolKind,
 } from "../../workLog.types";
-import { deriveReadableCommandDisplay } from "../../lib/toolCallLabel.commands";
+import {
+  commandReadFilePaths,
+  deriveReadableCommandDisplay,
+} from "../../lib/toolCallLabel.commands";
 
 export const MIN_COLLAPSIBLE_TOOL_GROUP_SIZE = 2;
 
@@ -49,6 +52,10 @@ function entryFileKeys(entry: WorkLogEntry): ReadonlyArray<string> {
   }
   const command = entry.command ?? entry.rawCommand;
   if (command) {
+    const readFiles = commandReadFilePaths(command);
+    if (readFiles.length > 0) {
+      return readFiles;
+    }
     const target = deriveReadableCommandDisplay(command).target.trim();
     if (target.length > 0) {
       return [target];

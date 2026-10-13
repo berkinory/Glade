@@ -12,6 +12,7 @@
 - Glade starts faster and uses much less memory, and Codex replies take far less work to process.
 - Long Claude sessions use less memory.
 - Searches in tool calls say what they look for in plain words and count every folder they search.
+- A shell command that reads several files says how many, lists each one in its details to open with a click, and counts every one of them in its tool group.
 - Retried requests to a provider show as one row with an icon and the latest attempt, such as "Connection lost · retry 5/10", and open to every attempt.
 - A command left running in the background says so on its own row and updates when it finishes, fails or is stopped, instead of adding a separate "Moved to background" row.
 - The visual reply preview browser loads only when a preview is first needed, so Glade starts lighter.
