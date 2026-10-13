@@ -45,6 +45,7 @@ import {
 } from "./ui/sidebar";
 import { DESKTOP_TOP_BAR_TRAFFIC_LIGHT_GUTTER_CLASS } from "~/hooks/useDesktopTopBarGutter";
 import { cn } from "~/lib/utils";
+import { GROUP_FOCUS_VISIBLE_PROPS } from "~/lib/groupFocusVisible";
 import {
   disclosureContentClassName,
   disclosureShellClassName,
@@ -522,7 +523,7 @@ export function SidebarView({ context }: { context: ReturnType<typeof useSidebar
         {!isOnSettings && !activityViewEnabled ? (
           <SidebarGroup className="sidebar-surface-enter px-1.5 pt-1 pb-2">
             <div className="group/collapsible">
-              <div className="group/project-header relative">
+              <div className="group/project-header relative" {...GROUP_FOCUS_VISIBLE_PROPS}>
                 <SidebarMenuButton
                   size="sm"
                   aria-expanded={chatSectionExpanded}

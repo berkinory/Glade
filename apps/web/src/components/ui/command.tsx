@@ -91,10 +91,7 @@ function CommandInput({
     <div className="px-2.5 py-1.5">
       <AutocompleteInput
         autoFocus
-        className={cn(
-          "border-transparent! bg-transparent! shadow-none before:hidden has-focus-visible:ring-0",
-          className,
-        )}
+        className={cn("border-transparent! bg-transparent! shadow-none before:hidden", className)}
         placeholder={placeholder}
         size="lg"
         startAddon={<SearchIcon />}

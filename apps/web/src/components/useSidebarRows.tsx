@@ -54,6 +54,7 @@ import {
 } from "./Sidebar.logic.statusTypes";
 import { resolveThreadRowClassName, type SidebarDerivedProjectData } from "./Sidebar.logic.status";
 import { cn } from "~/lib/utils";
+import { GROUP_FOCUS_VISIBLE_PROPS } from "~/lib/groupFocusVisible";
 import { beginThreadDrag, endThreadDrag } from "../lib/threadDrag";
 import {
   sidebarHoverRevealHideClassName,
@@ -239,7 +240,7 @@ export function useSidebarRows(context: ReturnType<typeof useSidebarPanelEffects
   }
   function renderListSectionHeader(label: string, toolbar: ReactNode) {
     return (
-      <div className="group/project-header relative my-1">
+      <div className="group/project-header relative my-1" {...GROUP_FOCUS_VISIBLE_PROPS}>
         <div
           className={cn(
             "flex h-7 w-full min-w-0 items-center px-2 py-0.5 pr-[4.75rem]",
@@ -660,7 +661,7 @@ export function useSidebarRows(context: ReturnType<typeof useSidebarPanelEffects
     const collapsedProjectStatus = project.expanded ? null : projectStatus;
     const projectFolderIconClassName = sidebarHoverRevealHideClassName("project-header");
     const projectToolbarReserveClassName =
-      "group-hover/project-header:pr-8 group-has-[:focus-visible]/project-header:pr-8";
+      "group-hover/project-header:pr-8 group-data-[focus-visible]/project-header:pr-8";
     const projectRowLabel = resolveSidebarProjectRowLabel(project);
     return (
       <div className="group/collapsible">
@@ -671,6 +672,7 @@ export function useSidebarRows(context: ReturnType<typeof useSidebarPanelEffects
               <div
                 className="group/project-header relative"
                 data-project-hover-anchor={project.id}
+                {...GROUP_FOCUS_VISIBLE_PROPS}
               />
             }
           >
@@ -758,7 +760,7 @@ export function useSidebarRows(context: ReturnType<typeof useSidebarPanelEffects
               className={cn(
                 "sidebar-icon-button absolute left-2 top-1/2 z-20 inline-flex size-4 -translate-y-1/2 cursor-pointer items-center justify-center rounded-sm transition-opacity hover:text-foreground focus-visible:outline-hidden focus-visible:ring-1 focus-visible:ring-ring",
                 SIDEBAR_ROW_LABEL_TEXT_CLASS_NAME,
-                "pointer-events-none opacity-0 md:group-hover/project-header:pointer-events-auto md:group-hover/project-header:opacity-100 md:group-has-[:focus-visible]/project-header:pointer-events-auto md:group-has-[:focus-visible]/project-header:opacity-100 focus-visible:pointer-events-auto focus-visible:opacity-100",
+                "pointer-events-none opacity-0 md:group-hover/project-header:pointer-events-auto md:group-hover/project-header:opacity-100 md:group-data-[focus-visible]/project-header:pointer-events-auto md:group-data-[focus-visible]/project-header:opacity-100 focus-visible:pointer-events-auto focus-visible:opacity-100",
               )}
               onMouseDown={(event) => {
                 event.preventDefault();

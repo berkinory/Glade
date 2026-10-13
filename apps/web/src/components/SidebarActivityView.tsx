@@ -29,6 +29,7 @@ import type { ProjectId, ThreadId } from "@glade/contracts/core/baseSchemas";
 import { resolveThreadEnvironmentMode } from "@glade/shared/threads/threadEnvironment";
 import { beginThreadDrag, endThreadDrag } from "~/lib/threadDrag";
 import { cn } from "~/lib/utils";
+import { GROUP_FOCUS_VISIBLE_PROPS } from "~/lib/groupFocusVisible";
 import {
   SIDEBAR_ROW_ACTIVE_CLASS_NAME,
   SIDEBAR_ROW_FOCUS_CLASS_NAME,
@@ -810,7 +811,10 @@ export function SidebarActivityView({
           {renderActiveRow(revealedThread)}
         </div>
       ) : null}
-      <div className="group/project-header relative flex h-7 items-center gap-1 px-2 py-0.5">
+      <div
+        className="group/project-header relative flex h-7 items-center gap-1 px-2 py-0.5"
+        {...GROUP_FOCUS_VISIBLE_PROPS}
+      >
         <ActivityScopeMenu
           options={scopeOptions}
           projectById={projectById}

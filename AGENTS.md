@@ -70,6 +70,7 @@ A coherent codebase and complete product behavior matter more than easy upstream
 
 - **Motion:** open/close motion reuses [disclosureMotion.ts](apps/web/src/lib/disclosureMotion.ts) and its disclosure components, including reduced motion.
 - **Transcript:** while a turn is live and the reader has not scrolled away, the transcript stays at its end through every growth of the live tail: text, tool rows, groups that open on their own and approvals. A scroll gesture away from the end stops following. Keep the transcript path simple, add virtualization only for a measured need, and never couple virtualizer measurement to bottom-stick behavior.
+- **Selectors:** avoid `:has()` in rendered UI because it forces broad style recalculation; `group-has-*`, `peer-has-*` and `has-*` stacked with `*:` or `**:` make Chrome restyle the whole document whenever rows mount. Prefer a data attribute or class set by the component that owns the state.
 - **Memoization:** React Compiler compiles the client. Do not add `useMemo`, `useCallback` or `memo()` unless the value's identity leaves React (store selectors, external subscriptions) or a measured cost requires it.
 
 ## Persistence and user data

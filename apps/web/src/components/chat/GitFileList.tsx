@@ -8,6 +8,7 @@ import { useVirtualizer } from "@tanstack/react-virtual";
 import { useTheme } from "~/hooks/useTheme";
 import { splitRepoRelativePath } from "~/lib/diffRendering";
 import { cn } from "~/lib/utils";
+import { GROUP_FOCUS_VISIBLE_PROPS } from "~/lib/groupFocusVisible";
 import { IconButton } from "../ui/icon-button";
 import { CHAT_HEADER_ICON_CONTROL_CLASS_NAME } from "./chatHeaderControls";
 import { FileEntryIcon } from "./FileEntryIcon";
@@ -79,6 +80,7 @@ function GitFileRow(props: {
         "group/git-file-row flex h-7 shrink-0 select-none items-center gap-1.5 rounded-md px-1.5 text-left",
         props.isSelected ? "bg-sidebar-accent" : "hover:bg-sidebar-accent/60",
       )}
+      {...GROUP_FOCUS_VISIBLE_PROPS}
       onContextMenu={(event) => props.onContextMenu(props.file, event)}
     >
       <button
@@ -103,7 +105,7 @@ function GitFileRow(props: {
       <div className="flex h-7 shrink-0 items-center justify-end gap-1">
         <div
           className={cn(
-            "items-center gap-0.5 group-hover/git-file-row:flex group-has-[:focus-visible]/git-file-row:flex",
+            "items-center gap-0.5 group-hover/git-file-row:flex group-data-[focus-visible]/git-file-row:flex",
             props.isSelected ? "flex" : "hidden",
           )}
         >

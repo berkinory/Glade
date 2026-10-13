@@ -190,14 +190,18 @@
     box-shadow: inset 0.5px 0 0 var(--seam-line);
   }
 
-  [data-sidebar-side="left"]:has([data-placement="content-seam"]:hover) .chat-content-card {
+  /* The content-seam rail is the route outlet's preceding sibling. */
+  [data-sidebar-side="left"] [data-placement="content-seam"]:hover ~ .chat-content-card,
+  [data-sidebar-side="left"] [data-placement="content-seam"]:hover ~ * .chat-content-card {
     --seam-line: color-mix(in srgb, var(--foreground) 30%, transparent);
   }
 
   /* Sidebar collapsed (offcanvas): drop the divider because the content fills the
-     window edge-to-edge. Use the direct-child combinator so the nested right dock
-     cannot drive the main content seam. */
-  [data-slot="sidebar-wrapper"]:has(> [data-slot="sidebar"][data-state="collapsed"])
+     window edge-to-edge. The desktop sidebar is a direct child of the sidebar wrapper
+     and precedes the main content shell. */
+  [data-slot="sidebar-wrapper"]
+    > [data-slot="sidebar"][data-state="collapsed"]
+    ~ *
     .chat-content-card::before {
     opacity: 0;
   }
@@ -728,19 +732,6 @@ input {
 .thread-terminal-drawer .xterm .xterm-scrollable-element > .scrollbar.vertical > .slider {
   width: 6px !important;
   left: 2px !important;
-}
-
-/* Reasoning select -- clickable label surface */
-label:has(> select#reasoning-effort) {
-  position: relative;
-}
-label:has(> select#reasoning-effort) select {
-  position: absolute;
-  inset: 0;
-  opacity: 0;
-  cursor: pointer;
-  width: 100%;
-  height: 100%;
 }
 
 /* Chat markdown rendering */

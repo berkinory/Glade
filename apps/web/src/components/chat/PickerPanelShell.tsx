@@ -98,7 +98,7 @@ export function PickerPanelShell(props: {
                 isPlain
                   ? PICKER_PANEL_PLAIN_SEARCH_INPUT_CLASS_NAME
                   : cn(
-                      "rounded-md border-border/60 shadow-none before:hidden has-focus-visible:border-neutral-500/15 has-focus-visible:ring-0 [&_input]:font-sans",
+                      "rounded-md border-border/60 shadow-none before:hidden has-focus-visible:border-neutral-500/15 [&_input]:font-sans",
                       bleedParentPadding
                         ? COMPOSER_PICKER_SEARCH_INPUT_CLASS_NAME
                         : "bg-background",
