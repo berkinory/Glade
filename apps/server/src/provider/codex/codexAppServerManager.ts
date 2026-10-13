@@ -1760,44 +1760,75 @@ export class CodexAppServerManager extends EventEmitter<CodexAppServerManagerEve
         throw error;
       }
     }
-    const metadata = await this.sendRequest(context, "thread/read", {
-      threadId: providerThreadId,
-      includeTurns: false,
-    });
-    const snapshot = this.parseThreadSnapshot("thread/read", metadata);
+    const snapshot = await this.readThreadMetadata(context, providerThreadId);
     const turns: CodexThreadTurnSnapshot[] = [];
     const seenCursors = new Set<string>();
     let cursor: string | undefined;
     for (let page = 0; page < 1_000; page += 1) {
-      const response = await this.sendRequest(context, "thread/turns/list", {
+      const result = await this.readFullTurnsPage(context, snapshot.threadId, {
         threadId: providerThreadId,
-        itemsView: "full",
         sortDirection: "asc",
         limit: 100,
         ...(cursor !== undefined ? { cursor } : {}),
       });
-      const record = this.readObject(response);
-      const data = this.readArray(record, "data");
-      if (!data) throw new Error("thread/turns/list response did not include turns.");
-      if (
-        data.some((turn) => {
-          const view = this.readString(this.readObject(turn), "itemsView");
-          return view !== undefined && view !== "full";
-        })
-      )
-        throw new Error("Codex did not return full conversation items.");
-      turns.push(
-        ...this.parseThreadSnapshot("thread/turns/list", {
-          threadId: snapshot.threadId,
-          turns: data,
-        }).turns,
-      );
-      cursor = this.readString(record, "nextCursor");
+      turns.push(...result.turns);
+      cursor = result.nextCursor;
       if (!cursor) return { ...snapshot, turns };
       if (seenCursors.has(cursor)) throw new Error("Codex repeated a conversation page cursor.");
       seenCursors.add(cursor);
     }
     throw new Error("Codex conversation exceeds the supported history page limit.");
+  }
+
+  // Child snapshots consume only the latest turn; reading full history every refresh grows with
+  // the child's transcript. Metadata is read first so an empty rollout fails with its known error.
+  private async readLatestTurnSnapshot(
+    context: CodexSessionContext,
+    providerThreadId: string,
+  ): Promise<CodexThreadSnapshot> {
+    const snapshot = await this.readThreadMetadata(context, providerThreadId);
+    const { turns } = await this.readFullTurnsPage(context, snapshot.threadId, {
+      threadId: providerThreadId,
+      sortDirection: "desc",
+      limit: 1,
+    });
+    return { ...snapshot, turns };
+  }
+
+  private async readThreadMetadata(
+    context: CodexSessionContext,
+    providerThreadId: string,
+  ): Promise<CodexThreadSnapshot> {
+    const response = await this.sendRequest(context, "thread/read", {
+      threadId: providerThreadId,
+      includeTurns: false,
+    });
+    return this.parseThreadSnapshot("thread/read", response);
+  }
+
+  private async readFullTurnsPage(
+    context: CodexSessionContext,
+    threadId: string,
+    params: Record<string, unknown>,
+  ): Promise<{ turns: CodexThreadTurnSnapshot[]; nextCursor: string | undefined }> {
+    const response = await this.sendRequest(context, "thread/turns/list", {
+      ...params,
+      itemsView: "full",
+    });
+    const record = this.readObject(response);
+    const data = this.readArray(record, "data");
+    if (!data) throw new Error("thread/turns/list response did not include turns.");
+    if (
+      data.some((turn) => {
+        const view = this.readString(this.readObject(turn), "itemsView");
+        return view !== undefined && view !== "full";
+      })
+    )
+      throw new Error("Codex did not return full conversation items.");
+    return {
+      turns: this.parseThreadSnapshot("thread/turns/list", { threadId, turns: data }).turns,
+      nextCursor: this.readString(record, "nextCursor"),
+    };
   }
 
   async forkThread(
@@ -4505,7 +4536,7 @@ export class CodexAppServerManager extends EventEmitter<CodexAppServerManagerEve
     let reader = this.childSnapshots.get(context);
     if (!reader) {
       reader = new CodexChildSnapshots({
-        read: (id) => this.readThreadSnapshot(context, id),
+        read: (id) => this.readLatestTurnSnapshot(context, id),
         isCurrent,
         parentTurnId: (id) => context.collabReceiverTurns.get(id),
         publish: (id, notification) => {

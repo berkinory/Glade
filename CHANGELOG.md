@@ -24,6 +24,7 @@
 - Server memory no longer grows with every chat used during a session.
 - Running chats write far fewer status updates, so the sidebar and server stay calm during long turns.
 - Streaming replies write far less to disk and send fewer updates, with the same text.
+- Codex subagent progress refreshes no longer re-read the subagent's whole conversation.
 
 ### Fixed
 

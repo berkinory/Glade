@@ -7,32 +7,32 @@ import {
   spyOnSessionRequests,
 } from "./notificationHarness.testSupport";
 
+const childResponses =
+  (metadata: Record<string, unknown>, turns: ReadonlyArray<Record<string, unknown>>) =>
+  async (...[, method]: unknown[]) =>
+    method === "thread/read" ? { thread: { id: "native_child", ...metadata } } : { data: turns };
+
 describe("collab child conversation routing", () => {
   it("reads a native child on activity without resuming it or mutating the parent turn", async () => {
     const { manager, context, emitEvent, updateSession } = createCollabNotificationHarness();
-    const request = spyOnSessionRequests(manager, context).sendRequest.mockResolvedValue({
-      thread: {
-        id: "native_child",
-        agentNickname: "Euclid",
-        model: "gpt-6.1-sol",
-        turns: [
-          {
-            id: "child_turn",
-            status: "completed",
-            items: [
-              {
-                type: "subAgentActivity",
-                id: "inherited_spawn",
-                kind: "started",
-                agentThreadId: "native_child",
-                agentPath: "/root/worker",
-              },
-              { type: "agentMessage", id: "child_message", text: "done" },
-            ],
-          },
-        ],
-      },
-    });
+    const request = spyOnSessionRequests(manager, context).sendRequest.mockImplementation(
+      childResponses({ agentNickname: "Euclid", model: "gpt-6.1-sol" }, [
+        {
+          id: "child_turn",
+          status: "completed",
+          items: [
+            {
+              type: "subAgentActivity",
+              id: "inherited_spawn",
+              kind: "started",
+              agentThreadId: "native_child",
+              agentPath: "/root/worker",
+            },
+            { type: "agentMessage", id: "child_message", text: "done" },
+          ],
+        },
+      ]),
+    );
     handleServerNotificationForTest(manager, context, {
       method: "item/completed",
       params: {
@@ -63,11 +63,13 @@ describe("collab child conversation routing", () => {
     expect(emitEvent).not.toHaveBeenCalledWith(
       expect.objectContaining({ method: "turn/started", providerThreadId: "native_child" }),
     );
-    expect(request).toHaveBeenCalledTimes(1);
-    expect(request).toHaveBeenCalledWith(context, "thread/read", {
-      threadId: "native_child",
-      includeTurns: true,
-    });
+    expect(request.mock.calls.map(([, method, params]) => [method, params])).toEqual([
+      ["thread/read", { threadId: "native_child", includeTurns: false }],
+      [
+        "thread/turns/list",
+        { threadId: "native_child", itemsView: "full", sortDirection: "desc", limit: 1 },
+      ],
+    ]);
     expect(updateSession).not.toHaveBeenCalled();
     const projected = emitEvent.mock.calls.length;
     handleServerNotificationForTest(manager, context, {
@@ -84,7 +86,7 @@ describe("collab child conversation routing", () => {
         },
       },
     });
-    await vi.waitFor(() => expect(request).toHaveBeenCalledTimes(2));
+    await vi.waitFor(() => expect(request).toHaveBeenCalledTimes(4));
     await new Promise((resolve) => setTimeout(resolve, 20));
     expect(emitEvent.mock.calls.length).toBe(projected + 1);
     expect(updateSession).not.toHaveBeenCalled();
@@ -97,19 +99,15 @@ describe("collab child conversation routing", () => {
       .mockRejectedValueOnce(
         new Error("thread/read failed: rollout at /native/child.jsonl is empty"),
       )
-      .mockResolvedValue({
-        thread: {
-          id: "native_child",
-          agentNickname: "Euclid",
-          turns: [
-            {
-              id: "child_turn",
-              status: "completed",
-              items: [{ type: "agentMessage", id: "message", text: "done" }],
-            },
-          ],
-        },
-      });
+      .mockImplementation(
+        childResponses({ agentNickname: "Euclid" }, [
+          {
+            id: "child_turn",
+            status: "completed",
+            items: [{ type: "agentMessage", id: "message", text: "done" }],
+          },
+        ]),
+      );
     handleServerNotificationForTest(manager, context, {
       method: "item/completed",
       params: {
@@ -134,7 +132,7 @@ describe("collab child conversation routing", () => {
         ),
       { timeout: 3_000 },
     );
-    expect(request).toHaveBeenCalledTimes(2);
+    expect(request).toHaveBeenCalledTimes(3);
     sessions.delete(context.session.threadId);
   });
 
@@ -142,11 +140,12 @@ describe("collab child conversation routing", () => {
     const { manager, context, emitEvent } = createCollabNotificationHarness();
     const { sessions, sendRequest } = spyOnSessionRequests(manager, context);
     let complete: ((value: unknown) => void) | undefined;
-    const request = sendRequest.mockImplementation(
-      () =>
-        new Promise((resolve) => {
-          complete = resolve;
-        }),
+    const request = sendRequest.mockImplementation((_context, method) =>
+      method === "thread/read"
+        ? Promise.resolve({ thread: { id: "native_child" } })
+        : new Promise((resolve) => {
+            complete = resolve;
+          }),
     );
     handleServerNotificationForTest(manager, context, {
       method: "item/completed",
@@ -161,20 +160,17 @@ describe("collab child conversation routing", () => {
         },
       },
     });
-    expect(request).toHaveBeenCalledTimes(1);
+    await vi.waitFor(() => expect(request).toHaveBeenCalledTimes(2));
     sessions.set(context.session.threadId, {});
     emitEvent.mockClear();
     complete?.({
-      thread: {
-        id: "native_child",
-        turns: [
-          {
-            id: "child_turn",
-            status: "completed",
-            items: [{ type: "agentMessage", id: "message", text: "late" }],
-          },
-        ],
-      },
+      data: [
+        {
+          id: "child_turn",
+          status: "completed",
+          items: [{ type: "agentMessage", id: "message", text: "late" }],
+        },
+      ],
     });
     await new Promise((resolve) => setTimeout(resolve, 20));
     expect(emitEvent).not.toHaveBeenCalled();
