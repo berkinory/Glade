@@ -4,12 +4,11 @@
 
 ### New
 
-- OpenCode, Grok Build and Cursor are available as providers, including OpenCode's free models. Their models, each model's own effort levels and their native slash commands appear in the composer, their chats get generated titles, they can write commit messages, pull requests and branch names, and Supervised mode asks before they edit files or run commands.
+- OpenCode, Grok Build and Cursor are available as providers, including OpenCode's free models. Their models, each model's own effort levels and their native slash commands appear in the composer, their chats get generated titles, they can write commit messages, pull requests and branch names, and Supervised mode asks before they edit files or run commands. Their chats can be forked, compacted, edited and rewound, and Usage & limits shows Cursor, Grok and OpenCode Go limits from your own sign-in.
 - Chats stopped by a usage limit continue on their own once the limit resets. Cancel the wait from the chat, or turn it off in Settings.
 
 ### Improved
 
-- Usage & limits shows Cursor, Grok and OpenCode usage when OpenUsage is running.
 - Model search ignores case, spacing, punctuation and word order, so "gpt5" finds GPT-5.
 - Glade starts faster and uses much less memory, and Codex replies take far less work to process.
 - Long Claude sessions use less memory.

@@ -59,6 +59,10 @@ export function providerContextLifecycleSummary(
       ? "The turn could not be stopped cleanly, so the session was restarted and your message included a summary."
       : "The turn could not be stopped cleanly, so the session was restarted.";
   }
+  // Glade chose the fresh session, as after a rewind or a transcript fork, so nothing was lost.
+  if (evidence.recapText !== null && evidence.reason === "fresh-session") {
+    return "A new session started with this chat as context.";
+  }
   if (evidence.recapText !== null && evidence.nativeHistory === "unavailable") {
     return "The session's history was lost, so the model continues from a summary.";
   }

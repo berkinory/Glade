@@ -201,6 +201,8 @@ export interface ProviderAdapterShape<TError> {
 
   readonly readThread: (threadId: ThreadId) => Effect.Effect<ProviderThreadSnapshot, TError>;
 
+  // An adapter that cannot trim its native conversation ends the session instead; the next turn then
+  // starts fresh from Glade's trimmed transcript.
   readonly rollbackThread: (threadId: ThreadId, numTurns: number) => Effect.Effect<void, TError>;
 
   readonly compactThread?: (

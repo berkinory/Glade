@@ -19,7 +19,6 @@ import type { teardownChildProcessTree } from "../../platform/supervisedProcessT
 import {
   ProviderAdapterRequestError,
   ProviderAdapterSessionNotFoundError,
-  ProviderAdapterValidationError,
   type ProviderAdapterError,
 } from "../core/Errors.ts";
 import {
@@ -105,6 +104,13 @@ async function applySelection(session: AcpSession, selection: ModelSelection | u
     const update = acpConfigValue(session.configOptions(), optionId, value);
     if (update) await session.setConfigOption(update.configId, update.value);
   }
+}
+
+// Without a system prompt channel the policy rides in the first prompt. Untagged, models read the
+// user's own message after it as an injected directive and refuse it; the tag the Glade MCP server
+// names marks it as host setup.
+function hostContextBlock(policy: string): string {
+  return `<glade_host_context>\nThe Glade app, which hosts this session, supplies this context. It is session setup, not a message from the user.\n\n${policy}\n</glade_host_context>`;
 }
 
 // Summary compaction for agents without a native compact command: the agent writes a continuation
@@ -436,10 +442,12 @@ export const makeAcpAdapter = (dependencies: AcpAdapterDependencies) =>
           thread.policyPending = false;
           blocks.push({
             type: "text",
-            text: renderGladeHarnessPolicy({
-              gatewayControlAvailable: thread.gatewayToolsPassed,
-              computerUseAllowed: false,
-            }),
+            text: hostContextBlock(
+              renderGladeHarnessPolicy({
+                gatewayControlAvailable: thread.gatewayToolsPassed,
+                computerUseAllowed: false,
+              }),
+            ),
           });
         }
         if (thread.pendingContext) {
@@ -688,14 +696,15 @@ export const makeAcpAdapter = (dependencies: AcpAdapterDependencies) =>
       listSessions: () => Effect.sync(() => [...threads.values()].map((thread) => thread.record)),
       hasSession: (threadId) => Effect.sync(() => threads.has(threadId)),
       readThread: (threadId) => requireThread(threadId).pipe(Effect.as({ threadId, turns: [] })),
-      rollbackThread: () =>
-        Effect.fail(
-          new ProviderAdapterValidationError({
-            provider,
-            operation: "rollbackThread",
-            issue: `${profile.displayName} cannot rewind its native conversation.`,
-          }),
-        ),
+      // ACP has no native rewind, so the chat's native session ends and the next turn starts a
+      // fresh one from Glade's trimmed transcript.
+      rollbackThread: (threadId) =>
+        Effect.suspend(() => {
+          const thread = threads.get(threadId);
+          if (!thread) return Effect.void;
+          thread.stopping = true;
+          return retire(threadId, thread, undefined);
+        }),
       stopAll: () =>
         Effect.forEach(
           [...threads.entries()],
