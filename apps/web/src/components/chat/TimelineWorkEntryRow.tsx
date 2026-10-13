@@ -532,7 +532,7 @@ function ToolWorkEntryRow(props: TimelineWorkEntryRowProps) {
   if (workEntry.activityKind === "response.started")
     return <SubagentReplyNotice entry={workEntry} />;
   if (workEntry.activityKind === "provider.transition")
-    return <ProviderTransitionDivider entry={workEntry} detailContent={activityContent} />;
+    return <ProviderTransitionDivider entry={workEntry} />;
   return (
     <div className={WORK_ROW_BLOCK_CLASS_NAME}>
       {showEditedRows ? (

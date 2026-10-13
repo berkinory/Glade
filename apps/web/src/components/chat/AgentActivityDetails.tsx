@@ -8,7 +8,6 @@ import ChatMarkdown from "../ChatMarkdown";
 import type { ExpandedImagePreview } from "./ExpandedImagePreview";
 import { type AgentActivityDetail, formatAgentActivityEntryPreview } from "./agentActivity.logic";
 import { getChatTranscriptTextStyle } from "./chatTypography";
-import { ProviderTransitionActions } from "./ProviderTransitionActions";
 import { Collapsible, CollapsiblePanel, CollapsibleTrigger } from "../ui/collapsible";
 import { DisclosureChevron } from "../ui/DisclosureChevron";
 
@@ -44,9 +43,6 @@ export function AgentActivityDetails({
 
   return (
     <div className="min-w-0 space-y-3 border-l border-border/45 pl-3">
-      {entry.providerTransition ? (
-        <ProviderTransitionActions operationId={entry.providerTransition.operationId} />
-      ) : null}
       {subagent && activity ? (
         <p className="text-ui-xs tabular-nums text-muted-foreground">
           {formatLiveActivityStateLabel(activity.state)}
