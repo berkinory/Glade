@@ -284,6 +284,11 @@ export const ServerLocalServerProcess = Schema.Struct({
   addresses: Schema.Array(ServerLocalServerAddress),
   isStoppable: Schema.Boolean,
   stopDisabledReason: Schema.optional(Schema.String.check(Schema.isMaxLength(500))),
+  // Set when an agent running in this Glade started the server; `taskId` names the background task
+  // it runs in when the provider reports one.
+  startedByAgent: Schema.optional(
+    Schema.Struct({ taskId: Schema.optional(TrimmedNonEmptyString) }),
+  ),
 });
 export type ServerLocalServerProcess = typeof ServerLocalServerProcess.Type;
 

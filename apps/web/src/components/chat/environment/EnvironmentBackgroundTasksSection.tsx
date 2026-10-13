@@ -2,10 +2,9 @@ import type { ThreadId } from "@glade/contracts/core/baseSchemas";
 import { useLiveClockNow } from "~/lib/liveActivityPresentation";
 import { cn } from "~/lib/utils";
 import { formatClockDuration } from "~/session-logic";
+import { useQuery } from "@tanstack/react-query";
+import { serverLocalServersQueryOptions } from "~/lib/serverReactQuery";
 import { useStore } from "~/store";
-import { selectThreadActivities } from "~/threadDerivation";
-import type { Thread } from "~/types";
-import { deriveBackgroundTasks } from "~/workLog.backgroundTasks";
 import type { WorkLogBackgroundTask } from "~/workLog.types";
 import { stopWorkflowTask } from "../chatTaskActions";
 import { SubagentStatusIndicator } from "../SubagentStatusIndicator";
@@ -15,8 +14,7 @@ import {
   EnvironmentSectionDivider,
   HIDDEN_SCROLLBAR_CLASS_NAME,
 } from "./EnvironmentRow";
-
-const NO_ACTIVITIES: Thread["activities"] = [];
+import { useThreadBackgroundTasks } from "./useThreadBackgroundTasks";
 
 const STATUS_LABELS: Record<WorkLogBackgroundTask["status"], string> = {
   running: "Running",
@@ -63,16 +61,28 @@ function BackgroundTaskRow({
 }
 
 // Work the agent left running in the background (test runs, builds, dev servers) for the open chat.
-export function EnvironmentBackgroundTasksSection({ threadId }: { threadId: ThreadId | null }) {
-  const activities = useStore((state) =>
-    threadId ? selectThreadActivities(state, threadId) : NO_ACTIVITIES,
-  );
+// A task serving a local port is listed once, under Local Servers, while it runs.
+export function EnvironmentBackgroundTasksSection({
+  threadId,
+  localServersEnabled,
+}: {
+  threadId: ThreadId | null;
+  localServersEnabled: boolean;
+}) {
   const setError = useStore((store) => store.setError);
-  const tasks = deriveBackgroundTasks(activities).toSorted(
-    (a, b) =>
-      Number(b.status === "running") - Number(a.status === "running") ||
-      b.startedAt.localeCompare(a.startedAt),
+  const servers = useQuery(serverLocalServersQueryOptions(localServersEnabled)).data?.servers;
+  const serverTaskIds = new Set(
+    (servers ?? []).flatMap((server) =>
+      server.startedByAgent?.taskId ? [server.startedByAgent.taskId] : [],
+    ),
   );
+  const tasks = useThreadBackgroundTasks(threadId)
+    .filter((task) => !(task.status === "running" && serverTaskIds.has(task.taskId)))
+    .toSorted(
+      (a, b) =>
+        Number(b.status === "running") - Number(a.status === "running") ||
+        b.startedAt.localeCompare(a.startedAt),
+    );
   const runningCount = tasks.filter((task) => task.status === "running").length;
   const nowMs = useLiveClockNow(runningCount > 0);
   if (!threadId || tasks.length === 0) return null;

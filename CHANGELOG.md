@@ -5,7 +5,7 @@
 ### New
 
 - Chats stopped by a usage limit continue on their own once the limit resets. Cancel the wait from the chat, or turn it off in Settings.
-- The Environment panel lists the chat's background tasks, such as test runs and builds, with how long they have run, and can stop them.
+- The Environment panel lists the chat's background tasks, such as test runs and builds, with how long they have run, and can stop them. A server an agent starts shows once, under Local Servers, marked with the chat and task that started it.
 
 ### Improved
 

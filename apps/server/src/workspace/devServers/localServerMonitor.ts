@@ -10,6 +10,11 @@ import type {
 
 import { redactSensitiveProcessArgs } from "../../platform/processArgumentRedaction";
 import { execProcessFileAsync } from "../../platform/processRunner";
+import {
+  AGENT_LINEAGE_MAX_DEPTH,
+  lineageUnderOwner,
+  parseStdoutTaskIds,
+} from "./agentStartedServers";
 
 const PROCESS_OUTPUT_MAX_BUFFER_BYTES = 2 * 1024 * 1024;
 // lsof can block indefinitely on an unresponsive network mount.
@@ -778,6 +783,7 @@ function toServerProcess(
   listeners: readonly ParsedLsofListener[],
   processInfoByPid: ReadonlyMap<number, LocalServerProcessInfo>,
   cwdByPid: ReadonlyMap<number, string>,
+  startedByAgent: ServerLocalServerProcess["startedByAgent"],
 ): ServerLocalServerProcess | null {
   if (pid === process.pid) {
     return null;
@@ -816,6 +822,7 @@ function toServerProcess(
     addresses,
     isStoppable,
     ...(isStoppable ? {} : { stopDisabledReason: "Glade cannot signal this process." }),
+    ...(startedByAgent ? { startedByAgent } : {}),
   };
   pageTitleProbeArgs.set(server, detectionArgs);
   return server;
@@ -904,7 +911,7 @@ async function readProcessInfoWithAncestors(
   const allProcessInfo = new Map<number, LocalServerProcessInfo>();
   let pendingPids = [...new Set(pids)].filter((pid) => pid > 1);
 
-  for (let depth = 0; depth < PROCESS_LINEAGE_MAX_DEPTH && pendingPids.length > 0; depth++) {
+  for (let depth = 0; depth < AGENT_LINEAGE_MAX_DEPTH && pendingPids.length > 0; depth++) {
     const batch = await readProcessInfoBatch(pendingPids);
     const nextPids: number[] = [];
     for (const [pid, processInfo] of batch) {
@@ -919,15 +926,55 @@ async function readProcessInfoWithAncestors(
   return allProcessInfo;
 }
 
+// A server whose ancestors lead back to this Glade process was started by one of its agents. The
+// stdout of that lineage names the background task when the provider writes one per task.
+async function readAgentStartedServers(
+  pids: readonly number[],
+  processInfoByPid: ReadonlyMap<number, LocalServerProcessInfo>,
+): Promise<Map<number, NonNullable<ServerLocalServerProcess["startedByAgent"]>>> {
+  const lineageByPid = new Map<number, number[]>();
+  for (const pid of pids) {
+    const lineage = lineageUnderOwner(pid, (id) => processInfoByPid.get(id)?.ppid, process.pid);
+    if (lineage) lineageByPid.set(pid, lineage);
+  }
+  if (lineageByPid.size === 0) return new Map();
+  const lineagePids = [...new Set([...lineageByPid.values()].flat())];
+  const output = await execFileText("lsof", [
+    "-a",
+    "-d",
+    "1",
+    "-Fn",
+    "-p",
+    lineagePids.join(","),
+  ]).catch(() => "");
+  const taskIdByPid = parseStdoutTaskIds(output);
+  return new Map(
+    [...lineageByPid].map(([pid, lineage]) => {
+      const taskId = lineage.map((id) => taskIdByPid.get(id)).find((id) => id !== undefined);
+      return [pid, taskId ? { taskId } : {}];
+    }),
+  );
+}
+
 function buildLocalServerProcesses(
   listeners: readonly ParsedLsofListener[],
   processInfoByPid: ReadonlyMap<number, LocalServerProcessInfo> = new Map(),
   cwdByPid: ReadonlyMap<number, string> = new Map(),
+  startedByAgentByPid: ReadonlyMap<
+    number,
+    NonNullable<ServerLocalServerProcess["startedByAgent"]>
+  > = new Map(),
 ): ServerLocalServerProcess[] {
   const grouped = groupListenersByPid(listeners);
   const processes: ServerLocalServerProcess[] = [];
   for (const [pid, group] of grouped) {
-    const processRow = toServerProcess(pid, group, processInfoByPid, cwdByPid);
+    const processRow = toServerProcess(
+      pid,
+      group,
+      processInfoByPid,
+      cwdByPid,
+      startedByAgentByPid.get(pid),
+    );
     if (processRow) {
       processes.push(processRow);
     }
@@ -943,7 +990,13 @@ async function scanLocalServers(): Promise<ServerListLocalServersResult> {
   const processInfoByPid = await readProcessInfoWithAncestors(pids);
 
   const cwdByPid = await readProcessCwdBatch([...new Set([...pids, ...processInfoByPid.keys()])]);
-  const servers = buildLocalServerProcesses(listeners, processInfoByPid, cwdByPid);
+  const startedByAgentByPid = await readAgentStartedServers(pids, processInfoByPid);
+  const servers = buildLocalServerProcesses(
+    listeners,
+    processInfoByPid,
+    cwdByPid,
+    startedByAgentByPid,
+  );
   return {
     generatedAt: new Date().toISOString(),
     servers: await enrichLocalServerProcessesWithPageTitles(servers),

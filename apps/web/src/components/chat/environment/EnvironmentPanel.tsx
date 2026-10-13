@@ -189,7 +189,9 @@ export function EnvironmentPanel({
         </div>
       </EnvironmentLabeledSection>
 
-      {isLocalEnvironment ? <EnvironmentLocalServersSection enabled={open} /> : null}
+      {isLocalEnvironment ? (
+        <EnvironmentLocalServersSection enabled={open} threadId={activeThreadId} />
+      ) : null}
 
       {/* Each renders its own leading divider only when it actually shows, so toggling any section via the
        header gear menu never leaves a doubled or dangling rule. */}
@@ -252,7 +254,10 @@ export function EnvironmentPanel({
           />
         </>
       ) : null}
-      <EnvironmentBackgroundTasksSection threadId={activeThreadId} />
+      <EnvironmentBackgroundTasksSection
+        threadId={activeThreadId}
+        localServersEnabled={open && isLocalEnvironment}
+      />
       <EnvironmentSubagentsSection threadId={activeThreadId} onClose={onClose} />
     </div>
   );
