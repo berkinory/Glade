@@ -52,7 +52,7 @@ export function useSidebarPanelEffects(context: ReturnType<typeof useSidebarDeri
     setActivityViewEnabledSmoothly,
     dragInProgressRef,
     suppressProjectClickAfterDragRef,
-    activeSidebarThreadId,
+    visualActiveSidebarThreadId,
     handleBackToThreads,
     handleStartAddProject,
     activateThreadFromSidebarIntent,
@@ -280,10 +280,10 @@ export function useSidebarPanelEffects(context: ReturnType<typeof useSidebarDeri
       event.stopPropagation();
       const nextThreadId = getNextVisibleSidebarThreadId({
         visibleThreadIds: visibleSidebarThreadIds,
-        activeThreadId: activeSidebarThreadId ?? undefined,
+        activeThreadId: visualActiveSidebarThreadId ?? undefined,
         direction: command === "chat.visible.previous" ? "backward" : "forward",
       });
-      if (nextThreadId && nextThreadId !== activeSidebarThreadId) {
+      if (nextThreadId && nextThreadId !== visualActiveSidebarThreadId) {
         activateThreadFromSidebarIntent(nextThreadId);
       }
     };
@@ -334,7 +334,6 @@ export function useSidebarPanelEffects(context: ReturnType<typeof useSidebarDeri
     };
   }, [
     activateThreadFromSidebarIntent,
-    activeSidebarThreadId,
     activeSpaceId,
     activityViewEnabled,
     handleSelectSpace,
@@ -349,6 +348,7 @@ export function useSidebarPanelEffects(context: ReturnType<typeof useSidebarDeri
     threadJumpCommandByThreadId,
     threadJumpThreadIds,
     visibleSidebarThreadIds,
+    visualActiveSidebarThreadId,
     setThreadJumpLabelByThreadId,
     showThreadJumpHintsRef,
     setSearchPaletteOpen,

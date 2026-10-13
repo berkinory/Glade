@@ -36,6 +36,7 @@ import { DISCLOSURE_CLEANUP_BUFFER_MS, DISCLOSURE_TRANSITION_MS } from "../lib/d
 import { hasThreadDetailResumeCursor } from "../threadDetailResumeCursors";
 import { retainThreadDetailSubscription } from "../threadDetailSubscriptionRetention";
 import type { useSidebarProjectCommands } from "./useSidebarProjectCommands";
+import { useSidebarThreadRowAnchor } from "./useSidebarThreadRowAnchor";
 import {
   THREAD_PREVIEW_LIMIT,
   THREAD_PREVIEW_PAGE_SIZE,
@@ -57,7 +58,6 @@ export function useSidebarDerivedLists(context: ReturnType<typeof useSidebarProj
     activityVisibleThreadIds,
     suppressProjectClickAfterDragRef,
     optimisticPinnedStateByProjectId,
-    activeSidebarThreadId,
     sidebarThreads,
     sidebarTreeThreads,
     resolveThreadStatusForSidebar,
@@ -152,7 +152,7 @@ export function useSidebarDerivedLists(context: ReturnType<typeof useSidebarProj
           pinnedThreadIds,
         ),
       ),
-      forceVisibleThreadId: activeSidebarThreadId ?? undefined,
+      forceVisibleThreadId: routeThreadId ?? undefined,
     });
   })();
   const visibleChatThreadIds = visibleChatThreadRows.map((row) => row.thread.id);
@@ -190,7 +190,7 @@ export function useSidebarDerivedLists(context: ReturnType<typeof useSidebarProj
       pinnedThreadIds,
       threadListExtraPagesByProjectCwd,
       normalizeProjectCwd: normalizeSidebarProjectThreadListCwd,
-      activeSidebarThreadId: activeSidebarThreadId ?? undefined,
+      activeSidebarThreadId: routeThreadId ?? undefined,
       previewLimit: THREAD_PREVIEW_LIMIT,
       previewPageSize: THREAD_PREVIEW_PAGE_SIZE,
       resolveThreadStatus: resolveThreadStatusForSidebar,
@@ -252,8 +252,12 @@ export function useSidebarDerivedLists(context: ReturnType<typeof useSidebarProj
     }, 0);
     return () => window.clearTimeout(settle);
   }, [isOnSettings, routeThreadId, setLastThreadRoute]);
+  const activateThreadRow = useSidebarThreadRowAnchor({
+    routeThreadId,
+    activateThreadFromSidebarIntent,
+  });
   const handleThreadClick = (
-    event: MouseEvent,
+    event: MouseEvent<HTMLElement>,
     threadId: ThreadId,
     orderedProjectThreadIds: readonly ThreadId[],
   ) => {
@@ -270,7 +274,7 @@ export function useSidebarDerivedLists(context: ReturnType<typeof useSidebarProj
       rangeSelectTo(threadId, orderedProjectThreadIds);
       return;
     }
-    activateThreadFromSidebarIntent(threadId);
+    activateThreadRow(threadId, event.currentTarget);
   };
   const classicVisibleSidebarThreadIds = (() => {
     const visibleThreadIdSet = new Set<ThreadId>();
@@ -351,7 +355,7 @@ export function useSidebarDerivedLists(context: ReturnType<typeof useSidebarProj
   useEffect(() => {
     const threadIdsToPrewarm = getSidebarThreadIdsToPrewarm({
       visibleThreadIds: visibleSidebarThreadIds,
-      activeThreadId: activeSidebarThreadId,
+      activeThreadId: routeThreadId,
     });
     const releaseCallbacks = threadIdsToPrewarm
       .filter((threadId) => hasThreadDetailResumeCursor(threadId))
@@ -361,7 +365,7 @@ export function useSidebarDerivedLists(context: ReturnType<typeof useSidebarProj
         release();
       }
     };
-  }, [activeSidebarThreadId, visibleSidebarThreadIds]);
+  }, [routeThreadId, visibleSidebarThreadIds]);
   return {
     ...context,
     sidebarNavDescriptors,
@@ -377,6 +381,7 @@ export function useSidebarDerivedLists(context: ReturnType<typeof useSidebarProj
     projectEmptyState,
     surfaceProjectSidebarDataById,
     allProjectsExpanded,
+    activateThreadRow,
     handleThreadClick,
     visibleSidebarThreadIds,
     prByThreadId,

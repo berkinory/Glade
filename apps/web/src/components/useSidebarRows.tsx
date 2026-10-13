@@ -100,7 +100,7 @@ export function useSidebarRows(context: ReturnType<typeof useSidebarPanelEffects
     primeThreadActivation,
     handleThreadContextMenu,
     handleMultiSelectContextMenu,
-    activateThreadFromSidebarIntent,
+    activateThreadRow,
     handleProjectContextMenuAction,
     handleProjectContextMenu,
     handleProjectTitlePointerDownCapture,
@@ -381,7 +381,7 @@ export function useSidebarRows(context: ReturnType<typeof useSidebarPanelEffects
                 : cn(SIDEBAR_ROW_IDLE_TEXT_CLASS_NAME, SIDEBAR_ROW_HOVER_CLASS_NAME),
             )}
             onPointerDown={(event) => primeThreadActivation(event, thread.id)}
-            onClick={() => activateThreadFromSidebarIntent(thread.id)}
+            onClick={(event) => activateThreadRow(thread.id, event.currentTarget)}
             onDoubleClick={(event) => {
               event.preventDefault();
               event.stopPropagation();
@@ -393,7 +393,7 @@ export function useSidebarRows(context: ReturnType<typeof useSidebarPanelEffects
             onKeyDown={(event) => {
               if (event.key === "Enter" || event.key === " ") {
                 event.preventDefault();
-                activateThreadFromSidebarIntent(thread.id);
+                activateThreadRow(thread.id, event.currentTarget);
               }
             }}
             onContextMenu={(event) => {
@@ -534,7 +534,7 @@ export function useSidebarRows(context: ReturnType<typeof useSidebarPanelEffects
                 onKeyDown={(event) => {
                   if (event.key !== "Enter" && event.key !== " ") return;
                   event.preventDefault();
-                  activateThreadFromSidebarIntent(thread.id);
+                  activateThreadRow(thread.id, event.currentTarget);
                 }}
                 onContextMenu={(event) => {
                   event.preventDefault();

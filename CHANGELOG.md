@@ -6,6 +6,7 @@
 
 - Every project in the sidebar now opens and closes with the same animation, not only the project of the open chat.
 - Tool activity from Grok Build and other ACP agents no longer merges into an earlier turn's rows.
+- Clicking a chat in the sidebar while a subagent is open no longer misses or jumps.
 
 ## 0.2.6 - 2026-10-14
 

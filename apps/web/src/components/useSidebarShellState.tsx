@@ -314,10 +314,9 @@ export function useSidebarShellState() {
     ReadonlyMap<ProjectId, boolean>
   >(() => new Map());
 
-  const routeActiveSidebarThreadId = routeThreadId;
-
-  const activeSidebarThreadId = optimisticActiveThreadId ?? routeActiveSidebarThreadId;
-
+  // Only highlighting follows the pointerdown optimistic id; row layout follows the route. Rebuilding
+  // rows between press and release (e.g. hiding an open subagent's rows) moves the row out from under
+  // the pointer and the click never fires.
   const visualActiveSidebarThreadId = optimisticActiveThreadId ?? routeThreadId;
 
   const selectSidebarThreads = useMemo(() => createSidebarThreadSummariesSelector(), []);
@@ -378,7 +377,7 @@ export function useSidebarShellState() {
 
   const hasUnreadActivity = hasUnreadActivityOutsideActiveThread(
     visibleSidebarActivityThreads,
-    activeSidebarThreadId,
+    routeThreadId,
   );
 
   const dismissThreadStatus = (threadId: ThreadId, statusKey: string | null | undefined) => {
@@ -441,7 +440,7 @@ export function useSidebarShellState() {
     if (!optimisticActiveThreadId) {
       return;
     }
-    if (routeActiveSidebarThreadId === optimisticActiveThreadId) {
+    if (routeThreadId === optimisticActiveThreadId) {
       const settle = window.setTimeout(() => {
         setOptimisticActiveThreadId((current) =>
           current === optimisticActiveThreadId ? null : current,
@@ -456,7 +455,7 @@ export function useSidebarShellState() {
       );
     }, 1_500);
     return () => window.clearTimeout(timeout);
-  }, [optimisticActiveThreadId, routeActiveSidebarThreadId]);
+  }, [optimisticActiveThreadId, routeThreadId]);
 
   const clearThreadNotification = (threadId: ThreadId) => {
     const thread = sidebarThreadSummaryById[threadId];
@@ -624,7 +623,6 @@ export function useSidebarShellState() {
     latestPinnedMutationVersionByProjectIdRef,
     optimisticPinnedStateByProjectId,
     setOptimisticPinnedStateByProjectId,
-    activeSidebarThreadId,
     visualActiveSidebarThreadId,
     sidebarThreads,
     sidebarTreeThreads,
