@@ -429,13 +429,41 @@ export const makeAcpAdapter = (dependencies: AcpAdapterDependencies) =>
             detail: `Unknown pending user-input request: ${requestId}`,
           }),
         ),
+      // Stopping a chat without a live session is already done.
       stopSession: (threadId) =>
-        requireThread(threadId).pipe(
-          Effect.flatMap((thread) => {
-            thread.stopping = true;
-            return retire(threadId, thread, "Session stopped");
-          }),
-        ),
+        Effect.suspend(() => {
+          const thread = threads.get(threadId);
+          if (!thread) return Effect.void;
+          thread.stopping = true;
+          return retire(threadId, thread, "Session stopped");
+        }),
+      // ACP has no rename or archive. A deleted chat's native session is removed only by agents that
+      // offer deletion; the others keep their own session files.
+      updateNativeHistory: (input) => {
+        const cursor = readResumeCursor(input.resumeCursor);
+        if (input.action.type !== "delete" || !cursor) return Effect.void;
+        return Effect.tryPromise({
+          try: async () => {
+            const connection = await openAcpConnection({
+              child: dependencies.spawn({
+                cwd: input.cwd ?? dependencies.defaultCwd,
+                runtimeMode: "full-access",
+                binaryPath: input.providerOptions?.[provider]?.binaryPath,
+              }),
+              profile,
+              ...teardown,
+            });
+            try {
+              if (connection.initialize.agentCapabilities?.sessionCapabilities?.delete) {
+                await connection.agent.deleteSession({ sessionId: cursor.sessionId });
+              }
+            } finally {
+              await connection.close();
+            }
+          },
+          catch: (cause) => requestError("session/delete", cause),
+        });
+      },
       listSessions: () => Effect.sync(() => [...threads.values()].map((thread) => thread.record)),
       hasSession: (threadId) => Effect.sync(() => threads.has(threadId)),
       readThread: (threadId) => requireThread(threadId).pipe(Effect.as({ threadId, turns: [] })),

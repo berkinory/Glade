@@ -4,10 +4,11 @@ Glade treats provider integrations as adapters behind server-owned orchestration
 
 ## Implemented providers
 
-`ProviderAdapterRegistryLive` currently registers two first-class provider kinds:
+`ProviderAdapterRegistryLive` registers five provider kinds:
 
-- `codex`
-- `claudeAgent`
+- `codex`, on its own app-server adapter;
+- `claudeAgent`, on the Claude Agent SDK;
+- `opencode`, `grok` and `cursor`, on the shared Agent Client Protocol adapter.
 
 The registry is intentionally small. It maps `ProviderKind` to an adapter and lists the registered providers; it does not own session routing, persistence, or cross-provider orchestration.
 
@@ -70,6 +71,14 @@ Provider commands are delivered per native session owner. A chat owns its sessio
 
 A provider command that settles as dead or uncertain quarantines its chat. The intent source writes the blocking reason to the chat's session as soon as it settles, and once per chat at startup for a blocker that survives restart. The write merges over the latest durable session, so a running turn keeps its status and active turn, and it is dropped if a newer session lands first. Sending the next message still clears the blocker explicitly; the ambiguous command is never replayed.
 
+## Agent Client Protocol providers
+
+`provider/acp/` holds one adapter for every agent that speaks the Agent Client Protocol over stdio, built on `@agentclientprotocol/sdk`. `AcpAdapters` creates it for each descriptor that has an `acp` profile. The profile is data: the CLI arguments, the child environment for a runtime mode, a sign-in method to call after `initialize`, session config values applied when a session opens (always the agent's normal working mode, never a plan or read-only mode), a preferred title model, native slash commands to hide, and whether the agent saves model switches as its CLI default. Shared ACP code never branches on a provider kind.
+
+Each chat owns a private agent process and one ACP session. The resume cursor stores the native session id and resumes through `session/load` when the agent offers it; updates replayed during the load are discarded because the transcript is Glade's. The harness policy rides on the first prompt of a fresh native session. Gateway tools reach the agent as an HTTP MCP server when it advertises HTTP MCP support. Permission requests become Glade approvals in Supervised mode and are allowed once in Full Access; Glade never answers with a lasting grant. Interrupting answers outstanding permission requests as cancelled before `session/cancel`, as the protocol requires.
+
+ACP reports config options only for the model currently selected. Discovery opens a throwaway session, selects each model within a three-second budget to read its own options, and removes the session from the agent's history where the agent allows it. Agents that save model switches as their CLI default are never probed, and their title requests stay on the current model. The agent's thought-level option is offered under the shared `effort` id. A turn applies only option values the selected model offers. Title requests run in a throwaway session that rejects every permission request and parse the JSON object from the reply text, because ACP has neither structured output nor a tool-free prompt.
+
 ## Provider-specific state
 
 Provider configuration is split across typed server settings, discovery/health services, and adapter start options. A provider integration may contribute:
@@ -96,6 +105,8 @@ A new first-class provider normally needs changes across several boundaries:
 6. web settings, provider/model picker metadata and icons;
 7. focused adapter tests plus regression coverage for lifecycle, interruption, resume, approvals, and event normalization.
 
+An agent that speaks ACP needs only its provider folder: the CLI definition, status check, descriptor with an `acp` profile, contracts and settings entries, and web icon. It inherits the shared adapter and its tests.
+
 Prefer capability-driven behavior and existing shared protocol helpers. Do not add provider-specific branches to orchestration when the difference can stay inside the adapter.
 
 `scripts/checks/providerNeutrality.ts` runs in `bun run check` and rejects provider-kind literals outside the provider's own folders under `apps/server/src/provider`. Existing leaks are listed in `scripts/checks/providerNeutralityAllowlist.json`, which may only shrink; after removing leaks, lower it with `bun scripts/checks/providerNeutrality.ts --update`.
@@ -106,6 +117,7 @@ Prefer capability-driven behavior and existing shared protocol helpers. Do not a
 - `apps/server/src/provider/Layers/ProviderAdapterRegistry.ts` — concrete provider registry
 - `apps/server/src/provider/Layers/ProviderService.ts` — session-aware lifecycle routing
 - `apps/server/src/provider/Layers/ProviderDiscoveryService.ts` — model/agent/skill/command/plugin discovery routing
+- `apps/server/src/provider/acp/acpAdapter.ts` — shared Agent Client Protocol adapter, configured by `acpProviderProfile.ts`
 - `apps/server/src/provider/core/boundedCallbackIngress.ts` — bounded callback-producer ingress policy
 - `apps/server/src/orchestration/Layers/ProviderCommandReactor.ts` — orchestration intent to provider calls
 - `apps/server/src/orchestration/Layers/ProviderRuntimeIngestion.ts` — provider events to durable orchestration

@@ -6,12 +6,16 @@ consistent workspace.
 
 ## Supported providers
 
-| Provider    | What Glade connects to                                       |
-| ----------- | ------------------------------------------------------------ |
-| Claude Code | Your installed Claude Code runtime and authenticated account |
-| Codex       | Your installed and authenticated Codex CLI                   |
+| Provider    | What Glade connects to                                                     |
+| ----------- | -------------------------------------------------------------------------- |
+| Claude Code | Your installed Claude Code runtime and authenticated account               |
+| Codex       | Your installed and authenticated Codex CLI                                 |
+| OpenCode    | Your installed `opencode` CLI, its connected providers and its free models |
+| Grok Build  | Your installed and authenticated `grok` CLI                                |
+| Cursor      | Your installed and authenticated Cursor CLI (`cursor-agent`)               |
 
-Use provider settings to check installation and authentication status. Glade requires Codex 0.158.0 or newer and Claude Code 2.1.267 or newer. An older runtime shows Update required and cannot start a session. Codex status checks run from the configured Codex home, so project configuration in the server's working directory cannot change them; a missing Codex home is reported instead of created.
+OpenCode, Grok Build and Cursor run through the Agent Client Protocol on one shared adapter, so
+their chats, tool activity, approvals and slash commands behave the same way. Use provider settings to check installation and authentication status. Glade requires Codex 0.158.0 or newer, Claude Code 2.1.267 or newer, OpenCode 2.0.0 or newer, Grok Build 1.0.0 or newer and Cursor CLI 2026.1.0 or newer. An older runtime shows Update required and cannot start a session. Codex status checks run from the configured Codex home, so project configuration in the server's working directory cannot change them; a missing Codex home is reported instead of created.
 
 ## What Glade manages
 
@@ -62,17 +66,23 @@ three letters or numbers. Short or punctuation-only messages defer generation un
 message arrives. Only one title request runs at a time, without delaying the chat response.
 The separate request contains no conversation history, repository instructions,
 skills, or MCP servers. Codex uses a temporary thread in the chat's existing app-server process;
-Claude uses a short-lived CLI request. Codex prefers `gpt-6-luna`; Claude prefers `claude-sonnet-5-5`. If that model
+Claude uses a short-lived CLI request. OpenCode, Grok Build and Cursor use a short-lived agent
+session that rejects every tool request and is removed from the agent's history afterwards where the
+agent allows it. Codex prefers `gpt-6-luna`; Claude prefers `claude-sonnet-5-5`; Grok Build prefers
+`grok-4.7-build-fast`. Cursor saves every model switch as its CLI default, so its title request stays
+on Cursor's current model. If the preferred model
 is unavailable, Glade uses the triggering message's model with the lowest supported effort other
 than `none`. A short message-based title remains visible if generation fails.
 
 Manual renames always win over generated titles. Native title notifications do not replace a title
-owned by Glade. Renaming a chat also renames its native session; a rename made before the session
-exists is applied when the provider first supplies a title. Use `/rename <title>` to choose your own.
+owned by Glade. Renaming a Codex or Claude chat also renames its native session; a rename made before
+the session exists is applied when the provider first supplies a title. The protocol behind OpenCode,
+Grok Build and Cursor has no rename, so their native sessions keep the agent's own title. Use `/rename <title>` to choose your own.
 
-Deleting a chat also deletes its Codex or Claude session history. Codex chats archive and unarchive
-in Codex too; Claude has no native archive operation, so archiving stays local. If native deletion
-fails, Glade still deletes the chat and records the failure in the server log without retrying it.
+Deleting a chat also deletes its Codex, Claude or OpenCode session history; Grok Build and Cursor
+offer no way to delete a session, so theirs stays in the CLI's own storage. Codex chats archive and
+unarchive in Codex too; the other providers have no native archive operation, so archiving stays
+local. If native deletion fails, Glade still deletes the chat and records the failure in the server log without retrying it.
 
 ## Connect a provider
 
@@ -101,6 +111,12 @@ stays blocked.
 ## Models and effort options
 
 The installed provider supplies model IDs, names, defaults and available options. Glade does not ship a selectable model catalog. **Provider default** leaves model selection to the runtime. Each option can inherit the provider default or keep an explicit selection, including an explicit off setting.
+
+OpenCode, Grok Build and Cursor report settings only for the model currently selected, so discovery
+selects each model in a throwaway session to read its own effort levels, for up to three seconds;
+models it does not reach are listed without options. Cursor is never probed this way, because it
+saves every model switch as its CLI default. Each Cursor model ID is one fixed variant, such as
+`claude-opus-5[thinking=true,effort=high]`. A setting the selected model does not offer is not sent.
 
 Claude aliases and context variants retain their native IDs. Codex reasoning effort and service tiers follow its model discovery response. Claude effort, fast mode and adaptive thinking appear only when native model metadata advertises them. Live Claude effort and speed changes no longer require a separate model-profile restart. User-written Ultrathink text is sent unchanged; Glade does not insert a prefix.
 
