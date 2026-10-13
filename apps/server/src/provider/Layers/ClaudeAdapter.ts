@@ -1,4 +1,5 @@
 import { updateClaudeNativeHistory } from "../claude/adapter/nativeHistory.ts";
+import { claudeTitleGeneration } from "../claude/adapter/threadTitle.ts";
 import {
   ClaudeAdapterLiveOptions,
   ClaudeQueryRuntime,
@@ -368,6 +369,7 @@ function makeClaudeAdapter(options?: ClaudeAdapterLiveOptions) {
         supportsTurnSteering: true,
         supportsLiveTurnDiffPatch: false,
       },
+      titleGeneration: claudeTitleGeneration,
       startSession,
       canResumeNativeConversation: (resumeCursor) =>
         readClaudeResumeState(resumeCursor)?.resume !== undefined,

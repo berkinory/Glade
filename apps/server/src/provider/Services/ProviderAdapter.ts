@@ -87,9 +87,28 @@ export interface ProviderThreadSnapshot {
   readonly cwd?: string | null;
 }
 
+interface ProviderThreadTitleInput {
+  readonly threadId: ThreadId;
+  readonly cwd: string;
+  readonly model: string;
+  readonly effort?: string;
+  readonly binaryPath?: string;
+  readonly instructions: string;
+  readonly prompt: string;
+  readonly outputSchema: unknown;
+}
+
+export interface ProviderTitleGeneration<TError> {
+  // Used when the provider's model catalog offers it; otherwise the thread's own model.
+  readonly preferredModel: string;
+  // Runs one isolated, tool-free request and returns its structured output.
+  readonly generate: (input: ProviderThreadTitleInput) => Effect.Effect<unknown, TError>;
+}
+
 export interface ProviderAdapterShape<TError> {
   readonly provider: ProviderKind;
   readonly capabilities: ProviderAdapterCapabilities;
+  readonly titleGeneration?: ProviderTitleGeneration<TError>;
   readonly listMcpServers?: (
     input: ProviderManagementContext,
   ) => Effect.Effect<ProviderListMcpServersResult, TError>;

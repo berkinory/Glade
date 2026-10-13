@@ -8,7 +8,6 @@
   "apps/server/src/git/Layers/CodexTextGeneration.ts": 6,
   "apps/server/src/git/Layers/ProviderTextGeneration.ts": 3,
   "apps/server/src/git/textGenerationSelection.ts": 1,
-  "apps/server/src/orchestration/Layers/ThreadTitleGeneration.ts": 3,
   "apps/server/src/orchestration/runtimeActivities/runtimeActivityProjection.ts": 1,
   "apps/server/src/orchestration/testing/orchestrationEngineSystem.ts": 1,
   "apps/server/src/provider/Layers/ProviderAuthentication.ts": 5,

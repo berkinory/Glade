@@ -2466,11 +2466,14 @@ const makeCodexAdapter = (options?: CodexAdapterLiveOptions) =>
         supportsTurnSteering: true,
         supportsLiveTurnDiffPatch: true,
       },
-      generateThreadTitle: (input) =>
-        Effect.tryPromise({
-          try: (signal) => manager.generateThreadTitle(input, signal),
-          catch: (cause) => toRequestError(input.threadId, "turn/start", cause),
-        }),
+      titleGeneration: {
+        preferredModel: "gpt-6-luna",
+        generate: (input) =>
+          Effect.tryPromise({
+            try: async (signal) => JSON.parse(await manager.generateThreadTitle(input, signal)),
+            catch: (cause) => toRequestError(input.threadId, "turn/start", cause),
+          }),
+      },
       startSession,
       sendTurn,
       steerTurn,
