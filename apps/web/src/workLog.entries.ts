@@ -128,6 +128,13 @@ export function deriveWorkLogEntries(
 ): WorkLogEntry[] {
   const visibleTurnIds = options.visibleTurnIds;
   const ordered = orderedActivities(activities);
+  const routinelyAcceptedRequestIds = new Set(
+    ordered.flatMap((activity) =>
+      isRoutineApprovalAcceptance(activity)
+        ? [String(asObjectRecord(activity.payload)?.requestId ?? "")]
+        : [],
+    ),
+  );
   const isVisible = (activity: OrchestrationThreadActivity) =>
     shouldKeepActivityForWorkLog(activity, latestTurnId, visibleTurnIds);
   const entries = ordered
@@ -140,6 +147,7 @@ export function deriveWorkLogEntries(
         activity.kind !== "task.completed" &&
         !isQuietTurnLifecycleActivity(activity) &&
         !isRoutineApprovalAcceptance(activity) &&
+        !isRoutinelyAcceptedApprovalRequest(activity, routinelyAcceptedRequestIds) &&
         !isUninformativeActivity(activity) &&
         activity.kind !== "account.rate-limits.updated" &&
         activity.kind !== USAGE_LIMIT_RESUME_SCHEDULED_ACTIVITY_KIND &&
@@ -229,6 +237,16 @@ function isRoutineApprovalAcceptance(activity: OrchestrationThreadActivity): boo
     payload.approvalScope === undefined &&
     payload.requestKind !== "permissions"
   );
+}
+
+// The tool row reports the call a routine acceptance let run, so the question adds nothing either.
+function isRoutinelyAcceptedApprovalRequest(
+  activity: OrchestrationThreadActivity,
+  acceptedRequestIds: ReadonlySet<string>,
+): boolean {
+  if (activity.kind !== "approval.requested") return false;
+  const requestId = asObjectRecord(activity.payload)?.requestId;
+  return typeof requestId === "string" && acceptedRequestIds.has(requestId);
 }
 
 // Presentation only, like routine approvals: rows that tell the user nothing the surrounding rows
