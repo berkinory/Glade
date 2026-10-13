@@ -42,6 +42,7 @@
 
 ### Fixed
 
+- Editing a message or rewinding a chat no longer plays the turn finished sound or shows a completion notification.
 - Progress updates from background tasks and subagents no longer appear in the chat as "Reasoning update" rows; their cards and the Environment panel show them.
 - Forking a chat from an earlier reply works while the chat is still running. Only the reply that is still being written cannot be forked, and its fork button stays hidden until it finishes.
 - Opening the rewind or edit confirmation no longer expands and collapses the previous reply.

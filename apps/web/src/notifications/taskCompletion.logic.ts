@@ -557,6 +557,13 @@ export function collectCompletedThreadCandidates(
     ) {
       continue;
     }
+    // Reverts and message edits rebuild latestTurn from an earlier checkpoint, which is not a new completion.
+    if (
+      previousThread.latestTurn?.turnId !== latestTurn.turnId &&
+      previousThread.turnDiffSummaries.some((summary) => summary.turnId === latestTurn.turnId)
+    ) {
+      continue;
+    }
 
     candidates.push({
       threadId: thread.id,
