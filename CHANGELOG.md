@@ -41,6 +41,7 @@
 
 ### Fixed
 
+- After a chat switches to another provider, the new provider can use Glade's tools from its first reply.
 - Opening the rewind or edit confirmation no longer expands and collapses the previous reply.
 - Live change counts no longer touch the Git index while an agent works, which could make the agent's own Git commands fail.
 - Chats in folders that are not Git repositories no longer retry Git every few seconds, and running git init in one is picked up right away.

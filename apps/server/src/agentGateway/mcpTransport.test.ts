@@ -1,7 +1,7 @@
 import { isRecord } from "@glade/shared/transport/payloadValues";
 import { makeNativeToolCallRegistry } from "./nativeToolCalls.ts";
 import { assert, describe, it } from "@effect/vitest";
-import { ProjectId, ThreadId, TurnId } from "@glade/contracts/core/baseSchemas";
+import { CommandId, ProjectId, ThreadId, TurnId } from "@glade/contracts/core/baseSchemas";
 import { type OrchestrationThreadShell } from "@glade/contracts/orchestration/threadEntities";
 import { Deferred, Effect, Fiber, Option } from "effect";
 
@@ -685,6 +685,25 @@ describe("makeAgentGatewayMcpTransport session authority", () => {
             ...makeThread("thread-saved-claude"),
             modelSelection: { provider: "claudeAgent", model: "claude-sonnet-5" },
           },
+          {
+            ...makeThread("thread-handoff"),
+            session: {
+              threadId: ThreadId.makeUnsafe("thread-handoff"),
+              status: "stopped",
+              providerName: "claudeAgent",
+              runtimeMode: "full-access",
+              activeTurnId: null,
+              lastError: null,
+              updatedAt: NOW,
+            },
+            handoff: {
+              operationId: CommandId.makeUnsafe("handoff-1"),
+              stage: "pending",
+              sourceModelSelection: { provider: "claudeAgent", model: "claude-sonnet-5" },
+              destinationModelSelection: { provider: "codex", model: "gpt-5.6-sol" },
+              createdAt: NOW,
+            },
+          },
         ],
         ghostThreads: ["thread-ghost"],
         tools: [],
@@ -722,6 +741,10 @@ describe("makeAgentGatewayMcpTransport session authority", () => {
         code: "provider-mismatch",
         retry: "re-lease",
       });
+
+      // A pending handoff's destination connects before its session replaces the old binding.
+      const handoffDestination = yield* post(transport, "token-4", listBody);
+      assert.equal(handoffDestination.status, 200);
     }),
   );
 });
