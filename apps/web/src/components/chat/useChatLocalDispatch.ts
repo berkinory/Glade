@@ -1,6 +1,10 @@
 import { ThreadId } from "@glade/contracts/core/baseSchemas";
 import { useCallback, useEffect, useMemo, useRef } from "react";
-import { markPendingTurnDispatch, usePendingTurnDispatchStore } from "../../pendingTurnDispatch";
+import {
+  clearPendingTurnDispatch,
+  markPendingTurnDispatch,
+  usePendingTurnDispatchStore,
+} from "../../pendingTurnDispatch";
 import { derivePhase } from "../../session-logic";
 import { type ChatMessage, type Thread, type WorktreeSetupResolutionAction } from "../../types";
 import {
@@ -166,6 +170,11 @@ export function useChatLocalDispatch({
   useEffect(() => {
     serverAcknowledgedLocalDispatchRef.current = serverAcknowledgedLocalDispatch;
   }, [serverAcknowledgedLocalDispatch]);
+  // Once the server shows the turn, the send is no longer at risk of a lost event, so the catch-up
+  // loop can stop polling at base cadence and follow the live stream instead.
+  useEffect(() => {
+    if (serverAcknowledgedLocalDispatch) clearPendingTurnDispatch(threadId);
+  }, [serverAcknowledgedLocalDispatch, threadId]);
   const localDispatchAckFallbackTimeoutRef = useRef<number | null>(null);
   const armLocalDispatchAckFallback = useCallback(
     (threadIdForSend: ThreadId) => {
