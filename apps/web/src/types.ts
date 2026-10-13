@@ -246,6 +246,7 @@ export interface ComposerThreadMentionSource {
   archivedAt?: string | null;
   lastVisitedAt?: string | undefined;
   latestUserMessageAt: string | null;
+  parentThreadId: ThreadId | null;
 }
 
 export interface ThreadSession {

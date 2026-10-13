@@ -107,12 +107,7 @@ function commandMenuSecondaryText(item: ComposerCommandItem): string | null {
   if (item.type === "agent") {
     return item.description;
   }
-  if (
-    item.type === "plugin" ||
-    item.type === "skill" ||
-    item.type === "local-root" ||
-    item.type === "thread"
-  ) {
+  if (item.type === "plugin" || item.type === "skill" || item.type === "local-root") {
     return item.description;
   }
   return null;
@@ -186,7 +181,6 @@ export type ComposerCommandItem =
       provider: ProviderKind;
       mention: ProviderMentionReference;
       label: string;
-      description: string;
     }
   | {
       id: string;
@@ -235,13 +229,6 @@ function groupCommandItems(
         items: pluginItems,
       });
     }
-    if (threadItems.length > 0) {
-      groups.push({
-        id: "chats",
-        label: "Chats",
-        items: threadItems,
-      });
-    }
     if (localItems.length > 0) {
       groups.push({
         id: "local",
@@ -254,6 +241,13 @@ function groupCommandItems(
         id: "subagents",
         label: "Subagents",
         items: agentItems,
+      });
+    }
+    if (threadItems.length > 0) {
+      groups.push({
+        id: "chats",
+        label: "Chats",
+        items: threadItems,
       });
     }
     if (otherItems.length > 0) {

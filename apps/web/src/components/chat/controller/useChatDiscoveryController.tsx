@@ -196,6 +196,7 @@ export function useChatDiscoveryController({
         threads: composerThreadSummaries,
         projects: composerThreadProjects,
         currentThreadId: threadId,
+        currentProjectId: activeProject?.id ?? null,
       },
     },
     commands: {

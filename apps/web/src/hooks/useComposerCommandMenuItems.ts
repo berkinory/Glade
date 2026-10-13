@@ -54,6 +54,7 @@ export type SearchableModelOption = {
 };
 
 const THREAD_MENTION_SUGGESTION_LIMIT = 20;
+const THREAD_MENTION_DEFAULT_SUGGESTION_LIMIT = 5;
 
 function threadSuggestionTitle(title: string): string {
   return title.trim() || "Untitled thread";
@@ -196,30 +197,37 @@ export function resolveThreadMentionForThreadId(input: {
   };
 }
 
+// Suggestions only offer top-level chats from the current project; dropping a
+// chat onto the composer still resolves any thread through the full candidate set.
 function buildThreadMentionComposerItems(input: {
   readonly threads: readonly ComposerThreadMentionSource[];
   readonly projects: readonly Project[];
   readonly currentThreadId: string | null;
+  readonly currentProjectId: string | null;
   readonly query: string;
 }): ComposerCommandItem[] {
-  const candidates = buildThreadMentionCandidates(input);
+  const candidates = buildThreadMentionCandidates(input).filter(
+    ({ thread }) => thread.projectId === input.currentProjectId && thread.parentThreadId === null,
+  );
   const query = normalizeProviderDiscoveryText(input.query);
-  const ranked = (
-    query
-      ? rankProviderDiscoveryItems(candidates, query, ({ title }) => [{ value: title }])
-      : candidates.toSorted((left, right) =>
+  const ranked = query
+    ? rankProviderDiscoveryItems(candidates, query, ({ title }) => [{ value: title }]).slice(
+        0,
+        THREAD_MENTION_SUGGESTION_LIMIT,
+      )
+    : candidates
+        .toSorted((left, right) =>
           threadSuggestionRecency(right.thread).localeCompare(threadSuggestionRecency(left.thread)),
         )
-  ).slice(0, THREAD_MENTION_SUGGESTION_LIMIT);
+        .slice(0, THREAD_MENTION_DEFAULT_SUGGESTION_LIMIT);
 
-  return ranked.map(({ thread, title, projectName, mentionName }) => ({
+  return ranked.map(({ thread, title, mentionName }) => ({
     id: `thread:${thread.id}`,
     type: "thread" as const,
     threadId: thread.id,
     provider: thread.provider,
     mention: { name: mentionName, path: threadMentionPathForThreadId(thread.id) },
     label: title,
-    description: projectName,
   }));
 }
 
@@ -279,6 +287,7 @@ export function useComposerCommandMenuItems(input: {
       readonly threads: readonly ComposerThreadMentionSource[];
       readonly projects: readonly Project[];
       readonly currentThreadId: string | null;
+      readonly currentProjectId: string | null;
     };
   };
   commands: {
@@ -395,7 +404,7 @@ export function useComposerCommandMenuItems(input: {
         })
       : [];
 
-    return [...pluginItems, ...threadItems, ...localRootItems, ...pathItems, ...agentItems];
+    return [...pluginItems, ...localRootItems, ...pathItems, ...agentItems, ...threadItems];
   }
 
   if (composerTrigger.kind === "slash-command") {

@@ -12,6 +12,7 @@
 ### Improved
 
 - Model search ignores case, spacing, punctuation and word order, so "gpt5" finds GPT-5.
+- Typing @ suggests only a few recent chats from the current project, below files and agents, and no longer lists subagent chats. Type a name to search more.
 - Shell commands that write files read as edits: a Python or JavaScript script that writes a file, `sed -i`, `perl -pi` and `cat > file` show "Edited", "Wrote" or "Appended to" with the file, and count as edited files in their tool group.
 - Scripts show their language's icon, such as Python, Node or Bun, and code passed to a command through a heredoc is highlighted in its own language under the command.
 - Several searches in one command say what they looked for and where, such as "Searched for visibility, LevelDto +3 in Game/Runtime", instead of "Searched 2 times".

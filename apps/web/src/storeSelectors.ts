@@ -435,6 +435,7 @@ export function createComposerThreadMentionSourcesSelector(): (
               provider: resolveThreadDisplayProvider(thread),
               createdAt: thread.createdAt,
               latestUserMessageAt: thread.latestUserMessageAt,
+              parentThreadId: thread.parentThreadId ?? null,
               ...(thread.archivedAt !== undefined ? { archivedAt: thread.archivedAt } : {}),
               ...(thread.lastVisitedAt !== undefined
                 ? { lastVisitedAt: thread.lastVisitedAt }
@@ -455,7 +456,8 @@ export function createComposerThreadMentionSourcesSelector(): (
           source.createdAt === previous.createdAt &&
           source.archivedAt === previous.archivedAt &&
           source.lastVisitedAt === previous.lastVisitedAt &&
-          source.latestUserMessageAt === previous.latestUserMessageAt
+          source.latestUserMessageAt === previous.latestUserMessageAt &&
+          source.parentThreadId === previous.parentThreadId
         );
       })
     ) {
