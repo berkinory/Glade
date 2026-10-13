@@ -1,6 +1,6 @@
 import type { NewSessionResponse } from "@agentclientprotocol/sdk";
 
-import type { ProviderThreadTitleInput } from "../Services/ProviderAdapter.ts";
+import type { ProviderStructuredRequestInput } from "../Services/ProviderAdapter.ts";
 import type { AcpConnection } from "./acpConnection.ts";
 import { acpConfigIdFor, acpModelOption, acpOffersValue } from "./acpModelCatalog.ts";
 
@@ -13,10 +13,10 @@ function parseJsonObject(text: string): unknown {
 
 // ACP has no structured output and no tool-free prompt, so the schema rides in the instructions,
 // every permission request is rejected, and the reply's JSON object is read from its text.
-export async function runAcpTitleRequest(
+export async function runAcpStructuredRequest(
   connection: AcpConnection,
   session: NewSessionResponse,
-  input: ProviderThreadTitleInput,
+  input: ProviderStructuredRequestInput,
   switchModel: boolean,
 ): Promise<unknown> {
   let text = "";

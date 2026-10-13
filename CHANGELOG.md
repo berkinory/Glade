@@ -4,7 +4,7 @@
 
 ### New
 
-- OpenCode, Grok Build and Cursor are available as providers, including OpenCode's free models. Their models, each model's own effort levels and their native slash commands appear in the composer, their chats get generated titles, and Supervised mode asks before they edit files or run commands.
+- OpenCode, Grok Build and Cursor are available as providers, including OpenCode's free models. Their models, each model's own effort levels and their native slash commands appear in the composer, their chats get generated titles, they can write commit messages, pull requests and branch names, and Supervised mode asks before they edit files or run commands.
 - Chats stopped by a usage limit continue on their own once the limit resets. Cancel the wait from the chat, or turn it off in Settings.
 
 ### Improved

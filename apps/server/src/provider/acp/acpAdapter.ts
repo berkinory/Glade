@@ -25,6 +25,7 @@ import {
 import {
   PROVIDER_ADAPTER_RUNTIME_EVENT_BUFFER_CAPACITY,
   type ProviderAdapterShape,
+  type ProviderStructuredRequestInput,
 } from "../Services/ProviderAdapter.ts";
 import { openAcpConnection, type AcpConnection } from "./acpConnection.ts";
 import { makeAcpConnectionPool } from "./acpConnectionPool.ts";
@@ -33,7 +34,7 @@ import { acpConfigIdFor, acpModelOption, acpOffersValue } from "./acpModelCatalo
 import { discoverAcpModels } from "./acpModelDiscovery.ts";
 import type { AcpProviderProfile } from "./acpProviderProfile.ts";
 import { openAcpSession, type AcpSession } from "./acpSession.ts";
-import { runAcpTitleRequest } from "./acpTitleRequest.ts";
+import { runAcpStructuredRequest } from "./acpStructuredRequest.ts";
 import type { AcpRuntimeEventDraft } from "./acpTurnProjection.ts";
 
 const RESUME_CURSOR_VERSION = 1;
@@ -374,6 +375,31 @@ export const makeAcpAdapter = (dependencies: AcpAdapterDependencies) =>
         };
       });
 
+    const structuredRequest = (input: ProviderStructuredRequestInput) =>
+      Effect.tryPromise({
+        try: (signal) =>
+          withEphemeralAcpSession({
+            profile,
+            // Supervised, so the agent asks before any tool and the request rejects it.
+            child: dependencies.spawn({
+              cwd: input.cwd,
+              runtimeMode: "approval-required",
+              binaryPath: input.binaryPath,
+            }),
+            cwd: input.cwd,
+            signal,
+            ...teardown,
+            use: (connection, session) =>
+              runAcpStructuredRequest(
+                connection,
+                session,
+                input,
+                !profile.savesModelChoiceGlobally,
+              ),
+          }),
+        catch: (cause) => requestError("session/prompt", cause),
+      });
+
     const adapter: ProviderAdapterShape<ProviderAdapterError> = {
       provider,
       capabilities: {
@@ -508,26 +534,9 @@ export const makeAcpAdapter = (dependencies: AcpAdapterDependencies) =>
       streamEvents: Stream.fromQueue(events),
       titleGeneration: {
         ...(profile.titleModel ? { preferredModel: profile.titleModel } : {}),
-        generate: (input) =>
-          Effect.tryPromise({
-            try: (signal) =>
-              withEphemeralAcpSession({
-                profile,
-                // Supervised, so the agent asks before any tool and the request rejects it.
-                child: dependencies.spawn({
-                  cwd: input.cwd,
-                  runtimeMode: "approval-required",
-                  binaryPath: input.binaryPath,
-                }),
-                cwd: input.cwd,
-                signal,
-                ...teardown,
-                use: (connection, session) =>
-                  runAcpTitleRequest(connection, session, input, !profile.savesModelChoiceGlobally),
-              }),
-            catch: (cause) => requestError("generateThreadTitle", cause),
-          }),
+        generate: structuredRequest,
       },
+      structuredRequest,
       listModels: (input) =>
         Effect.tryPromise({
           try: (signal) => {

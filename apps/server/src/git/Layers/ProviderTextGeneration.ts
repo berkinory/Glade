@@ -62,8 +62,14 @@ const makeProviderTextGeneration = Effect.gen(function* () {
         "ultra",
       ];
       const reasoningEffort = effortOrder.find((effort) => efforts.includes(effort)) ?? efforts[0];
+      // Providers that describe effort as a model option get its cheapest level the same way.
+      const effortOption = descriptor?.optionDescriptors?.find((option) => option.id === "effort");
+      const effortChoices =
+        effortOption?.type === "select" ? effortOption.options.map((option) => option.id) : [];
+      const effort = effortOrder.find((value) => effortChoices.includes(value));
       const options = {
         ...(reasoningEffort ? { reasoningEffort } : {}),
+        ...(effort ? { effort } : {}),
         ...(descriptor?.supportsFastMode ? { fastMode: true } : {}),
       };
       const modelSelection: ModelSelection = { provider, model: selectedModel, options };
