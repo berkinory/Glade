@@ -370,9 +370,13 @@ and discard the attempt; reopening a retained running or exited attempt shows it
 current state. Credentials remain managed by the official CLI. Authentication has
 to be verified by provider status even when the command exits successfully.
 
-Cursor, Grok Build and OpenCode usage comes from [OpenUsage](https://www.openusage.ai/), a local
-app that reads each provider's limits; Glade reads its loopback API while it runs, and their usage
-cards say when it is not running.
+Usage comes from each provider's own sign-in and service; Glade never stores those credentials.
+Cursor reads the Cursor CLI login (the macOS keychain, or `auth.json` elsewhere) or the Cursor
+editor's login and shows the billing cycle's total, Cursor-model and other-model usage plus
+on-demand spend. Grok Build reads `~/.grok/auth.json` and shows the weekly credit pool. Grok
+rotates its refresh tokens, so Glade never renews them; after the stored token expires the card
+asks you to use Grok Build or sign in again. OpenCode shows the five-hour, weekly and monthly
+OpenCode Go windows when you are signed in to OpenCode Go; free models have no limits to show.
 
 Usage settings can show any provider that reports usage in the sidebar, with five-hour, weekly or
 both windows. With both selected, the outer track is five-hour and the inner track

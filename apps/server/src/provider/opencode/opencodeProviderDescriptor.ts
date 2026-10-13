@@ -1,4 +1,3 @@
-import { homedir } from "node:os";
 import path from "node:path";
 import { Effect } from "effect";
 
@@ -6,13 +5,8 @@ import { buildProviderChildEnvironment } from "../core/providerChildEnvironment.
 import type { ServerProviderDescriptor } from "../core/serverProviderDescriptor.ts";
 import { OPENCODE_ACP_PROFILE } from "./opencodeAcpProfile.ts";
 import { OPENCODE_CLI } from "./opencodeCli.ts";
+import { opencodeDataHome } from "./opencodeEnvironment.ts";
 import { checkOpenCodeProviderStatus } from "./opencodeStatusCheck.ts";
-
-const dataHome = (env: NodeJS.ProcessEnv, homeDir: string) =>
-  path.join(
-    env.XDG_DATA_HOME?.trim() || path.join(homeDir || env.HOME || homedir(), ".local", "share"),
-    "opencode",
-  );
 
 export const OPENCODE_PROVIDER_DESCRIPTOR: ServerProviderDescriptor = {
   kind: "opencode",
@@ -25,7 +19,7 @@ export const OPENCODE_PROVIDER_DESCRIPTOR: ServerProviderDescriptor = {
   // OpenCode routes to whichever model provider the user configured, so it reads their API keys.
   environment: { credentialGrants: "all" },
   modelCatalogIdentity: {
-    home: ({ env, homeDir }) => dataHome(env, homeDir),
+    home: ({ env, homeDir }) => opencodeDataHome(env, homeDir),
     account: async () => undefined,
     homeConfigFiles: [],
     workspaceConfigFiles: ["opencode.json", "opencode.jsonc"],

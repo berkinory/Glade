@@ -81,14 +81,9 @@ export function needsAuthSnapshot(
   provider: ProviderKind,
   nowMs: number,
   source: string,
+  detail: string = providerUsageNeedsAuthDetail(provider),
 ): ServerProviderUsageSnapshot {
-  return buildSnapshot({
-    provider,
-    nowMs,
-    status: "needs-auth",
-    source,
-    detail: providerUsageNeedsAuthDetail(provider),
-  });
+  return buildSnapshot({ provider, nowMs, status: "needs-auth", source, detail });
 }
 
 export function unsupportedSnapshot(
