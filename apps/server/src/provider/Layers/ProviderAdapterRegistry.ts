@@ -13,7 +13,6 @@ import {
 import { ClaudeAdapter } from "../Services/ClaudeAdapter.ts";
 import { CodexAdapter } from "../Services/CodexAdapter.ts";
 import { AcpAdapters } from "../Services/AcpAdapters.ts";
-import { MuseAdapter } from "../Services/MuseAdapter.ts";
 
 export interface ProviderAdapterRegistryLiveOptions {
   readonly adapters?: ReadonlyArray<ProviderAdapterShape<ProviderAdapterError>>;
@@ -24,7 +23,7 @@ const makeProviderAdapterRegistry = (options?: ProviderAdapterRegistryLiveOption
     const adapters =
       options?.adapters !== undefined
         ? options.adapters
-        : [yield* CodexAdapter, yield* ClaudeAdapter, ...(yield* AcpAdapters), yield* MuseAdapter];
+        : [yield* CodexAdapter, yield* ClaudeAdapter, ...(yield* AcpAdapters)];
 
     for (const adapter of adapters) {
       assertProviderAdapterConformance(adapter);

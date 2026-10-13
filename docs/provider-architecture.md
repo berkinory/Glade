@@ -4,12 +4,11 @@ Glade treats provider integrations as adapters behind server-owned orchestration
 
 ## Implemented providers
 
-`ProviderAdapterRegistryLive` registers seven provider kinds:
+`ProviderAdapterRegistryLive` registers five provider kinds:
 
 - `codex`, on its own app-server adapter;
 - `claudeAgent`, on the Claude Agent SDK;
-- `museCode`, on its own Muse Session Protocol adapter;
-- `opencode`, `grok`, `cursor` and `factoryDroid`, on the shared Agent Client Protocol adapter.
+- `opencode`, `grok` and `cursor`, on the shared Agent Client Protocol adapter.
 
 The registry is intentionally small. It maps `ProviderKind` to an adapter and lists the registered providers; it does not own session routing, persistence, or cross-provider orchestration.
 
@@ -79,14 +78,6 @@ A provider command that settles as dead or uncertain quarantines its chat. The i
 Each chat owns one ACP session. Chats with the same executable, spawn environment and system prompt share one agent process, since sessions carry their own working directory and a second session costs the agent a few megabytes instead of a whole process; the last chat to stop closes it, and a crash ends every chat it hosted. An agent that keeps one MCP client per server name for the whole process (OpenCode) would send every chat's Glade calls with the last chat's credentials, so while Glade's MCP server is attached each of its chats gets a private process. The resume cursor stores the native session id and resumes through `session/load` when the agent offers it; updates replayed during the load are discarded because the transcript is Glade's. The harness policy goes into the agent's system prompt through process arguments when the profile offers them (Grok's `--rules`), and otherwise rides on the first prompt of a fresh native session; it offers Glade's tools only when Glade's MCP server reached the agent. Agents with a native `/compact` command compact through it as a turn, and a successful end reports the context as compacted. The others compact by summary: the agent writes a continuation summary as a turn, the chat moves into a fresh native session on the same process, and the summary opens that session's first prompt; if the move fails the chat keeps its session and the turn reports why. Agents without a native fork fork by transcript: Glade copies the chat up to the chosen reply and the fork's first turn starts a fresh native session with that transcript as context. Gateway tools reach the agent as an HTTP MCP server when it advertises HTTP MCP support. Permission requests become Glade approvals in Supervised mode and are allowed once in Full Access; Glade never answers with a lasting grant. Interrupting answers outstanding permission requests as cancelled before `session/cancel`, as the protocol requires.
 
 ACP reports config options only for the model currently selected. Discovery opens a throwaway session, selects each model within a three-second budget to read its own options, and removes the session from the agent's history where the agent allows it. Agents that save model switches as their CLI default are never probed, and their title requests stay on the current model. The agent's thought-level option is offered under the shared `effort` id. A turn applies only option values the selected model offers. Title requests run in a throwaway session that rejects every permission request and parse the JSON object from the reply text, because ACP has neither structured output nor a tool-free prompt.
-
-## Muse Code
-
-`provider/muse/` drives `muse serve`, a Muse Session Protocol (MSP v1) host speaking newline-delimited JSON-RPC over stdio, on Glade's own stdio framing and request registry. Only the MSP fields Glade reads are decoded, each at the boundary. Commands carry client-minted UUIDv7 ids, and acknowledgements only admit a command; outcomes arrive on the session's view stream.
-
-Each chat owns one host with durable session logs. A host measured about 157 MB idle and 0.3 seconds to initialize, and it can carry several sessions with their own permission settings, so sharing hosts between chats is possible but not done yet. The resume cursor stores the native session id; `session/resume` excludes history, a session the host no longer has starts fresh, and a resumed session moves onto the chat's current runtime mode. Supervised selects the `promptUnmatched` approval mode with the `:ask-me` permission profile, so approvals reach the user instead of Muse's AI reviewer; Full Access selects `allowAll` with `:unrestricted`, and anything the host still asks about is allowed once. Glade never picks a choice that persists a rule beyond the session. The permission profile switch and the `account/read` status check use MSP's experimental surface.
-
-Turn events that race the `turn/start` acknowledgement are held until `turn.started` is out. Reminder, hook, workflow and side-chat items are Muse features outside Glade's scope and are dropped. `/selector args` becomes a native skill invocation when the session lists that skill. Title and structured requests run on a host that stores nothing and cannot run commands or write, in a session that refuses every tool call. MSP has no session delete or archive, and its rename lowercases names, so native history stays as Muse keeps it.
 
 ## Provider-specific state
 

@@ -48,7 +48,7 @@ export async function openAcpConnection(input: {
 }): Promise<AcpConnection> {
   const { child, profile } = input;
   const sessions = new Map<string, AcpSessionHandlers>();
-  // Some agents (Droid) announce a session's commands before answering `session/new`, while no
+  // Some agents announce a session's commands before answering `session/new`, while no
   // owner is attached; the latest announcement waits for it. Other early updates are dropped, which
   // also discards the history `session/load` replays.
   const earlyCommands = new Map<string, SessionNotification>();
