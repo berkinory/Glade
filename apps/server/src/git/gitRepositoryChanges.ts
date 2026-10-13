@@ -3,6 +3,7 @@ import * as path from "node:path";
 import * as fs from "node:fs/promises";
 import { Cause, Duration, Effect, Queue, Schedule, Stream } from "effect";
 
+import { watchDirectoryTree } from "./directoryTreeWatch";
 import { GitCommandError } from "./Errors";
 import type { GitCoreShape } from "./Services/GitCore";
 
@@ -19,6 +20,11 @@ const METADATA_FILES = new Set([
   "glade-push.json",
 ]);
 const WORKTREE_BATCH_MAX_PATHS = 20_000;
+// Node's recursive fs.watch on Linux walks the tree synchronously and opens an inotify watch per
+// file, stalling the event loop for seconds on large repositories; watch directories instead.
+const WATCH_PER_DIRECTORY = process.platform === "linux";
+// Over this the listing fails and the worktree watcher backs off, rather than watching part of it.
+const WORKTREE_LISTING_MAX_BYTES = 32 * 1024 * 1024;
 // Failed watches back off instead of rescanning every 5s; recursive watches can exhaust inotify
 // limits on Linux.
 export const WATCH_RETRY = Schedule.either(
@@ -47,22 +53,28 @@ function isMetadataChange(name: string | null): boolean {
   );
 }
 
+function isMissing(cause: unknown): boolean {
+  return (cause as NodeJS.ErrnoException | null)?.code === "ENOENT";
+}
+
+function watchError(cwd: string, directory: string, cause: unknown): GitCommandError {
+  return new GitCommandError({
+    operation: "watch repository",
+    cwd,
+    command: "fs.watch",
+    detail:
+      (cause as NodeJS.ErrnoException | null)?.code === "ENOSPC"
+        ? `Could not watch ${directory}: the inotify watch limit (fs.inotify.max_user_watches) is exhausted.`
+        : `Could not watch ${directory}.`,
+    cause,
+  });
+}
+
 function watchDirectory(
   cwd: string,
   directory: string,
   accept: (name: string | null) => boolean,
 ): Stream.Stream<void, GitCommandError> {
-  const watchError = (cause: unknown) =>
-    new GitCommandError({
-      operation: "watch repository",
-      cwd,
-      command: "fs.watch",
-      detail:
-        (cause as NodeJS.ErrnoException | null)?.code === "ENOSPC"
-          ? `Could not watch ${directory}: the inotify watch limit (fs.inotify.max_user_watches) is exhausted.`
-          : `Could not watch ${directory}.`,
-      cause,
-    });
   return Stream.callback<void, GitCommandError>(
     (queue) =>
       Effect.acquireRelease(
@@ -73,29 +85,123 @@ function watchDirectory(
               if (accept(name)) Queue.offerUnsafe(queue, undefined);
             });
             const onError = (cause: Error) =>
-              Queue.failCauseUnsafe(queue, Cause.fail(watchError(cause)));
+              Queue.failCauseUnsafe(queue, Cause.fail(watchError(cwd, directory, cause)));
             watcher.on("error", onError);
             // Revalidate after establishing the watcher to close the snapshot-before-watch race.
             Queue.offerUnsafe(queue, undefined);
             return { watcher, onError };
           },
-          catch: watchError,
+          catch: (cause) => watchError(cwd, directory, cause),
         }),
         ({ watcher, onError }) =>
           Effect.sync(() => {
             watcher.off("error", onError);
             watcher.close();
           }),
-      ).pipe(Effect.asVoid),
+      ).pipe(
+        Effect.asVoid,
+        // A failure inside the forked callback effect does not reach the stream on its own.
+        Effect.catch((error) => Queue.fail(queue, error)),
+      ),
     { bufferSize: 1, strategy: "sliding" },
   );
 }
 
-function watchWorktree(cwd: string, isEveryPathIgnored: WorktreeIgnoreCheck) {
+function worktreeDirectories(paths: ReadonlyArray<string>): Set<string> {
+  const directories = new Set([""]);
+  for (const file of paths) {
+    if (file === "" || `/${file}`.includes("/.git/")) continue;
+    let directory = file.endsWith("/")
+      ? file.slice(0, -1)
+      : file.slice(0, Math.max(0, file.lastIndexOf("/")));
+    while (directory !== "" && !directories.has(directory)) {
+      directories.add(directory);
+      directory = directory.slice(0, Math.max(0, directory.lastIndexOf("/")));
+    }
+  }
+  return directories;
+}
+
+function watchWorktreeDirectories(
+  cwd: string,
+  execute: GitCoreShape["execute"],
+  accept: (name: string | null) => boolean,
+): Stream.Stream<void, GitCommandError> {
+  if (!WATCH_PER_DIRECTORY) return watchDirectory(cwd, cwd, accept);
+  return watchDirectoryTree({
+    root: cwd,
+    // Git skips ignored trees such as node_modules without walking them. Files only reveal the
+    // directories holding them; `--directory` adds empty untracked ones as `dir/`.
+    listDirectories: Effect.all(
+      [["--cached"], ["--directory"]].map((mode) =>
+        execute({
+          operation: "watch repository",
+          cwd,
+          args: ["ls-files", "-z", "--others", "--exclude-standard", ...mode],
+          priority: "background",
+          maxOutputBytes: WORKTREE_LISTING_MAX_BYTES,
+        }),
+      ),
+      { concurrency: "unbounded" },
+    ).pipe(
+      Effect.map((results) =>
+        worktreeDirectories(results.flatMap((result) => result.stdout.split("\0"))),
+      ),
+    ),
+    accept,
+    affectsListing: (name) => name.split("/").at(-1) === ".gitignore",
+    watchError: (directory, cause) => watchError(cwd, directory, cause),
+  });
+}
+
+async function metadataDirectories(gitDirectory: string): Promise<Set<string>> {
+  const directories = new Set([""]);
+  const visit = async (relative: string): Promise<void> => {
+    const entries = await fs
+      .readdir(path.join(gitDirectory, relative), { withFileTypes: true })
+      .catch((cause: unknown) => (isMissing(cause) ? [] : Promise.reject(cause)));
+    const children = entries
+      .filter((entry) => entry.isDirectory())
+      .map((entry) => (relative === "" ? entry.name : `${relative}/${entry.name}`))
+      // Objects, logs, hooks and other bulk content can never hold a metadata change.
+      .filter((child) => isMetadataChange(`${child}/`));
+    for (const child of children) directories.add(child);
+    await Promise.all(children.map(visit));
+  };
+  await visit("");
+  return directories;
+}
+
+function watchMetadataDirectory(cwd: string, directory: string) {
+  if (!WATCH_PER_DIRECTORY) return watchDirectory(cwd, directory, isMetadataChange);
+  return watchDirectoryTree({
+    root: directory,
+    listDirectories: Effect.tryPromise({
+      try: () => metadataDirectories(directory),
+      catch: (cause) =>
+        new GitCommandError({
+          operation: "watch repository",
+          cwd,
+          command: "readdir",
+          detail: `Could not list Git metadata directories in ${directory}.`,
+          cause,
+        }),
+    }),
+    accept: isMetadataChange,
+    affectsListing: () => false,
+    watchError: (watched, cause) => watchError(cwd, watched, cause),
+  });
+}
+
+function watchWorktree(
+  cwd: string,
+  execute: GitCoreShape["execute"],
+  isEveryPathIgnored: WorktreeIgnoreCheck,
+) {
   return Stream.suspend(() => {
     // null forces a refresh: unnamed events, overflow, and the revalidation after (re)watching.
     let pending: Set<string> | null = null;
-    return watchDirectory(cwd, cwd, (name) => {
+    return watchWorktreeDirectories(cwd, execute, (name) => {
       if (name?.split("/").includes(".git")) return false;
       if (name === null || pending === null || pending.size >= WORKTREE_BATCH_MAX_PATHS)
         pending = null;
@@ -139,32 +245,16 @@ async function metadataFingerprint(
   )) {
     const refs = await fs
       .readdir(directory, { recursive: true, withFileTypes: true })
-      .catch((cause: unknown) => {
-        if (
-          typeof cause === "object" &&
-          cause !== null &&
-          "code" in cause &&
-          cause.code === "ENOENT"
-        )
-          return [];
-        throw cause;
-      });
+      .catch((cause: unknown) => (isMissing(cause) ? [] : Promise.reject(cause)));
     for (const entry of refs) {
       paths.push(path.join(entry.parentPath, entry.name));
     }
   }
   const records = await Promise.all(
     paths.map(async (file) => {
-      const stat = await fs.stat(file, { bigint: true }).catch((cause: unknown) => {
-        if (
-          typeof cause === "object" &&
-          cause !== null &&
-          "code" in cause &&
-          cause.code === "ENOENT"
-        )
-          return null;
-        throw cause;
-      });
+      const stat = await fs
+        .stat(file, { bigint: true })
+        .catch((cause: unknown) => (isMissing(cause) ? null : Promise.reject(cause)));
       return stat
         ? `${file}:${stat.ino}:${stat.size}:${stat.mtimeNs}:${stat.ctimeNs}`
         : `${file}:missing`;
@@ -223,7 +313,7 @@ export function watchGitRepository(
         const directories = [...new Set(result.stdout.trim().split("\n"))];
         let previousRepository: string | null = null;
         const metadata = Stream.mergeAll(
-          directories.map((directory) => watchDirectory(cwd, directory, isMetadataChange)),
+          directories.map((directory) => watchMetadataDirectory(cwd, directory)),
           { concurrency: "unbounded" },
         ).pipe(
           Stream.throttle({ units: 1, duration: Duration.millis(150), cost: () => 1 }),
@@ -248,7 +338,7 @@ export function watchGitRepository(
           }),
         );
         // Worktree watch failures must not stop the metadata watcher, so they retry on their own.
-        const worktree = watchWorktree(cwd, isEveryPathIgnored).pipe(
+        const worktree = watchWorktree(cwd, execute, isEveryPathIgnored).pipe(
           Stream.tapError((error) =>
             Effect.logWarning(
               "Worktree watcher failed; Git status follows only Git metadata until it recovers",
