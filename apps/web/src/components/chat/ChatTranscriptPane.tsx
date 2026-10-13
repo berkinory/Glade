@@ -50,7 +50,7 @@ interface ChatTranscriptPaneProps {
   pinnedMessageIds?: ReadonlySet<MessageId>;
   onTogglePinMessage?: (messageId: MessageId) => void;
   onForkFromMessage?: (messageId: MessageId) => void;
-  forkBoundary?: "turn" | "message";
+  forkBoundary?: "turn" | "message" | "transcript";
   enteringUserMessageIds?: ComponentProps<typeof MessagesTimeline>["enteringUserMessageIds"];
   tailAnchorMessageId?: ComponentProps<typeof MessagesTimeline>["tailAnchorMessageId"];
   tailAnchorScrollInFlightRef?: ComponentProps<

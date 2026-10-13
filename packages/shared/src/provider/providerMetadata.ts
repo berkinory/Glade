@@ -8,8 +8,10 @@ export interface ProviderCapabilities {
   readonly turnSteering: boolean;
   // The provider can ask a question that the user answers later, outside the blocking request flow.
   readonly asyncUserInput: boolean;
-  // How a native fork names its boundary: the turn that produced the message, or the message itself.
-  readonly forkBoundary: "turn" | "message" | "none";
+  // How a fork names its boundary: a native fork at the turn that produced the message or at the
+  // message itself, or a transcript fork, which copies the chat up to any finished reply and starts
+  // the fork's native session fresh with that transcript as context.
+  readonly forkBoundary: "turn" | "message" | "transcript" | "none";
   // Session settings can change while a turn is running.
   readonly reconfiguresDuringActiveTurn: boolean;
   // `rpc` compacts through a native call. `promptTurn` compacts by running a `/compact` turn, so it is
@@ -157,7 +159,7 @@ export const PROVIDER_DESCRIPTORS = defineProviderDescriptors([
     capabilities: {
       turnSteering: false,
       asyncUserInput: false,
-      forkBoundary: "none",
+      forkBoundary: "transcript",
       reconfiguresDuringActiveTurn: false,
       compaction: "none",
       skillMentionPrefix: "/",
@@ -187,7 +189,7 @@ export const PROVIDER_DESCRIPTORS = defineProviderDescriptors([
     capabilities: {
       turnSteering: false,
       asyncUserInput: false,
-      forkBoundary: "none",
+      forkBoundary: "transcript",
       reconfiguresDuringActiveTurn: false,
       compaction: "none",
       skillMentionPrefix: "/",
@@ -220,7 +222,7 @@ export const PROVIDER_DESCRIPTORS = defineProviderDescriptors([
     capabilities: {
       turnSteering: false,
       asyncUserInput: false,
-      forkBoundary: "none",
+      forkBoundary: "transcript",
       reconfiguresDuringActiveTurn: false,
       compaction: "none",
       skillMentionPrefix: "/",
@@ -250,7 +252,7 @@ export const PROVIDER_DESCRIPTORS = defineProviderDescriptors([
     capabilities: {
       turnSteering: false,
       asyncUserInput: false,
-      forkBoundary: "none",
+      forkBoundary: "transcript",
       reconfiguresDuringActiveTurn: false,
       compaction: "none",
       skillMentionPrefix: "/",

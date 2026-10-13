@@ -364,7 +364,11 @@ export function makeProviderSessionConfiguration(input: {
       };
     }
 
-    if (thread.forkSourceThreadId && !handoffStart) {
+    const transcriptFork =
+      Boolean(thread.forkSourceThreadId) &&
+      !handoffStart &&
+      providerCapabilities(preferredProvider).forkBoundary === "transcript";
+    if (thread.forkSourceThreadId && !handoffStart && !transcriptFork) {
       if (!providerService.forkThread)
         return yield* new ProviderAdapterValidationError({
           provider: preferredProvider ?? thread.modelSelection.provider,
@@ -429,7 +433,7 @@ export function makeProviderSessionConfiguration(input: {
 
     const registerPriorTranscriptBootstrapOnFreshStart =
       shouldRegisterContextBootstrap &&
-      options?.registerPriorTranscriptBootstrapOnFreshStart === true;
+      (options?.registerPriorTranscriptBootstrapOnFreshStart === true || transcriptFork);
     const startOutcome = yield* startProviderSessionWithOutcome(
       handoffStart && options.handoffResumeCursor != null ? options.handoffResumeCursor : undefined,
       registerPriorTranscriptBootstrapOnFreshStart,

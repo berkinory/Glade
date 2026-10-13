@@ -58,24 +58,25 @@ export function useComposerForkCommands(input: {
       }
 
       const forkBoundary = providerCapabilities(selectedProvider).forkBoundary;
-      const nativeForkBoundary = (message: ChatMessage) =>
+      const forkPointOf = (message: ChatMessage) =>
         forkBoundary === "turn"
           ? message.turnId
           : forkBoundary === "message"
             ? message.providerMessageId
-            : undefined;
+            : forkBoundary === "transcript"
+              ? message.id
+              : undefined;
       const forkMessage = inputOptions?.throughMessageId
         ? activeThread.messages.find((message) => message.id === inputOptions.throughMessageId)
         : activeThread.messages.findLast(
-            (message) =>
-              message.role === "assistant" && !message.streaming && nativeForkBoundary(message),
+            (message) => message.role === "assistant" && !message.streaming && forkPointOf(message),
           );
       if (
         !forkMessage ||
         selectedProvider !== activeThread.modelSelection.provider ||
-        !nativeForkBoundary(forkMessage)
+        !forkPointOf(forkMessage)
       ) {
-        toastManager.add({ type: "warning", title: "This message has no native fork point" });
+        toastManager.add({ type: "warning", title: "This message cannot be forked" });
         return false;
       }
       const nextThreadId = newThreadId();

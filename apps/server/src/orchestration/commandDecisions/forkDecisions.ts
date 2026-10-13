@@ -76,18 +76,22 @@ export const decideForkCreate = Effect.fnUntraced(function* ({
       : forkBoundary === "message" && forkMessage.providerMessageId
         ? { provider, messageId: forkMessage.providerMessageId }
         : undefined;
-  if (!forkPoint)
+  // A transcript fork has no native boundary: the fork's first session starts fresh and carries the
+  // copied conversation as transcript context.
+  if (!forkPoint && forkBoundary !== "transcript")
     return yield* new OrchestrationCommandInvariantError({
       commandType: command.type,
       detail: "This message has no recorded native fork identifier.",
     });
-  const laterNativeMessage = sourceThread.messages
-    .slice(forkIndex + 1)
-    .some((message) =>
-      "turnId" in forkPoint
-        ? message.turnId === forkPoint.turnId
-        : message.providerMessageId === forkPoint.messageId,
-    );
+  const laterNativeMessage =
+    forkPoint !== undefined &&
+    sourceThread.messages
+      .slice(forkIndex + 1)
+      .some((message) =>
+        "turnId" in forkPoint
+          ? message.turnId === forkPoint.turnId
+          : message.providerMessageId === forkPoint.messageId,
+      );
   if (laterNativeMessage)
     return yield* new OrchestrationCommandInvariantError({
       commandType: command.type,
@@ -122,7 +126,7 @@ export const decideForkCreate = Effect.fnUntraced(function* ({
       subagentNickname: null,
       subagentRole: null,
       forkSourceThreadId: command.sourceThreadId,
-      forkPoint,
+      ...(forkPoint ? { forkPoint } : {}),
       handoff: null,
       createdAt: command.createdAt,
       updatedAt: command.createdAt,

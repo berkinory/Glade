@@ -3,6 +3,7 @@ import { providerCapabilities } from "@glade/shared/provider/providerMetadata";
 import { CommandId, ThreadId } from "@glade/contracts/core/baseSchemas";
 import { GladeForkThreadInput } from "@glade/contracts/provider/agentGatewayTools";
 import { Effect, Option, Schema, Semaphore } from "effect";
+import { forkMessageId } from "../orchestration/forkImport";
 import type { OrchestrationEngineShape } from "../orchestration/Services/OrchestrationEngine";
 import type { ProjectionSnapshotQueryShape } from "../orchestration/Services/ProjectionSnapshotQuery";
 import { runtimeModeEscalatesPrivilege } from "@glade/shared/threads/runtimeMode";
@@ -58,7 +59,9 @@ export function makeForkThreadTool(
             ? message.turnId
             : forkBoundary === "message"
               ? message.providerMessageId
-              : undefined;
+              : forkBoundary === "transcript"
+                ? message.id
+                : undefined;
         if (!boundary)
           return yield* Effect.fail(
             new ToolInputError("This message has no native fork boundary."),
@@ -74,7 +77,9 @@ export function makeForkThreadTool(
           const expectedPoint =
             forkBoundary === "turn"
               ? { provider: thread.modelSelection.provider, turnId: boundary }
-              : { provider: thread.modelSelection.provider, messageId: boundary };
+              : forkBoundary === "message"
+                ? { provider: thread.modelSelection.provider, messageId: boundary }
+                : undefined;
           const creationEvents = yield* events.readThreadEvents({
             threadId,
             throughSequenceInclusive: yield* events.getThreadHighWaterSequence(threadId),
@@ -82,10 +87,21 @@ export function makeForkThreadTool(
             limit: 1,
           });
           const creation = creationEvents[0];
+          // A transcript fork records no native point; its copy of the chosen message names the plan.
+          const samePoint = expectedPoint
+            ? creation?.type === "thread.created" &&
+              stableGatewayDigest(creation.payload.forkPoint) === stableGatewayDigest(expectedPoint)
+            : Option.match(yield* snapshots.getThreadDetailById(threadId), {
+                onNone: () => false,
+                onSome: (detail) =>
+                  detail.messages.some(
+                    (entry) => entry.id === forkMessageId(threadId, input.messageId),
+                  ),
+              });
           if (
             fork.forkSourceThreadId !== thread.id ||
             creation?.type !== "thread.created" ||
-            stableGatewayDigest(creation.payload.forkPoint) !== stableGatewayDigest(expectedPoint)
+            !samePoint
           )
             return yield* Effect.fail(
               new ToolInputError("requestId belongs to a different fork plan."),
