@@ -36,8 +36,6 @@ export function useChatProviderController({
     setComposerCursor,
     setComposerTrigger,
     setComposerHighlightedItemId,
-
-    isRevertingCheckpoint,
   } = session;
   const {
     activeProject,
@@ -222,8 +220,7 @@ export function useChatProviderController({
 
   const hasQueueableLiveTurn = hasLiveTurn && activeThread?.session?.activeTurnId != null;
 
-  const isWorking =
-    hasLiveTurn || isSendBusy || isConnecting || isRevertingCheckpoint || isAwaitingTurnStart;
+  const isWorking = hasLiveTurn || isSendBusy || isConnecting || isAwaitingTurnStart;
 
   const activeTurnLayoutLive = isWorking || !latestTurnSettled || activeBackgroundTasks !== null;
   // The transcript stays at its end while a turn is live and the reader has not scrolled away: new

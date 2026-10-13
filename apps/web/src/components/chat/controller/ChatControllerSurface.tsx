@@ -291,6 +291,7 @@ export function ChatControllerSurface({ controller }: { controller: ChatControll
           turnId: latestTurnFailure.turnId,
           disabled:
             isWorking ||
+            isRevertingCheckpoint ||
             hasLiveTurn ||
             isSendBusy ||
             isConnecting ||

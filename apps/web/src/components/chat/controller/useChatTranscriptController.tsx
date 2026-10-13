@@ -77,6 +77,7 @@ export function useChatTranscriptController({
     threadDetailSyncState,
     composerTrigger,
     composerCommandPicker,
+    isRevertingCheckpoint,
   } = session;
   const { threadId } = useChatThreadContext();
 
@@ -112,7 +113,7 @@ export function useChatTranscriptController({
     isServerThread &&
     canCreateThreadHandoff({
       thread: activeThread,
-      isBusy: isWorking,
+      isBusy: isWorking || isRevertingCheckpoint,
       hasPendingApprovals: pendingApprovals.length > 0,
       hasPendingUserInput: pendingUserInputs.length > 0,
     })
