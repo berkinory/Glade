@@ -238,7 +238,9 @@ export function openAcpSession(input: {
             requestType,
             ...(request.toolCall.title ? { detail: request.toolCall.title } : {}),
             args: {
-              toolCallId: request.toolCall.toolCallId,
+              toolCallId:
+                active?.projection.toolItemId(request.toolCall.toolCallId) ??
+                request.toolCall.toolCallId,
               itemType: acpToolItemType(request.toolCall.kind ?? undefined),
               input: request.toolCall.rawInput ?? {},
               options: request.options.map(({ optionId, name, kind }) => ({

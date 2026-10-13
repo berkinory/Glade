@@ -97,6 +97,21 @@ const makeAdapter = makeAcpAdapter(adapterDependencies);
 const THREAD = ThreadId.makeUnsafe("thread-acp");
 const OTHER_THREAD = ThreadId.makeUnsafe("thread-acp-other");
 
+// The fake agent reuses "tool-1" every turn; each turn's row and approval must still name its own call.
+const toolCallIds = (events: ReadonlyArray<ProviderRuntimeEvent>) => [
+  ...new Set(
+    events.flatMap((event) => {
+      if (event.type === "item.started" && event.payload.itemType === "command_execution") {
+        return event.itemId ? [event.itemId] : [];
+      }
+      const args = event.type === "request.opened" ? event.payload.args : undefined;
+      return typeof args === "object" && args !== null && "toolCallId" in args
+        ? [String(args.toolCallId)]
+        : [];
+    }),
+  ),
+];
+
 const assistantText = (events: ReadonlyArray<ProviderRuntimeEvent>) =>
   events
     .flatMap((event) =>
@@ -343,6 +358,11 @@ describe("ACP adapter over stdio", () => {
         ),
         ["cancel"],
       );
+      const approvedIds = toolCallIds(approvedEvents);
+      const interruptedIds = toolCallIds(interruptedEvents);
+      assert.lengthOf(approvedIds, 1);
+      assert.lengthOf(interruptedIds, 1);
+      assert.notEqual(approvedIds[0], interruptedIds[0]);
       yield* adapter.stopAll();
     }),
   );

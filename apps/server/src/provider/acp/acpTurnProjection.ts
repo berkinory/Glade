@@ -34,6 +34,8 @@ export interface AcpTurnProjection {
   readonly project: (update: SessionUpdate) => ReadonlyArray<AcpRuntimeEventDraft>;
   // Closes items still open when the turn ends, so the transcript never shows a running row.
   readonly finish: (failed: boolean) => ReadonlyArray<AcpRuntimeEventDraft>;
+  // Some agents restart tool-call ids every turn, so outward ids carry the turn.
+  readonly toolItemId: (toolCallId: string) => string;
 }
 
 export function acpToolItemType(kind: ToolKind | undefined): CanonicalItemType {
@@ -104,6 +106,7 @@ export function makeAcpTurnProjection(
   let planItemId: string | undefined;
 
   const nextItemId = (kind: string) => `${turnKey}:${kind}:${++segment}`;
+  const toolItemId = (toolCallId: string) => `${turnKey}:tool:${toolCallId}`;
 
   const closeText = (): AcpRuntimeEventDraft[] => {
     const drafts: AcpRuntimeEventDraft[] = [];
@@ -166,18 +169,17 @@ export function makeAcpTurnProjection(
     return drafts;
   };
 
-  const toolData = (
-    toolCallId: string,
-    tool: TrackedToolCall,
-    extra?: Record<string, unknown>,
-  ) => ({
-    toolCallId,
-    callId: toolCallId,
-    toolName: tool.title,
-    ...(tool.kind ? { toolKind: tool.kind } : {}),
-    input: tool.rawInput ?? {},
-    ...extra,
-  });
+  const toolData = (toolCallId: string, tool: TrackedToolCall, extra?: Record<string, unknown>) => {
+    const itemId = toolItemId(toolCallId);
+    return {
+      toolCallId: itemId,
+      callId: itemId,
+      toolName: tool.title,
+      ...(tool.kind ? { toolKind: tool.kind } : {}),
+      input: tool.rawInput ?? {},
+      ...extra,
+    };
+  };
 
   const startTool = (call: ToolCall): AcpRuntimeEventDraft[] => {
     const tool: TrackedToolCall = {
@@ -192,7 +194,7 @@ export function makeAcpTurnProjection(
       ...closeText(),
       {
         type: "item.started",
-        itemId: RuntimeItemId.makeUnsafe(call.toolCallId),
+        itemId: RuntimeItemId.makeUnsafe(toolItemId(call.toolCallId)),
         payload: {
           itemType: tool.itemType,
           status: itemStatus(call.status),
@@ -237,7 +239,7 @@ export function makeAcpTurnProjection(
     return [
       {
         type: done ? "item.completed" : "item.updated",
-        itemId: RuntimeItemId.makeUnsafe(update.toolCallId),
+        itemId: RuntimeItemId.makeUnsafe(toolItemId(update.toolCallId)),
         payload: {
           itemType: tool.itemType,
           status: itemStatus(update.status),
@@ -253,6 +255,7 @@ export function makeAcpTurnProjection(
   };
 
   return {
+    toolItemId,
     project: (update) => {
       switch (update.sessionUpdate) {
         case "agent_message_chunk":
@@ -291,7 +294,7 @@ export function makeAcpTurnProjection(
         tool.completed = true;
         drafts.push({
           type: "item.completed",
-          itemId: RuntimeItemId.makeUnsafe(toolCallId),
+          itemId: RuntimeItemId.makeUnsafe(toolItemId(toolCallId)),
           payload: {
             itemType: tool.itemType,
             status: failed ? "failed" : "completed",
