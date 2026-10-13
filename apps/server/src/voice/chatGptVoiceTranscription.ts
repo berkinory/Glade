@@ -1,8 +1,12 @@
 import { SERVER_VOICE_TRANSCRIPTION_MAX_AUDIO_BYTES } from "@glade/contracts/server/server";
 
-import { encodeOutboundMultipart, outboundHttp, type OutboundHttpResponse } from "./outboundHttp";
+import {
+  encodeOutboundMultipart,
+  outboundHttp,
+  type OutboundHttpResponse,
+} from "../platform/outboundHttp/outboundHttp.ts";
 
-export const CHATGPT_VOICE_TRANSCRIPTION_URL = "https://chatgpt.com/backend-api/transcribe";
+const CHATGPT_VOICE_TRANSCRIPTION_URL = "https://chatgpt.com/backend-api/transcribe";
 
 const MAX_MULTIPART_BYTES = SERVER_VOICE_TRANSCRIPTION_MAX_AUDIO_BYTES + 64 * 1024;
 const MAX_RESPONSE_BYTES = 1024 * 1024;

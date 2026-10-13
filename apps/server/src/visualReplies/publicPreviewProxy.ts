@@ -2,7 +2,7 @@ import { lookup } from "node:dns/promises";
 import { BlockList, connect, createServer, isIP, type Socket } from "node:net";
 import { networkInterfaces } from "node:os";
 import { Effect } from "effect";
-import { isPublicIpAddress } from "@glade/shared/http/outboundHttpPolicy";
+import { isPublicIpAddress } from "../platform/outboundHttp/outboundHttpPolicy.ts";
 import { VisualReplyError } from "./visualReplySource";
 
 const translatedAddresses = new BlockList();

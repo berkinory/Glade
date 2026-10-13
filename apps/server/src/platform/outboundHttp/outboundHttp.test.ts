@@ -6,7 +6,7 @@ import {
 import { createServer as createNetServer, type Server as NetServer } from "node:net";
 import { describe, expect, it } from "vitest";
 
-import { decodeOutboundJson, outboundHttp } from "./outboundHttp";
+import { decodeOutboundJson, outboundHttp } from "./outboundHttp.ts";
 
 // A port nothing is listening on, so every connection attempt is refused. HTTPS because the
 // outbound policy rejects plain HTTP destinations outright, which would fail the request before it

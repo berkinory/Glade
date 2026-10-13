@@ -13,7 +13,7 @@ import {
   isFakeIpDnsAddress,
   normalizeOutboundOrigin,
   stripOutboundSensitiveHeaders,
-} from "./outboundHttpPolicy";
+} from "./outboundHttpPolicy.ts";
 
 export type OutboundHttpErrorCode =
   | "aborted"
@@ -39,7 +39,7 @@ export class OutboundHttpError extends Error {
   }
 }
 
-export interface OutboundHttpPolicy {
+interface OutboundHttpPolicy {
   readonly service: string;
   readonly allowedOrigins: ReadonlyArray<string>;
   readonly timeoutMs: number;
@@ -56,7 +56,7 @@ export interface OutboundHttpPolicy {
   readonly allowFakeIpDnsAddresses?: boolean;
 }
 
-export interface OutboundHttpRequest {
+interface OutboundHttpRequest {
   readonly policy: OutboundHttpPolicy;
   readonly url: string | URL;
   readonly method?: "GET" | "HEAD" | "POST" | "PUT" | "PATCH" | "DELETE";
@@ -451,7 +451,7 @@ function isRedirectStatus(status: number): boolean {
   return status === 301 || status === 302 || status === 303 || status === 307 || status === 308;
 }
 
-export class OutboundHttpClient {
+class OutboundHttpClient {
   async request(input: OutboundHttpRequest): Promise<OutboundHttpResponse> {
     const policy = input.policy;
     const allowLoopbackHttp = policy.allowLoopbackHttp === true;
@@ -563,7 +563,7 @@ export class OutboundHttpClient {
 
 export const outboundHttp = new OutboundHttpClient();
 
-export function decodeOutboundText(response: OutboundHttpResponse): string {
+function decodeOutboundText(response: OutboundHttpResponse): string {
   return new TextDecoder().decode(response.body);
 }
 

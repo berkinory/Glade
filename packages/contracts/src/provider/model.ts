@@ -4,12 +4,7 @@ import type { ProviderKind } from "../core/baseSchemas";
 
 export type CodexReasoningEffort = string;
 export type ClaudeApiEffort = string;
-export const CLAUDE_PROMPT_MODE_OPTIONS = ["ultrathink"] as const;
-export type ClaudePromptMode = (typeof CLAUDE_PROMPT_MODE_OPTIONS)[number];
-export const CLAUDE_CODE_MODE_OPTIONS = ["ultracode"] as const;
-export type ClaudeCodeMode = (typeof CLAUDE_CODE_MODE_OPTIONS)[number];
 export type ClaudeCodeEffort = string;
-export type ProviderReasoningEffort = string;
 export const ProviderOptionChoice = Schema.Struct({
   id: TrimmedNonEmptyString,
   label: TrimmedNonEmptyString,

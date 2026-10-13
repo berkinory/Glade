@@ -193,9 +193,6 @@ contextBridge.exposeInMainWorld("desktopBridge", {
     isSupported: () => ipcRenderer.invoke(IPC.notificationsIsSupported),
     show: (input) => ipcRenderer.invoke(IPC.notificationsShow, input),
   },
-  server: {
-    transcribeVoice: (input) => ipcRenderer.invoke(IPC.transcribeVoice, input),
-  },
   computer: {
     getPermissions: () => ipcRenderer.invoke(IPC.computerPermissionsGet),
     requestPermissions: () => ipcRenderer.invoke(IPC.computerPermissionsRequest),

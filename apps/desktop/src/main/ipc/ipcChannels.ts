@@ -55,7 +55,6 @@ export const DESKTOP_IPC_CHANNELS = {
   pairedMachinesConnect: "desktop:paired-machines-connect",
   pairedMachinesGetStates: "desktop:paired-machines-get-states",
   pairedMachineStates: "desktop:paired-machine-states",
-  transcribeVoice: "desktop:server-transcribe-voice",
   browserPlaceView: "desktop:browser-place-view",
   browserPickElement: "desktop:browser-pick-element",
   browserCancelPick: "desktop:browser-cancel-pick",
@@ -69,5 +68,3 @@ export const DESKTOP_IPC_CHANNELS = {
   computerPermissionsRequest: "desktop:computer-permissions-request",
   computerPermissionsOpenSettings: "desktop:computer-permissions-open-settings",
 } as const;
-
-export const SERVER_TRANSCRIBE_VOICE_CHANNEL = DESKTOP_IPC_CHANNELS.transcribeVoice;

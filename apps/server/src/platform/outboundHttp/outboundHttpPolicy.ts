@@ -184,11 +184,7 @@ export function assertJsonWithinLimits(
   }
 }
 
-export const OUTBOUND_SENSITIVE_HEADER_NAMES = new Set([
-  "authorization",
-  "cookie",
-  "proxy-authorization",
-]);
+const OUTBOUND_SENSITIVE_HEADER_NAMES = new Set(["authorization", "cookie", "proxy-authorization"]);
 
 export function stripOutboundSensitiveHeaders(headers: Headers): Headers {
   const stripped = new Headers(headers);

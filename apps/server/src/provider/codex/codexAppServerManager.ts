@@ -55,7 +55,7 @@ import {
   type ServerVoiceTranscriptionResult,
 } from "@glade/contracts/server/server";
 import { UserInputQuestion } from "@glade/contracts/provider/runtimePayloads";
-import { prewarmChatGptVoiceTranscriptionConnection } from "@glade/shared/http/chatGptVoiceTranscription";
+import { prewarmChatGptVoiceTranscriptionConnection } from "../../voice/chatGptVoiceTranscription.ts";
 import { normalizeModelSlug } from "@glade/shared/provider/model";
 import { approvalSessionGrantWidensSessionPolicy } from "@glade/shared/threads/approvalSessionGrant";
 import {
