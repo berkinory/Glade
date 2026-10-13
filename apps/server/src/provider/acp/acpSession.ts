@@ -20,6 +20,7 @@ import type {
 } from "@glade/contracts/provider/sessionPolicy";
 
 import type { AcpConnection } from "./acpConnection.ts";
+import { acpSetConfigRequest } from "./acpModelCatalog.ts";
 import {
   acpToolItemType,
   makeAcpTurnProjection,
@@ -49,7 +50,7 @@ export interface AcpSession {
   readonly configOptions: () => ReadonlyArray<SessionConfigOption>;
   readonly availableCommands: () => ReadonlyArray<AvailableCommand>;
   readonly activeTurnId: () => string | undefined;
-  readonly setConfigOption: (configId: string, value: string) => Promise<void>;
+  readonly setConfigOption: (configId: string, value: string | boolean) => Promise<void>;
   // Resolves when the turn ends; the turn's events go to the sink as they arrive.
   readonly prompt: (turnId: string, blocks: ReadonlyArray<ContentBlock>) => Promise<void>;
   readonly cancel: () => Promise<void>;
@@ -274,12 +275,10 @@ export function openAcpSession(input: {
     activeTurnId: () => active?.turnId,
     setConfigOption: async (configId, value) => {
       const current = configOptions.find((option) => option.id === configId);
-      if (current?.type === "select" && current.currentValue === value) return;
-      const response = await connection.agent.setSessionConfigOption({
-        sessionId,
-        configId,
-        value,
-      });
+      if (current && current.currentValue === value) return;
+      const response = await connection.agent.setSessionConfigOption(
+        acpSetConfigRequest(sessionId, configId, value),
+      );
       configOptions = response.configOptions;
     },
     prompt: async (turnId, blocks) => {

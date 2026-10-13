@@ -1,3 +1,4 @@
+import type { ClientSideConnection, SessionConfigOption } from "@agentclientprotocol/sdk";
 import type { ProviderKind } from "@glade/contracts/core/baseSchemas";
 import type { RuntimeMode } from "@glade/contracts/provider/sessionPolicy";
 
@@ -9,6 +10,12 @@ interface AcpExtensionHandlers {
     method: string,
     params: Record<string, unknown>,
   ) => Promise<Record<string, unknown> | undefined> | undefined;
+}
+
+export interface AcpModelDescription {
+  readonly slug: string;
+  readonly name: string;
+  readonly configOptions: ReadonlyArray<SessionConfigOption>;
 }
 
 // Everything that differs between agents that speak ACP. Shared ACP code reads this record and
@@ -33,11 +40,14 @@ export interface AcpProviderProfile {
   // The agent saves every model switch as the default of its own CLI, so Glade switches models
   // only for the user's chats: discovery and title requests stay on the current model.
   readonly savesModelChoiceGlobally?: boolean;
-  // A readable name and vendor for agents that name models by their raw ids.
-  readonly presentModel?: (
-    slug: string,
-    name: string,
-  ) => { readonly name: string; readonly vendor?: string };
+  // Client capability metadata the agent reads in `initialize` to unlock richer behavior.
+  readonly clientMeta?: Readonly<Record<string, unknown>>;
+  // The agent's own list of every model with its settings, read without switching models.
+  readonly describeModels?: (
+    agent: ClientSideConnection,
+  ) => Promise<ReadonlyArray<AcpModelDescription>>;
+  // The vendor label that groups a model in the picker, for agents that do not name it.
+  readonly modelVendor?: (slug: string) => string | undefined;
   // Native slash commands for features outside Glade's scope, hidden from the composer.
   readonly hiddenCommands: ReadonlySet<string>;
   readonly extensions?: AcpExtensionHandlers;

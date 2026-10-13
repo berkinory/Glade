@@ -17,8 +17,14 @@ import { Readable, Writable } from "node:stream";
 const configOptions = (model = "m1") => [
   { id: "model", name: "Model", category: "model", type: "select", currentValue: model,
     options: [{ value: "m1", name: "Model One" }, { value: "m2", name: "Model Two" }] },
-  ...(model === "m2" ? [{ id: "reasoning", name: "Reasoning", category: "thought_level", type: "select",
-    currentValue: "low", options: [{ value: "low", name: "Low" }, { value: "high", name: "High" }] }] : []),
+  ...(model === "m2" ? [
+    { id: "reasoning", name: "Reasoning", category: "thought_level", type: "select",
+      currentValue: "low", options: [{ value: "low", name: "Low" }, { value: "high", name: "High" }] },
+    { id: "thinking", name: "Thinking", category: "thought_level", type: "select",
+      currentValue: "true", options: [{ value: "false", name: "Off" }, { value: "true", name: "On" }] },
+    { id: "fast", name: "Fast", category: "model_config", type: "select",
+      currentValue: "false", options: [{ value: "false", name: "Off" }, { value: "true", name: "On" }] },
+  ] : []),
 ];
 let model = "m1";
 let sessions = 0;
@@ -100,12 +106,12 @@ describe("ACP adapter over stdio", () => {
           model.optionDescriptors?.flatMap((option) =>
             option.type === "select"
               ? option.options.map((choice) => `${option.id}=${choice.id}`)
-              : [],
+              : [`${option.id}:${option.currentValue}`],
           ) ?? [],
         ]),
         [
           ["m1", []],
-          ["m2", ["effort=low", "effort=high"]],
+          ["m2", ["effort=low", "effort=high", "thinking:true", "fastMode:false"]],
         ],
       );
     }),

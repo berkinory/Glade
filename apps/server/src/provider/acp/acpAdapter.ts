@@ -30,7 +30,7 @@ import {
 import { openAcpConnection, type AcpConnection } from "./acpConnection.ts";
 import { makeAcpConnectionPool } from "./acpConnectionPool.ts";
 import { withEphemeralAcpSession } from "./acpEphemeralSession.ts";
-import { acpConfigIdFor, acpModelOption, acpOffersValue } from "./acpModelCatalog.ts";
+import { acpConfigValue, acpModelOption } from "./acpModelCatalog.ts";
 import { discoverAcpModels } from "./acpModelDiscovery.ts";
 import type { AcpProviderProfile } from "./acpProviderProfile.ts";
 import { openAcpSession, type AcpSession } from "./acpSession.ts";
@@ -90,11 +90,8 @@ async function applySelection(session: AcpSession, selection: ModelSelection | u
   const model = acpModelOption(session.configOptions());
   if (model) await session.setConfigOption(model.id, selection.model);
   for (const [optionId, value] of Object.entries(selection.options ?? {})) {
-    const options = session.configOptions();
-    const configId = acpConfigIdFor(options, optionId);
-    if (typeof value === "string" && configId && acpOffersValue(options, configId, value)) {
-      await session.setConfigOption(configId, value);
-    }
+    const update = acpConfigValue(session.configOptions(), optionId, value);
+    if (update) await session.setConfigOption(update.configId, update.value);
   }
 }
 

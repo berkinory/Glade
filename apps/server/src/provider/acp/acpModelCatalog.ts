@@ -2,6 +2,7 @@ import type {
   SessionConfigOption,
   SessionConfigSelectGroup,
   SessionConfigSelectOption,
+  SetSessionConfigOptionRequest,
 } from "@agentclientprotocol/sdk";
 import type { ProviderOptionDescriptor } from "@glade/contracts/provider/model";
 import { formatEffortLabel } from "@glade/shared/provider/effortLabel";
@@ -25,52 +26,87 @@ const trimmed = (value: string | null | undefined) => {
 };
 
 // The agent's session config options describe its models and their settings. Mode options are
-// left out: Glade always runs the agent's normal working mode.
-// The agent's reasoning level is offered under Glade's effort id, so every provider's effort picker
-// works the same; `acpConfigIdFor` maps it back to the agent's own id.
-const ACP_EFFORT_OPTION_ID = "effort";
+// left out: Glade always runs the agent's normal working mode. Settings take Glade's shared ids, so
+// every provider's effort, thinking and fast controls work the same: a reasoning level is `effort`,
+// an on/off reasoning switch is `thinking`, and an on/off `fast` option is `fastMode`.
 const THOUGHT_LEVEL = "thought_level";
 // "Let the agent decide" is not a rung of the effort ladder.
 const AGENT_DEFAULT_EFFORT_VALUES = new Set(["default", "auto"]);
+const NATIVE_FAST_OPTION_ID = "fast";
 
-export function acpConfigIdFor(
+// Agents without boolean options offer a switch as a select of "false" and "true".
+function isOnOffSelect(option: SessionConfigOption): boolean {
+  if (option.type !== "select") return false;
+  const values = flattenChoices(option.options)
+    .map((choice) => choice.value)
+    .toSorted();
+  return values.length === 2 && values[0] === "false" && values[1] === "true";
+}
+
+function gladeOptionId(option: SessionConfigOption): string | undefined {
+  if (option.category === "model" || option.category === "mode") return undefined;
+  const onOff = option.type === "boolean" || isOnOffSelect(option);
+  if (option.category === THOUGHT_LEVEL) return onOff ? "thinking" : "effort";
+  return onOff && option.id === NATIVE_FAST_OPTION_ID ? "fastMode" : option.id;
+}
+
+// The agent's config id and value for a Glade setting, when the agent offers that value.
+export function acpConfigValue(
   options: ReadonlyArray<SessionConfigOption>,
   optionId: string,
-): string | undefined {
-  if (optionId === ACP_EFFORT_OPTION_ID) {
-    return (
-      options.find((option) => option.category === THOUGHT_LEVEL)?.id ??
-      options.find((option) => option.id === optionId)?.id
-    );
+  value: string | boolean,
+): { readonly configId: string; readonly value: string | boolean } | undefined {
+  const option = options.find((entry) => gladeOptionId(entry) === optionId);
+  if (!option) return undefined;
+  if (option.type === "boolean") {
+    return typeof value === "boolean" ? { configId: option.id, value } : undefined;
   }
-  return options.find((option) => option.id === optionId && option.category !== THOUGHT_LEVEL)?.id;
+  if (option.type !== "select") return undefined;
+  const native = typeof value === "boolean" ? String(value) : value;
+  return flattenChoices(option.options).some((choice) => choice.value === native)
+    ? { configId: option.id, value: native }
+    : undefined;
+}
+
+export function acpSetConfigRequest(
+  sessionId: string,
+  configId: string,
+  value: string | boolean,
+): SetSessionConfigOptionRequest {
+  return typeof value === "boolean"
+    ? { sessionId, configId, type: "boolean", value }
+    : { sessionId, configId, value };
 }
 
 function optionDescriptors(
   options: ReadonlyArray<SessionConfigOption>,
 ): ReadonlyArray<ProviderOptionDescriptor> {
+  const seen = new Set<string>();
   return options.flatMap((option): ProviderOptionDescriptor[] => {
-    if (option.category === "model" || option.category === "mode") return [];
+    const id = gladeOptionId(option);
+    if (id === undefined || seen.has(id)) return [];
+    seen.add(id);
     const label = trimmed(option.name) ?? option.id;
     const description = trimmed(option.description);
-    if (option.type === "boolean") {
+    if (option.type === "boolean" || isOnOffSelect(option)) {
       return [
         {
-          id: option.id,
+          id,
           label,
           ...(description ? { description } : {}),
           type: "boolean",
-          currentValue: option.currentValue,
+          currentValue: option.currentValue === true || option.currentValue === "true",
         },
       ];
     }
-    const effort = option.category === THOUGHT_LEVEL;
+    if (option.type !== "select") return [];
+    const effort = id === "effort";
     const choices = flattenChoices(option.options).flatMap((choice) => {
       if (effort && AGENT_DEFAULT_EFFORT_VALUES.has(choice.value)) return [];
       const name = trimmed(choice.name);
       // Agents that only capitalize the raw value ("Xhigh") get Glade's effort wording.
       const choiceLabel =
-        effort && name?.toLowerCase() === choice.value.toLowerCase()
+        effort && (!name || name.toLowerCase() === choice.value.toLowerCase())
           ? formatEffortLabel(choice.value)
           : name;
       return trimmed(choice.value) && choiceLabel
@@ -87,7 +123,7 @@ function optionDescriptors(
     return choices.length > 0
       ? [
           {
-            id: effort ? ACP_EFFORT_OPTION_ID : option.id,
+            id,
             label,
             ...(description ? { description } : {}),
             type: "select",
@@ -102,39 +138,11 @@ function optionDescriptors(
   });
 }
 
-// Some agents fold a model's settings into its id, as in "model[effort=high,fast=false]"; each id is
-// one fixed variant, so the settings become a readable description.
-function variantDescription(slug: string): string | undefined {
-  const params = /\[([^\]]*)\]$/u.exec(slug)?.[1];
-  if (!params) return undefined;
-  const parts = params
-    .split(",")
-    .map((pair) => pair.split("=").map((part) => part.trim()))
-    .flatMap(([key, value]) =>
-      !key || value === undefined || value === "false"
-        ? []
-        : [value === "true" ? formatEffortLabel(key) : `${formatEffortLabel(key)} ${value}`],
-    );
-  return parts.length > 0 ? parts.join(" · ") : undefined;
-}
-
 export function acpModelOption(
   options: ReadonlyArray<SessionConfigOption>,
 ): Extract<SessionConfigOption, { type: "select" }> | undefined {
   const option = options.find((entry) => entry.category === "model" && entry.type === "select");
   return option?.type === "select" ? option : undefined;
-}
-
-export function acpOffersValue(
-  options: ReadonlyArray<SessionConfigOption>,
-  configId: string,
-  value: string,
-): boolean {
-  const option = options.find((entry) => entry.id === configId);
-  return (
-    option?.type === "select" &&
-    flattenChoices(option.options).some((choice) => choice.value === value)
-  );
 }
 
 export function acpModelSlugs(options: ReadonlyArray<SessionConfigOption>): ReadonlyArray<string> {
@@ -143,11 +151,12 @@ export function acpModelSlugs(options: ReadonlyArray<SessionConfigOption>): Read
 }
 
 // An agent reports the settings of its current model only, so each model's settings come from the
-// options the agent returned while that model was selected. A model with none known has none.
+// options the agent returned while that model was selected, or from the agent's own model list. A
+// model with none known has none.
 export function acpModelCatalog(
   options: ReadonlyArray<SessionConfigOption>,
   optionsByModel: ReadonlyMap<string, ReadonlyArray<SessionConfigOption>>,
-  presentModel?: AcpProviderProfile["presentModel"],
+  modelVendor?: AcpProviderProfile["modelVendor"],
 ): ReadonlyArray<ProviderModelDescriptor> {
   const modelOption = acpModelOption(options);
   if (!modelOption) return [];
@@ -162,17 +171,14 @@ export function acpModelCatalog(
     // Multi-vendor agents name models "vendor/Model"; the vendor becomes the grouping label.
     const label = trimmed(choice.name) ?? slug;
     const separator = label.indexOf("/");
-    const vendor = separator > 0 ? label.slice(0, separator).trim() : undefined;
-    const agentName = separator > 0 ? label.slice(separator + 1).trim() || label : label;
-    const presented = presentModel?.(slug, agentName);
-    const name = presented?.name ?? agentName;
-    const upstreamProviderName = choice.groupName ?? vendor ?? presented?.vendor;
-    const variant = variantDescription(slug);
+    const namedVendor = separator > 0 ? label.slice(0, separator).trim() : undefined;
+    const name = separator > 0 ? label.slice(separator + 1).trim() || label : label;
+    const upstreamProviderName = choice.groupName ?? namedVendor ?? modelVendor?.(slug);
     return [
       {
         slug,
         name,
-        ...((description ?? variant) ? { description: description ?? variant } : {}),
+        ...(description ? { description } : {}),
         ...(choice.value === modelOption.currentValue ? { isDefault: true } : {}),
         ...(upstreamProviderName ? { upstreamProviderName } : {}),
         ...(descriptors.length > 0 ? { optionDescriptors: descriptors } : {}),

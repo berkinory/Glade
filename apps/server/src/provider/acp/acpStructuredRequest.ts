@@ -2,7 +2,12 @@ import type { NewSessionResponse } from "@agentclientprotocol/sdk";
 
 import type { ProviderStructuredRequestInput } from "../Services/ProviderAdapter.ts";
 import type { AcpConnection } from "./acpConnection.ts";
-import { acpConfigIdFor, acpModelOption, acpOffersValue } from "./acpModelCatalog.ts";
+import {
+  acpConfigValue,
+  acpModelOption,
+  acpModelSlugs,
+  acpSetConfigRequest,
+} from "./acpModelCatalog.ts";
 
 function parseJsonObject(text: string): unknown {
   const start = text.indexOf("{");
@@ -33,18 +38,19 @@ export async function runAcpStructuredRequest(
   });
   try {
     let options = session.configOptions ?? [];
-    const set = async (configId: string | undefined, value: string | undefined) => {
-      if (!configId || !value || !acpOffersValue(options, configId, value)) return;
+    const set = async (update: { configId: string; value: string | boolean } | undefined) => {
+      if (!update) return;
       options = (
-        await connection.agent.setSessionConfigOption({
-          sessionId: session.sessionId,
-          configId,
-          value,
-        })
+        await connection.agent.setSessionConfigOption(
+          acpSetConfigRequest(session.sessionId, update.configId, update.value),
+        )
       ).configOptions;
     };
-    if (switchModel) await set(acpModelOption(options)?.id, input.model);
-    await set(acpConfigIdFor(options, "effort"), input.effort);
+    const model = acpModelOption(options);
+    if (switchModel && model && input.model && acpModelSlugs(options).includes(input.model)) {
+      await set({ configId: model.id, value: input.model });
+    }
+    if (input.effort) await set(acpConfigValue(options, "effort", input.effort));
     await connection.agent.prompt({
       sessionId: session.sessionId,
       prompt: [

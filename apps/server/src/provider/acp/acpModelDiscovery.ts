@@ -9,7 +9,8 @@ import type { AcpProviderProfile } from "./acpProviderProfile.ts";
 // seconds each, and the models left unprobed are listed without settings.
 const PROBE_BUDGET_MS = 3_000;
 
-// Selects each model in the discovery session to read the settings it offers.
+// Reads each model's settings from the agent's own model list, or else by selecting each model in
+// the discovery session.
 export async function discoverAcpModels(input: {
   readonly profile: AcpProviderProfile;
   readonly connection: AcpConnection;
@@ -19,7 +20,11 @@ export async function discoverAcpModels(input: {
   const options = input.session.configOptions ?? [];
   const modelOption = acpModelOption(options);
   const optionsByModel = new Map<string, ReadonlyArray<SessionConfigOption>>();
-  if (modelOption && !input.profile.savesModelChoiceGlobally) {
+  if (input.profile.describeModels) {
+    for (const model of await input.profile.describeModels(input.connection.agent)) {
+      optionsByModel.set(model.slug, model.configOptions);
+    }
+  } else if (modelOption && !input.profile.savesModelChoiceGlobally) {
     optionsByModel.set(modelOption.currentValue, options);
     const deadline = performance.now() + PROBE_BUDGET_MS;
     for (const slug of acpModelSlugs(options)) {
@@ -33,5 +38,5 @@ export async function discoverAcpModels(input: {
       optionsByModel.set(slug, response.configOptions);
     }
   }
-  return acpModelCatalog(options, optionsByModel, input.profile.presentModel);
+  return acpModelCatalog(options, optionsByModel, input.profile.modelVendor);
 }

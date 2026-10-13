@@ -117,7 +117,11 @@ export async function openAcpConnection(input: {
   try {
     const initialize = await agent.initialize({
       protocolVersion: PROTOCOL_VERSION,
-      clientCapabilities: { fs: { readTextFile: false, writeTextFile: false }, terminal: false },
+      clientCapabilities: {
+        fs: { readTextFile: false, writeTextFile: false },
+        terminal: false,
+        ...(profile.clientMeta ? { _meta: { ...profile.clientMeta } } : {}),
+      },
       clientInfo: { name: "glade", version: "1" },
     });
     const authMethodId = profile.authMethodId;
