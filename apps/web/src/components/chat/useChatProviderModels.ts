@@ -252,7 +252,13 @@ export function useChatProviderModels({
           ? activeProject.defaultModelSelection
           : null;
   const providerModelsLoading = selectedProviderModelsLoading;
-  const selectedProviderRequiresRuntimeModels = !selectedModel;
+  // Until the catalog names the selected model, its label would be guessed from the raw id (such as
+  // "opencode/big-pickle"), so the trigger shows its loading state instead.
+  const selectedProviderRequiresRuntimeModels =
+    !selectedModel ||
+    !modelOptionsByProvider[selectedProvider].some(
+      (option) => option.slug === selectedModelForPicker,
+    );
   const showComposerModelBootstrapSkeleton = shouldShowComposerModelBootstrapSkeleton({
     selectedProvider,
     selectedModel,
