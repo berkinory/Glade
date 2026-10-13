@@ -67,6 +67,7 @@ import { deriveTurnFailureEntries, isTurnFailureActivity } from "./workLog.turnF
 import { deriveTurnStopEntries } from "./workLog.turnStops";
 import { monitorNotificationEntryFields } from "./workLog.monitorEvents";
 import { requestRetryFromActivity } from "./workLog.requestRetries";
+import { deriveBackgroundTasks } from "./workLog.backgroundTasks";
 import { pairAnsweredUserInputs } from "./workLog.userInput";
 import {
   collabPayloadItem,
@@ -147,10 +148,16 @@ export function deriveWorkLogEntries(
         activity.kind !== "context-window.updated" &&
         activity.kind !== "context-window.configured" &&
         activity.kind !== "fast-mode.updated" &&
-        activity.summary !== "Checkpoint captured",
+        activity.summary !== "Checkpoint captured" &&
+        !isBackgroundMoveNotice(activity),
     )
     .map(toDerivedWorkLogEntry);
 
+  const backgroundTaskByToolUseId = new Map(
+    deriveBackgroundTasks(ordered).flatMap((task) =>
+      task.toolUseId ? [[task.toolUseId, task] as const] : [],
+    ),
+  );
   const derived = reconcileSettledLiveActivities(
     collapseDerivedWorkLogEntries(pairAnsweredUserInputs(entries, ordered)),
     ordered,
@@ -166,7 +173,12 @@ export function deriveWorkLogEntries(
         runtimeWarningRepeatCount: _runtimeWarningRepeatCount,
         suppressStandaloneCommandStart: _suppressStandaloneCommandStart,
         ...entry
-      }): WorkLogEntry => entry,
+      }): WorkLogEntry => {
+        const backgroundTask = entry.toolCallId
+          ? backgroundTaskByToolUseId.get(entry.toolCallId)
+          : undefined;
+        return backgroundTask ? { ...entry, backgroundTask } : entry;
+      },
     );
   const outcomes = [
     ...deriveTurnFailureEntries(ordered, isVisible),
@@ -177,6 +189,15 @@ export function deriveWorkLogEntries(
     }),
   ];
   return outcomes.length > 0 ? [...derived, ...outcomes] : derived;
+}
+
+// Stored chats still hold the notice older servers wrote when work moved to the background; the
+// tool call that started it now says so itself.
+function isBackgroundMoveNotice(activity: OrchestrationThreadActivity): boolean {
+  return (
+    activity.kind === "runtime.warning" &&
+    asObjectRecord(activity.payload)?.nativeEventType === "background_tasks_changed"
+  );
 }
 
 function shouldKeepActivityForWorkLog(

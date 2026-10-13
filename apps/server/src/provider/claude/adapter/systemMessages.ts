@@ -673,24 +673,6 @@ export function makeClaudeSystemMessages(input: {
               providerRefs: nativeProviderRefs(context),
             });
           }
-          // A backgrounded subagent already shows on its transcript card; only other background work
-          // (shell commands, MCP tasks) gets a notice row.
-          const announced = added.filter(
-            (task) =>
-              task.task_type !== "local_agent" &&
-              !context.subagentToolUseIdByAgentId.has(task.task_id),
-          );
-          if (announced.length === 0) {
-            return;
-          }
-          const labels = announced.map((task) =>
-            task.description.trim().length > 0 ? task.description.trim() : task.task_type,
-          );
-          const notice =
-            announced.length === 1
-              ? labels[0]!
-              : `${announced.length} tasks: ${labels.join(", ")}`.slice(0, 200);
-          yield* emitRuntimeWarning(context, notice, message);
           return;
         }
         default:

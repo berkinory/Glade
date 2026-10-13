@@ -58,7 +58,6 @@ export function isPlainRuntimeNoticeWorkEntry(
 ): boolean {
   return (
     entry.activityKind === "runtime.warning" &&
-    entry.nativeEventType !== "background_tasks_changed" &&
     !entry.providerContextLifecycle &&
     !entry.monitorNotification
   );

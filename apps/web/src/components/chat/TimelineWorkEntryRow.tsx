@@ -15,7 +15,6 @@ import { resolveMcpToolIcon } from "~/lib/mcpToolIcon";
 import { GitHubIcon } from "~/lib/brandIcons";
 import {
   CheckmarkCircle02Icon,
-  BackgroundIcon,
   BookOpen01Icon,
   BotIcon,
   Brain03Icon,
@@ -57,7 +56,12 @@ import {
 } from "./TimelineWorkEntryDetails";
 import { describeLinkChip } from "~/lib/linkChips";
 import { cn } from "~/lib/utils";
-import { isFileChangeWorkLogEntry, type WorkLogEntry } from "../../workLog.types";
+import {
+  isFileChangeWorkLogEntry,
+  type WorkLogBackgroundTask,
+  type WorkLogEntry,
+} from "../../workLog.types";
+import { formatClockDuration } from "../../session-logic";
 import { isStatusOnlyCommandWorkEntry, isPlainRuntimeNoticeWorkEntry } from "./agentActivity.logic";
 import { ReasoningWorkRow } from "./ReasoningWorkRow";
 import { RequestRetryRow } from "./RequestRetryRow";
@@ -193,7 +197,6 @@ function workEntryIcon(workEntry: TimelineWorkEntry): IconComponent {
   if (workEntry.activityKind === "user-input.requested") return HelpCircleIcon;
   if (workEntry.activityKind === "user-input.resolved") return CheckmarkCircle02Icon;
   if (workEntry.activityKind === "context-compaction") return FilterIcon;
-  if (workEntry.nativeEventType === "background_tasks_changed") return BackgroundIcon;
   if (workEntry.monitorNotification) {
     return workEntry.monitorNotification.outcome === "failed" ? AlertCircleIcon : ViewIcon;
   }
@@ -278,6 +281,24 @@ function classifyWorkEntryTool(workEntry: TimelineWorkEntry) {
       ? null
       : deriveGladeMcpToolTitle(titleInput),
   };
+}
+function formatBackgroundTaskMeta(task: WorkLogBackgroundTask): string {
+  const elapsed =
+    task.settledAt === null
+      ? null
+      : formatClockDuration(
+          Math.max(1_000, Date.parse(task.settledAt) - Date.parse(task.startedAt)),
+        );
+  switch (task.status) {
+    case "running":
+      return "running in background";
+    case "completed":
+      return elapsed ? `finished in background after ${elapsed}` : "finished in background";
+    case "failed":
+      return elapsed ? `failed in background after ${elapsed}` : "failed in background";
+    case "stopped":
+      return "stopped";
+  }
 }
 function capitalizePhrase(value: string): string {
   const trimmed = value.trim();
@@ -476,9 +497,12 @@ function ToolWorkEntryRow(props: TimelineWorkEntryRowProps) {
     [workEntry],
   );
   const liveActivityNowMs = useLiveActivityNow(workEntry.liveActivity);
-  const liveActivityMetaText = workEntry.liveActivity
-    ? formatLiveActivityMeta(workEntry.liveActivity, liveActivityNowMs)
-    : null;
+  const backgroundTask = workEntry.backgroundTask;
+  const liveActivityMetaText = backgroundTask
+    ? formatBackgroundTaskMeta(backgroundTask)
+    : workEntry.liveActivity
+      ? formatLiveActivityMeta(workEntry.liveActivity, liveActivityNowMs)
+      : null;
   const readFilePath =
     opener !== null &&
     !activityDetail &&
@@ -588,6 +612,8 @@ function ToolWorkEntryRow(props: TimelineWorkEntryRowProps) {
                     <LinkChipIcon url={linkIconUrl} className={WORK_ROW_ICON_CLASS_NAME} />
                   ) : isPendingSubagentLaunch ? (
                     <Spinner variant="subagent" className={WORK_ROW_ICON_CLASS_NAME} />
+                  ) : backgroundTask?.status === "running" ? (
+                    <Spinner variant="working" className={WORK_ROW_ICON_CLASS_NAME} />
                   ) : (
                     renderWorkEntryIcon(LeftIcon, WORK_ROW_ICON_CLASS_NAME)
                   )}

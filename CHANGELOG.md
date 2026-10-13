@@ -5,6 +5,7 @@
 ### New
 
 - Chats stopped by a usage limit continue on their own once the limit resets. Cancel the wait from the chat, or turn it off in Settings.
+- The Environment panel lists the chat's background tasks, such as test runs and builds, with how long they have run, and can stop them.
 
 ### Improved
 
@@ -12,6 +13,7 @@
 - Long Claude sessions use less memory.
 - Searches in tool calls say what they look for in plain words and count every folder they search.
 - Retried requests to a provider show as one row with an icon and the latest attempt, such as "Connection lost · retry 5/10", and open to every attempt.
+- A command left running in the background says so on its own row and updates when it finishes, fails or is stopped, instead of adding a separate "Moved to background" row.
 - The visual reply preview browser loads only when a preview is first needed, so Glade starts lighter.
 - Busy terminals use less CPU.
 - The agent browser uses less memory: at most four tabs stay loaded, and idle tabs in chats you are not looking at unload sooner.

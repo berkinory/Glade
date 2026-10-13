@@ -269,7 +269,6 @@ export function projectProviderRuntimeActivities(
       const nativeType = asString((asRecord(raw?.payload) ?? undefined)?.type);
 
       const detailSubtype = asString((asRecord(event.payload.detail) ?? undefined)?.subtype);
-      const isBackgroundMove = detailSubtype === "background_tasks_changed";
       // A warning the provider will retry keeps the turn alive; it is not a failure.
       const failure = event.payload.failure;
       const willRetry =
@@ -290,11 +289,9 @@ export function projectProviderRuntimeActivities(
               ? "Claude retrying"
               : willRetry
                 ? "Provider retrying"
-                : isBackgroundMove
-                  ? "Moved to background"
-                  : detailSubtype === "informational" || detailSubtype === "notification"
-                    ? "Claude notice"
-                    : "Runtime warning",
+                : detailSubtype === "informational" || detailSubtype === "notification"
+                  ? "Claude notice"
+                  : "Runtime warning",
 
           payload: toActivityPayload({
             message,
@@ -318,11 +315,7 @@ export function projectProviderRuntimeActivities(
                   },
                 }
               : {}),
-            ...(isBackgroundMove
-              ? { nativeEventType: detailSubtype }
-              : nativeType
-                ? { nativeEventType: nativeType }
-                : {}),
+            ...(nativeType ? { nativeEventType: nativeType } : {}),
             ...activityDataField(sanitizeUnmappedProviderData(event.payload.detail)),
           }),
           turnId: toTurnId(event.turnId) ?? null,

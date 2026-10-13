@@ -11,11 +11,13 @@ export function SubagentStatusIndicator({
   statusKind,
   statusLabel,
   onStop,
+  stopLabel = "Stop subagent",
   variant = "icon",
 }: {
   statusKind: SubagentStatusKind | null;
   statusLabel: string | undefined;
   onStop?: (() => void) | undefined;
+  stopLabel?: string;
   variant?: "icon" | "text";
 }) {
   return (
@@ -46,8 +48,8 @@ export function SubagentStatusIndicator({
       {onStop ? (
         <button
           type="button"
-          aria-label="Stop subagent"
-          title="Stop subagent"
+          aria-label={stopLabel}
+          title={stopLabel}
           className="pointer-events-none absolute right-0 flex size-5 items-center justify-center rounded-md opacity-0 transition-opacity hover:bg-[var(--color-background-button-secondary-hover)] group-hover/subagent-row:pointer-events-auto group-hover/subagent-row:opacity-100 group-focus-within/subagent-row:pointer-events-auto group-focus-within/subagent-row:opacity-100 focus-visible:pointer-events-auto focus-visible:opacity-100"
           onClick={onStop}
         >

@@ -91,6 +91,8 @@ export interface WorkLogEntry {
   turnStopped?: true;
   // An answered agent question with the user's answers; it stays visible outside a settled turn's fold.
   userInputExchange?: ReadonlyArray<WorkLogUserInputExchangeItem>;
+  // Set on the tool call that started background work, such as a test run left running.
+  backgroundTask?: WorkLogBackgroundTask;
   // Consecutive retries of one provider request, oldest first.
   requestRetries?: ReadonlyArray<WorkLogRequestRetry>;
   // A provider thinking block: still streaming while live, and how long it took once known.
@@ -112,6 +114,16 @@ export interface WorkLogEntry {
   activityKind?: OrchestrationThreadActivity["kind"];
 
   nativeEventType?: string;
+}
+
+export interface WorkLogBackgroundTask {
+  taskId: string;
+  // The tool call that started it, when the provider reports one.
+  toolUseId: string | null;
+  description: string;
+  status: "running" | "completed" | "failed" | "stopped";
+  startedAt: string;
+  settledAt: string | null;
 }
 
 export interface WorkLogRequestRetry {
