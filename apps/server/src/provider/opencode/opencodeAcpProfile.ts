@@ -20,5 +20,6 @@ export const OPENCODE_ACP_PROFILE: AcpProviderProfile = {
   }),
   sessionConfig: () => [{ configId: "mode", value: "build" }],
   compactCommand: "compact",
+  sharesMcpServersAcrossSessions: true,
   hiddenCommands: new Set(),
 };

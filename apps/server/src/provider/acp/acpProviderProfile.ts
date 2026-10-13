@@ -52,6 +52,10 @@ export interface AcpProviderProfile {
   // without one get the policy as the first prompt of a fresh session, which some treat as an
   // injected instruction.
   readonly argsWithSystemPrompt?: (policy: string) => ReadonlyArray<string>;
+  // The agent keeps one MCP client per server name for the whole process, so a later session's
+  // credentials would replace an earlier one's. Such an agent gets a private process per chat while
+  // Glade's MCP server is attached, so no chat can act with another chat's identity.
+  readonly sharesMcpServersAcrossSessions?: boolean;
   // The agent's native command that compacts its context, run as a turn when Glade compacts.
   readonly compactCommand?: string;
   // Native slash commands for features outside Glade's scope, hidden from the composer.

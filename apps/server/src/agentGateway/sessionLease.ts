@@ -13,7 +13,7 @@ export interface AgentGatewayCapabilityInput {
 
 export const AGENT_GATEWAY_NO_CAPABILITIES: AgentGatewayCapabilityInput = {};
 
-type AgentGatewaySessionLeaseCredentials = Pick<
+export type AgentGatewaySessionLeaseCredentials = Pick<
   AgentGatewayCredentialsShape,
   "connectionForThread" | "revokeSessionToken"
 > &

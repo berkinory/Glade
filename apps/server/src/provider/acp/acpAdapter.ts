@@ -13,8 +13,8 @@ import { GLADE_MCP_SERVER_NAME } from "../../agentGateway/mcpInjection.ts";
 import {
   acquireAgentGatewaySessionLease,
   type AgentGatewaySessionLease,
+  type AgentGatewaySessionLeaseCredentials,
 } from "../../agentGateway/sessionLease.ts";
-import type { AgentGatewayCredentialsShape } from "../../agentGateway/Services/AgentGatewayCredentials.ts";
 import type { teardownChildProcessTree } from "../../platform/supervisedProcessTeardown.ts";
 import {
   ProviderAdapterRequestError,
@@ -82,7 +82,7 @@ export interface AcpAdapterDependencies {
   }) => ChildProcessWithoutNullStreams;
   readonly defaultCwd: string;
   readonly attachmentsDir: string;
-  readonly gatewayCredentials: AgentGatewayCredentialsShape | undefined;
+  readonly gatewayCredentials: AgentGatewaySessionLeaseCredentials | undefined;
   readonly teardownProcessTree?: Parameters<typeof teardownChildProcessTree>[1];
 }
 
@@ -205,6 +205,9 @@ export const makeAcpAdapter = (dependencies: AcpAdapterDependencies) =>
           binaryPath ?? null,
           profile.env?.({ runtimeMode: input.runtimeMode }) ?? {},
           systemPrompt ?? null,
+          profile.sharesMcpServersAcrossSessions && dependencies.gatewayCredentials !== undefined
+            ? input.threadId
+            : null,
         ]);
         const { connection, release: releaseConnection } = yield* Effect.tryPromise({
           try: () =>

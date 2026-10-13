@@ -7,7 +7,7 @@ import type { ProviderRuntimeEvent } from "@glade/contracts/provider/runtimeEven
 import { Effect, Fiber, Stream } from "effect";
 
 import type { AcpProviderProfile } from "./acpProviderProfile.ts";
-import { makeAcpAdapter } from "./acpAdapter.ts";
+import { makeAcpAdapter, type AcpAdapterDependencies } from "./acpAdapter.ts";
 
 // A scripted agent on the SDK's agent side of the protocol, run as a real child process so the
 // adapter is exercised over stdio. The prompt text picks the scenario.
@@ -73,7 +73,7 @@ const profile: AcpProviderProfile = {
 
 const spawned: ChildProcessWithoutNullStreams[] = [];
 
-const makeAdapter = makeAcpAdapter({
+const adapterDependencies: AcpAdapterDependencies = {
   profile,
   defaultCwd: process.cwd(),
   attachmentsDir: process.cwd(),
@@ -86,7 +86,9 @@ const makeAdapter = makeAcpAdapter({
     spawned.push(child);
     return child;
   },
-});
+};
+
+const makeAdapter = makeAcpAdapter(adapterDependencies);
 
 const THREAD = ThreadId.makeUnsafe("thread-acp");
 const OTHER_THREAD = ThreadId.makeUnsafe("thread-acp-other");
@@ -228,6 +230,27 @@ describe("ACP adapter over stdio", () => {
 
       yield* adapter.stopSession(OTHER_THREAD);
       assert.isNotNull(agent.exitCode ?? agent.signalCode);
+    }),
+  );
+
+  it.effect("gives each chat a private process when the agent shares MCP servers per process", () =>
+    Effect.gen(function* () {
+      const adapter = yield* makeAcpAdapter({
+        ...adapterDependencies,
+        profile: { ...profile, sharesMcpServersAcrossSessions: true },
+        gatewayCredentials: {
+          connectionForThread: (threadId) => ({
+            url: "http://127.0.0.1:1/mcp",
+            bearerToken: `token-${threadId}`,
+          }),
+          revokeSessionToken: () => undefined,
+        },
+      });
+      const before = spawned.length;
+      yield* adapter.startSession({ threadId: THREAD, runtimeMode: "full-access" });
+      yield* adapter.startSession({ threadId: OTHER_THREAD, runtimeMode: "full-access" });
+      assert.equal(spawned.length - before, 2);
+      yield* adapter.stopAll();
     }),
   );
 
