@@ -60,7 +60,10 @@ interface AcpThread {
   readonly connection: AcpConnection;
   readonly releaseConnection: () => Promise<void>;
   unwatchExit: () => void;
-  readonly session: AcpSession;
+  // Replaced when a summary compaction moves the chat into a fresh native session.
+  session: AcpSession;
+  readonly cwd: string;
+  readonly mcpServers: McpServer[];
   readonly gatewayLease: AgentGatewaySessionLease | undefined;
   readonly lifecycleGeneration: string | undefined;
   record: ProviderSession;
@@ -69,6 +72,11 @@ interface AcpThread {
   policyPending: boolean;
   // Glade's MCP server reached the agent, so the policy can offer its tools.
   readonly gatewayToolsPassed: boolean;
+  // The policy is in the agent's system prompt, so a fresh native session does not need it again.
+  readonly systemPromptDelivered: boolean;
+  // A compaction summary that opens the next prompt of the fresh native session.
+  pendingContext: string | undefined;
+  lastSelection: ModelSelection | undefined;
   stopping: boolean;
 }
 
@@ -97,6 +105,17 @@ async function applySelection(session: AcpSession, selection: ModelSelection | u
     const update = acpConfigValue(session.configOptions(), optionId, value);
     if (update) await session.setConfigOption(update.configId, update.value);
   }
+}
+
+// Summary compaction for agents without a native compact command: the agent writes a continuation
+// summary as a turn, and the chat moves into a fresh native session that opens with it.
+function summaryCompactionPrompt(instructions: string | undefined): string {
+  return [
+    "Compact this conversation: write a concise summary that lets a fresh session continue the work without the earlier messages. Cover the goal, key decisions, the files and commands that matter, the current state and the open next steps. Reply with only the summary.",
+    instructions ? `Focus: ${instructions}` : undefined,
+  ]
+    .filter(Boolean)
+    .join("\n\n");
 }
 
 export const makeAcpAdapter = (dependencies: AcpAdapterDependencies) =>
@@ -184,6 +203,64 @@ export const makeAcpAdapter = (dependencies: AcpAdapterDependencies) =>
             },
           ]
         : [];
+
+    // The agent's normal working mode and anything the runtime mode needs natively, then the model
+    // selection.
+    const configureSession = async (
+      session: AcpSession,
+      runtimeMode: RuntimeMode,
+      selection: ModelSelection | undefined,
+    ) => {
+      const profileConfig = (profile.sessionConfig?.({ runtimeMode }) ?? []).filter(
+        ({ configId }) => session.configOptions().some((option) => option.id === configId),
+      );
+      for (const { configId, value } of profileConfig) {
+        await session.setConfigOption(configId, value);
+      }
+      await applySelection(session, selection);
+    };
+
+    // Moves a chat into a fresh native session that opens with the compaction summary. The old
+    // session ends; its history stays in the agent's own storage like any finished session.
+    const replaceWithSummarySession = async (
+      threadId: ThreadId,
+      thread: AcpThread,
+      summary: string,
+    ) => {
+      const created = await thread.connection.agent.newSession({
+        cwd: thread.cwd,
+        mcpServers: thread.mcpServers,
+      });
+      const session = openAcpSession({
+        connection: thread.connection,
+        sessionId: created.sessionId,
+        configOptions: created.configOptions ?? [],
+        runtimeMode: thread.record.runtimeMode,
+        sink: {
+          emit: (draft, turnId) => emit(threadId, thread.lifecycleGeneration, draft, turnId),
+        },
+      });
+      await configureSession(session, thread.record.runtimeMode, thread.lastSelection);
+      const previous = thread.session;
+      thread.session = session;
+      previous.detach();
+      if (thread.connection.initialize.agentCapabilities?.sessionCapabilities?.close) {
+        await thread.connection.agent
+          .closeSession({ sessionId: previous.sessionId })
+          .catch(() => undefined);
+      }
+      thread.pendingContext = summary;
+      thread.policyPending = !thread.systemPromptDelivered;
+      thread.record = {
+        ...thread.record,
+        resumeCursor: { schemaVersion: RESUME_CURSOR_VERSION, sessionId: created.sessionId },
+        updatedAt: new Date().toISOString(),
+      };
+      emit(threadId, thread.lifecycleGeneration, {
+        type: "thread.started",
+        payload: { providerThreadId: created.sessionId },
+      });
+    };
 
     const startSession: ProviderAdapterShape<ProviderAdapterError>["startSession"] = (input) =>
       Effect.gen(function* () {
@@ -280,10 +357,15 @@ export const makeAcpAdapter = (dependencies: AcpAdapterDependencies) =>
           releaseConnection,
           unwatchExit: () => undefined,
           session,
+          cwd,
+          mcpServers: servers,
           gatewayLease,
           lifecycleGeneration,
           policyPending: !opened.resumed && systemPrompt === undefined,
           gatewayToolsPassed: servers.length > 0,
+          systemPromptDelivered: systemPrompt !== undefined,
+          pendingContext: undefined,
+          lastSelection: input.modelSelection,
           stopping: false,
           record: {
             provider,
@@ -301,7 +383,7 @@ export const makeAcpAdapter = (dependencies: AcpAdapterDependencies) =>
         thread.unwatchExit = connection.onExit((error) => {
           if (thread.stopping || threads.get(input.threadId) !== thread) return;
           threads.delete(input.threadId);
-          session.detach();
+          thread.session.detach();
           gatewayLease?.release();
           void releaseConnection();
           emit(input.threadId, lifecycleGeneration, {
@@ -310,17 +392,7 @@ export const makeAcpAdapter = (dependencies: AcpAdapterDependencies) =>
           });
         });
         yield* Effect.tryPromise({
-          try: async () => {
-            const profileConfig = (
-              profile.sessionConfig?.({ runtimeMode: input.runtimeMode }) ?? []
-            ).filter(({ configId }) =>
-              session.configOptions().some((option) => option.id === configId),
-            );
-            for (const { configId, value } of profileConfig) {
-              await session.setConfigOption(configId, value);
-            }
-            await applySelection(session, input.modelSelection);
-          },
+          try: () => configureSession(session, input.runtimeMode, input.modelSelection),
           catch: (cause) => requestError("session/set_config_option", cause),
         }).pipe(Effect.tapError(() => retire(input.threadId, thread, undefined)));
         emit(input.threadId, lifecycleGeneration, {
@@ -342,7 +414,7 @@ export const makeAcpAdapter = (dependencies: AcpAdapterDependencies) =>
     // context was compacted, as a native compaction event does for other providers.
     const startTurn = (
       input: Parameters<ProviderAdapterShape<ProviderAdapterError>["sendTurn"]>[0],
-      compaction: boolean,
+      compaction: "native" | "summary" | undefined,
     ) =>
       Effect.gen(function* () {
         const thread = yield* requireThread(input.threadId);
@@ -357,6 +429,7 @@ export const makeAcpAdapter = (dependencies: AcpAdapterDependencies) =>
           try: () => applySelection(thread.session, input.modelSelection),
           catch: (cause) => requestError("session/set_config_option", cause),
         });
+        if (input.modelSelection) thread.lastSelection = input.modelSelection;
         const turnId = `acp-turn-${randomUUID()}`;
         const blocks: ContentBlock[] = [];
         if (thread.policyPending) {
@@ -368,6 +441,13 @@ export const makeAcpAdapter = (dependencies: AcpAdapterDependencies) =>
               computerUseAllowed: false,
             }),
           });
+        }
+        if (thread.pendingContext) {
+          blocks.push({
+            type: "text",
+            text: `This conversation continues in a fresh session after compaction. Summary of the earlier conversation:\n\n${thread.pendingContext}`,
+          });
+          thread.pendingContext = undefined;
         }
         blocks.push(
           ...(yield* Effect.tryPromise({
@@ -391,7 +471,7 @@ export const makeAcpAdapter = (dependencies: AcpAdapterDependencies) =>
           ...(model ? { model } : {}),
           updatedAt: new Date().toISOString(),
         };
-        if (compaction) {
+        if (compaction !== undefined) {
           const admission = yield* Effect.serviceOption(CompactionAdmission);
           if (Option.isSome(admission)) {
             yield* admission.value.check;
@@ -406,16 +486,38 @@ export const makeAcpAdapter = (dependencies: AcpAdapterDependencies) =>
         );
         runFork(
           Effect.promise(() => thread.session.prompt(turnId, blocks)).pipe(
-            Effect.tap((state) =>
-              Effect.sync(() => {
-                if (compaction && state === "completed") {
-                  emit(
-                    input.threadId,
-                    thread.lifecycleGeneration,
-                    { type: "thread.state.changed", payload: { state: "compacted" } },
-                    turnId,
-                  );
+            Effect.tap(({ state, agentText }) =>
+              Effect.promise(async () => {
+                if (compaction === undefined || state !== "completed") return;
+                if (compaction === "summary") {
+                  const summary = agentText.trim();
+                  const failure = summary
+                    ? await replaceWithSummarySession(input.threadId, thread, summary).then(
+                        () => undefined,
+                        (cause: unknown) =>
+                          cause instanceof Error ? cause.message : String(cause),
+                      )
+                    : "The agent returned no summary.";
+                  if (failure !== undefined) {
+                    // The chat keeps its current native session, so nothing was lost; say so.
+                    emit(
+                      input.threadId,
+                      thread.lifecycleGeneration,
+                      {
+                        type: "runtime.warning",
+                        payload: { message: `Compaction kept the current session: ${failure}` },
+                      },
+                      turnId,
+                    );
+                    return;
+                  }
                 }
+                emit(
+                  input.threadId,
+                  thread.lifecycleGeneration,
+                  { type: "thread.state.changed", payload: { state: "compacted" } },
+                  turnId,
+                );
               }),
             ),
             Effect.ensuring(
@@ -434,7 +536,7 @@ export const makeAcpAdapter = (dependencies: AcpAdapterDependencies) =>
       });
 
     const sendTurn: ProviderAdapterShape<ProviderAdapterError>["sendTurn"] = (input) =>
-      startTurn(input, false);
+      startTurn(input, undefined);
 
     const structuredRequest = (input: ProviderStructuredRequestInput) =>
       Effect.tryPromise({
@@ -478,7 +580,7 @@ export const makeAcpAdapter = (dependencies: AcpAdapterDependencies) =>
           supportsPluginMentions: false,
           supportsPluginDiscovery: false,
           supportsRuntimeModelList: true,
-          supportsThreadCompaction: profile.compactCommand !== undefined,
+          supportsThreadCompaction: true,
         }),
       // Agents announce their commands once a session opens, so only a chat with a live session
       // lists them.
@@ -505,18 +607,17 @@ export const makeAcpAdapter = (dependencies: AcpAdapterDependencies) =>
         }),
       startSession,
       sendTurn,
-      ...(profile.compactCommand
-        ? {
-            compactThread: (threadId: ThreadId, instructions?: string) =>
-              startTurn(
-                {
-                  threadId,
-                  input: [`/${profile.compactCommand}`, instructions].filter(Boolean).join(" "),
-                },
-                true,
-              ).pipe(Effect.asVoid),
-          }
-        : {}),
+      compactThread: (threadId: ThreadId, instructions?: string) =>
+        (profile.compactCommand
+          ? startTurn(
+              {
+                threadId,
+                input: [`/${profile.compactCommand}`, instructions].filter(Boolean).join(" "),
+              },
+              "native",
+            )
+          : startTurn({ threadId, input: summaryCompactionPrompt(instructions) }, "summary")
+        ).pipe(Effect.asVoid),
       canResumeNativeConversation: (cursor) => readResumeCursor(cursor) !== undefined,
       interruptTurn: (threadId) =>
         requireThread(threadId).pipe(

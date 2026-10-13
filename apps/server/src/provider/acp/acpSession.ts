@@ -43,6 +43,13 @@ interface PendingPermission {
 interface ActiveTurn {
   readonly turnId: string;
   readonly projection: AcpTurnProjection;
+  agentText: string;
+}
+
+interface AcpTurnOutcome {
+  readonly state: "completed" | "interrupted" | "failed";
+  // The agent's reply text for the turn, for turns whose answer Glade reads (compaction summaries).
+  readonly agentText: string;
 }
 
 export interface AcpSession {
@@ -52,10 +59,7 @@ export interface AcpSession {
   readonly activeTurnId: () => string | undefined;
   readonly setConfigOption: (configId: string, value: string | boolean) => Promise<void>;
   // Resolves when the turn ends; the turn's events go to the sink as they arrive.
-  readonly prompt: (
-    turnId: string,
-    blocks: ReadonlyArray<ContentBlock>,
-  ) => Promise<"completed" | "interrupted" | "failed">;
+  readonly prompt: (turnId: string, blocks: ReadonlyArray<ContentBlock>) => Promise<AcpTurnOutcome>;
   readonly cancel: () => Promise<void>;
   readonly respondToPermission: (requestId: string, decision: ProviderApprovalDecision) => boolean;
   readonly setRuntimeMode: (mode: RuntimeMode) => void;
@@ -209,6 +213,9 @@ export function openAcpSession(input: {
         return;
       default:
         if (!active) return;
+        if (update.sessionUpdate === "agent_message_chunk" && update.content.type === "text") {
+          active.agentText += update.content.text;
+        }
         for (const draft of active.projection.project(update)) sink.emit(draft, active.turnId);
     }
   };
@@ -285,7 +292,11 @@ export function openAcpSession(input: {
       configOptions = response.configOptions;
     },
     prompt: async (turnId, blocks) => {
-      const turn: ActiveTurn = { turnId, projection: makeAcpTurnProjection(`acp:${turnId}`) };
+      const turn: ActiveTurn = {
+        turnId,
+        projection: makeAcpTurnProjection(`acp:${turnId}`),
+        agentText: "",
+      };
       active = turn;
       const finish = (drafts: ReadonlyArray<AcpRuntimeEventDraft>) => {
         if (active === turn) active = undefined;
@@ -313,7 +324,7 @@ export function openAcpSession(input: {
             },
           },
         ]);
-        return state;
+        return { state, agentText: turn.agentText };
       } catch (cause) {
         const failure = acpPromptFailure(cause);
         finish([
@@ -321,7 +332,7 @@ export function openAcpSession(input: {
           { type: "runtime.error", payload: { message: failure.message, failure } },
           { type: "turn.completed", payload: { state: "failed", errorMessage: failure.message } },
         ]);
-        return "failed";
+        return { state: "failed", agentText: turn.agentText };
       }
     },
     cancel: async () => {

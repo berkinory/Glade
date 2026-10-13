@@ -57,6 +57,10 @@ new AgentSideConnection((client) => ({
       await say("chose " + outcome.optionId + " on " + model);
       return { stopReason: "end_turn" };
     }
+    if (text === "echo-context") {
+      await say(prompt.slice(0, -1).map((block) => block.text).join(" | "));
+      return { stopReason: "end_turn" };
+    }
     await say("hello ");
     await say("from " + model);
     return { stopReason: "end_turn" };
@@ -250,6 +254,41 @@ describe("ACP adapter over stdio", () => {
       yield* adapter.startSession({ threadId: THREAD, runtimeMode: "full-access" });
       yield* adapter.startSession({ threadId: OTHER_THREAD, runtimeMode: "full-access" });
       assert.equal(spawned.length - before, 2);
+      yield* adapter.stopAll();
+    }),
+  );
+
+  it.effect("compacts into a fresh native session that opens with the agent's summary", () =>
+    Effect.gen(function* () {
+      const adapter = yield* makeAdapter;
+      yield* adapter.startSession({ threadId: THREAD, runtimeMode: "full-access" });
+      const compaction = yield* adapter.streamEvents.pipe(
+        Stream.filter((event) => event.threadId === THREAD),
+        Stream.takeUntil(
+          (event) => event.type === "thread.state.changed" && event.payload.state === "compacted",
+        ),
+        Stream.runCollect,
+        Effect.forkChild,
+      );
+      yield* adapter.compactThread!(THREAD);
+      const events = [...(yield* Fiber.join(compaction))];
+      const restarted = events.findLast((event) => event.type === "thread.started");
+      assert.notEqual(
+        restarted?.type === "thread.started" ? restarted.payload.providerThreadId : undefined,
+        undefined,
+      );
+
+      const next = yield* adapter.streamEvents.pipe(
+        Stream.filter((event) => event.threadId === THREAD),
+        Stream.takeUntil((event) => event.type === "turn.completed"),
+        Stream.runCollect,
+        Effect.forkChild,
+      );
+      yield* adapter.sendTurn({ threadId: THREAD, input: "echo-context" });
+      assert.include(
+        assistantText([...(yield* Fiber.join(next))]),
+        "Summary of the earlier conversation:\n\nhello from m1",
+      );
       yield* adapter.stopAll();
     }),
   );
