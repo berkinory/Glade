@@ -8,6 +8,7 @@ import {
 import { decodeCodexGuardianReview } from "./protocol/decode.ts";
 import { guardianDeniedEvent, type GuardianDeniedEvent } from "./codexGuardianReview.ts";
 import type { NativeThreadHistoryInput } from "../core/nativeThreadHistory.ts";
+import { classifyTerminalTurnApplicability } from "../core/terminalTurnApplicability.ts";
 import { codexUpdatedModelSelection } from "./codexStateNotifications.ts";
 import { asString } from "@glade/shared/text/text";
 import { asObjectRecord } from "@glade/shared/transport/payloadValues";
@@ -3528,10 +3529,19 @@ export class CodexAppServerManager extends EventEmitter<CodexAppServerManagerEve
       (notification.method === "turn/completed" ||
         notification.method === "turn/aborted" ||
         isTerminalError);
-    if (isTerminalParentTurn) context.compacting = false;
-    const terminalGatewayTurnId = isTerminalParentTurn
-      ? (rawRoute.turnId ?? context.session.activeTurnId)
-      : undefined;
+    // The task_complete fallback can settle a turn before its own terminal arrives, so a late
+    // terminal for that earlier turn must not settle or deauthorize the turn now running.
+    const isStaleTerminal =
+      isTerminalParentTurn &&
+      !classifyTerminalTurnApplicability({
+        activeTurnId: context.session.activeTurnId,
+        eventTurnId: rawRoute.turnId,
+      }).applicable;
+    if (isTerminalParentTurn && !isStaleTerminal) context.compacting = false;
+    const terminalGatewayTurnId =
+      isTerminalParentTurn && !isStaleTerminal
+        ? (rawRoute.turnId ?? context.session.activeTurnId)
+        : undefined;
     const gatewayTurnAuthorityRetired =
       terminalGatewayTurnId !== undefined &&
       context.gatewaySessionLease !== undefined &&
@@ -3584,6 +3594,12 @@ export class CodexAppServerManager extends EventEmitter<CodexAppServerManagerEve
       textDelta,
       payload: eventPayload,
     });
+
+    if (isStaleTerminal) {
+      // A finished review left in the set would let a later exitedReviewMode settle the newer turn.
+      if (rawRoute.turnId) context.reviewTurnIds.delete(rawRoute.turnId);
+      return;
+    }
 
     if (notification.method === "turn/started" && isChildConversation && providerThreadId) {
       this.queueChildSnapshot(context, providerThreadId, "started");

@@ -6,6 +6,41 @@ import {
   handleServerNotificationForTest,
 } from "./notificationHarness.testSupport";
 
+const terminalNotifications = [
+  {
+    expectedTurnId: "turn-completed",
+    notification: {
+      method: "turn/completed",
+      params: {
+        threadId: "provider_parent",
+        turn: { id: "turn-completed", status: "completed" },
+      },
+    },
+  },
+  {
+    expectedTurnId: "turn-aborted",
+    notification: {
+      method: "turn/aborted",
+      params: {
+        threadId: "provider_parent",
+        turn: { id: "turn-aborted", status: "interrupted" },
+      },
+    },
+  },
+  {
+    expectedTurnId: "turn-error",
+    notification: {
+      method: "error",
+      params: {
+        threadId: "provider_parent",
+        turnId: "turn-error",
+        error: { message: "terminal provider failure" },
+        willRetry: false,
+      },
+    },
+  },
+];
+
 describe("turn completion", () => {
   it("recovers a missing turn/completed after legacy task_complete", () => {
     vi.useFakeTimers();
@@ -57,43 +92,11 @@ describe("turn completion", () => {
     }
   });
 
-  it.each([
-    {
-      expectedTurnId: "turn-completed",
-      notification: {
-        method: "turn/completed",
-        params: {
-          threadId: "provider_parent",
-          turn: { id: "turn-completed", status: "completed" },
-        },
-      },
-    },
-    {
-      expectedTurnId: "turn-aborted",
-      notification: {
-        method: "turn/aborted",
-        params: {
-          threadId: "provider_parent",
-          turn: { id: "turn-aborted", status: "interrupted" },
-        },
-      },
-    },
-    {
-      expectedTurnId: "turn-error",
-      notification: {
-        method: "error",
-        params: {
-          threadId: "provider_parent",
-          turnId: "turn-error",
-          error: { message: "terminal provider failure" },
-          willRetry: false,
-        },
-      },
-    },
-  ])(
+  it.each(terminalNotifications)(
     "retires gateway authority before publishing terminal $notification.method",
     ({ expectedTurnId, notification }) => {
       const { manager, context, emitEvent } = createCollabNotificationHarness();
+      context.session.activeTurnId = expectedTurnId;
       const lease = attachFakeGatewayLease(context, {
         retireTurn: () => {
           expect(emitEvent).not.toHaveBeenCalled();
@@ -114,6 +117,25 @@ describe("turn completion", () => {
           }),
         }),
       );
+    },
+  );
+
+  it.each(terminalNotifications)(
+    "leaves the running turn alone when a late $notification.method for an earlier turn arrives",
+    ({ expectedTurnId, notification }) => {
+      const { manager, context, emitEvent, updateSession } = createCollabNotificationHarness();
+      const lease = attachFakeGatewayLease(context);
+      context.reviewTurnIds.add(expectedTurnId);
+
+      handleServerNotificationForTest(manager, context, notification);
+
+      expect(emitEvent).toHaveBeenCalledWith(
+        expect.objectContaining({ method: notification.method, turnId: expectedTurnId }),
+      );
+      expect(updateSession).not.toHaveBeenCalled();
+      expect(lease.retireTurn).not.toHaveBeenCalled();
+      expect(context.gatewayCredentialRetired).toBe(false);
+      expect(context.reviewTurnIds.has(expectedTurnId)).toBe(false);
     },
   );
 
