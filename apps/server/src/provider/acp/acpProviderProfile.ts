@@ -33,6 +33,11 @@ export interface AcpProviderProfile {
   // The agent saves every model switch as the default of its own CLI, so Glade switches models
   // only for the user's chats: discovery and title requests stay on the current model.
   readonly savesModelChoiceGlobally?: boolean;
+  // A readable name and vendor for agents that name models by their raw ids.
+  readonly presentModel?: (
+    slug: string,
+    name: string,
+  ) => { readonly name: string; readonly vendor?: string };
   // Native slash commands for features outside Glade's scope, hidden from the composer.
   readonly hiddenCommands: ReadonlySet<string>;
   readonly extensions?: AcpExtensionHandlers;

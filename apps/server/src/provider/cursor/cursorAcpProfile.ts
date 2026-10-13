@@ -1,5 +1,6 @@
 import type { AcpProviderProfile } from "../acp/acpProviderProfile.ts";
 import { CURSOR_CLI } from "./cursorCli.ts";
+import { presentCursorModel } from "./cursorModelPresentation.ts";
 
 export const CURSOR_ACP_PROFILE: AcpProviderProfile = {
   provider: "cursor",
@@ -8,5 +9,6 @@ export const CURSOR_ACP_PROFILE: AcpProviderProfile = {
   authMethodId: "cursor_login",
   sessionConfig: () => [{ configId: "mode", value: "agent" }],
   savesModelChoiceGlobally: true,
+  presentModel: presentCursorModel,
   hiddenCommands: new Set(["goal", "loop", "autopilot"]),
 };

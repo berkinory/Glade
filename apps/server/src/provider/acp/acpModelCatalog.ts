@@ -7,6 +7,8 @@ import type { ProviderOptionDescriptor } from "@glade/contracts/provider/model";
 import { formatEffortLabel } from "@glade/shared/provider/effortLabel";
 import type { ProviderModelDescriptor } from "@glade/contracts/provider/providerDiscovery";
 
+import type { AcpProviderProfile } from "./acpProviderProfile.ts";
+
 function flattenChoices(
   options: ReadonlyArray<SessionConfigSelectOption> | ReadonlyArray<SessionConfigSelectGroup>,
 ): ReadonlyArray<SessionConfigSelectOption & { readonly groupName?: string }> {
@@ -145,6 +147,7 @@ export function acpModelSlugs(options: ReadonlyArray<SessionConfigOption>): Read
 export function acpModelCatalog(
   options: ReadonlyArray<SessionConfigOption>,
   optionsByModel: ReadonlyMap<string, ReadonlyArray<SessionConfigOption>>,
+  presentModel?: AcpProviderProfile["presentModel"],
 ): ReadonlyArray<ProviderModelDescriptor> {
   const modelOption = acpModelOption(options);
   if (!modelOption) return [];
@@ -160,8 +163,10 @@ export function acpModelCatalog(
     const label = trimmed(choice.name) ?? slug;
     const separator = label.indexOf("/");
     const vendor = separator > 0 ? label.slice(0, separator).trim() : undefined;
-    const name = separator > 0 ? label.slice(separator + 1).trim() || label : label;
-    const upstreamProviderName = choice.groupName ?? vendor;
+    const agentName = separator > 0 ? label.slice(separator + 1).trim() || label : label;
+    const presented = presentModel?.(slug, agentName);
+    const name = presented?.name ?? agentName;
+    const upstreamProviderName = choice.groupName ?? vendor ?? presented?.vendor;
     const variant = variantDescription(slug);
     return [
       {

@@ -33,5 +33,5 @@ export async function discoverAcpModels(input: {
       optionsByModel.set(slug, response.configOptions);
     }
   }
-  return acpModelCatalog(options, optionsByModel);
+  return acpModelCatalog(options, optionsByModel, input.profile.presentModel);
 }
