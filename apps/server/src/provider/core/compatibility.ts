@@ -1,26 +1,12 @@
-import type { ProviderKind } from "@glade/contracts/core/baseSchemas";
-import { CODEX_PROTOCOL_VERSION } from "../codex/protocol/version.ts";
 import { compareSemverVersions } from "./providerMaintenance.ts";
+import type { ProviderCli } from "./serverProviderDescriptor.ts";
 
-export const PROVIDER_COMPATIBILITY = {
-  codex: { minimumVersion: CODEX_PROTOCOL_VERSION },
-  // Snapshot reads require this CLI version; the SDK build manifest alone does not cover them.
-  claudeAgent: { minimumVersion: "2.1.267" },
-} as const;
-
-export function isProviderVersionSupported(
-  provider: ProviderKind,
-  version: string | null,
-): boolean {
-  return (
-    version !== null &&
-    compareSemverVersions(version, PROVIDER_COMPATIBILITY[provider].minimumVersion) >= 0
-  );
+export function isProviderVersionSupported(cli: ProviderCli, version: string | null): boolean {
+  return version !== null && compareSemverVersions(version, cli.minimumVersion) >= 0;
 }
 
-export function providerUpgradeMessage(provider: ProviderKind, version: string | null): string {
-  const name = provider === "codex" ? "Codex" : "Claude";
+export function providerUpgradeMessage(cli: ProviderCli, version: string | null): string {
   return version === null
-    ? `Could not determine the installed ${name} CLI version. Glade requires ${PROVIDER_COMPATIBILITY[provider].minimumVersion} or newer.`
-    : `${name} CLI ${version} is too old for Glade. Update to ${PROVIDER_COMPATIBILITY[provider].minimumVersion} or newer.`;
+    ? `Could not determine the installed ${cli.displayName} CLI version. Glade requires ${cli.minimumVersion} or newer.`
+    : `${cli.displayName} CLI ${version} is too old for Glade. Update to ${cli.minimumVersion} or newer.`;
 }

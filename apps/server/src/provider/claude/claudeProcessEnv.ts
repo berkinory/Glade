@@ -6,6 +6,16 @@ import nodePath from "node:path";
 
 import { buildProviderChildEnvironment } from "../core/providerChildEnvironment.ts";
 
+export const CLAUDE_CREDENTIAL_GRANTS: ReadonlySet<string> = new Set([
+  "ANTHROPIC_API_KEY",
+  "ANTHROPIC_AUTH_TOKEN",
+  "CLAUDE_CODE_OAUTH_TOKEN",
+  "AWS_ACCESS_KEY_ID",
+  "AWS_SECRET_ACCESS_KEY",
+  "AWS_SESSION_TOKEN",
+  "GOOGLE_APPLICATION_CREDENTIALS",
+]);
+
 const CLAUDE_DIRECT_CREDENTIAL_ENV_KEYS = [
   "ANTHROPIC_API_KEY",
   "ANTHROPIC_AUTH_TOKEN",
@@ -125,13 +135,19 @@ export function buildClaudeProcessEnv(input?: {
     input?.hasClaudeCliCredentials ?? hasUsableClaudeCliCredentials(credentialInput);
 
   if (!hasLocalClaudeAuth || hasClaudeExternalAuthEnv(env)) {
-    return buildProviderChildEnvironment({ provider: "claude", baseEnv: env });
+    return buildProviderChildEnvironment({
+      credentialGrants: CLAUDE_CREDENTIAL_GRANTS,
+      baseEnv: env,
+    });
   }
 
   for (const key of CLAUDE_DIRECT_CREDENTIAL_ENV_KEYS) {
     delete env[key];
   }
-  return buildProviderChildEnvironment({ provider: "claude", baseEnv: env });
+  return buildProviderChildEnvironment({
+    credentialGrants: CLAUDE_CREDENTIAL_GRANTS,
+    baseEnv: env,
+  });
 }
 
 export function withClaudeArtifactOptIn(

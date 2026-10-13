@@ -9,6 +9,13 @@ import { ProviderIdleRuntime } from "../Services/ProviderIdleRuntime.ts";
 import { ProviderInterruptions } from "../Services/ProviderInterruptions.ts";
 import { ProviderValidationError } from "../core/Errors.ts";
 import { readPersistedCwd, readPersistedProviderOptions } from "../core/providerRuntimeBinding.ts";
+import { serverProviderDescriptor } from "../builtInProviders.ts";
+import type { NativeThreadHistoryAction } from "../core/nativeThreadHistory.ts";
+import type { ProviderKind } from "@glade/contracts/core/baseSchemas";
+
+const skipsNativeAction = (provider: ProviderKind, action: NativeThreadHistoryAction): boolean =>
+  (action.type === "archive" || action.type === "unarchive") &&
+  !serverProviderDescriptor(provider).nativeHistory.archives;
 
 export const ProviderNativeHistoryLive = Layer.effect(
   ProviderNativeHistory,
@@ -26,7 +33,7 @@ export const ProviderNativeHistoryLive = Layer.effect(
             const action = input.action;
             const parked = yield* directory.listParked(input.threadId);
             yield* Effect.forEach(parked, (entry) =>
-              entry.provider === "claudeAgent" && action.type !== "delete"
+              skipsNativeAction(entry.provider, action)
                 ? Effect.void
                 : registry.getByProvider(entry.provider).pipe(
                     Effect.flatMap((adapter) =>
@@ -52,11 +59,7 @@ export const ProviderNativeHistoryLive = Layer.effect(
           const binding = Option.getOrUndefined(yield* directory.getBinding(input.threadId));
           // Threads without a binding have never acquired provider history.
           if (!binding) return;
-          if (
-            binding.provider === "claudeAgent" &&
-            (input.action.type === "archive" || input.action.type === "unarchive")
-          )
-            return;
+          if (skipsNativeAction(binding.provider, input.action)) return;
           const adapter = yield* registry.getByProvider(binding.provider);
           const activeSession = (yield* adapter.listSessions()).find(
             (session) => session.threadId === input.threadId,

@@ -1,17 +1,16 @@
 import { ServerProviderStatus } from "@glade/contracts/server/server";
 import { Cause, Effect, FileSystem, Schema } from "effect";
 import { writeFileStringAtomically } from "../../platform/filesystem/atomicWrite";
+import { BUILT_IN_PROVIDERS } from "../builtInProviders";
 
-const PROVIDER_STATUS_CACHE_IDS = ["codex", "claudeAgent"] as const satisfies ReadonlyArray<
-  ServerProviderStatus["provider"]
->;
+const PROVIDER_ORDER = BUILT_IN_PROVIDERS.map((provider) => provider.kind);
 
 const decodeProviderStatusCache = Schema.decodeUnknownEffect(
   Schema.fromJsonString(ServerProviderStatus),
 );
 
 const providerOrderRank = (provider: ServerProviderStatus["provider"]): number => {
-  const rank = PROVIDER_STATUS_CACHE_IDS.indexOf(provider);
+  const rank = PROVIDER_ORDER.indexOf(provider);
   return rank === -1 ? Number.MAX_SAFE_INTEGER : rank;
 };
 

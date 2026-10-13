@@ -1,5 +1,3 @@
-export type ProviderChildKind = "claude" | "codex";
-
 const PROVIDER_CREDENTIAL_KEYS = new Set([
   "ANTHROPIC_API_KEY",
   "ANTHROPIC_AUTH_TOKEN",
@@ -24,18 +22,8 @@ export function isProviderCredentialKey(key: string): boolean {
   return PROVIDER_CREDENTIAL_KEYS.has(normalized) || /(?:_API_KEY|_AUTH_TOKEN)$/u.test(normalized);
 }
 
-const PROVIDER_CREDENTIAL_GRANTS: Record<ProviderChildKind, "all" | ReadonlySet<string>> = {
-  claude: new Set([
-    "ANTHROPIC_API_KEY",
-    "ANTHROPIC_AUTH_TOKEN",
-    "CLAUDE_CODE_OAUTH_TOKEN",
-    "AWS_ACCESS_KEY_ID",
-    "AWS_SECRET_ACCESS_KEY",
-    "AWS_SESSION_TOKEN",
-    "GOOGLE_APPLICATION_CREDENTIALS",
-  ]),
-  codex: "all",
-};
+// Credential variables a provider child may inherit; every other credential is withheld.
+export type ProviderCredentialGrants = "all" | ReadonlySet<string>;
 
 const INHERITED_NATIVE_CAPABILITY_KEYS = new Set([
   "BUN_OPTIONS",
@@ -49,7 +37,7 @@ const isTestHarnessKey = (key: string, env: NodeJS.ProcessEnv): boolean =>
   Boolean(env.VITEST) && (key.startsWith("GLADE_FAKE_") || key.startsWith("GLADE_PROVIDER_"));
 
 export function buildProviderChildEnvironment(input: {
-  readonly provider: ProviderChildKind;
+  readonly credentialGrants: ProviderCredentialGrants;
   readonly baseEnv?: NodeJS.ProcessEnv;
   readonly inheritedGladeKeys?: ReadonlyArray<string>;
   readonly inheritedNativeCapabilityKeys?: ReadonlyArray<string>;
@@ -61,7 +49,7 @@ export function buildProviderChildEnvironment(input: {
   };
   const allowedGladeKeys = new Set(input.inheritedGladeKeys ?? []);
   const allowedNativeCapabilities = new Set(input.inheritedNativeCapabilityKeys ?? []);
-  const credentialGrants = PROVIDER_CREDENTIAL_GRANTS[input.provider];
+  const { credentialGrants } = input;
   const childEnv: NodeJS.ProcessEnv = {};
 
   for (const [key, value] of Object.entries(baseEnv)) {

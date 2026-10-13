@@ -21,6 +21,7 @@ import { isClaudeNativeSlashCommand } from "../claude/adapter/commandPresentatio
 import { type ClaudeAdapterShape } from "../Services/ClaudeAdapter.ts";
 import { toMessage } from "../claude/adapter/streamErrors";
 import { isProviderVersionSupported, providerUpgradeMessage } from "../core/compatibility.ts";
+import { CLAUDE_CLI } from "../claude/claudeCli.ts";
 import { resolveExecutable } from "@glade/shared/platform/executable";
 import { cliBinaryFingerprint, makeCliVersionGate } from "../core/cliVersionGate.ts";
 
@@ -37,7 +38,7 @@ export function makeClaudeSessionAccessLive(options?: ClaudeAdapterLiveOptions) 
       );
       const readClaudeCliVersion = options?.readClaudeCliVersion ?? readInstalledClaudeCliVersion;
       const versionGate = makeCliVersionGate({
-        isSupported: (version) => isProviderVersionSupported(PROVIDER, version),
+        isSupported: (version) => isProviderVersionSupported(CLAUDE_CLI, version),
       });
       const requireSession = (
         threadId: ThreadId,
@@ -136,11 +137,11 @@ export function makeClaudeSessionAccessLive(options?: ClaudeAdapterLiveOptions) 
                 issue: `Could not verify Claude CLI at "${binaryPath}": ${toMessage(cause, "version probe failed")}`,
               }),
           });
-          if (!isProviderVersionSupported(PROVIDER, installedVersion)) {
+          if (!isProviderVersionSupported(CLAUDE_CLI, installedVersion)) {
             return yield* new ProviderAdapterValidationError({
               provider: PROVIDER,
               operation: "startSession",
-              issue: providerUpgradeMessage(PROVIDER, installedVersion),
+              issue: providerUpgradeMessage(CLAUDE_CLI, installedVersion),
             });
           }
           return {

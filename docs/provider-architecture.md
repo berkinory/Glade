@@ -11,6 +11,8 @@ Glade treats provider integrations as adapters behind server-owned orchestration
 
 The registry is intentionally small. It maps `ProviderKind` to an adapter and lists the registered providers; it does not own session routing, persistence, or cross-provider orchestration.
 
+Server-only provider knowledge lives in one `ServerProviderDescriptor` per provider folder: the CLI and its minimum version, the sign-in command and home, child-environment credential grants, model-catalog identity inputs, skill roots, the health check, and update metadata. `provider/builtInProviders.ts` lists the descriptors, and generic server modules look one up by kind instead of branching on a provider name. An unknown kind is an error, not a default.
+
 ## Adapter contract
 
 `apps/server/src/provider/Services/ProviderAdapter.ts` is the provider boundary. Every adapter exposes the same core lifecycle:
@@ -50,7 +52,7 @@ This separation is important: orchestration does not consume arbitrary native pr
 
 Codex protocol artifacts come from the pinned 0.158.0 CLI. `bun run --filter @glade/cli generate:codex-protocol -- --check` verifies reproducible generation. JSON Schema validates known native responses, notifications and server requests at ingress; unknown notifications are skipped, while unknown requests receive a method-not-found response. Model and MCP discovery follow native cursors.
 
-`provider/core/compatibility.ts` owns the admission baseline. Claude uses the configured executable resolved against its child environment, with no bundled CLI fallback. Codex launch passes managed MCP and shell-secret exclusions as native arguments while leaving the user's provider home and configuration files authoritative.
+Each provider's descriptor declares its minimum CLI version, and `provider/core/compatibility.ts` applies that admission baseline. Claude uses the configured executable resolved against its child environment, with no bundled CLI fallback. Codex launch passes managed MCP and shell-secret exclusions as native arguments while leaving the user's provider home and configuration files authoritative.
 
 Codex chat and discovery sessions lease one app-server per executable, provider home, launch arguments, extra skill roots and effective environment. The pool owns the transport, global request IDs and native thread routing; session state and gateway authority remain separate. Gateway credentials are supplied in each thread's MCP HTTP configuration, never in the shared process environment. Resume reloads that configuration before the thread becomes ready.
 

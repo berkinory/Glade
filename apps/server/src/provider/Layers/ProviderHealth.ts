@@ -1,24 +1,15 @@
 import { envPathKeyFor } from "@glade/shared/platform/executable";
 import { isPathName } from "@glade/shared/platform/shell";
-import { asNonEmptyString } from "@glade/shared/text/text";
-import { asRecord } from "@glade/shared/transport/payloadValues";
 import * as OS from "node:os";
 import type { ProviderKind } from "@glade/contracts/core/baseSchemas";
 import type { ServerSettings } from "@glade/contracts/settings/settings";
 import type {
-  ServerProviderAuthStatus,
   ServerProviderStatus,
-  ServerProviderStatusState,
   ServerProviderUpdateState,
 } from "@glade/contracts/server/server";
 import { ServerProviderUpdateError } from "@glade/contracts/server/server";
 import { modelDiscoveryContext } from "../core/modelDiscoveryContext";
-import { parseCodexConfigModelProvider } from "../codex/codexConfig";
-import { decodeJsonResult } from "../../platform/schemaJson";
-import type { SDKUserMessage } from "@anthropic-ai/claude-agent-sdk";
 import {
-  Array,
-  Cache,
   DateTime,
   Duration,
   Effect,
@@ -31,39 +22,16 @@ import {
   PubSub,
   Ref,
   Result,
-  Schema,
   Scope,
   Stream,
 } from "effect";
 import { ChildProcessSpawner } from "effect/unstable/process";
 import { spawnEffectProcess } from "../../platform/effectProcessRuntime.ts";
 
-import { isCodexCliVersionSupported, parseCodexCliVersion } from "../codex/codexCliVersion";
 import { ServerConfig } from "../../server/config";
-import {
-  buildProviderChildEnvironment,
-  type ProviderChildKind,
-} from "../core/providerChildEnvironment.ts";
+import { buildProviderChildEnvironment } from "../core/providerChildEnvironment.ts";
 import { ServerSettingsService } from "../../settings/serverSettings";
-import { isWindowsShellCommandMissingResult } from "../../platform/shell-command-detection";
-import {
-  claudeAuthMetadata,
-  isStructuredClaudeAuthFalseNegativeCandidate,
-  parseClaudeAuthStatusFromOutput,
-} from "../claude/claudeAuthStatus";
-import { acquireClaudeAuthStatusLock } from "../claude/claudeAuthStatusLock";
-import { loadClaudeAgentSdk } from "../claude/claudeAgentSdk.ts";
-import { buildClaudeProcessEnv, readClaudeCliCredentialsSummary } from "../claude/claudeProcessEnv";
-import {
-  detailFromResult,
-  extractAuthBoolean,
-  extractAuthMethod,
-  nonEmptyTrimmed,
-  PROVIDER_COMMAND_TIMEOUT_DETAIL,
-  toTitleCaseWords,
-  type CommandResult,
-} from "../core/providerCliOutput";
-import { probeProviderCliVersion } from "../core/providerCliVersionProbe";
+import { nonEmptyTrimmed, PROVIDER_COMMAND_TIMEOUT_DETAIL } from "../core/providerCliOutput";
 import { ProviderHealth, type ProviderHealthShape } from "../Services/ProviderHealth";
 import {
   orderProviderStatuses,
@@ -76,38 +44,20 @@ import { invalidateCliVersionGates } from "../core/cliVersionGate.ts";
 import {
   enrichProviderStatusWithVersionAdvisory,
   makeProviderMaintenanceCapabilities,
-  normalizeCommandPath,
-  parseGenericCliVersion,
   resolveProviderMaintenanceCapabilitiesEffect,
-  type PackageManagedProviderMaintenanceDefinition,
 } from "../core/providerMaintenance";
-import { isProviderVersionSupported, providerUpgradeMessage } from "../core/compatibility.ts";
 import { collectUint8StreamText } from "../../stream/collectUint8StreamText";
-import { buildCodexProcessEnv } from "../codex/codexProcessEnv.ts";
-import { resolveBaseCodexHomePath } from "../codex/codexHomePaths.ts";
+import { BUILT_IN_PROVIDERS, serverProviderDescriptor } from "../builtInProviders";
 
-class ProviderHealthProbeError extends Error {
-  readonly _tag = "ProviderHealthProbeError";
-}
-
-const DEFAULT_TIMEOUT_MS = 4_000;
-const CLAUDE_HEALTH_TIMEOUT_MS = 20_000;
-const CODEX_AUTH_STATUS_ARGS = ["-c", "mcp_servers={}", "login", "status"] as const;
-const CODEX_PROVIDER = "codex" as const;
-const CLAUDE_AGENT_PROVIDER = "claudeAgent" as const;
 type ProviderStatuses = ReadonlyArray<ServerProviderStatus>;
 const DISABLED_PROVIDER_STATUS_MESSAGE = "Provider is disabled in Glade settings.";
 
-const PROVIDERS = [
-  CODEX_PROVIDER,
-  CLAUDE_AGENT_PROVIDER,
-] as const satisfies ReadonlyArray<ProviderKind>;
-
-const providerChildKind = (provider: ProviderKind): ProviderChildKind =>
-  provider === CLAUDE_AGENT_PROVIDER ? "claude" : provider;
+const PROVIDERS = BUILT_IN_PROVIDERS.map((descriptor) => descriptor.kind);
 
 const providerCommandEnv = (provider: ProviderKind): NodeJS.ProcessEnv =>
-  buildProviderChildEnvironment({ provider: providerChildKind(provider) });
+  buildProviderChildEnvironment({
+    credentialGrants: serverProviderDescriptor(provider).environment.credentialGrants,
+  });
 
 const UPDATE_OUTPUT_MAX_BYTES = 10_000;
 const MAX_REFRESH_REVISION_RETRIES = 1;
@@ -126,838 +76,6 @@ function formatProviderUpdateTimeout(timeoutMs: number): string {
   const seconds = timeoutMs / 1_000;
   return `${seconds} ${seconds === 1 ? "second" : "seconds"}`;
 }
-
-function isClaudeNativeCommandPath(commandPath: string): boolean {
-  const normalized = normalizeCommandPath(commandPath);
-  return (
-    normalized.endsWith("/.local/bin/claude") ||
-    normalized.endsWith("/.local/bin/claude.exe") ||
-    normalized.includes("/.local/share/claude/")
-  );
-}
-
-function isClaudeLatestHomebrewCommandPath(commandPath: string): boolean {
-  return normalizeCommandPath(commandPath).includes("/caskroom/claude-code@latest/");
-}
-
-const PACKAGE_MANAGED_PROVIDER_UPDATES: Partial<
-  Record<ProviderKind, PackageManagedProviderMaintenanceDefinition>
-> = {
-  codex: {
-    provider: CODEX_PROVIDER,
-    binaryName: "codex",
-    npmPackageName: "@openai/codex",
-    homebrew: { name: "codex", kind: "cask" },
-    nativeUpdate: {
-      executable: "codex",
-      args: () => ["update"],
-      lockKey: "codex-native",
-      strategy: "matching-path",
-      latestVersionSource: { kind: "npm", name: "@openai/codex" },
-      isCommandPath: (commandPath) =>
-        normalizeCommandPath(commandPath).includes("/.codex/packages/standalone/"),
-    },
-  },
-  claudeAgent: {
-    provider: CLAUDE_AGENT_PROVIDER,
-    binaryName: "claude",
-    npmPackageName: "@anthropic-ai/claude-code",
-    homebrew: {
-      name: "claude-code",
-      kind: "cask",
-      variants: [
-        {
-          name: "claude-code@latest",
-          kind: "cask",
-          isCommandPath: isClaudeLatestHomebrewCommandPath,
-        },
-      ],
-    },
-    nativeUpdate: {
-      executable: "claude",
-      args: () => ["update"],
-      lockKey: "claude-native",
-      strategy: "matching-path",
-
-      latestVersionSource: null,
-      isCommandPath: isClaudeNativeCommandPath,
-    },
-  },
-};
-
-function resolveVoiceTranscriptionAvailability(
-  authMethod: string | undefined,
-): boolean | undefined {
-  if (!authMethod) {
-    return undefined;
-  }
-  return authMethod === "chatgpt" || authMethod === "chatgptAuthTokens";
-}
-
-const SUBSCRIPTION_TYPE_KEYS = [
-  "subscriptionType",
-  "subscription_type",
-  "plan",
-  "tier",
-  "planType",
-  "plan_type",
-] as const;
-
-const SUBSCRIPTION_CONTAINER_KEYS = ["account", "subscription", "user", "billing"] as const;
-const AUTH_METHOD_KEYS = ["authMethod", "auth_method"] as const;
-const AUTH_METHOD_CONTAINER_KEYS = ["auth", "account", "session"] as const;
-
-function findSubscriptionType(value: unknown): Option.Option<string> {
-  if (Array.isArray(value)) {
-    return Option.firstSomeOf(value.map(findSubscriptionType));
-  }
-  return Option.fromNullishOr(asRecord(value)).pipe(
-    Option.flatMap((record) => {
-      const direct = Option.firstSomeOf(
-        SUBSCRIPTION_TYPE_KEYS.map((key) => Option.fromNullishOr(asNonEmptyString(record[key]))),
-      );
-      if (Option.isSome(direct)) return direct;
-      return Option.firstSomeOf(
-        SUBSCRIPTION_CONTAINER_KEYS.map((key) =>
-          Option.fromNullishOr(asRecord(record[key])).pipe(Option.flatMap(findSubscriptionType)),
-        ),
-      );
-    }),
-  );
-}
-
-function findAuthMethodDeep(value: unknown): Option.Option<string> {
-  if (Array.isArray(value)) {
-    return Option.firstSomeOf(value.map(findAuthMethodDeep));
-  }
-  return Option.fromNullishOr(asRecord(value)).pipe(
-    Option.flatMap((record) => {
-      const direct = Option.firstSomeOf(
-        AUTH_METHOD_KEYS.map((key) => Option.fromNullishOr(asNonEmptyString(record[key]))),
-      );
-      if (Option.isSome(direct)) return direct;
-      return Option.firstSomeOf(
-        AUTH_METHOD_CONTAINER_KEYS.map((key) =>
-          Option.fromNullishOr(asRecord(record[key])).pipe(Option.flatMap(findAuthMethodDeep)),
-        ),
-      );
-    }),
-  );
-}
-
-const decodeUnknownJson = decodeJsonResult(Schema.Unknown);
-
-function extractSubscriptionTypeFromOutput(result: CommandResult): string | undefined {
-  const parsed = decodeUnknownJson(result.stdout.trim());
-  if (Result.isFailure(parsed)) return undefined;
-  return Option.getOrUndefined(findSubscriptionType(parsed.success));
-}
-
-function extractClaudeAuthMethodFromOutput(result: CommandResult): string | undefined {
-  const parsed = decodeUnknownJson(result.stdout.trim());
-  if (Result.isFailure(parsed)) return undefined;
-  return Option.getOrUndefined(findAuthMethodDeep(parsed.success));
-}
-
-type CodexPlanTypeLiteral =
-  | "free"
-  | "go"
-  | "plus"
-  | "pro"
-  | "team"
-  | "business"
-  | "enterprise"
-  | "edu"
-  | "self_serve_business_usage_based"
-  | "enterprise_cbp_usage_based"
-  | "unknown";
-
-function codexAccountAuthLabel(input: {
-  readonly type: string | undefined;
-  readonly planType: string | undefined;
-}): string | undefined {
-  if (input.type === "apiKey") return "OpenAI API Key";
-  if (!input.planType) return undefined;
-  switch (input.planType as CodexPlanTypeLiteral) {
-    case "free":
-      return "ChatGPT Free Subscription";
-    case "go":
-      return "ChatGPT Go Subscription";
-    case "plus":
-      return "ChatGPT Plus Subscription";
-    case "pro":
-      return "ChatGPT Pro Subscription";
-    case "team":
-      return "ChatGPT Team Subscription";
-    case "self_serve_business_usage_based":
-    case "business":
-      return "ChatGPT Business Subscription";
-    case "enterprise_cbp_usage_based":
-    case "enterprise":
-      return "ChatGPT Enterprise Subscription";
-    case "edu":
-      return "ChatGPT Edu Subscription";
-    case "unknown":
-      return "ChatGPT Subscription";
-    default:
-      return toTitleCaseWords(input.planType);
-  }
-}
-
-// Current Codex CLI reports `login status` as plain text, usually on stderr, instead of JSON.
-function codexPlainTextLoginMethod(result: CommandResult): "chatgpt" | "apiKey" | undefined {
-  const output = `${result.stdout}\n${result.stderr}`.toLowerCase();
-  if (/^logged in using chatgpt\s*$/m.test(output)) return "chatgpt";
-  if (/^logged in using an api key\b/m.test(output)) return "apiKey";
-  return undefined;
-}
-
-function extractCodexAccountTypeFromOutput(result: CommandResult): string | undefined {
-  const parsed = decodeUnknownJson(result.stdout.trim());
-  if (Result.isFailure(parsed)) {
-    return codexPlainTextLoginMethod(result) === "apiKey" ? "apiKey" : undefined;
-  }
-  const walk = (value: unknown): string | undefined => {
-    if (Array.isArray(value)) {
-      for (const entry of value) {
-        const nested = walk(entry);
-        if (nested) return nested;
-      }
-      return undefined;
-    }
-    const record = Option.getOrUndefined(Option.fromNullishOr(asRecord(value)));
-    if (!record) return undefined;
-    const direct = Option.getOrUndefined(
-      Option.firstSomeOf(
-        ["type", "accountType"].map((key) => Option.fromNullishOr(asNonEmptyString(record[key]))),
-      ),
-    );
-    if (direct) return direct;
-    for (const key of ["account", "session", "auth"] as const) {
-      const nested = walk(record[key]);
-      if (nested) return nested;
-    }
-    return undefined;
-  };
-  return walk(parsed.success);
-}
-
-// The prompt is a never-yielding AsyncIterable so no user message reaches the Anthropic API — we
-// get account metadata (including subscription type) from local IPC, then abort the subprocess.
-
-const CAPABILITIES_PROBE_TIMEOUT_MS = 8_000;
-
-function waitForAbortSignal(signal: AbortSignal): Promise<void> {
-  if (signal.aborted) return Promise.resolve();
-  return new Promise((resolve) => {
-    signal.addEventListener("abort", () => resolve(), { once: true });
-  });
-}
-
-const probeClaudeSubscription = (binaryPath: string, env: NodeJS.ProcessEnv) => {
-  const abort = new AbortController();
-  return Effect.tryPromise(async () => {
-    const { query: claudeQuery } = await loadClaudeAgentSdk();
-    const q = claudeQuery({
-      // oxlint-disable-next-line require-yield
-      prompt: (async function* (): AsyncGenerator<SDKUserMessage> {
-        await waitForAbortSignal(abort.signal);
-      })(),
-      options: {
-        persistSession: false,
-        pathToClaudeCodeExecutable: binaryPath,
-        env,
-        abortController: abort,
-        settingSources: ["user", "project", "local"],
-        allowedTools: [],
-        stderr: () => {},
-      },
-    });
-    const init = await q.initializationResult();
-    return { subscriptionType: init.account?.subscriptionType };
-  }).pipe(
-    Effect.ensuring(
-      Effect.sync(() => {
-        if (!abort.signal.aborted) abort.abort();
-      }),
-    ),
-    Effect.timeoutOption(CAPABILITIES_PROBE_TIMEOUT_MS),
-    Effect.result,
-    Effect.map((result) => {
-      if (Result.isFailure(result)) return undefined;
-      return Option.isSome(result.success) ? result.success.value : undefined;
-    }),
-  );
-};
-
-function parseAuthStatusFromOutput(result: CommandResult): {
-  readonly status: ServerProviderStatusState;
-  readonly authStatus: ServerProviderAuthStatus;
-  readonly voiceTranscriptionAvailable?: boolean;
-  readonly message?: string;
-} {
-  const lowerOutput = `${result.stdout}\n${result.stderr}`.toLowerCase();
-
-  if (
-    lowerOutput.includes("unknown command") ||
-    lowerOutput.includes("unrecognized command") ||
-    lowerOutput.includes("unexpected argument")
-  ) {
-    return {
-      status: "warning",
-      authStatus: "unknown",
-      message: "Codex CLI authentication status command is unavailable in this Codex version.",
-    };
-  }
-
-  if (
-    lowerOutput.includes("not logged in") ||
-    lowerOutput.includes("login required") ||
-    lowerOutput.includes("authentication required") ||
-    lowerOutput.includes("run `codex login`") ||
-    lowerOutput.includes("run codex login")
-  ) {
-    return {
-      status: "error",
-      authStatus: "unauthenticated",
-      message: "Codex CLI is not authenticated. Run `codex login` and try again.",
-    };
-  }
-
-  const parsedAuth = (() => {
-    const trimmed = result.stdout.trim();
-    if (!trimmed || (!trimmed.startsWith("{") && !trimmed.startsWith("["))) {
-      return {
-        attemptedJsonParse: false as const,
-        auth: undefined as boolean | undefined,
-        authMethod: undefined as string | undefined,
-      };
-    }
-    try {
-      const parsed = JSON.parse(trimmed);
-      return {
-        attemptedJsonParse: true as const,
-        auth: extractAuthBoolean(parsed),
-        authMethod: extractAuthMethod(parsed),
-      };
-    } catch {
-      return {
-        attemptedJsonParse: false as const,
-        auth: undefined as boolean | undefined,
-        authMethod: undefined as string | undefined,
-      };
-    }
-  })();
-
-  if (parsedAuth.auth === true) {
-    const voiceTranscriptionAvailable = resolveVoiceTranscriptionAvailability(
-      parsedAuth.authMethod,
-    );
-    return {
-      status: "ready",
-      authStatus: "authenticated",
-      ...(voiceTranscriptionAvailable !== undefined ? { voiceTranscriptionAvailable } : {}),
-    };
-  }
-  if (parsedAuth.auth === false) {
-    return {
-      status: "error",
-      authStatus: "unauthenticated",
-      message: "Codex CLI is not authenticated. Run `codex login` and try again.",
-    };
-  }
-  if (parsedAuth.attemptedJsonParse) {
-    return {
-      status: "warning",
-      authStatus: "unknown",
-      message:
-        "Could not verify Codex authentication status from JSON output (missing auth marker).",
-    };
-  }
-  if (result.code === 0) {
-    // Unknown successful output stays authenticated without advertising ChatGPT-only dictation.
-    const voiceTranscriptionAvailable = resolveVoiceTranscriptionAvailability(
-      codexPlainTextLoginMethod(result),
-    );
-    return {
-      status: "ready",
-      authStatus: "authenticated",
-      ...(voiceTranscriptionAvailable !== undefined ? { voiceTranscriptionAvailable } : {}),
-    };
-  }
-
-  const detail = detailFromResult(result);
-  return {
-    status: "warning",
-    authStatus: "unknown",
-    message: detail
-      ? `Could not verify Codex authentication status. ${detail}`
-      : "Could not verify Codex authentication status.",
-  };
-}
-
-// For any other provider value the auth probe is skipped because authentication is handled
-// externally (e.g. via environment variables like `PORTKEY_API_KEY` or `AZURE_API_KEY`).
-const OPENAI_AUTH_PROVIDERS = new Set(["openai"]);
-
-const collectStreamAsString = <E>(stream: Stream.Stream<Uint8Array, E>): Effect.Effect<string, E> =>
-  Stream.runFold(
-    stream,
-    () => "",
-    (acc, chunk) => acc + new TextDecoder().decode(chunk),
-  );
-
-const runProviderCommand = (
-  executable: string,
-  args: ReadonlyArray<string>,
-  options: { readonly env: NodeJS.ProcessEnv; readonly cwd?: string | undefined },
-) =>
-  Effect.gen(function* () {
-    const spawner = yield* ChildProcessSpawner.ChildProcessSpawner;
-    const child = yield* spawnEffectProcess(spawner, executable, args, {
-      ...options,
-      stdin: "ignore",
-    });
-
-    const [stdout, stderr, exitCode] = yield* Effect.all(
-      [
-        collectStreamAsString(child.stdout),
-        collectStreamAsString(child.stderr),
-        child.exitCode.pipe(Effect.map(Number)),
-      ],
-      { concurrency: "unbounded" },
-    );
-
-    return { stdout, stderr, code: exitCode } satisfies CommandResult;
-  }).pipe(Effect.scoped);
-
-const runCodexCommand = (
-  args: ReadonlyArray<string>,
-  executable: string,
-  env: NodeJS.ProcessEnv,
-  cwd: string | undefined,
-) =>
-  runProviderCommand(executable, args, { env, cwd }).pipe(
-    Effect.flatMap((result) =>
-      isWindowsShellCommandMissingResult({ code: result.code, stderr: result.stderr })
-        ? Effect.fail(new ProviderHealthProbeError(`spawn ${executable} ENOENT`))
-        : Effect.succeed(result),
-    ),
-  );
-
-const runClaudeCommand = (
-  args: ReadonlyArray<string>,
-  executable = "claude",
-  env: NodeJS.ProcessEnv = buildClaudeProcessEnv(),
-) =>
-  runProviderCommand(executable, args, { env }).pipe(
-    Effect.flatMap((result) =>
-      isWindowsShellCommandMissingResult({ code: result.code, stderr: result.stderr })
-        ? Effect.fail(new ProviderHealthProbeError(`spawn ${executable} ENOENT`))
-        : Effect.succeed(result),
-    ),
-  );
-
-async function makeCodexProbeEnv(homePath?: string): Promise<NodeJS.ProcessEnv> {
-  const normalizedHomePath = nonEmptyTrimmed(homePath);
-  return buildCodexProcessEnv(normalizedHomePath ? { homePath: normalizedHomePath } : {});
-}
-
-const readCodexConfigModelProviderForEnv = (env: NodeJS.ProcessEnv) =>
-  Effect.gen(function* () {
-    const fileSystem = yield* FileSystem.FileSystem;
-    const path = yield* Path.Path;
-    const configPath = path.join(resolveBaseCodexHomePath(env), "config.toml");
-
-    const content = yield* fileSystem
-      .readFileString(configPath)
-      .pipe(Effect.orElseSucceed(() => undefined));
-    if (content === undefined) {
-      return undefined;
-    }
-
-    return parseCodexConfigModelProvider(content);
-  });
-
-const hasCustomModelProviderForEnv = (env: NodeJS.ProcessEnv) =>
-  Effect.map(
-    readCodexConfigModelProviderForEnv(env),
-    (provider) => provider !== undefined && !OPENAI_AUTH_PROVIDERS.has(provider),
-  );
-
-const makeCheckCodexProviderStatus = (
-  binaryPath?: string,
-  homePath?: string,
-): Effect.Effect<
-  ServerProviderStatus,
-  never,
-  ChildProcessSpawner.ChildProcessSpawner | FileSystem.FileSystem | Path.Path
-> => {
-  const executable = nonEmptyTrimmed(binaryPath) ?? "codex";
-  return Effect.gen(function* () {
-    const checkedAt = new Date().toISOString();
-    const probeEnv = yield* Effect.promise(() => makeCodexProbeEnv(homePath));
-    // Probes run from the provider home so account state never merges project config from the
-    // server's working directory. A missing home is reported, never created.
-    const codexHome = resolveBaseCodexHomePath(probeEnv);
-    const fileSystem = yield* FileSystem.FileSystem;
-    const codexHomeExists = yield* fileSystem.stat(codexHome).pipe(
-      Effect.map((info) => info.type === "Directory"),
-      Effect.orElseSucceed(() => false),
-    );
-    const probeCwd = codexHomeExists ? codexHome : undefined;
-
-    const versionProbe = yield* probeProviderCliVersion(
-      runCodexCommand(["--version"], executable, probeEnv, probeCwd),
-      DEFAULT_TIMEOUT_MS,
-    );
-
-    if (versionProbe.outcome === "missing" || versionProbe.outcome === "failure") {
-      const error = versionProbe.cause;
-      return {
-        provider: CODEX_PROVIDER,
-        status: "error" as const,
-        available: false,
-        authStatus: "unknown" as const,
-        checkedAt,
-        message:
-          versionProbe.outcome === "missing"
-            ? "Codex CLI (`codex`) is not installed or not on PATH."
-            : `Failed to execute Codex CLI health check: ${error instanceof Error ? error.message : String(error)}.`,
-      };
-    }
-
-    if (versionProbe.outcome === "timeout") {
-      return {
-        provider: CODEX_PROVIDER,
-        status: "error" as const,
-        available: false,
-        authStatus: "unknown" as const,
-        checkedAt,
-        message: "Codex CLI is installed but failed to run. Timed out while running command.",
-      };
-    }
-
-    if (versionProbe.outcome === "nonzero") {
-      const version = versionProbe.result;
-      const detail = detailFromResult(version);
-      return {
-        provider: CODEX_PROVIDER,
-        status: "error" as const,
-        available: false,
-        authStatus: "unknown" as const,
-        checkedAt,
-        message: detail
-          ? `Codex CLI is installed but failed to run. ${detail}`
-          : "Codex CLI is installed but failed to run.",
-      };
-    }
-    const version = versionProbe.result;
-
-    const parsedVersion = parseCodexCliVersion(`${version.stdout}\n${version.stderr}`);
-    if (parsedVersion === null || !isCodexCliVersionSupported(parsedVersion)) {
-      return {
-        provider: CODEX_PROVIDER,
-        status: parsedVersion === null ? ("error" as const) : ("update-required" as const),
-        available: false,
-        authStatus: "unknown" as const,
-        checkedAt,
-        version: parsedVersion,
-        message: providerUpgradeMessage("codex", parsedVersion),
-      };
-    }
-    const supportsAutoRuntimeMode = true;
-
-    if (yield* hasCustomModelProviderForEnv(probeEnv)) {
-      return {
-        provider: CODEX_PROVIDER,
-        status: "ready" as const,
-        available: true,
-        authStatus: "unknown" as const,
-        version: parsedVersion,
-        supportsAutoRuntimeMode,
-        checkedAt,
-        message: "Using a custom Codex model provider; OpenAI login check skipped.",
-      } satisfies ServerProviderStatus;
-    }
-
-    if (!codexHomeExists) {
-      return {
-        provider: CODEX_PROVIDER,
-        status: "warning" as const,
-        available: true,
-        authStatus: "unknown" as const,
-        version: parsedVersion,
-        supportsAutoRuntimeMode,
-        checkedAt,
-        message: `Could not verify Codex authentication status: the Codex home ${codexHome} does not exist. Sign in with the Codex CLI to create it.`,
-      } satisfies ServerProviderStatus;
-    }
-
-    const authProbe = yield* runCodexCommand(
-      CODEX_AUTH_STATUS_ARGS,
-      executable,
-      probeEnv,
-      codexHome,
-    ).pipe(Effect.timeoutOption(DEFAULT_TIMEOUT_MS), Effect.result);
-
-    if (Result.isFailure(authProbe)) {
-      const error = authProbe.failure;
-      return {
-        provider: CODEX_PROVIDER,
-        status: "warning" as const,
-        available: true,
-        authStatus: "unknown" as const,
-        version: parsedVersion,
-        supportsAutoRuntimeMode,
-        checkedAt,
-        message:
-          error instanceof Error
-            ? `Could not verify Codex authentication status: ${error.message}.`
-            : "Could not verify Codex authentication status.",
-      };
-    }
-
-    if (Option.isNone(authProbe.success)) {
-      return {
-        provider: CODEX_PROVIDER,
-        status: "warning" as const,
-        available: true,
-        authStatus: "unknown" as const,
-        version: parsedVersion,
-        supportsAutoRuntimeMode,
-        checkedAt,
-        message: "Could not verify Codex authentication status. Timed out while running command.",
-      };
-    }
-
-    const authOutput = authProbe.success.value;
-    const parsed = parseAuthStatusFromOutput(authOutput);
-    const codexPlanType = extractSubscriptionTypeFromOutput(authOutput);
-    const codexAccountType = extractCodexAccountTypeFromOutput(authOutput);
-    const codexLabel =
-      parsed.authStatus === "authenticated"
-        ? codexAccountAuthLabel({ type: codexAccountType, planType: codexPlanType })
-        : undefined;
-    const codexAuthType =
-      parsed.authStatus === "authenticated"
-        ? codexAccountType === "apiKey"
-          ? "apiKey"
-          : codexPlanType
-        : undefined;
-
-    return {
-      provider: CODEX_PROVIDER,
-      status: parsed.status,
-      available: true,
-      authStatus: parsed.authStatus,
-      version: parsedVersion,
-      supportsAutoRuntimeMode,
-      ...(codexAuthType ? { authType: codexAuthType } : {}),
-      ...(codexLabel ? { authLabel: codexLabel } : {}),
-      ...(parsed.voiceTranscriptionAvailable !== undefined
-        ? { voiceTranscriptionAvailable: parsed.voiceTranscriptionAvailable }
-        : {}),
-      checkedAt,
-      ...(parsed.message ? { message: parsed.message } : {}),
-    } satisfies ServerProviderStatus;
-  }).pipe(
-    Effect.map((status) => ({
-      ...status,
-      autoRuntimeModeBinaryPath: executable,
-    })),
-  );
-};
-
-const CLAUDE_AUTH_FALSE_NEGATIVE_RETRY_DELAY_MS = 1_000;
-
-const makeCheckClaudeProviderStatus = (
-  resolveSubscriptionType?: Effect.Effect<string | undefined>,
-  binaryPath?: string,
-  homeDir?: string,
-  options?: { readonly falseNegativeRetryDelayMs?: number },
-): Effect.Effect<ServerProviderStatus, never, ChildProcessSpawner.ChildProcessSpawner> => {
-  const executable = nonEmptyTrimmed(binaryPath) ?? "claude";
-  return Effect.gen(function* () {
-    const checkedAt = new Date().toISOString();
-    const claudeEnv = buildClaudeProcessEnv(
-      homeDir ? { env: process.env, homeDir } : { env: process.env },
-    );
-
-    const versionProbe = yield* probeProviderCliVersion(
-      runClaudeCommand(["--version"], executable, claudeEnv),
-      CLAUDE_HEALTH_TIMEOUT_MS,
-    );
-
-    if (versionProbe.outcome === "missing" || versionProbe.outcome === "failure") {
-      const error = versionProbe.cause;
-      return {
-        provider: CLAUDE_AGENT_PROVIDER,
-        status: "error" as const,
-        available: false,
-        authStatus: "unknown" as const,
-        checkedAt,
-        message:
-          versionProbe.outcome === "missing"
-            ? "Claude Agent CLI (`claude`) is not installed or not on PATH."
-            : `Failed to execute Claude Agent CLI health check: ${error instanceof Error ? error.message : String(error)}.`,
-      };
-    }
-
-    if (versionProbe.outcome === "timeout") {
-      return {
-        provider: CLAUDE_AGENT_PROVIDER,
-        status: "error" as const,
-        available: false,
-        authStatus: "unknown" as const,
-        checkedAt,
-        message:
-          "Claude Agent CLI is installed but failed to run. Timed out while running command.",
-      };
-    }
-
-    if (versionProbe.outcome === "nonzero") {
-      const version = versionProbe.result;
-      const detail = detailFromResult(version);
-      return {
-        provider: CLAUDE_AGENT_PROVIDER,
-        status: "error" as const,
-        available: false,
-        authStatus: "unknown" as const,
-        checkedAt,
-        message: detail
-          ? `Claude Agent CLI is installed but failed to run. ${detail}`
-          : "Claude Agent CLI is installed but failed to run.",
-      };
-    }
-    const version = versionProbe.result;
-    const parsedVersion = parseGenericCliVersion(`${version.stdout}\n${version.stderr}`);
-    if (!isProviderVersionSupported("claudeAgent", parsedVersion)) {
-      return {
-        provider: CLAUDE_AGENT_PROVIDER,
-        status: parsedVersion === null ? ("error" as const) : ("update-required" as const),
-        available: false,
-        authStatus: "unknown" as const,
-        checkedAt,
-        version: parsedVersion,
-        message: providerUpgradeMessage("claudeAgent", parsedVersion),
-      };
-    }
-    const supportsAutoRuntimeMode = true;
-
-    const runAuthStatusProbe = Effect.acquireUseRelease(
-      Effect.promise(() => acquireClaudeAuthStatusLock()),
-      () =>
-        runClaudeCommand(["auth", "status"], executable, claudeEnv).pipe(
-          Effect.timeoutOption(CLAUDE_HEALTH_TIMEOUT_MS),
-        ),
-      (release) => Effect.sync(release),
-    ).pipe(Effect.result);
-
-    const authProbe = yield* runAuthStatusProbe;
-
-    if (Result.isFailure(authProbe)) {
-      const error = authProbe.failure;
-      return {
-        provider: CLAUDE_AGENT_PROVIDER,
-        status: "warning" as const,
-        available: true,
-        authStatus: "unknown" as const,
-        version: parsedVersion,
-        supportsAutoRuntimeMode,
-        checkedAt,
-        message:
-          error instanceof Error
-            ? `Could not verify Claude authentication status: ${error.message}.`
-            : "Could not verify Claude authentication status.",
-      };
-    }
-
-    if (Option.isNone(authProbe.success)) {
-      return {
-        provider: CLAUDE_AGENT_PROVIDER,
-        status: "warning" as const,
-        available: true,
-        authStatus: "unknown" as const,
-        version: parsedVersion,
-        supportsAutoRuntimeMode,
-        checkedAt,
-        message: "Could not verify Claude authentication status. Timed out while running command.",
-      };
-    }
-
-    let authOutput = authProbe.success.value;
-    let parsed = parseClaudeAuthStatusFromOutput(authOutput);
-    const credentialSummary = readClaudeCliCredentialsSummary(
-      homeDir ? { env: claudeEnv, homeDir } : { env: claudeEnv },
-    );
-    // A structured `loggedIn:false` with a clean exit and no local credential record to rescue it
-    // (macOS keeps OAuth in the Keychain, not on disk) is the signature of a lost refresh-token
-    // rotation race with a concurrent `claude auth status` invocation.
-    if (
-      !credentialSummary.usable &&
-      isStructuredClaudeAuthFalseNegativeCandidate(authOutput, parsed)
-    ) {
-      const retryDelayMs =
-        options?.falseNegativeRetryDelayMs ?? CLAUDE_AUTH_FALSE_NEGATIVE_RETRY_DELAY_MS;
-      if (retryDelayMs > 0) {
-        yield* Effect.sleep(retryDelayMs);
-      }
-      const retryProbe = yield* runAuthStatusProbe;
-      if (Result.isSuccess(retryProbe) && Option.isSome(retryProbe.success)) {
-        authOutput = retryProbe.success.value;
-        parsed = parseClaudeAuthStatusFromOutput(authOutput);
-      }
-    }
-    const structuredFalseNegative = isStructuredClaudeAuthFalseNegativeCandidate(
-      authOutput,
-      parsed,
-    );
-    const credentialProbeSubscriptionType =
-      credentialSummary.usable && structuredFalseNegative && resolveSubscriptionType
-        ? yield* resolveSubscriptionType
-        : undefined;
-
-    const effectiveParsed: ReturnType<typeof parseClaudeAuthStatusFromOutput> =
-      credentialProbeSubscriptionType !== undefined
-        ? { status: "ready", authStatus: "authenticated" }
-        : parsed;
-    const useCredentialMetadata = credentialProbeSubscriptionType !== undefined;
-
-    let subscriptionType =
-      extractSubscriptionTypeFromOutput(authOutput) ??
-      credentialProbeSubscriptionType ??
-      (useCredentialMetadata ? credentialSummary.subscriptionType : undefined);
-    const authMethod =
-      extractClaudeAuthMethodFromOutput(authOutput) ??
-      (useCredentialMetadata ? "claude.ai" : undefined);
-    if (
-      !subscriptionType &&
-      resolveSubscriptionType &&
-      effectiveParsed.authStatus === "authenticated"
-    ) {
-      subscriptionType = yield* resolveSubscriptionType;
-    }
-    const authMetadata = claudeAuthMetadata({ subscriptionType, authMethod });
-
-    return {
-      provider: CLAUDE_AGENT_PROVIDER,
-      status: effectiveParsed.status,
-      available: true,
-      authStatus: effectiveParsed.authStatus,
-      version: parsedVersion,
-      supportsAutoRuntimeMode,
-      ...(authMetadata ? { authType: authMetadata.type, authLabel: authMetadata.label } : {}),
-      checkedAt,
-      ...(effectiveParsed.message ? { message: effectiveParsed.message } : {}),
-    } satisfies ServerProviderStatus;
-  }).pipe(
-    Effect.map((status) => ({
-      ...status,
-      autoRuntimeModeBinaryPath: executable,
-    })),
-  );
-};
 
 function comparableProviderVersionAdvisory(
   advisory: ServerProviderStatus["versionAdvisory"] | undefined,
@@ -1202,24 +320,11 @@ function makeProviderHealthLive(options?: { readonly providerUpdateTimeoutMs?: n
           }),
       });
 
-      const claudeSubscriptionCache = yield* Cache.make({
-        capacity: 8,
-        timeToLive: Duration.minutes(5),
-        lookup: (binaryPath: string) =>
-          probeClaudeSubscription(
-            binaryPath,
-            buildClaudeProcessEnv({ env: process.env, homeDir: serverConfig.homeDir }),
-          ),
-      });
-
-      const getProviderBinaryPath = (provider: ProviderKind, settings: ServerSettings) => {
-        switch (provider) {
-          case "codex":
-            return settings.providers.codex.binaryPath;
-          case "claudeAgent":
-            return settings.providers.claudeAgent.binaryPath;
-        }
-      };
+      const statusChecks = yield* Effect.forEach(BUILT_IN_PROVIDERS, (descriptor) =>
+        descriptor
+          .makeStatusCheck({ homeDir: serverConfig.homeDir })
+          .pipe(Effect.map((check) => ({ descriptor, check }))),
+      );
 
       const getProviderMaintenanceCapabilities = Effect.fn("getProviderMaintenanceCapabilities")(
         function* (provider: ProviderKind) {
@@ -1234,18 +339,9 @@ function makeProviderHealthLive(options?: { readonly providerUpdateTimeoutMs?: n
               updateLockKey: null,
             });
           }
-          const definition = PACKAGE_MANAGED_PROVIDER_UPDATES[provider];
-          if (!definition) {
-            return makeProviderMaintenanceCapabilities({
-              provider,
-              packageName: null,
-              updateExecutable: null,
-              updateArgs: [],
-              updateLockKey: null,
-            });
-          }
-          return yield* resolveProviderMaintenanceCapabilitiesEffect(definition, {
-            binaryPath: getProviderBinaryPath(provider, settings) ?? null,
+          const { maintenance } = serverProviderDescriptor(provider);
+          return yield* resolveProviderMaintenanceCapabilitiesEffect(maintenance, {
+            binaryPath: settings.providers[provider].binaryPath,
             env: providerCommandEnv(provider),
             platform: process.platform,
           }).pipe(Effect.provideService(FileSystem.FileSystem, fileSystem));
@@ -1349,16 +445,23 @@ function makeProviderHealthLive(options?: { readonly providerUpdateTimeoutMs?: n
         });
       });
 
-      const checkProviderWhenEnabled = <R>(
+      const checkProviderWhenEnabled = (
         settings: ServerSettings,
-        provider: ProviderKind,
-        check: Effect.Effect<ServerProviderStatus, never, R>,
-      ): Effect.Effect<Option.Option<ServerProviderStatus>, never, R> =>
-        isProviderEnabledForSettings(provider, settings)
-          ? check.pipe(
+        { descriptor, check }: (typeof statusChecks)[number],
+      ) =>
+        isProviderEnabledForSettings(descriptor.kind, settings)
+          ? check(settings).pipe(
+              Effect.map(
+                (status): ServerProviderStatus => ({
+                  ...status,
+                  autoRuntimeModeBinaryPath:
+                    nonEmptyTrimmed(settings.providers[descriptor.kind].binaryPath) ??
+                    descriptor.cli.command,
+                }),
+              ),
               Effect.flatMap((status) =>
                 modelDiscoveryContext({
-                  request: { provider },
+                  request: { provider: descriptor.kind },
                   settings,
                   homeDir: serverConfig.homeDir,
                 }).pipe(
@@ -1377,39 +480,15 @@ function makeProviderHealthLive(options?: { readonly providerUpdateTimeoutMs?: n
               ),
               Effect.map(Option.some),
             )
-          : Effect.succeed(Option.none());
+          : Effect.succeed(Option.none<ServerProviderStatus>());
 
       const loadProviderStatuses = serverSettings.ready
         .pipe(
           Effect.flatMap(() => serverSettings.getSettings),
           Effect.flatMap((settings) =>
-            Effect.all(
-              [
-                checkProviderWhenEnabled(
-                  settings,
-                  CODEX_PROVIDER,
-                  makeCheckCodexProviderStatus(
-                    settings.providers.codex.binaryPath,
-                    settings.providers.codex.homePath,
-                  ),
-                ),
-                checkProviderWhenEnabled(
-                  settings,
-                  CLAUDE_AGENT_PROVIDER,
-                  makeCheckClaudeProviderStatus(
-                    Cache.get(
-                      claudeSubscriptionCache,
-                      nonEmptyTrimmed(settings.providers.claudeAgent.binaryPath) ?? "claude",
-                    ).pipe(Effect.map((probe) => probe?.subscriptionType)),
-                    settings.providers.claudeAgent.binaryPath,
-                    serverConfig.homeDir,
-                  ),
-                ),
-              ],
-              {
-                concurrency: "unbounded",
-              },
-            ),
+            Effect.forEach(statusChecks, (entry) => checkProviderWhenEnabled(settings, entry), {
+              concurrency: "unbounded",
+            }),
           ),
         )
         .pipe(
@@ -1447,7 +526,6 @@ function makeProviderHealthLive(options?: { readonly providerUpdateTimeoutMs?: n
         while (true) {
           const refreshRevision = (yield* serverSettings.getSnapshot).revision;
 
-          yield* Cache.invalidate(claudeSubscriptionCache, "claude");
           const loadedStatuses = yield* loadProviderStatuses;
           if ((yield* serverSettings.getSnapshot).revision !== refreshRevision) {
             // A caller that joined this refresh expects the settings mutation it just made to be reflected.

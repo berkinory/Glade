@@ -9,6 +9,8 @@ import {
   registerProviderCredentialKey,
 } from "../core/providerChildEnvironment.ts";
 
+export const CODEX_CREDENTIAL_GRANTS = "all" as const;
+
 // Kept in memory only: the value is a provider API key and must never reach a disk cache.
 // Missing keys are memoized too, so a shell without the export is probed once per process.
 const loginShellProviderKeys = new Map<string, string | undefined>();
@@ -42,7 +44,7 @@ export async function buildCodexProcessEnv(
   const configuredEnv = input.homePath ? { ...baseEnv, CODEX_HOME: input.homePath } : baseEnv;
   const platform = input.platform ?? process.platform;
   const effectiveEnv = buildProviderChildEnvironment({
-    provider: "codex",
+    credentialGrants: CODEX_CREDENTIAL_GRANTS,
     baseEnv: configuredEnv,
   });
   const providerEnvKey = readActiveCodexProviderEnvKey(effectiveEnv);

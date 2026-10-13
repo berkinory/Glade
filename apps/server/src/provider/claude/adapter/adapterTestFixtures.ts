@@ -5,7 +5,7 @@ import { delimiter, join } from "node:path";
 import { afterAll, beforeAll } from "vitest";
 import { type ClaudeAdapterLiveOptions } from "./adapterConfiguration.ts";
 import { makeClaudeAdapterLive as makeClaudeAdapterLiveBase } from "../../Layers/ClaudeAdapter.ts";
-import { PROVIDER_COMPATIBILITY } from "../../core/compatibility.ts";
+import { CLAUDE_CLI } from "../claudeCli.ts";
 import type {
   SDKMessage,
   SDKControlGetContextUsageResponse,
@@ -49,7 +49,7 @@ afterAll(() => {
 
 function makeClaudeAdapterLive(options?: ClaudeAdapterLiveOptions) {
   return makeClaudeAdapterLiveBase({
-    readClaudeCliVersion: async () => PROVIDER_COMPATIBILITY.claudeAgent.minimumVersion,
+    readClaudeCliVersion: async () => CLAUDE_CLI.minimumVersion,
     ...options,
   }).pipe(Layer.provide(ServerSettingsService.layerTest()));
 }
