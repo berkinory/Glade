@@ -15,6 +15,7 @@
 - A named pipe in a project no longer freezes file previews or search.
 - A delayed Codex completion no longer makes the next running turn look finished.
 - Idle cleanup no longer stops a chat that just started working again.
+- Worktree branches get their generated name even when you send a second message right away.
 
 ## 0.2.6 - 2026-10-14
 

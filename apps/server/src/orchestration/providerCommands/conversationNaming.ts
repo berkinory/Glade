@@ -155,12 +155,12 @@ export function makeProviderConversationNaming(input: {
   ) {
     const thread = yield* resolveThread(threadId);
     if (!thread) return null;
-    const userMessages = thread.messages.filter(
+    const firstUserMessage = thread.messages.find(
       (message) =>
         message.role === "user" &&
         (message.source === "native" || message.source === "async-user-input"),
     );
-    return userMessages.length === 1 && userMessages[0]?.id === messageId ? thread : null;
+    return firstUserMessage?.id === messageId ? thread : null;
   });
 
   const maybeGenerateAndRenameWorktreeBranchForFirstTurn = Effect.fnUntraced(function* (input: {
