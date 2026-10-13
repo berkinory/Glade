@@ -6,5 +6,6 @@ export const GROK_ACP_PROFILE: AcpProviderProfile = {
   displayName: GROK_CLI.displayName,
   // A private agent process instead of the shared leader, so Glade owns its lifetime and teardown.
   args: ["agent", "--no-leader", "stdio"],
+  titleModel: "grok-4.7-build-fast",
   hiddenCommands: new Set(["goal", "loop", "workflow", "deep-research", "always-approve"]),
 };

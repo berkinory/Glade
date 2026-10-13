@@ -17,6 +17,8 @@ import { Readable, Writable } from "node:stream";
 const configOptions = (model = "m1") => [
   { id: "model", name: "Model", category: "model", type: "select", currentValue: model,
     options: [{ value: "m1", name: "Model One" }, { value: "m2", name: "Model Two" }] },
+  ...(model === "m2" ? [{ id: "reasoning", name: "Reasoning", category: "thought_level", type: "select",
+    currentValue: "low", options: [{ value: "low", name: "Low" }, { value: "high", name: "High" }] }] : []),
 ];
 let model = "m1";
 let cancelTurn;
@@ -80,6 +82,27 @@ const assistantText = (events: ReadonlyArray<ProviderRuntimeEvent>) =>
     .join("");
 
 describe("ACP adapter over stdio", () => {
+  it.effect("lists each model with the settings the agent offers for it", () =>
+    Effect.gen(function* () {
+      const adapter = yield* makeAdapter;
+      const catalog = yield* adapter.listModels!({ provider: "codex" });
+      assert.deepEqual(
+        catalog.models.map((model) => [
+          model.slug,
+          model.optionDescriptors?.flatMap((option) =>
+            option.type === "select"
+              ? option.options.map((choice) => `${option.id}=${choice.id}`)
+              : [],
+          ) ?? [],
+        ]),
+        [
+          ["m1", []],
+          ["m2", ["effort=low", "effort=high"]],
+        ],
+      );
+    }),
+  );
+
   it.effect("runs a turn, applies the model selection and resumes without replaying history", () =>
     Effect.gen(function* () {
       const adapter = yield* makeAdapter;

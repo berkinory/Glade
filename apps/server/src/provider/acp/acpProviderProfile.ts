@@ -28,6 +28,11 @@ export interface AcpProviderProfile {
   readonly sessionConfig?: (input: {
     readonly runtimeMode: RuntimeMode;
   }) => ReadonlyArray<{ readonly configId: string; readonly value: string }>;
+  // A fast model for conversation titles, used when the account's catalog offers it.
+  readonly titleModel?: string;
+  // The agent saves every model switch as the default of its own CLI, so Glade switches models
+  // only for the user's chats: discovery and title requests stay on the current model.
+  readonly savesModelChoiceGlobally?: boolean;
   // Native slash commands for features outside Glade's scope, hidden from the composer.
   readonly hiddenCommands: ReadonlySet<string>;
   readonly extensions?: AcpExtensionHandlers;

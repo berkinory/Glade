@@ -1,7 +1,7 @@
 import { randomUUID } from "node:crypto";
 import type { ChildProcessWithoutNullStreams } from "node:child_process";
 
-import type { ContentBlock, McpServer, SessionConfigOption } from "@agentclientprotocol/sdk";
+import type { ContentBlock, McpServer } from "@agentclientprotocol/sdk";
 import { EventId, ThreadId, TurnId, type ProviderKind } from "@glade/contracts/core/baseSchemas";
 import type { ProviderSession } from "@glade/contracts/provider/provider";
 import type { ProviderRuntimeEvent } from "@glade/contracts/provider/runtimeEvents";
@@ -27,9 +27,12 @@ import {
   type ProviderAdapterShape,
 } from "../Services/ProviderAdapter.ts";
 import { openAcpConnection, type AcpConnection } from "./acpConnection.ts";
-import { acpConfigIdFor, acpModelCatalog } from "./acpModelCatalog.ts";
+import { withEphemeralAcpSession } from "./acpEphemeralSession.ts";
+import { acpConfigIdFor, acpModelOption, acpOffersValue } from "./acpModelCatalog.ts";
+import { discoverAcpModels } from "./acpModelDiscovery.ts";
 import type { AcpProviderProfile } from "./acpProviderProfile.ts";
 import { openAcpSession, type AcpSession } from "./acpSession.ts";
+import { runAcpTitleRequest } from "./acpTitleRequest.ts";
 import type { AcpRuntimeEventDraft } from "./acpTurnProjection.ts";
 
 const RESUME_CURSOR_VERSION = 1;
@@ -73,29 +76,20 @@ export interface AcpAdapterDependencies {
   readonly teardownProcessTree?: Parameters<typeof teardownChildProcessTree>[1];
 }
 
-function configValueFor(
-  options: ReadonlyArray<SessionConfigOption>,
-  category: string,
-): SessionConfigOption | undefined {
-  return options.find((option) => option.category === category);
-}
-
 // Model selection maps onto the agent's own session config options: the model option by category,
-// and every selected option value by its config id.
-function selectionConfig(
-  options: ReadonlyArray<SessionConfigOption>,
-  selection: ModelSelection | undefined,
-): ReadonlyArray<{ readonly configId: string; readonly value: string }> {
-  if (!selection) return [];
-  const model = configValueFor(options, "model");
-  const updates: Array<{ configId: string; value: string }> = model
-    ? [{ configId: model.id, value: selection.model }]
-    : [];
+// then each selected value by its config id. Settings belong to a model, so a value the agent does
+// not offer for the selected model (one carried over from another model) is not applied.
+async function applySelection(session: AcpSession, selection: ModelSelection | undefined) {
+  if (!selection) return;
+  const model = acpModelOption(session.configOptions());
+  if (model) await session.setConfigOption(model.id, selection.model);
   for (const [optionId, value] of Object.entries(selection.options ?? {})) {
+    const options = session.configOptions();
     const configId = acpConfigIdFor(options, optionId);
-    if (typeof value === "string" && configId) updates.push({ configId, value });
+    if (typeof value === "string" && configId && acpOffersValue(options, configId, value)) {
+      await session.setConfigOption(configId, value);
+    }
   }
-  return updates;
 }
 
 export const makeAcpAdapter = (dependencies: AcpAdapterDependencies) =>
@@ -108,6 +102,9 @@ export const makeAcpAdapter = (dependencies: AcpAdapterDependencies) =>
       PROVIDER_ADAPTER_RUNTIME_EVENT_BUFFER_CAPACITY,
     );
     const threads = new Map<ThreadId, AcpThread>();
+    const teardown = dependencies.teardownProcessTree
+      ? { teardownProcessTree: dependencies.teardownProcessTree }
+      : {};
 
     const emit = (
       threadId: ThreadId,
@@ -185,9 +182,7 @@ export const makeAcpAdapter = (dependencies: AcpAdapterDependencies) =>
                 binaryPath: input.providerOptions?.[provider]?.binaryPath,
               }),
               profile,
-              ...(dependencies.teardownProcessTree
-                ? { teardownProcessTree: dependencies.teardownProcessTree }
-                : {}),
+              ...teardown,
             }),
           catch: (cause) => requestError("initialize", cause),
         });
@@ -278,12 +273,10 @@ export const makeAcpAdapter = (dependencies: AcpAdapterDependencies) =>
             ).filter(({ configId }) =>
               session.configOptions().some((option) => option.id === configId),
             );
-            for (const { configId, value } of [
-              ...profileConfig,
-              ...selectionConfig(session.configOptions(), input.modelSelection),
-            ]) {
+            for (const { configId, value } of profileConfig) {
               await session.setConfigOption(configId, value);
             }
+            await applySelection(session, input.modelSelection);
           },
           catch: (cause) => requestError("session/set_config_option", cause),
         });
@@ -313,14 +306,7 @@ export const makeAcpAdapter = (dependencies: AcpAdapterDependencies) =>
           });
         }
         yield* Effect.tryPromise({
-          try: async () => {
-            for (const { configId, value } of selectionConfig(
-              thread.session.configOptions(),
-              input.modelSelection,
-            )) {
-              await thread.session.setConfigOption(configId, value);
-            }
-          },
+          try: () => applySelection(thread.session, input.modelSelection),
           catch: (cause) => requestError("session/set_config_option", cause),
         });
         const turnId = `acp-turn-${randomUUID()}`;
@@ -471,42 +457,48 @@ export const makeAcpAdapter = (dependencies: AcpAdapterDependencies) =>
           { discard: true },
         ),
       streamEvents: Stream.fromQueue(events),
+      titleGeneration: {
+        ...(profile.titleModel ? { preferredModel: profile.titleModel } : {}),
+        generate: (input) =>
+          Effect.tryPromise({
+            try: (signal) =>
+              withEphemeralAcpSession({
+                profile,
+                // Supervised, so the agent asks before any tool and the request rejects it.
+                child: dependencies.spawn({
+                  cwd: input.cwd,
+                  runtimeMode: "approval-required",
+                  binaryPath: input.binaryPath,
+                }),
+                cwd: input.cwd,
+                signal,
+                ...teardown,
+                use: (connection, session) =>
+                  runAcpTitleRequest(connection, session, input, !profile.savesModelChoiceGlobally),
+              }),
+            catch: (cause) => requestError("generateThreadTitle", cause),
+          }),
+      },
       listModels: (input) =>
         Effect.tryPromise({
-          try: async () => {
+          try: (signal) => {
             const cwd = input.cwd ?? dependencies.defaultCwd;
-            const connection = await openAcpConnection({
+            return withEphemeralAcpSession({
+              profile,
               child: dependencies.spawn({
                 cwd,
                 runtimeMode: "full-access",
                 binaryPath: input.binaryPath,
               }),
-              profile,
-              ...(dependencies.teardownProcessTree
-                ? { teardownProcessTree: dependencies.teardownProcessTree }
-                : {}),
-            });
-            try {
-              const created = await connection.agent.newSession({ cwd, mcpServers: [] });
-              // Discovery must not leave an empty conversation in the agent's own history.
-              const capabilities = connection.initialize.agentCapabilities?.sessionCapabilities;
-              if (capabilities?.delete) {
-                await connection.agent
-                  .deleteSession({ sessionId: created.sessionId })
-                  .catch(() => undefined);
-              } else if (capabilities?.close) {
-                await connection.agent
-                  .closeSession({ sessionId: created.sessionId })
-                  .catch(() => undefined);
-              }
-              return {
-                models: acpModelCatalog(created.configOptions ?? []),
+              cwd,
+              signal,
+              ...teardown,
+              use: async (connection, session) => ({
+                models: await discoverAcpModels({ profile, connection, session, signal }),
                 source: "acp-session",
                 discoveredAt: new Date().toISOString(),
-              };
-            } finally {
-              await connection.close();
-            }
+              }),
+            });
           },
           catch: (cause) => requestError("listModels", cause),
         }),

@@ -7,5 +7,6 @@ export const CURSOR_ACP_PROFILE: AcpProviderProfile = {
   args: ["acp"],
   authMethodId: "cursor_login",
   sessionConfig: () => [{ configId: "mode", value: "agent" }],
+  savesModelChoiceGlobally: true,
   hiddenCommands: new Set(["goal", "loop", "autopilot"]),
 };

@@ -87,7 +87,7 @@ export interface ProviderThreadSnapshot {
   readonly cwd?: string | null;
 }
 
-interface ProviderThreadTitleInput {
+export interface ProviderThreadTitleInput {
   readonly threadId: ThreadId;
   readonly cwd: string;
   readonly model: string;
@@ -100,7 +100,7 @@ interface ProviderThreadTitleInput {
 
 export interface ProviderTitleGeneration<TError> {
   // Used when the provider's model catalog offers it; otherwise the thread's own model.
-  readonly preferredModel: string;
+  readonly preferredModel?: string;
   // Runs one isolated, tool-free request and returns its structured output.
   readonly generate: (input: ProviderThreadTitleInput) => Effect.Effect<unknown, TError>;
 }

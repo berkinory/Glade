@@ -124,10 +124,13 @@ const make = Effect.gen(function* () {
             ),
           );
       };
-      const preferredAvailable = catalog.models.some(
-        (entry) => entry.slug === preferredModel || entry.resolvedModel === preferredModel,
-      );
-      const selectedModel = preferredAvailable ? preferredModel : input.modelSelection.model;
+      const selectedModel =
+        preferredModel !== undefined &&
+        catalog.models.some(
+          (entry) => entry.slug === preferredModel || entry.resolvedModel === preferredModel,
+        )
+          ? preferredModel
+          : input.modelSelection.model;
       const raw = yield* attempt(selectedModel).pipe(
         Effect.catch((error) => {
           const unavailable =

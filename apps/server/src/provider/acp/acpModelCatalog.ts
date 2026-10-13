@@ -116,17 +116,45 @@ function variantDescription(slug: string): string | undefined {
   return parts.length > 0 ? parts.join(" · ") : undefined;
 }
 
+export function acpModelOption(
+  options: ReadonlyArray<SessionConfigOption>,
+): Extract<SessionConfigOption, { type: "select" }> | undefined {
+  const option = options.find((entry) => entry.category === "model" && entry.type === "select");
+  return option?.type === "select" ? option : undefined;
+}
+
+export function acpOffersValue(
+  options: ReadonlyArray<SessionConfigOption>,
+  configId: string,
+  value: string,
+): boolean {
+  const option = options.find((entry) => entry.id === configId);
+  return (
+    option?.type === "select" &&
+    flattenChoices(option.options).some((choice) => choice.value === value)
+  );
+}
+
+export function acpModelSlugs(options: ReadonlyArray<SessionConfigOption>): ReadonlyArray<string> {
+  const modelOption = acpModelOption(options);
+  return modelOption ? flattenChoices(modelOption.options).map((choice) => choice.value) : [];
+}
+
+// An agent reports the settings of its current model only, so each model's settings come from the
+// options the agent returned while that model was selected. A model with none known has none.
 export function acpModelCatalog(
   options: ReadonlyArray<SessionConfigOption>,
+  optionsByModel: ReadonlyMap<string, ReadonlyArray<SessionConfigOption>>,
 ): ReadonlyArray<ProviderModelDescriptor> {
-  const modelOption = options.find(
-    (option) => option.category === "model" && option.type === "select",
-  );
-  if (!modelOption || modelOption.type !== "select") return [];
-  const descriptors = optionDescriptors(options);
+  const modelOption = acpModelOption(options);
+  if (!modelOption) return [];
   return flattenChoices(modelOption.options).flatMap((choice) => {
     const slug = trimmed(choice.value);
     if (!slug) return [];
+    const descriptors = optionDescriptors(
+      optionsByModel.get(choice.value) ??
+        (choice.value === modelOption.currentValue ? options : []),
+    );
     const description = trimmed(choice.description);
     // Multi-vendor agents name models "vendor/Model"; the vendor becomes the grouping label.
     const label = trimmed(choice.name) ?? slug;
