@@ -40,6 +40,7 @@
 
 ### Fixed
 
+- A visual reply that arrives while a reply streams no longer sometimes says it tried to navigate away.
 - An approved request no longer leaves an extra unnamed tool row in the chat.
 - After a chat switches to another provider, the new provider can use Glade's tools from its first reply.
 - Opening the rewind or edit confirmation no longer expands and collapses the previous reply.

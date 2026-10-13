@@ -21,7 +21,7 @@ export function VisualReplyFrame({
   const [theme, setTheme] = useState<VisualReplyTheme | null>(null);
   const [navigated, setNavigated] = useState(false);
   const [scriptError, setScriptError] = useState<string | null>(null);
-  const loads = useRef(0);
+  const loadedWindow = useRef<Window | null>(null);
   const [initialDocument, setInitialDocument] = useState<string | null>(null);
   useEffect(() => {
     const root = document.documentElement;
@@ -120,9 +120,15 @@ export function VisualReplyFrame({
         allow="camera 'none'; microphone 'none'; geolocation 'none'; clipboard-read 'none'; clipboard-write 'none'; payment 'none'; usb 'none'; serial 'none'; bluetooth 'none'; fullscreen 'none'"
         className="block min-h-0 w-full flex-1 border-0 bg-transparent"
         onLoad={() => {
-          loads.current += 1;
-          if (loads.current > 1) setNavigated(true);
-          else frame.current?.contentWindow?.postMessage({ channel, kind: "theme", theme }, "*");
+          // A timeline reflow can move the iframe, which gives it a new browsing context that
+          // reloads the same document. Only a second load in the same context is a navigation.
+          const contentWindow = frame.current?.contentWindow ?? null;
+          if (contentWindow && contentWindow === loadedWindow.current) {
+            setNavigated(true);
+            return;
+          }
+          loadedWindow.current = contentWindow;
+          contentWindow?.postMessage({ channel, kind: "theme", theme }, "*");
         }}
       />
     </div>
