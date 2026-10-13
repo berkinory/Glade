@@ -14,12 +14,16 @@ consistent workspace.
 | Grok Build  | Your installed and authenticated `grok` CLI                                |
 | Cursor      | Your installed and authenticated Cursor CLI (`cursor-agent`)               |
 | Muse Code   | Your installed and authenticated `muse` CLI                                |
+| Droid       | Your installed and authenticated Factory Droid CLI (`droid`)               |
 
-OpenCode, Grok Build and Cursor run through the Agent Client Protocol on one shared adapter, so
-their chats, tool activity, approvals and slash commands behave the same way. Muse Code runs through
+OpenCode, Grok Build, Cursor and Droid run through the Agent Client Protocol on one shared adapter,
+so their chats, tool activity, approvals and slash commands behave the same way. Droid runs at its
+lowest autonomy level in Supervised mode, so it asks before anything beyond reading, and at its
+highest in Full Access. Droid does not accept MCP servers from Glade over the protocol, so Glade's
+agent tools are not available in Droid chats. Muse Code runs through
 its own Muse Session Protocol host (`muse serve`): Supervised mode routes Muse's approvals to you
 instead of its AI reviewer, Full Access runs without prompts or sandbox, and the session's skills are
-its slash commands. Use provider settings to check installation and authentication status. Glade requires Codex 0.158.0 or newer, Claude Code 2.1.267 or newer, OpenCode 2.0.0 or newer, Grok Build 1.0.0 or newer, Cursor CLI 2026.1.0 or newer and Muse Code 1.4.7 or newer. An older runtime shows Update required and cannot start a session. Codex status checks run from the configured Codex home, so project configuration in the server's working directory cannot change them; a missing Codex home is reported instead of created.
+its slash commands. Use provider settings to check installation and authentication status. Glade requires Codex 0.158.0 or newer, Claude Code 2.1.267 or newer, OpenCode 2.0.0 or newer, Grok Build 1.0.0 or newer, Cursor CLI 2026.1.0 or newer, Muse Code 1.4.7 or newer and Droid 0.240.0 or newer. An older runtime shows Update required and cannot start a session. Codex status checks run from the configured Codex home, so project configuration in the server's working directory cannot change them; a missing Codex home is reported instead of created.
 
 ## What Glade manages
 
@@ -70,10 +74,10 @@ three letters or numbers. Short or punctuation-only messages defer generation un
 message arrives. Only one title request runs at a time, without delaying the chat response.
 The separate request contains no conversation history, repository instructions,
 skills, or MCP servers. Codex uses a temporary thread in the chat's existing app-server process;
-Claude uses a short-lived CLI request. OpenCode, Grok Build and Cursor use a short-lived agent
+Claude uses a short-lived CLI request. OpenCode, Grok Build, Cursor and Droid use a short-lived agent
 session that rejects every tool request and is removed from the agent's history afterwards where the
 agent allows it. Codex prefers `gpt-6-luna`; Claude prefers `claude-sonnet-5-5`; Grok Build prefers
-`grok-4.7-build-fast`. Cursor saves every model switch as its CLI default, so its title request stays
+`grok-4.7-build-fast`; Droid prefers `gpt-6-luna`. Cursor saves every model switch as its CLI default, so its title request stays
 on Cursor's current model. Muse Code uses a short-lived host that stores nothing and cannot run
 commands or write files, in a session that refuses every tool call. If the preferred model
 is unavailable, Glade uses the triggering message's model with the lowest supported effort other
@@ -82,11 +86,11 @@ than `none`. A short message-based title remains visible if generation fails.
 Manual renames always win over generated titles. Native title notifications do not replace a title
 owned by Glade. Renaming a Codex or Claude chat also renames its native session; a rename made before
 the session exists is applied when the provider first supplies a title. The protocol behind OpenCode,
-Grok Build and Cursor has no rename, so their native sessions keep the agent's own title; Muse Code
+Grok Build, Cursor and Droid has no rename, so their native sessions keep the agent's own title; Muse Code
 lowercases renamed sessions, so Glade leaves its session names alone too. Use `/rename <title>` to choose your own.
 
-Deleting a chat also deletes its Codex, Claude or OpenCode session history; Grok Build, Cursor and
-Muse Code offer no way to delete a session, so theirs stays in the CLI's own storage. Codex chats archive and
+Deleting a chat also deletes its Codex, Claude or OpenCode session history; Grok Build, Cursor, Droid
+and Muse Code offer no way to delete a session, so theirs stays in the CLI's own storage. Codex chats archive and
 unarchive in Codex too; the other providers have no native archive operation, so archiving stays
 local. If native deletion fails, Glade still deletes the chat and records the failure in the server log without retrying it.
 
@@ -118,7 +122,7 @@ stays blocked.
 
 The installed provider supplies model IDs, names, defaults and available options. Glade does not ship a selectable model catalog. **Provider default** leaves model selection to the runtime. Each option can inherit the provider default or keep an explicit selection, including an explicit off setting.
 
-OpenCode, Grok Build and Cursor report settings only for the model currently selected, so discovery
+OpenCode, Grok Build, Cursor and Droid report settings only for the model currently selected, so discovery
 selects each model in a throwaway session to read its own effort levels, for up to three seconds;
 models it does not reach are listed without options. Cursor is never probed this way, because it
 saves every model switch as its CLI default. Each Cursor model ID is one fixed variant, such as

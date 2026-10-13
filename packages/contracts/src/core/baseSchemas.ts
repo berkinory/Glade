@@ -62,5 +62,6 @@ export const ProviderKind = Schema.Literals([
   "grok",
   "cursor",
   "museCode",
+  "factoryDroid",
 ]);
 export type ProviderKind = typeof ProviderKind.Type;

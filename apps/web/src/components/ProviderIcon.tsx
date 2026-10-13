@@ -2,6 +2,7 @@ import type { IconComponent } from "~/lib/iconComponent";
 import {
   ClaudeIcon,
   CursorIcon,
+  DroidIcon,
   GrokIcon,
   MuseCodeIcon,
   OpenAIIcon,
@@ -18,6 +19,7 @@ export const PROVIDER_ICON_COMPONENT_BY_PROVIDER: Record<ProviderKind, IconCompo
   grok: GrokIcon,
   cursor: CursorIcon,
   museCode: MuseCodeIcon,
+  factoryDroid: DroidIcon,
 };
 function providerIconToneClassName(
   provider: ProviderKind | null | undefined,

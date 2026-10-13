@@ -32,7 +32,12 @@ let cancelTurn;
 new AgentSideConnection((client) => ({
   initialize: () => ({ protocolVersion: 1, agentCapabilities: { loadSession: true }, authMethods: [] }),
   authenticate: () => ({}),
-  newSession: () => ({ sessionId: "native-" + ++sessions, configOptions: configOptions(model) }),
+  newSession: async () => {
+    const sessionId = "native-" + ++sessions;
+    await client.sessionUpdate({ sessionId, update: { sessionUpdate: "available_commands_update",
+      availableCommands: [{ name: "review", description: "Review changes" }, { name: "hidden", description: "" }] } });
+    return { sessionId, configOptions: configOptions(model) };
+  },
   loadSession: async ({ sessionId }) => {
     await client.sessionUpdate({ sessionId, update: { sessionUpdate: "agent_message_chunk", content: { type: "text", text: "replayed" } } });
     return { configOptions: configOptions(model) };
@@ -63,7 +68,7 @@ const profile: AcpProviderProfile = {
   provider: "codex",
   displayName: "Fake agent",
   args: [],
-  hiddenCommands: new Set(),
+  hiddenCommands: new Set(["hidden"]),
 };
 
 const spawned: ChildProcessWithoutNullStreams[] = [];
@@ -114,6 +119,20 @@ describe("ACP adapter over stdio", () => {
           ["m2", ["effort=low", "effort=high", "thinking:true", "fastMode:false"]],
         ],
       );
+    }),
+  );
+
+  it.effect("lists commands the agent announced before answering session/new", () =>
+    Effect.gen(function* () {
+      const adapter = yield* makeAdapter;
+      yield* adapter.startSession({ threadId: THREAD, runtimeMode: "full-access" });
+      const { commands } = yield* adapter.listCommands!({
+        provider: "codex",
+        cwd: process.cwd(),
+        threadId: THREAD,
+      });
+      assert.deepEqual(commands, [{ name: "review", description: "Review changes" }]);
+      yield* adapter.stopAll();
     }),
   );
 

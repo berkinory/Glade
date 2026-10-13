@@ -54,6 +54,7 @@ export function providerStartOptionsFromServerSettings(
     grok: binaryOnly(providers.grok.binaryPath),
     cursor: binaryOnly(providers.cursor.binaryPath),
     museCode: binaryOnly(providers.museCode.binaryPath),
+    factoryDroid: binaryOnly(providers.factoryDroid.binaryPath),
     allowComputerUse: settings.allowComputerUse,
   };
 }

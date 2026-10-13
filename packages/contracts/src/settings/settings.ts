@@ -50,6 +50,11 @@ export const MuseCodeServerProviderSettings = Schema.Struct({
   binaryPath: StringSetting.pipe(Schema.withDecodingDefault(() => "muse")),
 });
 
+export const FactoryDroidServerProviderSettings = Schema.Struct({
+  ...ProviderSettingsBase,
+  binaryPath: StringSetting.pipe(Schema.withDecodingDefault(() => "droid")),
+});
+
 const DisabledSkillNames = Schema.Array(Schema.String.check(Schema.isMaxLength(256))).pipe(
   Schema.withDecodingDefault(() => []),
 );
@@ -87,6 +92,7 @@ export const ServerSettings = Schema.Struct({
     grok: GrokServerProviderSettings.pipe(Schema.withDecodingDefault(() => ({}))),
     cursor: CursorServerProviderSettings.pipe(Schema.withDecodingDefault(() => ({}))),
     museCode: MuseCodeServerProviderSettings.pipe(Schema.withDecodingDefault(() => ({}))),
+    factoryDroid: FactoryDroidServerProviderSettings.pipe(Schema.withDecodingDefault(() => ({}))),
   }).pipe(Schema.withDecodingDefault(() => ({}))),
   skills: SkillsServerSettings.pipe(Schema.withDecodingDefault(() => ({}))),
   // Both apply only to archived chats, and only to clean worktrees whose commits stay reachable.
@@ -147,6 +153,7 @@ export const ServerSettingsPatch = Schema.Struct({
       grok: Schema.optionalKey(Schema.Struct(ProviderSettingsBasePatch)),
       cursor: Schema.optionalKey(Schema.Struct(ProviderSettingsBasePatch)),
       museCode: Schema.optionalKey(Schema.Struct(ProviderSettingsBasePatch)),
+      factoryDroid: Schema.optionalKey(Schema.Struct(ProviderSettingsBasePatch)),
     }),
   ),
   skills: Schema.optionalKey(

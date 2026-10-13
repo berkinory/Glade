@@ -48,6 +48,10 @@ export async function openAcpConnection(input: {
 }): Promise<AcpConnection> {
   const { child, profile } = input;
   const sessions = new Map<string, AcpSessionHandlers>();
+  // Some agents (Droid) announce a session's commands before answering `session/new`, while no
+  // owner is attached; the latest announcement waits for it. Other early updates are dropped, which
+  // also discards the history `session/load` replays.
+  const earlyCommands = new Map<string, SessionNotification>();
   const exitListeners = new Set<(error: Error) => void>();
   let exited: Error | undefined;
   let closing: Promise<void> | undefined;
@@ -67,7 +71,11 @@ export async function openAcpConnection(input: {
   const agent = new ClientSideConnection(
     () => ({
       sessionUpdate: (notification) => {
-        sessions.get(notification.sessionId)?.onUpdate(notification);
+        const handlers = sessions.get(notification.sessionId);
+        if (handlers) handlers.onUpdate(notification);
+        else if (notification.update.sessionUpdate === "available_commands_update") {
+          earlyCommands.set(notification.sessionId, notification);
+        }
       },
       requestPermission: async (request) => ({
         // An unknown session cannot show the request; cancelling lets the agent continue.
@@ -133,6 +141,9 @@ export async function openAcpConnection(input: {
       initialize,
       attachSession: (sessionId, handlers) => {
         sessions.set(sessionId, handlers);
+        const early = earlyCommands.get(sessionId);
+        earlyCommands.delete(sessionId);
+        if (early) handlers.onUpdate(early);
         return () => {
           if (sessions.get(sessionId) === handlers) sessions.delete(sessionId);
         };

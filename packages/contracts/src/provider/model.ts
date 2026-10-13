@@ -101,4 +101,5 @@ export const PROVIDER_DISPLAY_NAMES: Record<ProviderKind, string> = {
   grok: "Grok",
   cursor: "Cursor",
   museCode: "Muse Code",
+  factoryDroid: "Droid",
 };

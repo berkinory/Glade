@@ -1,4 +1,5 @@
 import openaiMark from "../assets/brands/openai.svg?url";
+import droidMark from "../assets/brands/droid.svg?url";
 import grokMark from "../assets/brands/grok.svg?url";
 import museMark from "../assets/brands/muse.svg?url";
 import opencodeMark from "../assets/brands/opencode.svg?url";
@@ -8,6 +9,7 @@ export const AndroidStudioIcon = createBrandIcon("/brands/androidstudio-original
 export const ClaudeIcon = createBrandIcon("/brands/claude-ai-icon.svg");
 export const CLionIcon = createBrandIcon("/brands/clion-original.svg");
 export const CursorIcon = createBrandIcon("/brands/cursor_light.svg", true);
+export const DroidIcon = createBrandIcon(droidMark, true);
 export const DataGripIcon = createBrandIcon("/brands/datagrip-original.svg");
 export const LinkedInIcon = createBrandIcon("/brands/linkedin.svg");
 export const GhosttyIcon = createBrandIcon("/brands/ghostty.svg");

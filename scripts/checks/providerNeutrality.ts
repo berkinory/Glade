@@ -15,6 +15,7 @@ const providerOwners = [
   // is used as a provider: compared, matched in a case, or assigned to a provider or kind field.
   { kind: "cursor", owner: "cursor", commonWord: true },
   { kind: "museCode", owner: "muse" },
+  { kind: "factoryDroid", owner: "droid" },
 ] as const satisfies ReadonlyArray<{ kind: string; owner: string; commonWord?: boolean }>;
 
 // The registries are where provider kinds are declared, so they name every provider.

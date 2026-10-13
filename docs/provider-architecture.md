@@ -4,11 +4,12 @@ Glade treats provider integrations as adapters behind server-owned orchestration
 
 ## Implemented providers
 
-`ProviderAdapterRegistryLive` registers five provider kinds:
+`ProviderAdapterRegistryLive` registers seven provider kinds:
 
 - `codex`, on its own app-server adapter;
 - `claudeAgent`, on the Claude Agent SDK;
-- `opencode`, `grok` and `cursor`, on the shared Agent Client Protocol adapter.
+- `museCode`, on its own Muse Session Protocol adapter;
+- `opencode`, `grok`, `cursor` and `factoryDroid`, on the shared Agent Client Protocol adapter.
 
 The registry is intentionally small. It maps `ProviderKind` to an adapter and lists the registered providers; it does not own session routing, persistence, or cross-provider orchestration.
 
