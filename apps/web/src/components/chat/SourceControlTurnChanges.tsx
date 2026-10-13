@@ -13,6 +13,7 @@ import { WorkspaceDiffFile } from "./WorkspaceDiffFile";
 import { DiffLayoutToggle } from "./DiffLayoutToggle";
 import { EditSourceFile } from "./EditSourceFile";
 import { PanelStateMessage } from "./PanelStateMessage";
+import { ShowMoreFilesButton, usePagedFiles } from "./ShowMoreFilesButton";
 import { Button } from "../ui/button";
 
 export function SourceControlTurnChanges(props: {
@@ -40,6 +41,7 @@ export function SourceControlTurnChanges(props: {
     }),
   );
   const patch = getRenderablePatch(query.data?.diff, `turn:${props.turnId}`);
+  const pagedFiles = usePagedFiles(patch?.kind === "files" ? patch.files : []);
   const { resolvedTheme } = useTheme();
   const diffStyle = useAppSettings().settings.diffLayout;
   const currentChanges = (
@@ -77,7 +79,7 @@ export function SourceControlTurnChanges(props: {
         <PanelStateMessage loadingLabel="Loading turn changes" />
       ) : patch?.kind === "files" ? (
         <FileDiffSurface className="min-h-0 flex-1 overflow-auto p-2">
-          {patch.files.map((file) => (
+          {pagedFiles.visibleFiles.map((file) => (
             <div key={resolveFileDiffPath(file)} className="diff-render-file mb-2 rounded-md">
               <FileDiffCard
                 fileDiff={file}
@@ -89,6 +91,11 @@ export function SourceControlTurnChanges(props: {
               />
             </div>
           ))}
+          <ShowMoreFilesButton
+            hiddenCount={pagedFiles.hiddenCount}
+            onClick={pagedFiles.showMore}
+            className="px-1 py-2"
+          />
         </FileDiffSurface>
       ) : patch?.kind === "raw" ? (
         <pre className="overflow-auto whitespace-pre-wrap text-ui-xs">{patch.text}</pre>

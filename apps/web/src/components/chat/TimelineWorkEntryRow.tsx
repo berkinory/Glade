@@ -65,6 +65,7 @@ import { formatClockDuration } from "../../session-logic";
 import { isStatusOnlyCommandWorkEntry, isPlainRuntimeNoticeWorkEntry } from "./agentActivity.logic";
 import { ReasoningWorkRow } from "./ReasoningWorkRow";
 import { RequestRetryRow } from "./RequestRetryRow";
+import { ShowMoreFilesButton, usePagedFiles } from "./ShowMoreFilesButton";
 import { DiffStatLabel } from "./DiffStatLabel";
 import { type ExpandedImagePreview } from "./ExpandedImagePreview";
 import { LinkChipIcon } from "../LinkChipIcon";
@@ -481,6 +482,7 @@ function ToolWorkEntryRow(props: TimelineWorkEntryRowProps) {
         (workEntry.detail ? extractFilePathFromDetail(workEntry.detail) : null))
       : null;
   const changedFiles = workEntry.changedFiles ?? [];
+  const pagedChangedFiles = usePagedFiles(changedFiles);
   const showEditedRows = isFileChangeWorkEntry(workEntry) && changedFiles.length > 0;
   const activityContent = activityDetail ? (
     <AgentActivityDetails
@@ -543,7 +545,7 @@ function ToolWorkEntryRow(props: TimelineWorkEntryRowProps) {
               : "space-y-0.5"
           }
         >
-          {changedFiles.map((changedFilePath) => {
+          {pagedChangedFiles.visibleFiles.map((changedFilePath) => {
             const summaryStat = fileDiffStatByPath?.get(changedFilePath);
             const changedFileStat =
               summaryStat && summaryStat.additions + summaryStat.deletions > 0
@@ -600,6 +602,11 @@ function ToolWorkEntryRow(props: TimelineWorkEntryRowProps) {
               </button>
             );
           })}
+          <ShowMoreFilesButton
+            hiddenCount={pagedChangedFiles.hiddenCount}
+            onClick={pagedChangedFiles.showMore}
+            fontSizePx={rowFontSizePx}
+          />
         </div>
       ) : (
         (() => {

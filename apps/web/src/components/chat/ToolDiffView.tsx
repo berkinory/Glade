@@ -6,6 +6,7 @@ import { getRenderablePatch, resolveFileDiffPath } from "~/lib/diffRendering";
 import type { WorkLogToolDetails } from "../../lib/toolCallDetails";
 import { useActivateDiffWorkers } from "../DiffWorkerPoolProvider";
 import { FileDiffCard } from "./FileDiffView";
+import { ShowMoreFilesButton, usePagedFiles } from "./ShowMoreFilesButton";
 
 type ToolEdit = NonNullable<WorkLogToolDetails["edits"]>[number];
 
@@ -15,11 +16,12 @@ const TOOL_DIFF_SURFACE_CLASS_NAME =
 function ToolDiffFiles(props: { files: ReadonlyArray<FileDiffMetadata>; snippets?: boolean }) {
   useActivateDiffWorkers();
   const { resolvedTheme } = useTheme();
+  const pagedFiles = usePagedFiles(props.files);
   // Tool diffs are short and live in an auto-height disclosure, which the virtualized diff surface
   // cannot measure; they render unvirtualized inside a capped scroll box instead.
   return (
     <div className={TOOL_DIFF_SURFACE_CLASS_NAME}>
-      {props.files.map((file, index) => (
+      {pagedFiles.visibleFiles.map((file, index) => (
         <div key={`${resolveFileDiffPath(file)}:${index}`} className="diff-render-file">
           <FileDiffCard
             fileDiff={file}
@@ -28,6 +30,11 @@ function ToolDiffFiles(props: { files: ReadonlyArray<FileDiffMetadata>; snippets
           />
         </div>
       ))}
+      <ShowMoreFilesButton
+        hiddenCount={pagedFiles.hiddenCount}
+        onClick={pagedFiles.showMore}
+        className="px-2 py-1.5"
+      />
     </div>
   );
 }

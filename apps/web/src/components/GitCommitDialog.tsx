@@ -10,6 +10,7 @@ import {
   type GitDialogContext,
   resolveCommitDialogActions,
 } from "./GitActionsControl.logic";
+import { ShowMoreFilesButton, usePagedFiles } from "./chat/ShowMoreFilesButton";
 import { GitActionGlyph } from "./gitActionGlyphs";
 import {
   GIT_DIALOG_FIELD_CLASS,
@@ -104,6 +105,7 @@ export function GitCommitDialog({
       return stat ? { ...file, insertions: stat.insertions, deletions: stat.deletions } : file;
     });
   }, [commitsIndexAsStaged, stagedStats.data, statusFiles, workingTreeStats.data]);
+  const pagedFiles = usePagedFiles(allFiles);
 
   // Staged files are the user's explicit selection from Source Control, so the dialog starts there
   // instead of silently widening the commit to every change.
@@ -215,7 +217,7 @@ export function GitCommitDialog({
           {allFiles.length > 0 ? (
             <ScrollArea className="h-32 rounded-md border border-[color:var(--color-border)] bg-[var(--color-background-elevated-primary-opaque)]">
               <div className="space-y-1 p-1">
-                {allFiles.map((file) => (
+                {pagedFiles.visibleFiles.map((file) => (
                   <ChangedFileRow
                     key={file.path}
                     file={file}
@@ -226,6 +228,11 @@ export function GitCommitDialog({
                     onOpen={() => onOpenFile(file.path)}
                   />
                 ))}
+                <ShowMoreFilesButton
+                  hiddenCount={pagedFiles.hiddenCount}
+                  onClick={pagedFiles.showMore}
+                  className="px-1.5 py-1"
+                />
               </div>
             </ScrollArea>
           ) : null}

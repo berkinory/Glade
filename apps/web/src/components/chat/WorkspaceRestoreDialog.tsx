@@ -12,7 +12,9 @@ import {
   AlertDialogTitle,
 } from "../ui/alert-dialog";
 import { Button } from "../ui/button";
+import type { WorkspaceRestorePreview } from "@glade/contracts/orchestration/workspaceRestore";
 import { FileEntryIcon } from "./FileEntryIcon";
+import { ShowMoreFilesButton, usePagedFiles } from "./ShowMoreFilesButton";
 import {
   restoreConfirmation,
   useWorkspaceRestoreDecisionStore,
@@ -83,35 +85,7 @@ export function WorkspaceRestoreDialog() {
                 </AlertDescription>
               </Alert>
             ) : null}
-            <ul className="max-h-56 overflow-y-auto rounded-lg border border-[color:var(--color-border-light)] py-1">
-              {review.files.map((file) => {
-                const { dir, name } = splitRepoRelativePath(file.path);
-                return (
-                  <li
-                    key={file.path}
-                    title={file.path}
-                    className="flex min-w-0 items-center gap-2 px-2.5 py-1 text-ui"
-                  >
-                    <FileEntryIcon
-                      pathValue={file.path}
-                      kind="file"
-                      className="opacity-70 dark:opacity-80"
-                    />
-                    <span className="flex min-w-0 items-baseline gap-1.5">
-                      <span className="min-w-0 truncate text-foreground">{name}</span>
-                      {dir ? (
-                        <span className="min-w-0 shrink-[100] truncate text-ui-sm text-muted-foreground/60">
-                          {dir.replace(/\/$/, "")}
-                        </span>
-                      ) : null}
-                    </span>
-                    {file.conflict ? (
-                      <span className="ml-auto shrink-0 text-ui-xs text-warning">Edited later</span>
-                    ) : null}
-                  </li>
-                );
-              })}
-            </ul>
+            <RestoreFileList key={review.fingerprint} files={review.files} />
             {hasConflicts ? (
               <p className="text-ui-sm text-muted-foreground">
                 Files marked edited later changed after the agent's turn. Restoring overwrites those
@@ -145,5 +119,49 @@ export function WorkspaceRestoreDialog() {
         </AlertDialogFooter>
       </AlertDialogPopup>
     </AlertDialog>
+  );
+}
+
+// Files edited after the turn come first, so a long list never hides the ones restoring overwrites.
+function RestoreFileList(props: { files: WorkspaceRestorePreview["files"] }) {
+  const pagedFiles = usePagedFiles([
+    ...props.files.filter((file) => file.conflict),
+    ...props.files.filter((file) => !file.conflict),
+  ]);
+  return (
+    <ul className="max-h-56 overflow-y-auto rounded-lg border border-[color:var(--color-border-light)] py-1">
+      {pagedFiles.visibleFiles.map((file) => {
+        const { dir, name } = splitRepoRelativePath(file.path);
+        return (
+          <li
+            key={file.path}
+            title={file.path}
+            className="flex min-w-0 items-center gap-2 px-2.5 py-1 text-ui"
+          >
+            <FileEntryIcon
+              pathValue={file.path}
+              kind="file"
+              className="opacity-70 dark:opacity-80"
+            />
+            <span className="flex min-w-0 items-baseline gap-1.5">
+              <span className="min-w-0 truncate text-foreground">{name}</span>
+              {dir ? (
+                <span className="min-w-0 shrink-[100] truncate text-ui-sm text-muted-foreground/60">
+                  {dir.replace(/\/$/, "")}
+                </span>
+              ) : null}
+            </span>
+            {file.conflict ? (
+              <span className="ml-auto shrink-0 text-ui-xs text-warning">Edited later</span>
+            ) : null}
+          </li>
+        );
+      })}
+      {pagedFiles.hiddenCount > 0 ? (
+        <li className="px-2.5 py-1">
+          <ShowMoreFilesButton hiddenCount={pagedFiles.hiddenCount} onClick={pagedFiles.showMore} />
+        </li>
+      ) : null}
+    </ul>
   );
 }

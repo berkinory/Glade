@@ -3,7 +3,8 @@ import { ThreadId } from "@glade/contracts/core/baseSchemas";
 import { pluralize } from "@glade/shared/text/text";
 import { AsyncUserInputCard } from "~/components/chat/AsyncUserInputCard";
 import { DiffStatLabel } from "~/components/chat/DiffStatLabel";
-import { EDITED_FILE_ROW_HEIGHT_EM, EditedFileRow } from "~/components/chat/EditedFileRow";
+import { EditedFileList } from "~/components/chat/EditedFileList";
+import { EditedFileRow } from "~/components/chat/EditedFileRow";
 import { GladeThreadCreationCard } from "~/components/chat/GladeThreadCreationCard";
 import {
   MESSAGE_ACTION_ICON_CLASS_NAME,
@@ -20,6 +21,7 @@ import {
   type MessagesTimelineRow,
 } from "~/components/chat/MessagesTimeline.logic.rowTypes";
 import { ReviewChangesButton } from "~/components/chat/ReviewChangesButton";
+import { ShowMoreFilesButton, usePagedFiles } from "~/components/chat/ShowMoreFilesButton";
 import { threadFindMarkdownProps } from "~/components/chat/threadFind.logic";
 import {
   EDITED_FILE_LIST_CLASS_NAME,
@@ -40,6 +42,7 @@ import { formatDayAwareTimestamp } from "~/timestampFormat";
 import { isFileChangeWorkLogEntry, type WorkLogEntry } from "~/workLog.types";
 import { collectAbsoluteFilePathsFromWorkEntries } from "./timelineTransitions";
 import type { TimelineController } from "./useTimelineController";
+// A half row at the bottom shows that a long list scrolls.
 const EDITED_FILE_LIST_VISIBLE_ROWS = 5.5;
 export function TimelineAssistantMessage({
   controller,
@@ -149,6 +152,7 @@ export function TimelineAssistantMessage({
     (turnSummary?.files.length ?? 0) > 0
       ? turnSummary!.files
       : [];
+  const inlineEditedFiles = usePagedFiles(inlineEditedFilesFromTurnSummary);
   const isTerminalAssistantMessage = row.showAssistantCopyButton && !row.assistantTurnInProgress;
   const assistantMeta = [
     isTerminalAssistantMessage
@@ -436,7 +440,7 @@ export function TimelineAssistantMessage({
         {renderWorkDisplay(inlineWorkDisplay, "inline")}
         {inlineEditedFilesFromTurnSummary.length > 0 && (
           <div className={cn("mt-2", EDITED_FILE_LIST_CLASS_NAME)}>
-            {inlineEditedFilesFromTurnSummary.map((file) => (
+            {inlineEditedFiles.visibleFiles.map((file) => (
               <button
                 key={`inline-summary-edit:${row.message.id}:${file.path}`}
                 type="button"
@@ -452,6 +456,12 @@ export function TimelineAssistantMessage({
                 />
               </button>
             ))}
+            <ShowMoreFilesButton
+              hiddenCount={inlineEditedFiles.hiddenCount}
+              onClick={inlineEditedFiles.showMore}
+              className="py-1.5"
+              fontSizePx={normalizedChatFontSizePx}
+            />
           </div>
         )}
         {!row.assistantTurnInProgress && row.showAssistantCopyButton
@@ -504,14 +514,13 @@ export function TimelineAssistantMessage({
           const editedFilesLabel = `Edited ${checkpointFiles.length} ${pluralize(checkpointFiles.length, "file")}`;
           const renderCheckpointFileRow = (
             file: (typeof checkpointFiles)[number],
-            withFirstReset: boolean,
+            index: number,
           ) => {
             const additions = file.additions ?? 0;
             const deletions = file.deletions ?? 0;
             const fileKind = file.kind ?? "modified";
             return (
               <EditedFileRow
-                key={file.path}
                 file={{
                   path: file.path,
                   kind: fileKind,
@@ -526,7 +535,7 @@ export function TimelineAssistantMessage({
                 appearance={{
                   theme: resolvedTheme,
                   fontSize: chatTypographyStyle.fontSize,
-                  withFirstReset,
+                  isFirst: index === 0,
                 }}
                 onReview={() => onOpenTurnDiff(turnSummary.turnId, file.path)}
               />
@@ -609,17 +618,13 @@ export function TimelineAssistantMessage({
                   </button>
                 </div>
               </div>
-              <DisclosureRegion open={fileChangesExpanded}>
-                {/* A half row at the bottom shows that a long list scrolls. */}
-                <div
-                  className="scroll-fade-y overflow-y-auto"
-                  style={{
-                    fontSize: chatTypographyStyle.fontSize,
-                    maxHeight: `${EDITED_FILE_LIST_VISIBLE_ROWS * EDITED_FILE_ROW_HEIGHT_EM}em`,
-                  }}
-                >
-                  {checkpointFiles.map((file) => renderCheckpointFileRow(file, true))}
-                </div>
+              <DisclosureRegion open={fileChangesExpanded} lazy>
+                <EditedFileList
+                  files={checkpointFiles}
+                  fontSizePx={normalizedChatFontSizePx}
+                  visibleRows={EDITED_FILE_LIST_VISIBLE_ROWS}
+                  renderRow={renderCheckpointFileRow}
+                />
               </DisclosureRegion>
             </div>
           );
