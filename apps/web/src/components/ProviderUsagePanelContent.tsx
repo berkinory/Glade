@@ -2,7 +2,7 @@ import { ExternalLinkIcon, TriangleAlertIcon } from "~/lib/icons";
 import type { ProviderKind } from "@glade/contracts/core/baseSchemas";
 import type { ServerCodexResetCredits } from "@glade/contracts/server/server";
 import { providerUsageLabel } from "@glade/shared/provider/providerUsage";
-import type { OpenUsageUsageLine } from "~/lib/openUsageRateLimits";
+import type { ServerProviderUsageLine } from "@glade/contracts/server/server";
 import {
   deriveProviderUsageLearnMoreHref,
   deriveRateLimitLearnMoreHref,
@@ -16,7 +16,7 @@ import { ProviderUsageResetCredits } from "./ProviderUsageResetCredits";
 export function ProviderUsagePanelContent(props: {
   provider: ProviderKind | null | undefined;
   rateLimits: ReadonlyArray<ProviderRateLimit>;
-  usageLines?: ReadonlyArray<OpenUsageUsageLine> | undefined;
+  usageLines?: ReadonlyArray<ServerProviderUsageLine> | undefined;
   notice?: string | null | undefined;
   emptyMessage?: string | null | undefined;
   isLoading?: boolean | undefined;

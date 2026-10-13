@@ -9,6 +9,7 @@
 
 ### Improved
 
+- Usage & limits shows Cursor, Grok and OpenCode usage when OpenUsage is running.
 - Model search ignores case, spacing, punctuation and word order, so "gpt5" finds GPT-5.
 - Glade starts faster and uses much less memory, and Codex replies take far less work to process.
 - Long Claude sessions use less memory.

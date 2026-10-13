@@ -1,4 +1,4 @@
-import type { OpenUsageUsageLine } from "~/lib/openUsageRateLimits";
+import type { ServerProviderUsageLine } from "@glade/contracts/server/server";
 import { cn } from "~/lib/utils";
 
 type ProviderUsageLineListSurface = "settings" | "popover";
@@ -35,7 +35,7 @@ export function ProviderUsageLineList({
   surface,
 }: {
   className?: string | undefined;
-  lines: ReadonlyArray<OpenUsageUsageLine>;
+  lines: ReadonlyArray<ServerProviderUsageLine>;
   surface: ProviderUsageLineListSurface;
 }) {
   const classes = SURFACE_CLASSES[surface];

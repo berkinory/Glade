@@ -17,7 +17,7 @@ import {
   selectPrimaryProviderUsageDisplayRow,
   type ProviderUsageDisplayRow,
 } from "~/lib/providerUsageDisplay";
-import type { OpenUsageUsageLine } from "~/lib/openUsageRateLimits";
+import type { ServerProviderUsageLine } from "@glade/contracts/server/server";
 import type { ProviderRateLimit } from "~/lib/rateLimits";
 import { useStore } from "~/store";
 import { createAccountRateLimitThreadsSelector } from "~/storeSelectors";
@@ -34,7 +34,7 @@ export interface ProviderUsageMenuModel {
   primaryRow: ProviderUsageDisplayRow | null;
   rows: ReadonlyArray<ProviderUsageDisplayRow>;
   rateLimits: ReadonlyArray<ProviderRateLimit>;
-  usageLines: ReadonlyArray<OpenUsageUsageLine>;
+  usageLines: ReadonlyArray<ServerProviderUsageLine>;
   notice: string | undefined;
   emptyMessage: string | undefined;
   isLoading: boolean;
@@ -92,7 +92,6 @@ export function useProviderUsageMenuModel(
     threads,
     codexHomePath: settings.codexHomePath || null,
     providerSnapshot: input.providerSnapshot,
-    fetchOpenUsageData: false,
   });
 
   return buildProviderUsageMenuModel({

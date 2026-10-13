@@ -191,24 +191,24 @@ export function ProviderUsageSettingsPanel() {
       <SettingsCard>
         <div className="space-y-3 p-4">
           <h3 className="text-ui-lg font-medium">Sidebar usage indicators</h3>
-          {(["claudeAgent", "codex"] as const)
-            .filter((provider) => !settings.disabledProviders.includes(provider))
-            .map((provider) => (
-              <label key={provider} className="flex items-center justify-between gap-2 text-ui">
-                {providerUsageDisplayName(provider)}
-                <Switch
-                  aria-label={`Show ${providerUsageDisplayName(provider)} usage in sidebar`}
-                  checked={settings.sidebarUsageProviders.includes(provider)}
-                  onCheckedChange={(checked) =>
-                    updateSettings({
-                      sidebarUsageProviders: checked
-                        ? [...settings.sidebarUsageProviders, provider]
-                        : settings.sidebarUsageProviders.filter((entry) => entry !== provider),
-                    })
-                  }
-                />
-              </label>
-            ))}
+          {PROVIDER_USAGE_PROVIDERS.filter(
+            (provider) => !settings.disabledProviders.includes(provider),
+          ).map((provider) => (
+            <label key={provider} className="flex items-center justify-between gap-2 text-ui">
+              {providerUsageDisplayName(provider)}
+              <Switch
+                aria-label={`Show ${providerUsageDisplayName(provider)} usage in sidebar`}
+                checked={settings.sidebarUsageProviders.includes(provider)}
+                onCheckedChange={(checked) =>
+                  updateSettings({
+                    sidebarUsageProviders: checked
+                      ? [...settings.sidebarUsageProviders, provider]
+                      : settings.sidebarUsageProviders.filter((entry) => entry !== provider),
+                  })
+                }
+              />
+            </label>
+          ))}
           <label className="flex items-center justify-between gap-2 text-ui">
             Quota windows
             <select
@@ -253,7 +253,8 @@ export function ProviderUsageSettingsPanel() {
         Usage is read locally from each provider CLI&apos;s stored credentials and fetched directly
         from the provider. The list follows whatever you are signed into; unsigned providers stay
         visible until any account is connected, then drop away. Short-lived tokens are refreshed
-        through the provider&apos;s own CLI or official token endpoint.
+        through the provider&apos;s own CLI or official token endpoint. Providers Glade has no
+        usage reader for show what OpenUsage (openusage.ai) reports while it is running.
       </p>
     </SettingsSectionShell>
   );

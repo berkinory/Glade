@@ -54,6 +54,8 @@ export interface ProviderDescriptor {
   readonly usage: {
     readonly signInCommand: string;
     readonly learnMoreHref: string;
+    // The provider's id in OpenUsage (openusage.ai), read when Glade has no native usage reader.
+    readonly openUsageId?: string;
   } | null;
 }
 
@@ -170,7 +172,11 @@ export const PROVIDER_DESCRIPTORS = defineProviderDescriptors([
     },
     nativeCommandAliases: {},
     inheritedModelSlugs: [],
-    usage: null,
+    usage: {
+      signInCommand: "cursor-agent login",
+      learnMoreHref: "https://cursor.com/dashboard?tab=usage",
+      openUsageId: "cursor",
+    },
   },
   {
     kind: "grok",
@@ -196,7 +202,11 @@ export const PROVIDER_DESCRIPTORS = defineProviderDescriptors([
     },
     nativeCommandAliases: {},
     inheritedModelSlugs: [],
-    usage: null,
+    usage: {
+      signInCommand: "grok login",
+      learnMoreHref: "https://grok.com",
+      openUsageId: "grok",
+    },
   },
   {
     kind: "museCode",
@@ -255,7 +265,11 @@ export const PROVIDER_DESCRIPTORS = defineProviderDescriptors([
     },
     nativeCommandAliases: {},
     inheritedModelSlugs: [],
-    usage: null,
+    usage: {
+      signInCommand: "opencode auth login",
+      learnMoreHref: "https://opencode.ai/zen",
+      openUsageId: "opencode",
+    },
   },
 ] as const satisfies readonly ProviderDescriptor[]);
 
