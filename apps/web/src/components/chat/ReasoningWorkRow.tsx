@@ -7,9 +7,11 @@ import { getChatTranscriptTextStyle } from "./chatTypography";
 import type { ExpandedImagePreview } from "./ExpandedImagePreview";
 import { ToolDetailsDisclosure } from "./TimelineWorkEntryDetails";
 import {
+  WORK_ROW_BLOCK_CLASS_NAME,
   WORK_ROW_GAP_CLASS_NAME,
   WORK_ROW_ICON_CLASS_NAME,
   WORK_ROW_ICON_SLOT_CLASS_NAME,
+  WORK_ROW_LINE_CLASS_NAME,
   WORK_ROW_MUTED_HOVER_TONE,
 } from "./workRowStyles";
 
@@ -24,11 +26,10 @@ export function ReasoningWorkRow(props: {
   entry: WorkLogEntry;
   reasoning: NonNullable<WorkLogEntry["reasoning"]>;
   fontSizePx: number;
-  compact: boolean;
   markdownCwd: string | undefined;
   onImageExpand: (preview: ExpandedImagePreview) => void;
 }) {
-  const { entry, reasoning, fontSizePx, compact } = props;
+  const { entry, reasoning, fontSizePx } = props;
   const typographyStyle = getChatTranscriptTextStyle(fontSizePx);
   const summary = (
     <>
@@ -36,7 +37,7 @@ export function ReasoningWorkRow(props: {
         <Brain03Icon className={WORK_ROW_ICON_CLASS_NAME} />
       </span>
       <p
-        className={cn(compact ? "leading-5" : "leading-6", WORK_ROW_MUTED_HOVER_TONE["tool-row"])}
+        className={cn(WORK_ROW_LINE_CLASS_NAME, WORK_ROW_MUTED_HOVER_TONE["tool-row"])}
         style={{ fontSize: `${fontSizePx}px` }}
       >
         <span className={reasoning.live ? "work-text-shimmer" : undefined}>
@@ -46,7 +47,7 @@ export function ReasoningWorkRow(props: {
     </>
   );
   return (
-    <div className={compact ? "py-0.5" : "py-1"} data-reasoning-row="true">
+    <div className={WORK_ROW_BLOCK_CLASS_NAME} data-reasoning-row="true">
       {entry.detail ? (
         <ToolDetailsDisclosure
           detailContent={

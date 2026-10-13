@@ -25,9 +25,11 @@ import {
   workEntryLinkIconUrl,
 } from "./TimelineWorkEntryRow";
 import {
+  WORK_ROW_BLOCK_CLASS_NAME,
   WORK_ROW_GAP_CLASS_NAME,
   WORK_ROW_ICON_CLASS_NAME,
   WORK_ROW_ICON_SLOT_CLASS_NAME,
+  WORK_ROW_LINE_CLASS_NAME,
 } from "./workRowStyles";
 
 const ACTIVITY_ICONS: Record<Exclude<ToolCallGroupActivity, "tools">, IconComponent> = {
@@ -71,7 +73,9 @@ export function ToolCallGroupSummaryRow(props: {
         type="button"
         aria-expanded={open}
         className={cn(
-          "inline-flex max-w-full items-center py-0.5 text-left transition-colors duration-100 hover:text-foreground",
+          "inline-flex max-w-full items-center text-left transition-colors duration-100 hover:text-foreground",
+          WORK_ROW_BLOCK_CLASS_NAME,
+          WORK_ROW_LINE_CLASS_NAME,
           WORK_ROW_GAP_CLASS_NAME,
           MUTED_LABEL_TEXT_CLASS_NAME,
         )}

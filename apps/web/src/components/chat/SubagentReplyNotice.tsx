@@ -7,9 +7,11 @@ import { resolveSubagentPresentation } from "~/lib/subagentPresentation";
 import { ComputerTerminal01Icon } from "~/lib/icons";
 import { SubagentAvatar } from "./SubagentAvatar";
 import {
+  WORK_ROW_BLOCK_CLASS_NAME,
   WORK_ROW_GAP_CLASS_NAME,
   WORK_ROW_ICON_CLASS_NAME,
   WORK_ROW_ICON_SLOT_CLASS_NAME,
+  WORK_ROW_LINE_CLASS_NAME,
 } from "./workRowStyles";
 
 export function SubagentReplyNotice({ entry }: { entry: WorkLogEntry }) {
@@ -37,7 +39,9 @@ export function SubagentReplyNotice({ entry }: { entry: WorkLogEntry }) {
     </>
   );
   const className = cn(
-    "flex min-w-0 items-center py-1 text-chat text-muted-foreground",
+    "flex min-w-0 items-center text-chat text-muted-foreground",
+    WORK_ROW_BLOCK_CLASS_NAME,
+    WORK_ROW_LINE_CLASS_NAME,
     WORK_ROW_GAP_CLASS_NAME,
   );
   if (!thread || thread.archivedAt) return <div className={className}>{content}</div>;

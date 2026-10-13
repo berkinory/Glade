@@ -9,6 +9,10 @@ export const WORK_ROW_ICON_CLASS_NAME = "size-3.5";
 
 export const WORK_ROW_GAP_CLASS_NAME = "gap-1.5";
 
+// Every work row has the same height whatever it shows, so rows keep one rhythm down the transcript.
+export const WORK_ROW_BLOCK_CLASS_NAME = "py-0.5";
+export const WORK_ROW_LINE_CLASS_NAME = "leading-5";
+
 // Muted rows light up while their own row is hovered or focused.
 export const WORK_ROW_MUTED_HOVER_TONE: Record<"tool-row" | "file-row", string> = {
   "tool-row": `${MUTED_LABEL_TEXT_CLASS_NAME} transition-colors group-hover/tool-row:text-foreground group-focus-visible/tool-row:text-foreground`,

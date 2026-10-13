@@ -2,9 +2,11 @@ import { subagentToolHeading } from "./SubagentToolPresentation";
 import { SubagentRunCard } from "./SubagentRunCard";
 import { Spinner } from "../ui/spinner";
 import {
+  WORK_ROW_BLOCK_CLASS_NAME,
   WORK_ROW_GAP_CLASS_NAME,
   WORK_ROW_ICON_CLASS_NAME,
   WORK_ROW_ICON_SLOT_CLASS_NAME,
+  WORK_ROW_LINE_CLASS_NAME,
   WORK_ROW_MUTED_HOVER_TONE,
 } from "./workRowStyles";
 import { FileNameChip } from "./FileNameChip";
@@ -276,29 +278,6 @@ function classifyWorkEntryTool(workEntry: TimelineWorkEntry) {
       : deriveGladeMcpToolTitle(titleInput),
   };
 }
-export function prefersCompactWorkEntryRow(workEntry: TimelineWorkEntry): boolean {
-  if (isStatusOnlyCommandWorkEntry(workEntry) || workEntry.monitorNotification) {
-    return true;
-  }
-  if (workEntry.itemType === "command_execution" || workEntry.command || workEntry.rawCommand) {
-    return true;
-  }
-  if (workEntry.toolKind === "browser" || workEntry.toolKind === "computer") {
-    return true;
-  }
-  const EntryIcon = workEntryIcon(workEntry);
-  return (
-    EntryIcon === ComputerTerminal01Icon ||
-    EntryIcon === ToolsIcon ||
-    EntryIcon === FlowIcon ||
-    EntryIcon === BotIcon ||
-    EntryIcon === PencilEdit02Icon ||
-    EntryIcon === BlocksIcon ||
-    EntryIcon === SearchIcon ||
-    EntryIcon === FolderIcon ||
-    EntryIcon === File02Icon
-  );
-}
 function capitalizePhrase(value: string): string {
   const trimmed = value.trim();
   if (trimmed.length === 0) {
@@ -379,7 +358,6 @@ type TimelineWorkEntryRowProps = {
   workEntry: TimelineWorkEntry;
   chatMetaFontSizePx: number;
   textFontSizePx?: number;
-  density?: "default" | "compact";
   fileDiffStatByPath?: ReadonlyMap<
     string,
     {
@@ -400,7 +378,13 @@ export const TimelineWorkEntryRow = memo(function TimelineWorkEntryRow(
 ) {
   const fontSizePx = props.textFontSizePx ?? props.chatMetaFontSizePx;
   if (props.workEntry.subagentRun) {
-    return <SubagentRunCard run={props.workEntry.subagentRun} fontSizePx={fontSizePx} />;
+    return (
+      <SubagentRunCard
+        run={props.workEntry.subagentRun}
+        launching={props.workEntry.toolStatus === "running"}
+        fontSizePx={fontSizePx}
+      />
+    );
   }
   if (props.workEntry.reasoning) {
     return (
@@ -408,7 +392,6 @@ export const TimelineWorkEntryRow = memo(function TimelineWorkEntryRow(
         entry={props.workEntry}
         reasoning={props.workEntry.reasoning}
         fontSizePx={fontSizePx}
-        compact={props.density === "compact"}
         markdownCwd={props.markdownCwd}
         onImageExpand={props.onImageExpand}
       />
@@ -422,7 +405,6 @@ function ToolWorkEntryRow(props: TimelineWorkEntryRowProps) {
     workEntry,
     chatMetaFontSizePx,
     textFontSizePx: textFontSizePxProp,
-    density: densityProp,
     fileDiffStatByPath,
     markdownCwd,
     onImageExpand,
@@ -432,8 +414,6 @@ function ToolWorkEntryRow(props: TimelineWorkEntryRowProps) {
     timestampFormat,
   } = props;
   const textFontSizePx = textFontSizePxProp ?? chatMetaFontSizePx;
-  const density = densityProp ?? "default";
-  const compact = density === "compact";
   const isPlainRuntimeNoticeRow = isPlainRuntimeNoticeWorkEntry(workEntry);
   const EntryIcon = workEntryIcon(workEntry);
   const linkIconUrl = workEntryLinkIconUrl(workEntry);
@@ -457,8 +437,12 @@ function ToolWorkEntryRow(props: TimelineWorkEntryRowProps) {
           ? "mcp"
           : undefined;
   const { heading, displayText } = workEntryDisplayParts(workEntry, classification);
+  // A shell read names its file through the command label; its raw command text is not a path.
+  const isCommandRow = Boolean(
+    workEntry.itemType === "command_execution" || workEntry.command || workEntry.rawCommand,
+  );
   const rowFilePath =
-    workEntry.toolKind === "read"
+    workEntry.toolKind === "read" && !isCommandRow
       ? (toolInputFilePath(workEntry.toolDetails?.input) ??
         (workEntry.detail ? extractFilePathFromDetail(workEntry.detail) : null))
       : null;
@@ -492,7 +476,11 @@ function ToolWorkEntryRow(props: TimelineWorkEntryRowProps) {
     ? formatLiveActivityMeta(workEntry.liveActivity, liveActivityNowMs)
     : null;
   const readFilePath =
-    opener !== null && !activityDetail && workEntry.detail && workEntry.toolKind === "read"
+    opener !== null &&
+    !activityDetail &&
+    !isCommandRow &&
+    workEntry.detail &&
+    workEntry.toolKind === "read"
       ? extractFilePathFromDetail(workEntry.detail)
       : null;
   const canOpenReadFile = readFilePath !== null;
@@ -509,7 +497,7 @@ function ToolWorkEntryRow(props: TimelineWorkEntryRowProps) {
   if (workEntry.activityKind === "provider.transition")
     return <ProviderTransitionDivider entry={workEntry} detailContent={activityContent} />;
   return (
-    <div className={cn(compact ? "py-0.5" : "rounded-lg py-1")}>
+    <div className={WORK_ROW_BLOCK_CLASS_NAME}>
       {showEditedRows ? (
         <div
           className={
@@ -604,7 +592,8 @@ function ToolWorkEntryRow(props: TimelineWorkEntryRowProps) {
               <div className="min-w-0 overflow-hidden">
                 <p
                   className={cn(
-                    compact ? "truncate leading-5" : "truncate leading-6",
+                    "truncate",
+                    WORK_ROW_LINE_CLASS_NAME,
                     WORK_ROW_MUTED_HOVER_TONE["tool-row"],
                     isPlainRuntimeNoticeRow && "italic",
                   )}

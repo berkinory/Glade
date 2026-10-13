@@ -12,10 +12,7 @@ import {
 } from "~/components/chat/MessagesTimeline.logic.rowTypes";
 
 import { threadFindMarkdownProps } from "~/components/chat/threadFind.logic";
-import {
-  prefersCompactWorkEntryRow,
-  TimelineWorkEntryRow,
-} from "~/components/chat/TimelineWorkEntryRow";
+import { TimelineWorkEntryRow } from "~/components/chat/TimelineWorkEntryRow";
 import { ToolCallGroupSummaryRow } from "~/components/chat/ToolCallGroupSummaryRow";
 import { AnsweredQuestionList } from "~/components/chat/AnsweredQuestionList";
 import ChatMarkdown from "~/components/ChatMarkdown";
@@ -162,7 +159,6 @@ export function TimelineControllerSurface({ controller }: { controller: Timeline
               workEntry={workEntry}
               chatMetaFontSizePx={appTypographyScale.chatMetaPx}
               textFontSizePx={normalizedChatFontSizePx}
-              density={prefersCompactWorkEntryRow(workEntry) ? "compact" : "default"}
               markdownCwd={markdownCwd}
               onImageExpand={onImageExpand}
               activityDetail={getAgentActivityDetail?.(workEntry.id)}

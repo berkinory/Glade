@@ -26,9 +26,11 @@ import { Spinner } from "../ui/spinner";
 import { interruptThreadTurn } from "./chatTaskActions";
 import { SubagentAvatar } from "./SubagentAvatar";
 import {
+  WORK_ROW_BLOCK_CLASS_NAME,
   WORK_ROW_GAP_CLASS_NAME,
   WORK_ROW_ICON_CLASS_NAME,
   WORK_ROW_ICON_SLOT_CLASS_NAME,
+  WORK_ROW_LINE_CLASS_NAME,
 } from "./workRowStyles";
 import {
   describeLatestStep,
@@ -70,14 +72,17 @@ function statusText(
 
 export function SubagentRunCard({
   run,
+  launching,
   fontSizePx,
 }: {
   run: WorkLogSubagentRun;
+  // The launch call is still running; a subagent that has not reported a status yet is starting.
+  launching: boolean;
   fontSizePx: number;
 }) {
   const { members } = run;
   const kinds = members.map((member) => subagentStatusKind(member.subagent));
-  const live = kinds.some(isLiveKind);
+  const live = kinds.some(isLiveKind) || (launching && kinds.includes(null));
   const [userOpen, setUserOpen] = useState<boolean | null>(null);
   const open = userOpen ?? live;
   const nowMs = useLiveClockNow(live);
@@ -101,7 +106,9 @@ export function SubagentRunCard({
           type="button"
           aria-expanded={open}
           className={cn(
-            "inline-flex min-w-0 items-center py-0.5 text-left transition-colors duration-100 hover:text-foreground",
+            "inline-flex min-w-0 items-center text-left transition-colors duration-100 hover:text-foreground",
+            WORK_ROW_BLOCK_CLASS_NAME,
+            WORK_ROW_LINE_CLASS_NAME,
             WORK_ROW_GAP_CLASS_NAME,
             MUTED_LABEL_TEXT_CLASS_NAME,
           )}

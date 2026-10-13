@@ -24,7 +24,6 @@ import { threadFindMarkdownProps } from "~/components/chat/threadFind.logic";
 import {
   EDITED_FILE_LIST_CLASS_NAME,
   EditedFileRowContent,
-  prefersCompactWorkEntryRow,
   TimelineWorkEntryRow,
 } from "~/components/chat/TimelineWorkEntryRow";
 import { summarizeToolCallGroup } from "~/components/chat/toolCallGroup.logic";
@@ -193,7 +192,6 @@ export function TimelineAssistantMessage({
         workEntry={workEntry}
         chatMetaFontSizePx={appTypographyScale.chatMetaPx}
         textFontSizePx={normalizedChatFontSizePx}
-        density="compact"
         fileDiffStatByPath={fileDiffStatByPath}
         markdownCwd={markdownCwd}
         onImageExpand={onImageExpand}
@@ -267,7 +265,6 @@ export function TimelineAssistantMessage({
                 workEntry={workEntry}
                 chatMetaFontSizePx={appTypographyScale.chatMetaPx}
                 textFontSizePx={normalizedChatFontSizePx}
-                density={prefersCompactWorkEntryRow(workEntry) ? "compact" : "default"}
                 markdownCwd={markdownCwd}
                 onImageExpand={onImageExpand}
                 activityDetail={getAgentActivityDetail?.(workEntry.id)}
@@ -286,7 +283,6 @@ export function TimelineAssistantMessage({
         workEntry={item.entry}
         chatMetaFontSizePx={appTypographyScale.chatMetaPx}
         textFontSizePx={normalizedChatFontSizePx}
-        density={prefersCompactWorkEntryRow(item.entry) ? "compact" : "default"}
         markdownCwd={markdownCwd}
         onImageExpand={onImageExpand}
         activityDetail={getAgentActivityDetail?.(item.entry.id)}
