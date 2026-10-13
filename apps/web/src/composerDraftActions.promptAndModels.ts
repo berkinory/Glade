@@ -25,13 +25,10 @@ import {
   putComposerDraft,
 } from "./composerDraftDomain";
 import {
-  COMPOSER_PROVIDER_KINDS,
-  makeModelSelection,
   normalizeModelSelection,
   normalizeProviderKind,
-  normalizeProviderModelOptions,
+  normalizeProviderOptionSelections,
   reconcileProviderScopedModelSelection,
-  stripNonStickyModelOptions,
 } from "./composerDraftModels";
 import { ensureInlineTerminalContextPlaceholders } from "./lib/terminalContext";
 import {
@@ -62,14 +59,12 @@ export function createPromptAndModelsActions(
   | "setMentions"
   | "setModelSelection"
   | "setModelSelectionAndSticky"
-  | "setModelOptions"
   | "setProviderModelOptions"
   | "setRuntimeMode"
 > {
   return {
     setStickyModelSelection: (modelSelection) => {
-      const rawNormalized = normalizeModelSelection(modelSelection);
-      const normalized = rawNormalized ? stripNonStickyModelOptions(rawNormalized) : null;
+      const normalized = normalizeModelSelection(modelSelection);
       set((state) => {
         if (!normalized) {
           return state;
@@ -355,50 +350,6 @@ export function createPromptAndModelsActions(
         get().draftsByThreadId[threadId]?.modelSelectionByProvider[modelSelection.provider];
       get().setStickyModelSelection(correctedSelection ?? modelSelection);
     },
-    setModelOptions: (threadId, modelOptions) => {
-      if (threadId.length === 0) {
-        return;
-      }
-      const normalizedOpts = normalizeProviderModelOptions(modelOptions);
-      set((state) => {
-        const existing = state.draftsByThreadId[threadId];
-        if (!existing && normalizedOpts === null) {
-          return state;
-        }
-        const base = existing ?? createEmptyThreadDraft();
-        const nextMap = { ...base.modelSelectionByProvider };
-        for (const provider of COMPOSER_PROVIDER_KINDS) {
-          if (!normalizedOpts || !(provider in normalizedOpts)) continue;
-          const opts = normalizedOpts[provider];
-          const current = nextMap[provider];
-          if (opts) {
-            const model = current?.model ?? "";
-            if (!model) continue;
-            nextMap[provider] = makeModelSelection(
-              provider,
-              model,
-              opts,
-              current?.provider === "claudeAgent" ? current.supportsAutoMode : undefined,
-            );
-          } else if (current?.options) {
-            nextMap[provider] = buildModelSelection(
-              provider,
-              current.model,
-              undefined,
-              current.provider === "claudeAgent" ? current.supportsAutoMode : undefined,
-            );
-          }
-        }
-        if (Equal.equals(base.modelSelectionByProvider, nextMap)) {
-          return state;
-        }
-        const nextDraft: ComposerThreadDraftState = {
-          ...base,
-          modelSelectionByProvider: nextMap,
-        };
-        return putComposerDraft(state, threadId, nextDraft);
-      });
-    },
     setProviderModelOptions: (threadId, provider, nextProviderOptions, options) => {
       if (threadId.length === 0) {
         return;
@@ -408,11 +359,7 @@ export function createPromptAndModelsActions(
         return;
       }
 
-      const normalizedOpts = normalizeProviderModelOptions(
-        { [normalizedProvider]: nextProviderOptions },
-        normalizedProvider,
-      );
-      const providerOpts = normalizedOpts?.[normalizedProvider];
+      const providerOpts = normalizeProviderOptionSelections(nextProviderOptions);
       const fallbackModel = normalizeModelSlug(options?.model, normalizedProvider) ?? "";
 
       set((state) => {
@@ -426,22 +373,18 @@ export function createPromptAndModelsActions(
           if (!nextModel) {
             return state;
           }
-          nextMap[normalizedProvider] = makeModelSelection(
+          nextMap[normalizedProvider] = buildModelSelection(
             normalizedProvider,
             nextModel,
             providerOpts,
-            currentForProvider?.provider === "claudeAgent"
-              ? currentForProvider.supportsAutoMode
-              : undefined,
+            currentForProvider?.supportsAutoMode,
           );
         } else if (currentForProvider?.options) {
           nextMap[normalizedProvider] = buildModelSelection(
             normalizedProvider,
             currentForProvider.model,
             undefined,
-            currentForProvider.provider === "claudeAgent"
-              ? currentForProvider.supportsAutoMode
-              : undefined,
+            currentForProvider.supportsAutoMode,
           );
         }
 
@@ -452,25 +395,16 @@ export function createPromptAndModelsActions(
           const stickyBase =
             nextStickyMap[normalizedProvider] ??
             base.modelSelectionByProvider[normalizedProvider] ??
-            (fallbackModel ? makeModelSelection(normalizedProvider, fallbackModel) : null);
+            (fallbackModel ? buildModelSelection(normalizedProvider, fallbackModel) : null);
           if (!stickyBase) {
             return state;
           }
-          if (providerOpts) {
-            nextStickyMap[normalizedProvider] = stripNonStickyModelOptions(
-              makeModelSelection(
-                normalizedProvider,
-                stickyBase.model,
-                providerOpts,
-                stickyBase.provider === "claudeAgent" ? stickyBase.supportsAutoMode : undefined,
-              ),
-            );
-          } else if (stickyBase.options) {
+          if (providerOpts || stickyBase.options) {
             nextStickyMap[normalizedProvider] = buildModelSelection(
               normalizedProvider,
               stickyBase.model,
-              undefined,
-              stickyBase.provider === "claudeAgent" ? stickyBase.supportsAutoMode : undefined,
+              providerOpts,
+              stickyBase.supportsAutoMode,
             );
           }
           nextStickyActiveProvider = base.activeProvider ?? normalizedProvider;

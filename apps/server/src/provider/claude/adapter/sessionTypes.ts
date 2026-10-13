@@ -29,7 +29,6 @@ import { type AgentGatewaySessionLease } from "../../../agentGateway/sessionLeas
 import { type ProviderSession } from "@glade/contracts/provider/provider";
 import { type ClaudeAdapterShape } from "../../Services/ClaudeAdapter.ts";
 import { ProviderAdapterProcessError } from "../../core/Errors.ts";
-import { type ClaudeApiEffort } from "@glade/contracts/provider/model";
 import { ClaudeRequestUsage } from "../claudeRequestUsage.ts";
 import { type ClaudeWorkflowRuntimeState } from "../claudeWorkflowRuntime.ts";
 import { ClaudeQueryRuntime, ClaudeProcessOwner } from "./adapterConfiguration";
@@ -220,8 +219,8 @@ export interface ClaudeSessionUsageCache {
   resultUsageBaseline?: ClaudeResultUsageBaseline;
   lastKnownContextWindow: number | undefined;
   currentAlwaysThinkingEnabled: boolean | undefined;
-  currentEffort: ClaudeApiEffort | null;
-  effectiveEffort: ClaudeApiEffort | null | undefined;
+  currentEffort: string | null;
+  effectiveEffort: string | null | undefined;
   currentUltracode: boolean | undefined;
   currentFastMode: boolean | undefined;
   lastKnownAutoCompactThreshold: number | undefined;

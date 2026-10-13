@@ -1,5 +1,5 @@
 import { Schema } from "effect";
-import type { CodexModelSelection } from "@glade/contracts/provider/sessionPolicy";
+import type { ModelSelection } from "@glade/contracts/provider/sessionPolicy";
 
 const ThreadSettings = Schema.Struct({
   threadSettings: Schema.Struct({
@@ -29,7 +29,7 @@ const FilePatch = Schema.Struct({
 
 const ApprovalReview = Schema.Struct({ reviewId: Schema.String });
 
-export function codexUpdatedModelSelection(value: unknown): CodexModelSelection {
+export function codexUpdatedModelSelection(value: unknown): ModelSelection {
   const { threadSettings } = Schema.decodeUnknownSync(ThreadSettings)(value);
   return {
     provider: "codex",

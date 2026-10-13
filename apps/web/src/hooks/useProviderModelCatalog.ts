@@ -135,7 +135,6 @@ export function useProviderModelCatalog(input: {
         discovery.error === undefined;
       if (dynamicModels && (dynamicModels.length > 0 || hasCodexCatalog)) {
         result[provider] = mergeDynamicModelOptions({
-          provider,
           staticOptions: staticOptions[provider],
           dynamicModels,
         });

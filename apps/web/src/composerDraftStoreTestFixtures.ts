@@ -1,6 +1,5 @@
 import { ThreadId } from "@glade/contracts/core/baseSchemas";
 import { type ModelSelection } from "@glade/contracts/provider/sessionPolicy";
-import { type ProviderModelOptions } from "@glade/contracts/provider/model";
 import { afterEach, beforeEach, vi } from "vitest";
 
 import { partializeComposerDraftStoreState } from "./composerDraftPersistence.serialization";
@@ -136,15 +135,7 @@ export function modelSelection(
   model: string,
   options?: ModelSelection["options"],
 ): ModelSelection {
-  return {
-    provider,
-    model,
-    ...(options ? { options } : {}),
-  } as ModelSelection;
-}
-
-export function providerModelOptions(options: ProviderModelOptions): ProviderModelOptions {
-  return options;
+  return { provider, model, ...(options ? { options } : {}) };
 }
 
 type ComposerDraftStoreState = ReturnType<typeof useComposerDraftStore.getState>;

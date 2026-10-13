@@ -152,9 +152,7 @@ function modelSelectionsEqual(left: ModelSelection, right: ModelSelection): bool
     left.provider === right.provider &&
     left.model === right.model &&
     JSON.stringify(left.options ?? null) === JSON.stringify(right.options ?? null) &&
-    (left.provider !== "claudeAgent" ||
-      right.provider !== "claudeAgent" ||
-      left.supportsAutoMode === right.supportsAutoMode)
+    left.supportsAutoMode === right.supportsAutoMode
   );
 }
 

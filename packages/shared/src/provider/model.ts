@@ -1,15 +1,14 @@
 import {
-  type ClaudeApiEffort,
-  type ClaudeModelOptions,
-  type ClaudeCodeEffort,
   type ModelCapabilities,
   type ModelSlug,
   type ProviderOptionDescriptor,
-  type ProviderOptionSelection,
+  type ProviderOptionSelections,
+  type SelectProviderOptionDescriptor,
 } from "@glade/contracts/provider/model";
 import { type ModelSelection } from "@glade/contracts/provider/sessionPolicy";
 import { type ProviderKind } from "@glade/contracts/core/baseSchemas";
 import { middleEffort } from "./effortLabel";
+import { providerInheritedModelSlugs } from "./providerMetadata";
 
 export interface SelectableModelOption {
   slug: string;
@@ -122,20 +121,32 @@ export function formatModelDisplayName(model: string | null | undefined): string
   return humanizeModelSlug(normalized);
 }
 
-type ProviderOptionSelectionsInput =
-  | ReadonlyArray<ProviderOptionSelection>
-  | Record<string, unknown>
-  | null
-  | undefined;
+// Providers name their effort option differently; either id marks the model's effort ladder.
+const EFFORT_OPTION_IDS: ReadonlySet<string> = new Set(["effort", "reasoningEffort"]);
+
+export function isEffortOptionDescriptor(
+  descriptor: ProviderOptionDescriptor,
+): descriptor is SelectProviderOptionDescriptor {
+  return descriptor.type === "select" && EFFORT_OPTION_IDS.has(descriptor.id);
+}
+
+export function storedEffortOptionValue(
+  selections: ProviderOptionSelections | null | undefined,
+): string | undefined {
+  for (const id of EFFORT_OPTION_IDS) {
+    const value = selections?.[id];
+    if (typeof value === "string") return value;
+  }
+  return undefined;
+}
 
 function cloneProviderOptionDescriptor(
   descriptor: ProviderOptionDescriptor,
 ): ProviderOptionDescriptor {
   if (descriptor.type === "select") {
-    const effortDefault =
-      descriptor.id === "effort" || descriptor.id === "reasoningEffort"
-        ? middleEffort(descriptor.options)?.id
-        : undefined;
+    const effortDefault = isEffortOptionDescriptor(descriptor)
+      ? middleEffort(descriptor.options)?.id
+      : undefined;
     return {
       ...descriptor,
       options: descriptor.options.map((option) => {
@@ -151,51 +162,20 @@ function cloneProviderOptionDescriptor(
   return { ...descriptor };
 }
 
-function providerOptionSelectionValue(
-  selections: ProviderOptionSelectionsInput,
-  id: string,
-): string | boolean | undefined {
-  if (!selections) {
-    return undefined;
-  }
-  if (Array.isArray(selections)) {
-    return selections.find((selection) => selection.id === id)?.value;
-  }
-  const selectionRecord = selections as Record<string, unknown>;
-  const value = selectionRecord[id];
-  if (typeof value === "number" && Number.isFinite(value)) {
-    return String(value);
-  }
-  return typeof value === "string" || typeof value === "boolean" ? value : undefined;
-}
-
-export function getProviderOptionBooleanSelectionValue(
-  selections: ProviderOptionSelectionsInput,
-  id: string,
-): boolean | undefined {
-  const value = providerOptionSelectionValue(selections, id);
-  return typeof value === "boolean" ? value : undefined;
-}
-
 export function getModelSelectionStringOptionValue(
   modelSelection: ModelSelection | null | undefined,
   id: string,
 ): string | undefined {
-  const value = providerOptionSelectionValue(
-    modelSelection?.options as ProviderOptionSelectionsInput,
-    id,
-  );
-  return typeof value === "string" ? value : undefined;
+  const value = modelSelection?.options?.[id];
+  return typeof value === "string" ? (trimOrNull(value) ?? undefined) : undefined;
 }
 
 export function getModelSelectionBooleanOptionValue(
   modelSelection: ModelSelection | null | undefined,
   id: string,
 ): boolean | undefined {
-  return getProviderOptionBooleanSelectionValue(
-    modelSelection?.options as ProviderOptionSelectionsInput,
-    id,
-  );
+  const value = modelSelection?.options?.[id];
+  return typeof value === "boolean" ? value : undefined;
 }
 
 function resolveDescriptorChoiceValue(
@@ -225,16 +205,12 @@ function withProviderOptionCurrentValue(
 }
 
 export function getProviderOptionDescriptors(input: {
-  provider: ProviderKind;
   caps: ModelCapabilities;
-  selections?: ProviderOptionSelectionsInput;
+  selections?: ProviderOptionSelections | null | undefined;
 }): ReadonlyArray<ProviderOptionDescriptor> {
   const descriptors = (input.caps.optionDescriptors ?? []).map(cloneProviderOptionDescriptor);
   return descriptors.map((descriptor) =>
-    withProviderOptionCurrentValue(
-      descriptor,
-      providerOptionSelectionValue(input.selections, descriptor.id),
-    ),
+    withProviderOptionCurrentValue(descriptor, input.selections?.[descriptor.id]),
   );
 }
 
@@ -250,12 +226,16 @@ export function getProviderOptionCurrentValue(
   return descriptor.currentValue ?? descriptor.options.find((option) => option.isDefault)?.id;
 }
 
+// Unset, "provider-default" and a provider's own default alias all inherit the native default model.
 export function normalizeModelSlug(
   model: string | null | undefined,
-  provider: ProviderKind = "codex",
+  provider?: ProviderKind,
 ): ModelSlug | null {
   const trimmed = trimOrNull(model);
-  return trimmed === "provider-default" || (provider === "claudeAgent" && trimmed === "default")
+  return trimmed === "provider-default" ||
+    (trimmed !== null &&
+      provider !== undefined &&
+      providerInheritedModelSlugs(provider).includes(trimmed))
     ? null
     : trimmed;
 }
@@ -301,31 +281,4 @@ export function trimOrNull<T extends string>(value: T | null | undefined): T | n
   if (typeof value !== "string") return null;
   const trimmed = value.trim() as T;
   return trimmed || null;
-}
-
-export function normalizeClaudeModelOptions(
-  _model: string | null | undefined,
-  modelOptions: ClaudeModelOptions | null | undefined,
-): ClaudeModelOptions | undefined {
-  if (!modelOptions) return undefined;
-  const effort = getEffectiveClaudeCodeEffort(modelOptions.effort);
-  const options: ClaudeModelOptions = {
-    ...(effort ? { effort } : {}),
-    ...(modelOptions.effort === "ultracode" ? { ultracode: true } : {}),
-    ...(typeof modelOptions.ultracode === "boolean" ? { ultracode: modelOptions.ultracode } : {}),
-    ...(typeof modelOptions.thinking === "boolean" ? { thinking: modelOptions.thinking } : {}),
-    ...(typeof modelOptions.fastMode === "boolean" ? { fastMode: modelOptions.fastMode } : {}),
-  };
-  return Object.keys(options).length > 0 ? options : undefined;
-}
-
-export function resolveApiModelId(modelSelection: ModelSelection): string | undefined {
-  return normalizeModelSlug(modelSelection.model, modelSelection.provider) ?? undefined;
-}
-
-export function getEffectiveClaudeCodeEffort(
-  effort: ClaudeCodeEffort | null | undefined,
-): ClaudeApiEffort | null {
-  if (!effort || effort === "ultrathink") return null;
-  return effort === "ultracode" ? null : effort;
 }

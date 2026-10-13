@@ -1,10 +1,6 @@
 import { Schema } from "effect";
-import { TrimmedNonEmptyString } from "../core/baseSchemas";
-import type { ProviderKind } from "../core/baseSchemas";
+import { ProviderKind, TrimmedNonEmptyString } from "../core/baseSchemas";
 
-export type CodexReasoningEffort = string;
-export type ClaudeApiEffort = string;
-export type ClaudeCodeEffort = string;
 export const ProviderOptionChoice = Schema.Struct({
   id: TrimmedNonEmptyString,
   label: TrimmedNonEmptyString,
@@ -41,37 +37,17 @@ export const ProviderOptionDescriptor = Schema.Union([
 ]);
 export type ProviderOptionDescriptor = typeof ProviderOptionDescriptor.Type;
 
-export const ProviderOptionSelection = Schema.Struct({
-  id: TrimmedNonEmptyString,
-  value: Schema.Union([TrimmedNonEmptyString, Schema.Boolean]),
-});
-export type ProviderOptionSelection = typeof ProviderOptionSelection.Type;
+export const ProviderOptionValue = Schema.Union([Schema.String, Schema.Boolean]);
+export type ProviderOptionValue = typeof ProviderOptionValue.Type;
 
-export const ProviderOptionSelections = Schema.Array(ProviderOptionSelection);
+// Values chosen for a model's options, keyed by option descriptor id. Each provider decodes its own.
+export const ProviderOptionSelections = Schema.Record(Schema.String, ProviderOptionValue);
 export type ProviderOptionSelections = typeof ProviderOptionSelections.Type;
 
-export const CodexModelOptions = Schema.Struct({
-  reasoningEffort: Schema.optional(TrimmedNonEmptyString),
-  serviceTier: Schema.optional(TrimmedNonEmptyString),
-  fastMode: Schema.optional(Schema.Boolean),
-});
-export type CodexModelOptions = typeof CodexModelOptions.Type;
-
-export const ClaudeModelOptions = Schema.Struct({
-  thinking: Schema.optional(Schema.Boolean),
-  ultracode: Schema.optional(Schema.Boolean),
-  effort: Schema.optional(TrimmedNonEmptyString),
-  fastMode: Schema.optional(Schema.Boolean),
-  autoCompactWindow: Schema.optional(Schema.String),
-
-  contextWindow: Schema.optional(Schema.String),
-});
-export type ClaudeModelOptions = typeof ClaudeModelOptions.Type;
-
-export const ProviderModelOptions = Schema.Struct({
-  codex: Schema.optional(CodexModelOptions),
-  claudeAgent: Schema.optional(ClaudeModelOptions),
-});
+export const ProviderModelOptions = Schema.Record(
+  ProviderKind,
+  Schema.optionalKey(ProviderOptionSelections),
+);
 export type ProviderModelOptions = typeof ProviderModelOptions.Type;
 
 export type ReasoningControlSource = "api-effort" | "provider-setting" | "prompt-prefix";

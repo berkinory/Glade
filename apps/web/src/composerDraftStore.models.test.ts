@@ -7,7 +7,6 @@ import { normalizeModelSelection } from "./composerDraftModels";
 import {
   mergePersistedComposerDraftState,
   modelSelection,
-  providerModelOptions,
   resetComposerDraftStore,
 } from "./composerDraftStoreTestFixtures";
 
@@ -178,38 +177,13 @@ describe("composerDraftStore modelSelection", () => {
     },
   );
 
-  it("does not clear other provider options when setting options for a single provider", () => {
-    const store = useComposerDraftStore.getState();
-
-    store.setModelSelection(threadId, modelSelection("codex", "gpt-6.1-sol"));
-    store.setModelSelection(threadId, modelSelection("claudeAgent", "claude-opus-5-5"));
-    store.setModelOptions(
-      threadId,
-      providerModelOptions({
-        codex: { fastMode: true },
-        claudeAgent: { effort: "max" },
-      }),
-    );
-
-    store.setModelOptions(threadId, providerModelOptions({ codex: { reasoningEffort: "xhigh" } }));
-
-    const draft = useComposerDraftStore.getState().draftsByThreadId[threadId];
-    expect(draft?.modelSelectionByProvider.codex?.options).toEqual({ reasoningEffort: "xhigh" });
-    expect(draft?.modelSelectionByProvider.claudeAgent?.options).toEqual({ effort: "max" });
-  });
-
   it("preserves other provider options when switching the active model selection", () => {
     const store = useComposerDraftStore.getState();
 
     store.setModelSelection(threadId, modelSelection("codex", "gpt-6.1-sol"));
     store.setModelSelection(threadId, modelSelection("claudeAgent", "claude-opus-5-5"));
-    store.setModelOptions(
-      threadId,
-      providerModelOptions({
-        codex: { fastMode: true },
-        claudeAgent: { effort: "max" },
-      }),
-    );
+    store.setProviderModelOptions(threadId, "codex", { fastMode: true });
+    store.setProviderModelOptions(threadId, "claudeAgent", { effort: "max" });
 
     store.setModelSelection(threadId, modelSelection("claudeAgent", "claude-opus-4-6"));
 

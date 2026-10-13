@@ -1,6 +1,9 @@
 import { formatEffortLabel } from "@glade/shared/provider/effortLabel";
-import type { ProviderOptions } from "../../providerModelOptions";
-import type { ModelSlug } from "@glade/contracts/provider/model";
+import type {
+  ModelSlug,
+  ProviderOptionSelections,
+  ProviderOptionValue,
+} from "@glade/contracts/provider/model";
 import type { ProviderKind } from "@glade/contracts/core/baseSchemas";
 import { resolveSelectableModel } from "@glade/shared/provider/model";
 
@@ -9,6 +12,7 @@ import {
   formatProviderModelOptionName,
   groupProviderModelOptions,
   type ProviderModelOption,
+  type ProviderOptionPatch,
 } from "../../providerModelOptions";
 import {
   type getComposerTraitSelection,
@@ -23,11 +27,11 @@ export type ComposerModelPickerTab = typeof STARRED_TAB | ProviderKind;
 
 export function resolveStarredTraits(
   selection: ComposerTraitSelection,
-  modelOptions?: ProviderOptions | null,
+  modelOptions?: ProviderOptionSelections | null,
 ): Pick<StarredModel, "effort" | "fastMode" | "thinking" | "options"> {
   const options = Object.fromEntries(
     selection.descriptors.flatMap((descriptor) => {
-      const value = modelOptions?.[descriptor.id as keyof ProviderOptions];
+      const value = modelOptions?.[descriptor.id];
       return typeof value === "string" || typeof value === "boolean"
         ? [[descriptor.id, value]]
         : [];
@@ -45,17 +49,14 @@ export function resolveStarredTraits(
 }
 
 export function buildStarredModelOptionsPatch(input: {
-  provider: ProviderKind;
   selection: ComposerTraitSelection;
   starred: Pick<StarredModel, "effort" | "fastMode" | "thinking" | "options">;
-}): Record<string, unknown> {
-  const { provider, selection, starred } = input;
+}): ProviderOptionPatch {
+  const { selection, starred } = input;
   if (starred.options) return { ...starred.options };
-  const patch: Record<string, unknown> = {};
+  const patch: Record<string, ProviderOptionValue> = {};
   if (starred.effort !== null) {
     const plan = planComposerEffortChange({
-      provider,
-
       selection,
       prompt: "",
       value: starred.effort,
@@ -173,7 +174,7 @@ export function buildStarredTabRows(input: {
     const selectableModel = resolveSelectableModel(entry.provider, entry.model, options);
     const name =
       options.find((option) => option.slug === selectableModel)?.name ??
-      formatProviderModelOptionName({ provider: entry.provider, slug: entry.model });
+      formatProviderModelOptionName(entry.model);
     if (
       input.query.length > 0 &&
       !`${name} ${entry.model} ${entry.provider}`.toLowerCase().includes(input.query)

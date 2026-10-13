@@ -11,6 +11,7 @@ import { sanitizeBranchFragment, sanitizeFeatureBranchName } from "@glade/shared
 
 import { resolveProviderAttachmentPath } from "../../provider/core/providerAttachmentPaths.ts";
 import { buildCodexProcessEnv } from "../../provider/codex/codexProcessEnv.ts";
+import { codexModelOptions } from "../../provider/codex/codexModelOptions.ts";
 import { formatMissingCodexWorkingDirectoryError } from "../../provider/codex/codexWorkingDirectory.ts";
 import { ServerConfig } from "../../server/config.ts";
 import { TextGenerationError } from "../Errors.ts";
@@ -336,6 +337,7 @@ const makeCodexTextGeneration = Effect.gen(function* () {
     Effect.gen(function* () {
       const codexBinaryPath = resolveCodexBinaryPath(providerOptions);
       const apiModel = resolveCodexModel(model, modelSelection);
+      const modelOptions = codexModelOptions(modelSelection);
       const resolvedCodexHomePath = resolveCodexHomePath(codexHomePath, providerOptions);
       if (operation === "generateCommitMessage" || operation === "generatePrContent") {
         const budget = yield* fitGenerationBudget({
@@ -397,17 +399,16 @@ const makeCodexTextGeneration = Effect.gen(function* () {
           ...(apiModel ? ["--model", apiModel] : []),
           ...(operation === "generateCommitMessage"
             ? [
-                ...(modelSelection?.provider === "codex" && modelSelection.options?.reasoningEffort
+                ...(modelOptions.reasoningEffort
                   ? [
                       "--config",
-                      `model_reasoning_effort=${JSON.stringify(modelSelection.options.reasoningEffort)}`,
+                      `model_reasoning_effort=${JSON.stringify(modelOptions.reasoningEffort)}`,
                     ]
                   : []),
-                ...(modelSelection?.provider === "codex" &&
-                (modelSelection.options?.serviceTier || modelSelection.options?.fastMode)
+                ...(modelOptions.serviceTier || modelOptions.fastMode
                   ? [
                       "--config",
-                      `service_tier=${JSON.stringify(modelSelection.options?.serviceTier ?? "fast")}`,
+                      `service_tier=${JSON.stringify(modelOptions.serviceTier ?? "fast")}`,
                     ]
                   : []),
               ]

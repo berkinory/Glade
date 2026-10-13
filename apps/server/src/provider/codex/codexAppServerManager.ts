@@ -87,7 +87,7 @@ import {
   type CodexThreadGatewayConfig,
   buildCodexAppServerArgs,
 } from "./codexLaunch.ts";
-import { resolveCodexServiceTier } from "./codexServiceTier.ts";
+import { resolveCodexServiceTier } from "./codexModelOptions.ts";
 import {
   teardownChildProcessTree,
   teardownProviderProcessTree,

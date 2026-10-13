@@ -146,8 +146,7 @@ export function useChatDiscoveryController({
   const currentProviderModelOptions = composerModelOptions?.[selectedProvider];
 
   const fastModeEnabled =
-    supportsFastSlashCommand &&
-    (currentProviderModelOptions as { fastMode?: boolean } | undefined)?.fastMode === true;
+    supportsFastSlashCommand && currentProviderModelOptions?.fastMode === true;
 
   const composerPromptWithoutActiveSlashTrigger =
     composerTrigger?.kind === "slash-command"

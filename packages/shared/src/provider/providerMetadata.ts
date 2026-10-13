@@ -33,6 +33,9 @@ export interface ProviderCapabilities {
   readonly reportsFastModeAvailability: boolean;
   // The provider can transcribe voice notes.
   readonly voiceTranscription: boolean;
+  // `provider`: every model can run in Auto runtime mode. `model`: only a model whose descriptor
+  // confirms `supportsAutoMode`. `none`: Auto runtime mode is unavailable.
+  readonly autoRuntimeMode: "provider" | "model" | "none";
 }
 
 export interface ProviderDescriptor {
@@ -42,6 +45,8 @@ export interface ProviderDescriptor {
   readonly capabilities: ProviderCapabilities;
   // Native slash command aliases, keyed by the canonical command name.
   readonly nativeCommandAliases: Readonly<Record<string, readonly string[]>>;
+  // Model slugs that ask for the provider's native default model instead of naming one.
+  readonly inheritedModelSlugs: readonly string[];
 
   readonly setupDocsHref: string;
   readonly usage: {
@@ -79,8 +84,10 @@ export const PROVIDER_DESCRIPTORS = defineProviderDescriptors([
       nativeReview: true,
       reportsFastModeAvailability: false,
       voiceTranscription: true,
+      autoRuntimeMode: "provider",
     },
     nativeCommandAliases: {},
+    inheritedModelSlugs: [],
     usage: {
       signInCommand: "codex login",
       learnMoreHref: "https://platform.openai.com/usage",
@@ -105,6 +112,7 @@ export const PROVIDER_DESCRIPTORS = defineProviderDescriptors([
       nativeReview: false,
       reportsFastModeAvailability: true,
       voiceTranscription: false,
+      autoRuntimeMode: "model",
     },
     nativeCommandAliases: {
       clear: ["reset", "new"],
@@ -117,6 +125,7 @@ export const PROVIDER_DESCRIPTORS = defineProviderDescriptors([
       "remote-control": ["rc"],
       resume: ["continue"],
     },
+    inheritedModelSlugs: ["default"],
     usage: {
       signInCommand: "claude",
       learnMoreHref: "https://docs.anthropic.com/en/docs/about-claude/models#rate-limits",
@@ -143,6 +152,7 @@ const UNKNOWN_PROVIDER_CAPABILITIES: ProviderCapabilities = {
   nativeReview: false,
   reportsFastModeAvailability: false,
   voiceTranscription: false,
+  autoRuntimeMode: "none",
 };
 
 export function providerNativeCommandAliases(
@@ -150,6 +160,12 @@ export function providerNativeCommandAliases(
 ): Readonly<Record<string, readonly string[]>> {
   return (
     PROVIDER_DESCRIPTORS.find((descriptor) => descriptor.kind === kind)?.nativeCommandAliases ?? {}
+  );
+}
+
+export function providerInheritedModelSlugs(kind: string): readonly string[] {
+  return (
+    PROVIDER_DESCRIPTORS.find((descriptor) => descriptor.kind === kind)?.inheritedModelSlugs ?? []
   );
 }
 

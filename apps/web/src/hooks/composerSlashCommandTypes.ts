@@ -1,6 +1,6 @@
 import { type ProviderKind, type ThreadId } from "@glade/contracts/core/baseSchemas";
 import { type OrchestrationShellSnapshot } from "@glade/contracts/orchestration/snapshots";
-import { type ProviderModelOptions } from "@glade/contracts/provider/model";
+import { type ProviderOptionSelections } from "@glade/contracts/provider/model";
 import { type ProviderNativeCommandDescriptor } from "@glade/contracts/provider/providerDiscovery";
 import { type ModelSelection, type RuntimeMode } from "@glade/contracts/provider/sessionPolicy";
 import type { ComposerTrigger } from "../composer-logic";
@@ -30,12 +30,12 @@ export type ComposerSlashCommandInput = {
     providerNativeCommands: readonly ProviderNativeCommandDescriptor[];
     providerCommandDiscoveryCwd: string | null;
     selectedProvider: ProviderKind;
-    currentProviderModelOptions: ProviderModelOptions[ProviderKind] | undefined;
+    currentProviderModelOptions: ProviderOptionSelections | undefined;
     selectedModelSelection: ModelSelection;
     setComposerDraftProviderModelOptions: (
       threadId: ThreadId,
       provider: ProviderKind,
-      nextProviderOptions: ProviderModelOptions[ProviderKind],
+      nextProviderOptions: ProviderOptionSelections,
       options?: { persistSticky?: boolean },
     ) => void;
   };

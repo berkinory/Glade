@@ -78,7 +78,7 @@ export function useComposerSlashCommands(input: ComposerSlashCommandInput) {
       setComposerDraftProviderModelOptions(
         threadId,
         selectedProvider,
-        buildNextProviderOptions(selectedProvider, currentProviderModelOptions, {
+        buildNextProviderOptions(currentProviderModelOptions, {
           fastMode: enabled,
         }),
         {

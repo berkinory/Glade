@@ -163,30 +163,6 @@ const PersistedProviderKindList = Schema.Array(Schema.String).pipe(
   ),
 );
 
-const PersistedHiddenModels = Schema.Array(
-  Schema.Struct({
-    provider: Schema.String,
-    slug: Schema.String,
-  }),
-).pipe(
-  Schema.decodeTo(
-    Schema.Array(
-      Schema.Struct({
-        provider: ProviderKind,
-        slug: Schema.String,
-      }),
-    ),
-    SchemaTransformation.transform({
-      decode: (entries): ReadonlyArray<{ provider: ProviderKind; slug: string }> =>
-        entries.flatMap((entry) => {
-          const resolved = resolvePersistedProviderListEntry(entry.provider);
-          return resolved === undefined ? [] : [{ provider: resolved, slug: entry.slug }];
-        }),
-      encode: (entries) => entries,
-    }),
-  ),
-);
-
 const AppSettingsSchema = Schema.Struct({
   claudeBinaryPath: Schema.String.check(Schema.isMaxLength(4096)).pipe(withDefaults(() => "")),
   claudeEnableArtifacts: Schema.Boolean.pipe(withDefaults(() => false)),
@@ -267,8 +243,6 @@ const AppSettingsSchema = Schema.Struct({
   disabledProviders: PersistedProviderKindList.pipe(withDefaults(() => [])),
 
   providerOrder: PersistedProviderKindList.pipe(withDefaults(() => [...DEFAULT_PROVIDER_ORDER])),
-
-  hiddenModels: PersistedHiddenModels.pipe(withDefaults(() => [])),
 });
 export type AppSettings = typeof AppSettingsSchema.Type;
 
@@ -372,7 +346,6 @@ function normalizeAppSettings(settings: AppSettings): AppSettings {
       (provider) => provider === "codex" || provider === "claudeAgent",
     ),
     providerOrder: normalizeProviderOrder(settings.providerOrder),
-    hiddenModels: [],
   };
 }
 
@@ -607,7 +580,7 @@ export function getAppModelOptions(
     options.push({
       provider,
       slug: normalizedSelectedModel,
-      name: formatProviderModelOptionName({ provider, slug: normalizedSelectedModel }),
+      name: formatProviderModelOptionName(normalizedSelectedModel),
       isSelectedHint: true,
     });
   }
@@ -667,7 +640,7 @@ export function getGitTextGenerationModelOptions(
     deduped.push({
       provider: selectedProvider,
       slug: selectedModel,
-      name: formatProviderModelOptionName({ provider: selectedProvider, slug: selectedModel }),
+      name: formatProviderModelOptionName(selectedModel),
       isSelectedHint: true,
     });
   }

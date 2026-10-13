@@ -1,26 +1,27 @@
 import { formatEffortLabel } from "@glade/shared/provider/effortLabel";
-import type { ProviderOptionDescriptor } from "@glade/contracts/provider/model";
+import type {
+  ProviderOptionDescriptor,
+  ProviderOptionSelections,
+} from "@glade/contracts/provider/model";
 import type { ProviderKind } from "@glade/contracts/core/baseSchemas";
 import type { ProviderModelDescriptor } from "@glade/contracts/provider/providerDiscovery";
-import { getProviderOptionDescriptors } from "@glade/shared/provider/model";
-import { buildProviderOptionPatch, type ProviderOptions } from "../../providerModelOptions";
+import {
+  getProviderOptionDescriptors,
+  isEffortOptionDescriptor,
+} from "@glade/shared/provider/model";
+import type { ProviderOptionPatch } from "../../providerModelOptions";
 import { getRuntimeAwareModelCapabilities } from "./runtimeModelCapabilities";
 
 export function getComposerTraitSelection(
   provider: ProviderKind,
   model: string | null | undefined,
   _prompt: string,
-  modelOptions: ProviderOptions | null | undefined,
+  modelOptions: ProviderOptionSelections | null | undefined,
   runtimeModel?: ProviderModelDescriptor,
 ) {
   const caps = getRuntimeAwareModelCapabilities({ provider, model, runtimeModel });
-  const descriptors = getProviderOptionDescriptors({ provider, caps, selections: modelOptions });
-  const primarySelectDescriptor =
-    descriptors.find(
-      (descriptor): descriptor is Extract<ProviderOptionDescriptor, { type: "select" }> =>
-        descriptor.type === "select" &&
-        (descriptor.id === "effort" || descriptor.id === "reasoningEffort"),
-    ) ?? null;
+  const descriptors = getProviderOptionDescriptors({ caps, selections: modelOptions });
+  const primarySelectDescriptor = descriptors.find(isEffortOptionDescriptor) ?? null;
   const fastModeDescriptor = descriptors.find((descriptor) => descriptor.id === "fastMode") ?? null;
   const thinkingDescriptor = descriptors.find((descriptor) => descriptor.id === "thinking") ?? null;
   const effortLevels =
@@ -87,11 +88,10 @@ export function showsComposerFastModeBadge(
 
 export type ComposerEffortChangePlan = {
   readonly kind: "options";
-  readonly patch: Record<string, unknown>;
+  readonly patch: ProviderOptionPatch;
 };
 
 export function planComposerEffortChange(input: {
-  provider: ProviderKind;
   selection: Pick<ComposerTraitSelection, "effortLevels" | "primarySelectDescriptor">;
   prompt: string;
   value: string;
@@ -101,7 +101,7 @@ export function planComposerEffortChange(input: {
     return null;
   return {
     kind: "options",
-    patch: buildProviderOptionPatch(input.provider, descriptor.id, input.value),
+    patch: { [descriptor.id]: input.value },
   };
 }
 
@@ -152,20 +152,20 @@ export function resolveComposerEffortLadderIndex(
 }
 
 export function resolveComposerModelOptions(
-  options: ProviderOptions | null | undefined,
+  options: ProviderOptionSelections | null | undefined,
   descriptors: ReadonlyArray<ProviderOptionDescriptor>,
-): ProviderOptions | undefined {
+): ProviderOptionSelections | undefined {
   if (!options) return undefined;
   const next = { ...options };
   for (const id of ["effort", "reasoningEffort", "thinking", "fastMode", "serviceTier"] as const) {
-    const value = next[id as keyof ProviderOptions];
+    const value = next[id];
     if (value === undefined) continue;
     const descriptor = descriptors.find((candidate) => candidate.id === id);
     const supported =
       descriptor?.type === "boolean"
         ? typeof value === "boolean"
         : descriptor?.type === "select" && descriptor.options.some((option) => option.id === value);
-    if (!supported) delete next[id as keyof ProviderOptions];
+    if (!supported) delete next[id];
   }
   return Object.keys(next).length > 0 ? next : undefined;
 }

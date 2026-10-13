@@ -10,14 +10,7 @@ import {
 import type { DeepMutable } from "effect/Types";
 import { normalizePersistedAttachment } from "./composerDraftAttachments";
 import type { DraftThreadEnvMode } from "./composerDraftDomain";
-import {
-  legacyMergeModelSelectionIntoProviderModelOptions,
-  legacySyncModelSelectionOptions,
-  legacyToModelSelectionByProvider,
-  normalizeModelSelection,
-  normalizeProviderKind,
-  normalizeProviderModelOptions,
-} from "./composerDraftModels";
+import { normalizeModelSelection, normalizeProviderKind } from "./composerDraftModels";
 import { ensureInlineTerminalContextPlaceholders } from "./lib/terminalContext";
 import { DEFAULT_RUNTIME_MODE } from "./types";
 import {
@@ -256,33 +249,15 @@ export function normalizePersistedDraftsByThreadId(
       );
       activeProvider = normalizeProviderKind(draftCandidate.activeProvider);
     } else {
-      const normalizedModelOptions =
-        normalizeProviderModelOptions(
-          legacyDraftCandidate.modelOptions,
-          undefined,
-          legacyDraftCandidate,
-        ) ?? null;
-      const normalizedModelSelection = normalizeModelSelection(
-        legacyDraftCandidate.modelSelection,
-        {
-          provider: legacyDraftCandidate.provider,
-          model: legacyDraftCandidate.model,
-          modelOptions: normalizedModelOptions ?? legacyDraftCandidate.modelOptions,
-          legacyCodex: legacyDraftCandidate,
-        },
-      );
-      const mergedModelOptions = legacyMergeModelSelectionIntoProviderModelOptions(
-        normalizedModelSelection,
-        normalizedModelOptions,
-      );
-      const modelSelection = legacySyncModelSelectionOptions(
-        normalizedModelSelection,
-        mergedModelOptions,
-      );
-      modelSelectionByProvider = legacyToModelSelectionByProvider(
-        modelSelection,
-        mergedModelOptions,
-      );
+      const modelSelection = normalizeModelSelection(legacyDraftCandidate.modelSelection, {
+        provider: legacyDraftCandidate.provider,
+        model: legacyDraftCandidate.model,
+        modelOptions: legacyDraftCandidate.modelOptions,
+        legacyCodex: legacyDraftCandidate,
+      });
+      modelSelectionByProvider = modelSelection
+        ? { [modelSelection.provider]: modelSelection }
+        : {};
       activeProvider = modelSelection?.provider ?? null;
     }
 

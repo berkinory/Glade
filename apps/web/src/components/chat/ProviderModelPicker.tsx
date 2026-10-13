@@ -104,10 +104,7 @@ function resolveSelectedModelLabel(input: {
       return resolvedOption.name;
     }
   }
-  return formatProviderModelOptionName({
-    provider: input.provider,
-    slug: input.model,
-  });
+  return formatProviderModelOptionName(input.model);
 }
 
 export function resolveProviderModelLabel(input: {

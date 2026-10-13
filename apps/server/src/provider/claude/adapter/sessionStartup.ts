@@ -26,12 +26,7 @@ import { makeKeyedLock } from "../../core/keyedLock.ts";
 import { type ClaudeAdapterShape } from "../../Services/ClaudeAdapter.ts";
 import { ProviderAdapterValidationError, ProviderAdapterProcessError } from "../../core/Errors.ts";
 import { readClaudeResumeState } from "./sessionResume";
-import {
-  trimOrNull,
-  normalizeClaudeModelOptions,
-  resolveApiModelId,
-  getEffectiveClaudeCodeEffort,
-} from "@glade/shared/provider/model";
+import { claudeModelOptions, resolveClaudeApiModelId } from "../claudeModelOptions.ts";
 import { selectedClaudeModelInfo, toPermissionMode } from "./modelCapabilities";
 import { CLAUDE_SETTING_SOURCES, buildEmbeddedClaudeSystemPromptAppend } from "./promptPolicy";
 import { acquireAgentGatewaySessionLease } from "../../../agentGateway/sessionLease.ts";
@@ -151,17 +146,13 @@ export function makeClaudeSessionStartup(input: {
       const providerOptions = input.providerOptions?.claudeAgent;
       const modelSelection =
         input.modelSelection?.provider === "claudeAgent" ? input.modelSelection : undefined;
-      const selectedOptions = normalizeClaudeModelOptions(
-        modelSelection?.model,
-        modelSelection?.options,
-      );
-      const requestedEffort = trimOrNull(selectedOptions?.effort ?? null);
+      const selectedOptions = claudeModelOptions(modelSelection);
       const effectiveClaudeModel = modelSelection?.model ?? "default";
-      const apiModelId = modelSelection ? resolveApiModelId(modelSelection) : undefined;
-      const fastMode = selectedOptions?.fastMode;
-      const thinking = selectedOptions?.thinking;
-      const effectiveEffort = getEffectiveClaudeCodeEffort(requestedEffort);
-      const ultracode = selectedOptions?.ultracode;
+      const apiModelId = modelSelection ? resolveClaudeApiModelId(modelSelection) : undefined;
+      const fastMode = selectedOptions.fastMode;
+      const thinking = selectedOptions.thinking;
+      const effectiveEffort = selectedOptions.effort ?? null;
+      const ultracode = selectedOptions.ultracode;
       const permissionMode =
         input.runtimeMode === "auto"
           ? "auto"

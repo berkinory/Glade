@@ -218,15 +218,14 @@ export function resolveAgentGatewayTarget(input: {
           ),
         );
     }
-    return input.target.provider === "claudeAgent"
-      ? {
-          provider: input.target.provider,
-          model: descriptor.slug,
-          ...(input.target.options ? { options: input.target.options } : {}),
-          ...(descriptor?.supportsAutoMode !== undefined
-            ? { supportsAutoMode: descriptor.supportsAutoMode }
-            : {}),
-        }
-      : { ...input.target, model: descriptor.slug };
+    // Auto mode support is a model capability, so only discovery may claim it.
+    return {
+      provider: input.target.provider,
+      model: descriptor.slug,
+      ...(input.target.options ? { options: input.target.options } : {}),
+      ...(descriptor.supportsAutoMode !== undefined
+        ? { supportsAutoMode: descriptor.supportsAutoMode }
+        : {}),
+    };
   });
 }

@@ -6,6 +6,7 @@ import { redactDiagnosticText } from "../../agentGateway/diagnosticSanitizer";
 import { teardownChildProcessTree } from "../../platform/supervisedProcessTeardown";
 import { loadClaudeAgentSdk } from "../../provider/claude/claudeAgentSdk";
 import { buildClaudeProcessEnv } from "../../provider/claude/claudeProcessEnv";
+import { claudeModelOptions } from "../../provider/claude/claudeModelOptions";
 import { spawnOwnedClaudeCodeProcess } from "../../provider/claude/adapter/sdkProcessRuntime";
 import type { ClaudeOwnedProcess } from "../../provider/claude/adapter/adapterConfiguration";
 import { resolveProviderAttachmentPath } from "../../provider/core/providerAttachmentPaths";
@@ -218,9 +219,7 @@ const makeClaudeTextGeneration = Effect.gen(function* () {
       schema: outputSchemaJson,
       model: input.model,
       binaryPath: input.providerOptions?.claudeAgent?.binaryPath,
-      ...(input.modelSelection?.provider === "claudeAgent" && input.modelSelection.options?.fastMode
-        ? { fastMode: true }
-        : {}),
+      ...(claudeModelOptions(input.modelSelection).fastMode ? { fastMode: true } : {}),
     }).pipe(
       Effect.flatMap((generated) =>
         generated.subject.trim()
