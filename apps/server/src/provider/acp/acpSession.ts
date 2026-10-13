@@ -204,12 +204,9 @@ export function openAcpSession(input: {
         if (draft) sink.emit(draft, active?.turnId);
         return;
       }
+      // Agents title a session from its first prompt, which carries Glade's policy or the transcript
+      // of a fork or rewind, so Glade titles these chats itself.
       case "session_info_update":
-        if (update.title)
-          sink.emit(
-            { type: "thread.metadata.updated", payload: { name: update.title } },
-            undefined,
-          );
         return;
       default:
         if (!active) return;

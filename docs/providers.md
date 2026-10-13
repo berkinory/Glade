@@ -77,7 +77,7 @@ than `none`. A short message-based title remains visible if generation fails.
 Manual renames always win over generated titles. Native title notifications do not replace a title
 owned by Glade. Renaming a Codex or Claude chat also renames its native session; a rename made before
 the session exists is applied when the provider first supplies a title. The protocol behind OpenCode,
-Grok Build and Cursor has no rename, so their native sessions keep the agent's own title. Use `/rename <title>` to choose your own.
+Grok Build and Cursor has no rename, so their native sessions keep the agent's own title. Glade ignores those agents' title notifications: they title a session from its first prompt, which carries Glade's policy or a fork's transcript. Use `/rename <title>` to choose your own.
 
 Deleting a chat also deletes its Codex, Claude or OpenCode session history; Grok Build and Cursor
 offer no way to delete a session, so theirs stays in the CLI's own storage. Codex chats archive and
