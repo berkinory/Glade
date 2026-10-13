@@ -96,6 +96,8 @@ A new first-class provider normally needs changes across several boundaries:
 
 Prefer capability-driven behavior and existing shared protocol helpers. Do not add provider-specific branches to orchestration when the difference can stay inside the adapter.
 
+`scripts/checks/providerNeutrality.ts` runs in `bun run check` and rejects provider-kind literals outside the provider's own folders under `apps/server/src/provider`. Existing leaks are listed in `scripts/checks/providerNeutralityAllowlist.json`, which may only shrink; after removing leaks, lower it with `bun scripts/checks/providerNeutrality.ts --update`.
+
 ## Related code
 
 - `apps/server/src/provider/Services/ProviderAdapter.ts` — adapter contract and capabilities
