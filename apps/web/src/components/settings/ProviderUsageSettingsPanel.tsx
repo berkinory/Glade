@@ -253,8 +253,8 @@ export function ProviderUsageSettingsPanel() {
         Usage is read locally from each provider CLI&apos;s stored credentials and fetched directly
         from the provider. The list follows whatever you are signed into; unsigned providers stay
         visible until any account is connected, then drop away. Short-lived tokens are refreshed
-        through the provider&apos;s own CLI or official token endpoint. Providers Glade has no
-        usage reader for show what OpenUsage (openusage.ai) reports while it is running.
+        through the provider&apos;s own CLI or official token endpoint. Providers Glade has no usage
+        reader for show what OpenUsage (openusage.ai) reports while it is running.
       </p>
     </SettingsSectionShell>
   );
