@@ -38,9 +38,7 @@ import React, {
   useState,
   type ReactNode,
 } from "react";
-import type { Components } from "react-markdown";
-import ReactMarkdown from "react-markdown";
-import { defaultUrlTransform } from "react-markdown";
+import type { Components, Options as MarkdownOptions } from "react-markdown";
 import remarkBreaks from "remark-breaks";
 import remarkGfm from "remark-gfm";
 import remarkMath from "remark-math";
@@ -58,7 +56,6 @@ import {
   extractAbsoluteFilesystemPaths,
   resolveChatFileChipTarget,
   resolveMarkdownFileLinkTarget,
-  rewriteMarkdownFileUriHref,
 } from "../markdown-links";
 import type { ExpandedImagePreview } from "./chat/ExpandedImagePreview";
 import { MarkdownChatLink, markdownChatLinkId } from "./chat/MarkdownChatLink";
@@ -92,11 +89,14 @@ import {
   FindAwareCodeFallback,
   FindAwareMarkdownText,
   FindAwareShikiHtml,
-  remarkFindableText,
 } from "./ChatMarkdownFind";
-import { rehypeBlockDirection } from "./ChatMarkdownDirection";
+import {
+  MarkdownBlock,
+  useMarkdownSourceLocator,
+  type MarkdownPipeline,
+} from "./ChatMarkdownBlock";
 import { IncrementalShikiCodeBlock } from "./IncrementalShikiCodeBlock";
-import { createIncrementalMarkdownPlugin } from "../markdownIncremental";
+import { createMarkdownBlockSplitter } from "../markdownIncremental";
 const EXTERNAL_HTTP_HREF_PATTERN = /^https?:\/\//i;
 const MARKDOWN_EXTERNAL_LINK_CLASS_NAME =
   "inline font-medium text-[var(--info-foreground)] underline-offset-2 hover:underline";
@@ -180,30 +180,7 @@ function MarkdownTaskCheckbox(props: {
   );
 }
 const CODE_FENCE_LANGUAGE_REGEX = /(?:^|\s)language-([^\s]+)/;
-type MarkdownRemarkPlugins = NonNullable<
-  React.ComponentProps<typeof ReactMarkdown>["remarkPlugins"]
->;
-type MarkdownRehypePlugins = NonNullable<
-  React.ComponentProps<typeof ReactMarkdown>["rehypePlugins"]
->;
-interface ParsedMarkdownProps {
-  text: string;
-  remarkPlugins: MarkdownRemarkPlugins;
-  rehypePlugins: MarkdownRehypePlugins;
-  components: Components;
-}
-const ParsedMarkdown = memo(function ParsedMarkdown(props: ParsedMarkdownProps) {
-  return (
-    <ReactMarkdown
-      remarkPlugins={props.remarkPlugins}
-      rehypePlugins={props.rehypePlugins}
-      components={props.components}
-      urlTransform={markdownUrlTransform}
-    >
-      {props.text}
-    </ReactMarkdown>
-  );
-});
+type MarkdownRemarkPlugins = NonNullable<MarkdownOptions["remarkPlugins"]>;
 const MARKDOWN_REMARK_PLUGINS: MarkdownRemarkPlugins = [
   remarkGfm,
   [
@@ -219,79 +196,6 @@ const MARKDOWN_REMARK_PLUGINS: MarkdownRemarkPlugins = [
 // entirely (the composer chip plugin is appended per render because it closes over the message's
 // mention references).
 const USER_MARKDOWN_REMARK_PLUGINS: MarkdownRemarkPlugins = [remarkGfm, remarkBreaks];
-const USER_MARKDOWN_REHYPE_PLUGINS: MarkdownRehypePlugins = [rehypeBlockDirection];
-function markdownUrlTransform(href: string): string {
-  const restoredHref = restoreLiteralDollarPlaceholders(href);
-  return rewriteMarkdownFileUriHref(restoredHref) ?? defaultUrlTransform(restoredHref);
-}
-function restoreLiteralDollarsInNode(node: unknown): void {
-  if (!node || typeof node !== "object") {
-    return;
-  }
-  if ("type" in node && node.type === "text" && "value" in node && typeof node.value === "string") {
-    node.value = restoreLiteralDollarPlaceholders(node.value);
-  }
-  if ("children" in node && Array.isArray(node.children)) {
-    for (const child of node.children) {
-      restoreLiteralDollarsInNode(child);
-    }
-  }
-}
-function rehypeRestoreLiteralDollars() {
-  return (tree: unknown) => {
-    restoreLiteralDollarsInNode(tree);
-  };
-}
-const BASE_MARKDOWN_REHYPE_PLUGINS: MarkdownRehypePlugins = [
-  rehypeRestoreLiteralDollars,
-  rehypeBlockDirection,
-];
-// KaTeX and the authored-HTML sanitizer are heavy and rarely needed, so they load on first use. Once
-// loaded, a combination is read synchronously, so only the first message that needs it waits. The
-// sanitizer runs first, directly after parsing, and KaTeX after it so its generated markup does not
-// widen the allowlist.
-const extendedRehypePluginsByKey = new Map<string, MarkdownRehypePlugins>();
-const extendedRehypePluginsPromiseByKey = new Map<string, Promise<MarkdownRehypePlugins>>();
-function loadExtendedRehypePlugins(
-  key: string,
-  authoredHtml: boolean,
-  math: boolean,
-): Promise<MarkdownRehypePlugins> {
-  let promise = extendedRehypePluginsPromiseByKey.get(key);
-  if (!promise) {
-    promise = Promise.all([
-      authoredHtml ? import("./ChatMarkdownHtml") : null,
-      math ? import("./ChatMarkdownMath") : null,
-    ]).then(([htmlModule, mathModule]) => {
-      const plugins: MarkdownRehypePlugins = [
-        ...(htmlModule?.AUTHORED_HTML_REHYPE_PLUGINS ?? []),
-        ...(mathModule?.MATH_REHYPE_PLUGINS ?? []),
-        ...BASE_MARKDOWN_REHYPE_PLUGINS,
-      ];
-      extendedRehypePluginsByKey.set(key, plugins);
-      return plugins;
-    });
-    extendedRehypePluginsPromiseByKey.set(key, promise);
-  }
-  return promise;
-}
-function ExtendedParsedMarkdown({
-  needsMath,
-  needsAuthoredHtml,
-  ...props
-}: Omit<ParsedMarkdownProps, "rehypePlugins"> & {
-  needsMath: boolean;
-  needsAuthoredHtml: boolean;
-}) {
-  const key = `${needsAuthoredHtml ? "html" : ""}:${needsMath ? "math" : ""}`;
-  // A single `use` call: React replays suspended `use` calls by position.
-  const rehypePlugins =
-    !needsAuthoredHtml && !needsMath
-      ? BASE_MARKDOWN_REHYPE_PLUGINS
-      : (extendedRehypePluginsByKey.get(key) ??
-        use(loadExtendedRehypePlugins(key, needsAuthoredHtml, needsMath)));
-  return <ParsedMarkdown {...props} rehypePlugins={rehypePlugins} />;
-}
 function extractRawFenceInfo(className: string | undefined): string {
   const match = className?.match(CODE_FENCE_LANGUAGE_REGEX);
   return match?.[1] ?? "text";
@@ -621,7 +525,6 @@ interface MarkdownRenderContextValue {
   onTaskToggle: ChatMarkdownProps["onTaskToggle"];
   resolvedTheme: ReturnType<typeof useTheme>["resolvedTheme"];
   terminalContexts: ChatMarkdownProps["terminalContexts"];
-  sourceText: string;
 }
 const MarkdownRenderContext = createContext<MarkdownRenderContextValue | null>(null);
 const GITHUB_ALERTS: Record<
@@ -729,16 +632,15 @@ const MARKDOWN_COMPONENTS: Components = {
     );
   },
   pre: function MarkdownPre({ node, children, ...props }) {
-    const { sourceText, diffThemeName, isStreaming } = useContext(MarkdownRenderContext)!;
+    const { diffThemeName, isStreaming } = useContext(MarkdownRenderContext)!;
+    const locateInSource = useMarkdownSourceLocator();
     const codeBlock = extractCodeBlock(children);
     if (!codeBlock) {
       return <pre {...props}>{children}</pre>;
     }
     const fence = parseCodeFenceInfo(extractRawFenceInfo(codeBlock.className));
     const code = dedentCode(codeBlock.code);
-    const blockStart = node?.position?.start?.offset ?? 0;
-    const codeOffsetInSource = sourceText.indexOf(code, blockStart);
-    const sourceOffset = codeOffsetInSource < 0 ? blockStart : codeOffsetInSource;
+    const sourceOffset = locateInSource(code, node?.position?.start?.offset ?? 0);
     const highlightedFallback = (
       <pre {...props}>
         <FindAwareCodeFallback code={code} sourceOffset={sourceOffset}>
@@ -764,14 +666,12 @@ const MARKDOWN_COMPONENTS: Components = {
     );
   },
   code: function MarkdownInlineCode({ node, className, children, ...props }) {
-    const { sourceText, knownAbsoluteFilePaths, cwd, resolvedTheme } =
-      useContext(MarkdownRenderContext)!;
+    const { knownAbsoluteFilePaths, cwd, resolvedTheme } = useContext(MarkdownRenderContext)!;
+    const locateInSource = useMarkdownSourceLocator();
     if (!className) {
       const filePath = inlineCodeFilePath(nodeToPlainText(children));
       if (filePath) {
-        const nodeStart = node?.position?.start?.offset ?? 0;
-        const filePathOffset = sourceText.indexOf(filePath, nodeStart);
-        const sourceOffset = filePathOffset < 0 ? nodeStart : filePathOffset;
+        const sourceOffset = locateInSource(filePath, node?.position?.start?.offset ?? 0);
         const findLabelProps = {
           label: <FindAwareMarkdownText text={filePath} sourceOffset={sourceOffset} />,
         };
@@ -937,16 +837,12 @@ function ChatMarkdown({
   const { resolvedTheme } = useTheme();
   const diffThemeName = resolveDiffThemeName(resolvedTheme);
   const isUserVariant = variant === "user";
-  const extractedAbsoluteFilePaths = useMemo(() => extractAbsoluteFilesystemPaths(text), [text]);
-  const knownAbsoluteFilePaths = useMemo(() => {
-    if (
-      (knownAbsoluteFilePathsProp === undefined || knownAbsoluteFilePathsProp.length === 0) &&
-      extractedAbsoluteFilePaths.length === 0
-    ) {
-      return undefined;
-    }
-    return [...new Set([...(knownAbsoluteFilePathsProp ?? []), ...extractedAbsoluteFilePaths])];
-  }, [extractedAbsoluteFilePaths, knownAbsoluteFilePathsProp]);
+  // Joined so the render context keeps its identity while streamed text adds no new path.
+  const knownAbsoluteFilePathsKey = [
+    ...new Set([...(knownAbsoluteFilePathsProp ?? []), ...extractAbsoluteFilesystemPaths(text)]),
+  ].join("\0");
+  const knownAbsoluteFilePaths =
+    knownAbsoluteFilePathsKey === "" ? undefined : knownAbsoluteFilePathsKey.split("\0");
   const smoothedText = useSmoothStreamedText(text, isStreaming);
   const normalizedText = useMemo(
     () =>
@@ -956,45 +852,43 @@ function ChatMarkdown({
     [isUserVariant, smoothedText],
   );
   // While streaming, let React deprioritize and coalesce the markdown re-parse so a fast token stream
-  // (one flush per ~100ms) doesn't re-render the full ReactMarkdown tree on every flush.
+  // (one flush per ~100ms) doesn't re-render the open block on every flush.
   const deferredNormalizedText = useDeferredValue(normalizedText);
   const renderedText = isStreaming ? deferredNormalizedText : normalizedText;
   const sourceText = useMemo(
     () => (isUserVariant ? text : repairMarkdownTableDelimiters(text)),
     [isUserVariant, text],
   );
-  const composerChipsRemarkPlugin = useMemo(
-    () =>
-      isUserVariant
-        ? createComposerChipsRemarkPlugin(
-            mentionReferences ?? [],
-            (terminalContexts ?? []).map((context, index) => ({
-              label: formatInlineTerminalContextLabel(context.header),
-              index,
-            })),
-          )
-        : null,
-    [isUserVariant, mentionReferences, terminalContexts],
-  );
-  const [incrementalMarkdownPlugin] = useState(createIncrementalMarkdownPlugin);
-  const remarkPlugins = useMemo<MarkdownRemarkPlugins>(() => {
-    if (composerChipsRemarkPlugin) {
-      return [...USER_MARKDOWN_REMARK_PLUGINS, composerChipsRemarkPlugin, remarkFindableText];
+  const pipeline = useMemo<MarkdownPipeline>(() => {
+    if (isUserVariant) {
+      const terminalContextTokens = (terminalContexts ?? []).map((context, index) => ({
+        label: formatInlineTerminalContextLabel(context.header),
+        index,
+      }));
+      return {
+        cacheKey: `user\0${JSON.stringify([mentionReferences ?? [], terminalContextTokens])}`,
+        remarkPlugins: [
+          ...USER_MARKDOWN_REMARK_PLUGINS,
+          createComposerChipsRemarkPlugin(mentionReferences ?? [], terminalContextTokens),
+        ],
+        components: MARKDOWN_COMPONENTS,
+        rehype: "user",
+      };
     }
-    return [
-      ...MARKDOWN_REMARK_PLUGINS,
-      incrementalMarkdownPlugin,
-      [
-        remarkWikiLinks,
-        {
-          root: wikiLinkRoot ?? cwd,
-        },
-      ],
-      remarkFindableText,
-    ];
-  }, [composerChipsRemarkPlugin, incrementalMarkdownPlugin, wikiLinkRoot, cwd]);
-  // Only `$` delimiters become math nodes, and literal dollars are already escaped out of the text.
-  const needsMath = !isUserVariant && renderedText.includes("$");
+    const root = wikiLinkRoot ?? cwd;
+    return {
+      cacheKey: `assistant\0${JSON.stringify(root ?? null)}`,
+      remarkPlugins: [...MARKDOWN_REMARK_PLUGINS, [remarkWikiLinks, { root }]],
+      components: MARKDOWN_COMPONENTS,
+      rehype: renderAuthoredHtml === true ? "authored-html" : "assistant",
+    };
+  }, [isUserVariant, mentionReferences, terminalContexts, wikiLinkRoot, cwd, renderAuthoredHtml]);
+  const [splitter] = useState(createMarkdownBlockSplitter);
+  // Raw HTML can open in one block and close in another, so authored HTML always renders whole.
+  const blocks =
+    renderAuthoredHtml === true
+      ? [{ source: renderedText, offset: 0, line: 0 }]
+      : splitter.split(renderedText, isStreaming);
   const rootRef = useRef<HTMLDivElement | null>(null);
   useLayoutEffect(() => {
     applyActiveChatFindMatch(rootRef.current, findActiveRange);
@@ -1012,7 +906,6 @@ function ChatMarkdown({
       onTaskToggle,
       resolvedTheme,
       terminalContexts,
-      sourceText,
     }),
     [
       codeBlockMeta,
@@ -1026,7 +919,6 @@ function ChatMarkdown({
       onTaskToggle,
       resolvedTheme,
       terminalContexts,
-      sourceText,
     ],
   );
   return (
@@ -1041,35 +933,21 @@ function ChatMarkdown({
         activeRange={findActiveRange}
       >
         <MarkdownRenderContext.Provider value={renderContext}>
-          {isUserVariant ? (
-            <ParsedMarkdown
-              text={renderedText}
-              remarkPlugins={remarkPlugins}
-              rehypePlugins={USER_MARKDOWN_REHYPE_PLUGINS}
-              components={MARKDOWN_COMPONENTS}
-            />
-          ) : (
-            // Until a plugin module loads, the base plugins render math as its TeX source and drop
-            // authored HTML, so unsanitized markup never reaches the DOM.
-            <Suspense
-              fallback={
-                <ParsedMarkdown
-                  text={renderedText}
-                  remarkPlugins={remarkPlugins}
-                  rehypePlugins={BASE_MARKDOWN_REHYPE_PLUGINS}
-                  components={MARKDOWN_COMPONENTS}
-                />
-              }
-            >
-              <ExtendedParsedMarkdown
-                text={renderedText}
-                remarkPlugins={remarkPlugins}
-                components={MARKDOWN_COMPONENTS}
-                needsMath={needsMath}
-                needsAuthoredHtml={renderAuthoredHtml === true}
+          {blocks.map((block, index) => {
+            const isStreamingTail = isStreaming && index === blocks.length - 1;
+            return (
+              <MarkdownBlock
+                key={block.offset}
+                source={block.source}
+                offset={block.offset}
+                line={block.line}
+                rawSource={sourceText.slice(block.offset, block.offset + block.source.length)}
+                pipeline={pipeline}
+                observedBy={isStreamingTail && renderAuthoredHtml !== true ? splitter : undefined}
+                cacheable={!isStreamingTail}
               />
-            </Suspense>
-          )}
+            );
+          })}
         </MarkdownRenderContext.Provider>
       </ChatFindRenderProvider>
     </div>

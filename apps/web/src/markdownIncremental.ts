@@ -1,109 +1,113 @@
-import type { Root, RootContent } from "mdast";
-import type { Parser as UnifiedParser, Plugin } from "unified";
+import type { Root } from "mdast";
+import type { Plugin } from "unified";
 
-type Parser = UnifiedParser<Root>;
-
-interface ParsedPrefix {
+export interface MarkdownBlock {
   source: string;
   offset: number;
+  // Lines before the block, so block-relative source lines can be mapped back to the document.
   line: number;
-  children: RootContent[];
 }
 
-function hasDefinitions(node: Root | RootContent): boolean {
-  return (
-    node.type === "definition" ||
-    node.type === "footnoteDefinition" ||
-    ("children" in node && node.children.some((child) => hasDefinitions(child)))
-  );
+function countLines(text: string): number {
+  let lines = 0;
+  for (let index = text.indexOf("\n"); index !== -1; index = text.indexOf("\n", index + 1)) {
+    lines += 1;
+  }
+  return lines;
 }
 
-function shiftPositions(node: Root | RootContent, offset: number, lines: number): void {
-  if (node.position) {
-    for (const point of [node.position.start, node.position.end]) {
-      if (point.offset !== undefined) point.offset += offset;
-      point.line += lines;
-    }
-  }
-  if ("children" in node) {
-    for (const child of node.children) shiftPositions(child, offset, lines);
-  }
+// Every link reference or footnote definition contains `]:`, and a definition anywhere can change
+// how earlier blocks parse. A streaming CR can become half of a CRLF, and a BOM at a block start
+// would be stripped although it is inside the document.
+function mustRenderWhole(text: string): boolean {
+  return text.includes("]:") || text.includes("\r") || text.includes("\uFEFF");
 }
 
 /** Adapted from T3 Code (MIT), Copyright (c) 2026 T3 Tools Inc.
  * https://github.com/pingdotgg/t3code/blob/main/apps/web/src/markdown-incremental.ts
- * Keep the full document pipeline while avoiding parsing a completed code-heavy
- * prefix on every token. A closed top-level fence followed by a blank line is a
- * parsing boundary. Definitions are document-wide, so they require a full parse.
+ * Splits a streaming message into top-level blocks that parse the same alone as inside the whole
+ * document, so only the open tail re-parses while text arrives. The tail's own parse reveals the
+ * boundaries: a top-level node followed by a blank line and a next top-level node whose first line
+ * is complete. Later text cannot change how anything before that next node parses.
  */
-function createIncrementalMarkdownParser(parse: Parser): Parser {
-  let cached: ParsedPrefix | undefined;
-
-  return (source, file) => {
-    // A streaming CR can become half of a CRLF. A BOM at the suffix boundary
-    // would be stripped by a new parser although it is inside the full document.
-    if (source.includes("\r") || source.includes("\uFEFF")) return parse(source, file);
-
-    const prefix = cached && source.startsWith(cached.source) ? cached : undefined;
-    let root: Root;
-    if (prefix) {
-      root = parse(source.slice(prefix.offset), file);
-      if (hasDefinitions(root)) return parse(source, file);
-      shiftPositions(root, prefix.offset, prefix.line - 1);
-      if (root.position) root.position.start = { line: 1, column: 1, offset: 0 };
-      // Remark transforms mutate their input. The cache owns pristine nodes and
-      // each render receives its own copy, including source positions.
-      root.children.unshift(...structuredClone(prefix.children));
-    } else {
-      root = parse(source, file);
-      if (hasDefinitions(root)) return root;
-    }
-
-    for (let index = root.children.length - 1; index >= 0; index--) {
-      const node = root.children[index];
-      if (node?.type !== "code") continue;
-      const start = node.position?.start.offset;
-      const end = node.position?.end.offset;
-      if (start === undefined || end === undefined) continue;
-      if (prefix && end < prefix.offset) break;
-      const value = source.slice(start, end);
-      const opening = /^ {0,3}(`{3,}|~{3,})[^\n]*\n/.exec(value)?.[1];
-      if (!opening) continue;
-      const lastLine = value.slice(value.lastIndexOf("\n") + 1);
-      const closing = new RegExp(`^ {0,3}${opening[0]}{${opening.length},}[ \\t]*$`);
-      const separator = /^\n[ \t]*\n/.exec(source.slice(end))?.[0];
-      if (!closing.test(lastLine) || !separator) continue;
-      const offset = end + separator.length;
-      cached = {
-        source: source.slice(0, offset),
-        offset,
-        line: node.position!.end.line + 2,
-        children: structuredClone(root.children.slice(0, index + 1)),
-      };
-      break;
-    }
-    return root;
-  };
+export interface MarkdownBlockSplitter {
+  // Committed blocks followed by the open tail; a single block when nothing is committed. Only a
+  // growing message commits a newly found boundary, so completing a reply never moves its last
+  // node into a new block.
+  split(text: string, growing: boolean): MarkdownBlock[];
+  // Remark plugin for the open tail's render that records the boundary its parse reveals.
+  observeTail: Plugin<[MarkdownBlock], Root>;
 }
 
-/** One cache per streaming renderer. Extra syntax plugins must use the normal
- * parser because their document-wide dependencies are not known here.
- */
-export function createIncrementalMarkdownPlugin(): Plugin<[], Root> {
-  let parser: Parser | undefined;
-  return function () {
-    const original = this.parser;
-    if (!original) return;
-    parser ??= createIncrementalMarkdownParser((source, file) => original(source, file) as Root);
-    const parseDocument = parser;
-    // ReactMarkdown creates a processor per render. Its first parse is the
-    // document; transforms can then parse synthetic recovery text on that same
-    // processor. Those parses must not read or replace the document's cache.
-    let documentParsed = false;
-    this.parser = (source, file) => {
-      if (documentParsed) return original(source, file);
-      documentParsed = true;
-      return parseDocument(source, file);
-    };
+export function createMarkdownBlockSplitter(): MarkdownBlockSplitter {
+  let committedBlocks: MarkdownBlock[] = [];
+  let committedText = "";
+  let committedLines = 0;
+  // Everything before the last boundary found in the tail, committed as one block: content that
+  // stays in the block it was rendered in keeps its React state, and only the newest node moves.
+  let pendingBlock: string | null = null;
+
+  function findLastBoundary(source: string, root: Root): number | null {
+    for (let index = root.children.length - 2; index >= 0; index--) {
+      const end = root.children[index]!.position?.end.offset;
+      const nextStart = root.children[index + 1]!.position?.start.offset;
+      if (end === undefined || nextStart === undefined) return null;
+      const lineStart = source.lastIndexOf("\n", nextStart - 1) + 1;
+      // A partial first line can still change its meaning, e.g. `1` becoming the list item `1.`.
+      if (!source.includes("\n", nextStart)) continue;
+      if (lineStart <= end || !/\n[ \t]*\n/.test(source.slice(end, lineStart))) continue;
+      return lineStart;
+    }
+    return null;
+  }
+
+  return {
+    split(text, growing) {
+      const whole = { source: text, offset: 0, line: 0 };
+      if (mustRenderWhole(text)) return [whole];
+      if (!text.startsWith(committedText)) {
+        committedBlocks = [];
+        committedText = "";
+        committedLines = 0;
+        pendingBlock = null;
+      }
+      if (growing && pendingBlock !== null && text.startsWith(committedText + pendingBlock)) {
+        committedBlocks.push({
+          source: pendingBlock,
+          offset: committedText.length,
+          line: committedLines,
+        });
+        committedText += pendingBlock;
+        committedLines += countLines(pendingBlock);
+      }
+      pendingBlock = null;
+      if (committedBlocks.length === 0) return [whole];
+      return [
+        ...committedBlocks,
+        {
+          source: text.slice(committedText.length),
+          offset: committedText.length,
+          line: committedLines,
+        },
+      ];
+    },
+    // Installed only on the open tail's render. ReactMarkdown creates a processor per render whose
+    // first parse is the document; transforms can then parse synthetic recovery text on that same
+    // processor, and those parses must not record boundaries.
+    observeTail(tail) {
+      const parse = this.parser;
+      if (!parse) return;
+      let documentParsed = false;
+      this.parser = (document, file) => {
+        const root = parse(document, file) as Root;
+        // A stale or repeated parse of an earlier tail has nothing new to record.
+        if (!documentParsed && tail.offset === committedText.length) {
+          const boundary = findLastBoundary(tail.source, root);
+          if (boundary !== null) pendingBlock = tail.source.slice(0, boundary);
+        }
+        documentParsed = true;
+        return root;
+      };
+    },
   };
 }
