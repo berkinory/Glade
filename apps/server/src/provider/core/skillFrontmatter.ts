@@ -1,6 +1,6 @@
-import * as fs from "node:fs/promises";
-
 import { parse as parseYaml, YAMLParseError } from "yaml";
+
+import { openRegularFileForRead } from "../../platform/filesystem/openRegularFileForRead";
 
 export type FrontmatterValue = string | boolean;
 
@@ -15,7 +15,7 @@ const FRONTMATTER_PATTERN = /^﻿?---[ \t]*\n([\s\S]*?)\n---[ \t]*(?:\n|$)/;
 const TOP_LEVEL_SCALAR_LINE = /^([A-Za-z][\w-]*):[ \t]+(\S.*)$/;
 
 export async function readSkillFileHead(path: string): Promise<string> {
-  const handle = await fs.open(path, "r");
+  const handle = await openRegularFileForRead(path);
   try {
     const buffer = Buffer.alloc(SKILL_HEAD_MAX_BYTES);
     const { bytesRead } = await handle.read(buffer, 0, SKILL_HEAD_MAX_BYTES, 0);

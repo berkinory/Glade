@@ -9,6 +9,7 @@ import { normalizeLineEndings } from "@glade/shared/text/text";
 import { Effect, Layer, Path } from "effect";
 
 import { resolveLocalPreviewGrantRealPath } from "../../attachments/localImageFiles";
+import { openRegularFileForRead } from "../../platform/filesystem/openRegularFileForRead";
 import {
   WorkspaceFileConflictError,
   WorkspaceFileDeletedError,
@@ -81,7 +82,7 @@ async function readCurrentFileVersion(
   workspaceRoot: string,
   filePath: string,
 ): Promise<{ readonly version: string; readonly stat: BigIntStats }> {
-  const handle = await NodeFs.open(filePath, "r").catch((cause: unknown) => {
+  const handle = await openRegularFileForRead(filePath).catch((cause: unknown) => {
     if (isFileNotFoundError(cause)) {
       throw new WorkspaceFileDeletedError({ cwd: workspaceRoot, relativePath: filePath });
     }
@@ -105,7 +106,6 @@ async function readCurrentFileVersion(
       throw cause;
     });
     if (
-      !afterReadStat.isFile() ||
       bytesRead > DEFAULT_READ_FILE_MAX_BYTES ||
       afterReadStat.size !== BigInt(bytesRead) ||
       !sameFileState(beforeReadStat, afterReadStat) ||
@@ -379,12 +379,9 @@ const makeWorkspaceFileSystem = Effect.gen(function* () {
 
       const { bytes, fileSize } = yield* Effect.tryPromise({
         try: async () => {
-          const handle = await NodeFs.open(realPath, "r");
+          const handle = await openRegularFileForRead(realPath);
           try {
             const fileInfo = await handle.stat();
-            if (!fileInfo.isFile()) {
-              throw new Error("Path is not a file.");
-            }
             if (input.requireComplete && fileInfo.size > maxBytes) {
               throw new Error("File exceeds the requested complete-read limit.");
             }

@@ -3,6 +3,7 @@ import * as path from "node:path";
 import { Effect, Stream } from "effect";
 import { ChildProcessSpawner } from "effect/unstable/process";
 import { spawnEffectProcess } from "../platform/effectProcessRuntime";
+import { openRegularFileForRead } from "../platform/filesystem/openRegularFileForRead";
 import { GitCommandError } from "./Errors";
 
 export const GIT_MEDIA_MAX_BYTES = 16_000_000;
@@ -82,10 +83,9 @@ export function readWorkingTreeMedia(cwd: string, relativePath: string, maxBytes
       const relative = path.relative(root, realPath);
       if (relative === ".." || relative.startsWith(`..${path.sep}`) || path.isAbsolute(relative))
         throw new Error("Media path escapes the workspace.");
-      const handle = await fs.open(realPath, "r");
+      const handle = await openRegularFileForRead(realPath);
       try {
         const stat = await handle.stat();
-        if (!stat.isFile()) throw new Error("Media path must be a file.");
         if (stat.size > maxBytes)
           return { contents: "", resolvedRev: "workingTree", missing: false, truncated: true };
         const buffer = Buffer.alloc(Math.min(stat.size + 1, maxBytes + 1));

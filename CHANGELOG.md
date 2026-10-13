@@ -12,6 +12,7 @@
 - Tool activity from Grok Build and other ACP agents no longer merges into an earlier turn's rows.
 - Clicking a chat in the sidebar while a subagent is open no longer misses or jumps.
 - Scrolling over a visual in a live reply stops following the reply, like scrolling the transcript.
+- A named pipe in a project no longer freezes file previews or search.
 
 ## 0.2.6 - 2026-10-14
 

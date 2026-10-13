@@ -10,6 +10,10 @@ import {
   PROJECT_SEARCH_CONTENT_MIN_QUERY_LENGTH,
 } from "@glade/contracts/workspace/project";
 import { createContentSearchPattern } from "@glade/shared/text/searchQuery";
+import {
+  NotRegularFileError,
+  openRegularFileForRead,
+} from "../platform/filesystem/openRegularFileForRead";
 import { resolveRealPathWithinRealRoot } from "./realPathContainment";
 
 interface ContentIndex {
@@ -58,7 +62,7 @@ export class WorkspaceContentSearch {
     // Each file is still resolved: a symlink can be swapped to point outside the root at any time.
     const absolute = await resolveRealPathWithinRealRoot(realRoot, path.join(cwd, relativePath));
     if (!absolute) return null;
-    const handle = await fs.open(absolute, "r");
+    const handle = await openRegularFileForRead(absolute);
     try {
       const stat = await handle.stat({ bigint: true });
       signal.throwIfAborted();
@@ -70,7 +74,7 @@ export class WorkspaceContentSearch {
         return cached.contents;
       }
       let contents: string | null = null;
-      if (stat.isFile() && stat.size > 0n && stat.size <= 512n * 1024n) {
+      if (stat.size > 0n && stat.size <= 512n * 1024n) {
         const buffer = Buffer.alloc(Number(stat.size));
         let bytesRead = 0;
         while (bytesRead < buffer.length) {
@@ -126,6 +130,7 @@ export class WorkspaceContentSearch {
             } catch (error) {
               if (signal.aborted) break;
               if (
+                !(error instanceof NotRegularFileError) &&
                 (error as NodeJS.ErrnoException).code !== "ENOENT" &&
                 (error as NodeJS.ErrnoException).code !== "EACCES" &&
                 (error as NodeJS.ErrnoException).code !== "EPERM"

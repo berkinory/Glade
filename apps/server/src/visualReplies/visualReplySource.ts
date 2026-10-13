@@ -1,7 +1,6 @@
 import { createHash } from "node:crypto";
 import fs from "node:fs/promises";
 import path from "node:path";
-import { constants } from "node:fs";
 import { parse, serialize, type DefaultTreeAdapterTypes } from "parse5";
 import { Data, Effect } from "effect";
 import {
@@ -10,6 +9,7 @@ import {
   type VisualReplyInput,
 } from "@glade/contracts/orchestration/visualReply";
 import { isWorkspaceRootWithin } from "@glade/shared/threads/threadWorkspace";
+import { openRegularFileForRead } from "../platform/filesystem/openRegularFileForRead";
 
 export class VisualReplyError extends Data.TaggedError("VisualReplyError")<{
   readonly message: string;
@@ -23,11 +23,10 @@ async function readWorkspaceFile(root: string, requested: string, maxBytes: numb
   const resolved = await fs.realpath(path.resolve(canonicalRoot, requested));
   if (!isWorkspaceRootWithin(resolved, canonicalRoot))
     throw new Error("File is outside the caller workspace.");
-  const handle = await fs.open(resolved, constants.O_RDONLY | constants.O_NOFOLLOW);
+  const handle = await openRegularFileForRead(resolved, { noFollow: true });
   try {
     const stat = await handle.stat();
-    if (!stat.isFile() || stat.size > maxBytes)
-      throw new Error("File is not a bounded regular file.");
+    if (stat.size > maxBytes) throw new Error("File exceeds the visual reply size limit.");
     const bytes = Buffer.alloc(maxBytes + 1);
     let length = 0;
     while (length < bytes.length) {

@@ -9,6 +9,7 @@ import {
   summarizeGitNumstatOutputs,
 } from "../gitStatusParsing.ts";
 import { GitCommandError } from "../Errors.ts";
+import { openRegularFileForRead } from "../../platform/filesystem/openRegularFileForRead";
 import type { GitCoreShape, StatusUpstreamRefresh } from "../Services/GitCore.ts";
 import {
   GitCommands,
@@ -648,9 +649,13 @@ const makeGitStatus = Effect.gen(function* () {
 
         const insertions = untrackedFilesWithoutNumstat.has(filePath)
           ? yield* Effect.tryPromise(async () => {
-              const path = nodePath.join(cwd, filePath);
-              if ((await nodeFs.stat(path)).size > 1_000_000) return new Uint8Array();
-              return nodeFs.readFile(path);
+              const handle = await openRegularFileForRead(nodePath.join(cwd, filePath));
+              try {
+                if ((await handle.stat()).size > 1_000_000) return new Uint8Array();
+                return await handle.readFile();
+              } finally {
+                await handle.close();
+              }
             }).pipe(
               Effect.map((contents) => countTextFileLines(new Uint8Array(contents))),
               Effect.catch(() => Effect.succeed(0)),
