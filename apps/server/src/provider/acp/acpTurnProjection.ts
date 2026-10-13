@@ -12,6 +12,8 @@ import { RuntimeItemId } from "@glade/contracts/core/baseSchemas";
 import type { CanonicalItemType } from "@glade/contracts/provider/runtimeMetadata";
 import type { ProviderRuntimeEvent } from "@glade/contracts/provider/runtimeEvents";
 
+import type { AcpInnerToolCall } from "./acpProviderProfile.ts";
+
 type DistributiveOmit<T, K extends PropertyKey> = T extends unknown ? Omit<T, K> : never;
 
 // An event before the session stamps its identity, time, provider and turn.
@@ -91,7 +93,10 @@ function planDetail(entries: ReadonlyArray<PlanEntry>): string {
     .join("\n");
 }
 
-export function makeAcpTurnProjection(turnKey: string): AcpTurnProjection {
+export function makeAcpTurnProjection(
+  turnKey: string,
+  innerToolCall?: AcpInnerToolCall,
+): AcpTurnProjection {
   const tools = new Map<string, TrackedToolCall>();
   let segment = 0;
   let assistantItemId: string | undefined;
@@ -220,6 +225,11 @@ export function makeAcpTurnProjection(turnKey: string): AcpTurnProjection {
     if (update.kind && tool.kind === undefined) tool.itemType = acpToolItemType(update.kind);
     if (update.kind) tool.kind = update.kind;
     if (update.rawInput !== undefined) tool.rawInput = update.rawInput;
+    const inner = update.rawOutput !== undefined ? innerToolCall?.(update.rawOutput) : undefined;
+    if (inner) {
+      tool.title = inner.name;
+      tool.rawInput = inner.input;
+    }
     const detail = toolCallDetail(update.content);
     const paths = changedPaths(update.content);
     const done = update.status === "completed" || update.status === "failed";

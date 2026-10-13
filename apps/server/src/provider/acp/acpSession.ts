@@ -20,6 +20,7 @@ import type {
 } from "@glade/contracts/provider/sessionPolicy";
 
 import type { AcpConnection } from "./acpConnection.ts";
+import type { AcpInnerToolCall } from "./acpProviderProfile.ts";
 import { acpSetConfigRequest } from "./acpModelCatalog.ts";
 import {
   acpToolItemType,
@@ -180,6 +181,7 @@ export function openAcpSession(input: {
   readonly configOptions: ReadonlyArray<SessionConfigOption>;
   readonly runtimeMode: RuntimeMode;
   readonly sink: AcpSessionSink;
+  readonly innerToolCall?: AcpInnerToolCall;
 }): AcpSession {
   const { connection, sessionId, sink } = input;
   let configOptions = input.configOptions;
@@ -291,7 +293,7 @@ export function openAcpSession(input: {
     prompt: async (turnId, blocks) => {
       const turn: ActiveTurn = {
         turnId,
-        projection: makeAcpTurnProjection(`acp:${turnId}`),
+        projection: makeAcpTurnProjection(`acp:${turnId}`, input.innerToolCall),
         agentText: "",
       };
       active = turn;
