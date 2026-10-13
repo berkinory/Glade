@@ -4,6 +4,8 @@ import type { ProviderKind } from "@glade/contracts/core/baseSchemas";
 import type { ProviderRuntimeEvent } from "@glade/contracts/provider/runtimeEvents";
 import { Cause, Channel, Effect, Stream } from "effect";
 
+import { coalesceAssistantTextDelta } from "./assistantTextCoalescing.ts";
+
 import type {
   ProviderRuntimeEventPumpHealth,
   ProviderRuntimeEventPumpStatus,
@@ -254,6 +256,22 @@ export function runProviderRuntimeEventPump<R>(
           }),
         ),
       );
+    // Assistant text is coalesced before it reaches the journal, so each journal row stays the
+    // immutable unit that ingestion replays and deduplicates. The merged event takes the place of
+    // both originals in the unpublished backlog, so a shutdown flush cannot publish either twice.
+    const appendToBatch = (batch: ProviderRuntimeEvent[], event: ProviderRuntimeEvent) => {
+      const coalesced = coalesceAssistantTextDelta(batch, event);
+      const previousIndex = coalesced ? pending.indexOf(batch[coalesced.index]!) : -1;
+      const nextIndex = pending.indexOf(event);
+      if (coalesced === undefined || previousIndex === -1 || nextIndex === -1) {
+        batch.push(event);
+        return;
+      }
+      batch[coalesced.index] = coalesced.merged;
+      pending[previousIndex] = coalesced.merged;
+      pending.splice(nextIndex, 1);
+      updatePendingCount(pending.length);
+    };
     return Stream.runForEach(
       options.stream.pipe(
         Stream.tap((event) =>
@@ -274,7 +292,7 @@ export function runProviderRuntimeEventPump<R>(
         Stream.mapAccum(
           (): ProviderRuntimeEvent[] => [],
           (batch, event): [ProviderRuntimeEvent[], ProviderRuntimeEvent[][]] => {
-            if (event !== undefined) batch.push(event);
+            if (event !== undefined) appendToBatch(batch, event);
             if (
               batch.length > 0 &&
               (event === undefined || event.type !== "content.delta" || batch.length >= 256)

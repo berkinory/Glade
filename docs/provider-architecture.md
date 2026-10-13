@@ -26,6 +26,8 @@ Optional methods advertise richer native behavior without forcing every provider
 
 Adapters also expose explicit capabilities rather than making the UI infer support from provider names. Current capability flags cover session model switching, conversation rollback strategy, skill/plugin discovery and mentions, native slash-command discovery, runtime model lists, turn steering, and live diff patches.
 
+Content deltas are journaled in batches that close after 100 ms or 256 events, and any other event closes the open batch first. Inside a batch, consecutive assistant text deltas of one message are joined before they are written, so each journal row is the unit that ingestion replays and deduplicates by its event id. Text must never be regrouped after it is journaled: a replay would group it differently and apply it twice.
+
 Provider runtime-event ingress is bounded. Effect-stream producers can be backpressured by the downstream queue, but callback-style native producers cannot always be paused synchronously. Those adapters use bounded callback ingress with explicit overload outcomes such as dropped events, terminal-event eviction, or terminal overflow rather than allowing unbounded process-memory growth. Adapter implementations must therefore preserve terminal-event guarantees and handle their ingress overflow policy deliberately.
 
 ## Runtime flow

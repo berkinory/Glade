@@ -11,6 +11,7 @@ import { makeDurableProviderServiceLive } from "../Layers/ProviderService";
 import { ProviderSessionDirectoryLive } from "../Layers/ProviderSessionDirectory";
 import { ProviderAdapterRegistry } from "../Services/ProviderAdapterRegistry";
 import { ProviderService } from "../Services/ProviderService";
+import type { ProviderRuntimeEvent } from "@glade/contracts/provider/runtimeEvents";
 import {
   asEventId,
   asThreadId,
@@ -18,9 +19,33 @@ import {
   makeFakeCodexAdapter,
 } from "./providerServiceTestFixtures";
 
+const streamedEvents = [
+  ["batch-shutdown", "assistant_text", "partial"],
+  ["batch-shutdown", "assistant_text", " text"],
+  ["batch-other", "assistant_text", "other thread"],
+  ["batch-shutdown", "assistant_text", " survives"],
+  ["batch-shutdown", "reasoning_text", "thinking"],
+  ["batch-shutdown", "assistant_text", " once"],
+] as const;
+const lastEventId = `batch-shutdown-${streamedEvents.length - 1}`;
+
+// Adjacent rows of one stream are joined, so the expectation holds wherever the batch tick falls.
+const textByThread = (events: ReadonlyArray<ProviderRuntimeEvent>) => {
+  const runs = new Map<string, Array<[string, string]>>();
+  for (const event of events) {
+    if (event.type !== "content.delta") continue;
+    const threadRuns = runs.get(event.threadId) ?? [];
+    runs.set(event.threadId, threadRuns);
+    const tail = threadRuns.at(-1);
+    if (tail?.[0] === event.payload.streamKind) tail[1] += event.payload.delta;
+    else threadRuns.push([event.payload.streamKind, event.payload.delta]);
+  }
+  return Object.fromEntries(runs);
+};
+
 for (const flushMode of ["shutdown", "idle"] as const) {
   it.live(
-    `flushes buffered deltas on ${flushMode} and preserves durable replay and live order`,
+    `coalesces assistant text before the journal on ${flushMode} and keeps each thread's order`,
     () =>
       Effect.gen(function* () {
         const journal = yield* ProviderRuntimeEventRepository;
@@ -33,9 +58,7 @@ for (const flushMode of ["shutdown", "idle"] as const) {
           ...codex.adapter,
           streamEvents: codex.adapter.streamEvents.pipe(
             Stream.tap((event) =>
-              event.eventId === "batch-shutdown-2"
-                ? Deferred.succeed(readAll, undefined)
-                : Effect.void,
+              event.eventId === lastEventId ? Deferred.succeed(readAll, undefined) : Effect.void,
             ),
           ),
         };
@@ -57,24 +80,22 @@ for (const flushMode of ["shutdown", "idle"] as const) {
         const services = yield* Layer.buildWithScope(layer, providerScope);
         const provider = ServiceMap.get(services, ProviderService);
         const live = yield* provider.streamEvents.pipe(
-          Stream.take(3),
+          Stream.takeUntil((event) => event.eventId === lastEventId),
           Stream.runCollect,
           Effect.forkChild,
         );
         yield* codex.waitForRuntimeSubscribers();
         yield* Effect.sleep("10 millis");
-        for (let index = 0; index < 3; index++) {
+        for (const [index, [threadId, streamKind, delta]] of streamedEvents.entries()) {
           codex.emit({
             type: "content.delta",
             eventId: asEventId(`batch-shutdown-${index}`),
-            threadId: asThreadId("batch-shutdown"),
-            turnId: asTurnId("batch-shutdown-turn"),
+            threadId: asThreadId(threadId),
+            turnId: asTurnId(`${threadId}-turn`),
+            itemId: `${threadId}-${streamKind}`,
             provider: "codex",
             createdAt: "2026-09-30T00:00:00.000Z",
-            payload: {
-              streamKind: "assistant_text",
-              delta: ["partial", " text", " survives"][index],
-            },
+            payload: { streamKind, delta },
           });
         }
         yield* Deferred.await(readAll);
@@ -89,18 +110,21 @@ for (const flushMode of ["shutdown", "idle"] as const) {
           limit: 10,
         });
         const received = yield* Fiber.join(live);
+        const expected: Record<string, Array<[string, string]>> = {
+          "batch-shutdown": [
+            ["assistant_text", "partial text survives"],
+            ["reasoning_text", "thinking"],
+            ["assistant_text", " once"],
+          ],
+          "batch-other": [["assistant_text", "other thread"]],
+        };
+        assert.isBelow(replay.length, streamedEvents.length);
+        assert.deepEqual(textByThread(replay.map((row) => row.event)), expected);
         assert.deepEqual(
           received.map((event) => event.eventId),
-          ["batch-shutdown-0", "batch-shutdown-1", "batch-shutdown-2"],
-        );
-        assert.deepEqual(
           replay.map((row) => row.event.eventId),
-          ["batch-shutdown-0", "batch-shutdown-1", "batch-shutdown-2"],
         );
-        assert.deepEqual(
-          replay.map((row) => (row.event.type === "content.delta" ? row.event.payload.delta : "")),
-          ["partial", " text", " survives"],
-        );
+        assert.deepEqual(textByThread(received), expected);
       }).pipe(
         Effect.scoped,
         Effect.provide(

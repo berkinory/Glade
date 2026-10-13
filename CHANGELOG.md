@@ -23,6 +23,7 @@
 - Streaming replies do far less database reading per update.
 - Server memory no longer grows with every chat used during a session.
 - Running chats write far fewer status updates, so the sidebar and server stay calm during long turns.
+- Streaming replies write far less to disk and send fewer updates, with the same text.
 
 ### Fixed
 

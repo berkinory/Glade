@@ -1,3 +1,5 @@
+import path from "node:path";
+
 import type { ProviderRuntimeEvent } from "@glade/contracts/provider/runtimeEvents";
 import { CommandId } from "@glade/contracts/core/baseSchemas";
 import { Effect, Stream } from "effect";
@@ -469,6 +471,79 @@ describe("ProviderRuntimeIngestion journal replay", () => {
     );
     expect(thread.session?.status).toBe("error");
     expect(thread.session?.lastError).toBe("runtime still processed");
+  });
+
+  it("replays streamed text committed before a crash exactly once after restart", async () => {
+    const databasePath = path.join(
+      createHarness.makeTempDir("glade-journal-restart-"),
+      "db.sqlite",
+    );
+    const threadId = asThreadId("thread-1");
+    const turnId = asTurnId("turn-restart");
+    const itemId = asItemId("item-restart");
+    const event = (id: string, rest: Record<string, unknown>) =>
+      ({
+        eventId: asEventId(id),
+        provider: "codex",
+        createdAt: "2026-10-13T00:00:00.000Z",
+        threadId,
+        turnId,
+        ...rest,
+      }) as ProviderRuntimeEvent;
+    const delta = (id: string, text: string) =>
+      event(id, {
+        type: "content.delta",
+        itemId,
+        payload: { streamKind: "assistant_text", delta: text },
+      });
+    const tool = (id: string, type: "item.started" | "item.completed") =>
+      event(id, {
+        type,
+        itemId: asItemId("tool-restart"),
+        payload: { itemType: "command_execution", title: "Run" },
+      });
+
+    const beforeCrash = await createHarness({ databasePath });
+    const append = (row: ProviderRuntimeEvent) =>
+      Effect.runPromise(beforeCrash.runtimeEventRepository.append(row));
+    await append(event("restart-turn", { type: "turn.started", payload: {} }));
+    const acknowledged = await append(delta("restart-d1", "Hello"));
+    await append(delta("restart-d2", " streamed"));
+    await append(tool("restart-tool-start", "item.started"));
+    await append(tool("restart-tool-end", "item.completed"));
+    await append(delta("restart-d3", " world"));
+    await beforeCrash.drain();
+    await beforeCrash.dispose();
+
+    // The crash lands after the later rows committed their commands but before they were
+    // acknowledged: restart rebuilds the open turn from the acknowledged prefix and replays the rest.
+    const afterCrash = await createHarness({ databasePath, startIngestion: false });
+    await Effect.runPromise(
+      afterCrash.sql`UPDATE provider_runtime_event_consumers SET last_acked_sequence = ${acknowledged.sequence}`,
+    );
+    await afterCrash.startIngestion();
+    for (const row of [
+      delta("restart-d4", "!"),
+      event("restart-complete", {
+        type: "item.completed",
+        itemId,
+        payload: { itemType: "assistant_message", status: "completed" },
+      }),
+      event("restart-turn-end", { type: "turn.completed", payload: { state: "completed" } }),
+    ]) {
+      await Effect.runPromise(afterCrash.runtimeEventRepository.append(row));
+    }
+    await afterCrash.drain();
+
+    const message = (
+      await waitForThread(afterCrash, (thread) => thread.latestTurn?.state === "completed")
+    ).messages.find((entry) => entry.id === `assistant:${itemId}`);
+    expect(message?.text).toBe("Hello streamed world!");
+    expect(message?.streaming).toBe(false);
+    expect(message?.textSegments?.map((segment) => segment.text)).toEqual([
+      "Hello streamed",
+      " world!",
+    ]);
   });
 
   it("acknowledges a burst of live journal notifications in pages, not one per event", async () => {

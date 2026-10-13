@@ -34,11 +34,15 @@ Critical coverage verifies unique request IDs, thread notification and approval 
 
 ## Persistence and terminal boundaries
 
-Durable batching preserves the original event rows and live order. Lifecycle events form flush barriers, and shutdown persists and publishes the unfinished batch before the stream closes. Coverage uses the real SQLite journal and durable provider service. A separate atomicity check verifies that an ID conflict rolls back the whole batch.
+Durable batching preserves live order. Within a batch, consecutive assistant text deltas of one message are joined into a single journal row when no other event of the same thread lies between them; every other event keeps its own row. Lifecycle events form flush barriers, and shutdown persists and publishes the unfinished batch before the stream closes. Coverage uses the real SQLite journal and durable provider service. A separate atomicity check verifies that an ID conflict rolls back the whole batch.
 
 Terminal startup uses an explicit output-subscription readiness envelope and output sequence numbers for snapshot/live handoff. A real PTY run delayed the snapshot response by 100 ms while fifty numbered lines arrived; every line appeared once and the initial prompt prefix survived. Image support buffers split sequence headers and awaits the image decoder before replaying the first image. The addon patch covers both published module formats and its types.
 
 The terminal timing is one cold Dev sample, not a signed production build measurement. Streaming verification confirms stable completed-line DOM nodes through the final render; an actual pointer-drag text-selection interaction was not separately verified.
+
+## Coalesced assistant text (October 2026)
+
+A synthetic turn through the durable provider service, journal, ingestion and engine on a file-backed SQLite database streamed 400 assistant text deltas in bursts of five or six every 50 ms (the burst shape of the audited database), across three text segments separated by ten tool calls. Coalescing in the 100 ms journal batch reduced journal rows from 423 to about 60, orchestration events, command receipts and thread stream pushes from 424 to about 61, and database growth from about 627 KB to 74 KB. Process CPU time per turn was between 650 and 985 ms before and between 283 and 381 ms after, over three runs each. The final text and segments were identical, and first-delta latency stayed within the existing batch tick. On the audited database the same 100 ms window would have written about 2,100 rows for its 18,070 streamed deltas.
 
 ## Repository checks
 

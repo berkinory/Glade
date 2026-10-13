@@ -24,7 +24,10 @@ import { afterEach } from "vitest";
 
 import { OrchestrationEventStoreLive } from "../../../persistence/Layers/OrchestrationEventStore.ts";
 import { OrchestrationCommandReceiptRepositoryLive } from "../../../persistence/Layers/OrchestrationCommandReceipts.ts";
-import { SqlitePersistenceMemory } from "../../../persistence/Layers/Sqlite.ts";
+import {
+  SqlitePersistenceMemory,
+  makeSqlitePersistenceLive,
+} from "../../../persistence/Layers/Sqlite.ts";
 import { ProviderRuntimeEventRepositoryLive } from "../../../persistence/Layers/ProviderRuntimeEvents.ts";
 import {
   ProviderRuntimeEventRepository,
@@ -264,7 +267,7 @@ export function makeIngestionTestHarness() {
     return dir;
   }
 
-  afterEach(async () => {
+  const dispose = async () => {
     if (scope) {
       await Effect.runPromise(Scope.close(scope, Exit.void));
     }
@@ -273,6 +276,10 @@ export function makeIngestionTestHarness() {
       await runtime.dispose();
     }
     runtime = null;
+  };
+
+  afterEach(async () => {
+    await dispose();
     for (const dir of tempDirs.splice(0)) {
       fs.rmSync(dir, { recursive: true, force: true });
     }
@@ -281,7 +288,9 @@ export function makeIngestionTestHarness() {
   async function createHarness(options?: {
     readonly startIngestion?: boolean;
     readonly persistedStream?: boolean;
+    readonly databasePath?: string;
   }) {
+    const reopened = options?.databasePath !== undefined && fs.existsSync(options.databasePath);
     const workspaceRoot = makeTempDir("glade-provider-project-");
     fs.mkdirSync(path.join(workspaceRoot, ".git"));
     const provider = createProviderServiceHarness(
@@ -293,13 +302,17 @@ export function makeIngestionTestHarness() {
       Layer.provide(OrchestrationEventStoreLive),
       Layer.provide(OrchestrationCommandReceiptRepositoryLive),
     );
+    const sqlite =
+      options?.databasePath === undefined
+        ? SqlitePersistenceMemory
+        : makeSqlitePersistenceLive(options.databasePath).pipe(Layer.provide(NodeServices.layer));
     const runtimeEventRepositoryLayer = ProviderRuntimeEventRepositoryLive.pipe(
-      Layer.provideMerge(SqlitePersistenceMemory),
+      Layer.provideMerge(sqlite),
     );
     const layer = ProviderRuntimeIngestionLive.pipe(
       Layer.provideMerge(orchestrationLayer),
       Layer.provideMerge(OrchestrationProjectionSnapshotQueryLive),
-      Layer.provideMerge(SqlitePersistenceMemory),
+      Layer.provideMerge(sqlite),
       Layer.provideMerge(runtimeEventRepositoryLayer),
       Layer.provideMerge(Layer.succeed(ProviderService, provider.service)),
       Layer.provideMerge(ServerConfig.layerTest(process.cwd(), process.cwd())),
@@ -325,54 +338,56 @@ export function makeIngestionTestHarness() {
     const drain = () => Effect.runPromise(ingestion.drain);
 
     const createdAt = new Date().toISOString();
-    await Effect.runPromise(
-      engine.dispatch({
-        type: "project.create",
-        commandId: CommandId.makeUnsafe("cmd-provider-project-create"),
-        projectId: ProjectId.makeUnsafe("project-1"),
-        title: "Provider Project",
-        workspaceRoot,
-        defaultModelSelection: {
-          provider: "codex",
-          model: "gpt-5-codex",
-        },
-        createdAt,
-      }),
-    );
-    await Effect.runPromise(
-      engine.dispatch({
-        type: "thread.create",
-        commandId: CommandId.makeUnsafe("cmd-thread-create"),
-        threadId: ThreadId.makeUnsafe("thread-1"),
-        projectId: ProjectId.makeUnsafe("project-1"),
-        title: "Thread",
-        modelSelection: {
-          provider: "codex",
-          model: "gpt-5-codex",
-        },
-        runtimeMode: "approval-required",
-        branch: null,
-        worktreePath: null,
-        createdAt,
-      }),
-    );
-    await Effect.runPromise(
-      engine.dispatch({
-        type: "thread.session.set",
-        commandId: CommandId.makeUnsafe("cmd-session-seed"),
-        threadId: ThreadId.makeUnsafe("thread-1"),
-        session: {
+    if (!reopened) {
+      await Effect.runPromise(
+        engine.dispatch({
+          type: "project.create",
+          commandId: CommandId.makeUnsafe("cmd-provider-project-create"),
+          projectId: ProjectId.makeUnsafe("project-1"),
+          title: "Provider Project",
+          workspaceRoot,
+          defaultModelSelection: {
+            provider: "codex",
+            model: "gpt-5-codex",
+          },
+          createdAt,
+        }),
+      );
+      await Effect.runPromise(
+        engine.dispatch({
+          type: "thread.create",
+          commandId: CommandId.makeUnsafe("cmd-thread-create"),
           threadId: ThreadId.makeUnsafe("thread-1"),
-          status: "ready",
-          providerName: "codex",
+          projectId: ProjectId.makeUnsafe("project-1"),
+          title: "Thread",
+          modelSelection: {
+            provider: "codex",
+            model: "gpt-5-codex",
+          },
           runtimeMode: "approval-required",
-          activeTurnId: null,
-          updatedAt: createdAt,
-          lastError: null,
-        },
-        createdAt,
-      }),
-    );
+          branch: null,
+          worktreePath: null,
+          createdAt,
+        }),
+      );
+      await Effect.runPromise(
+        engine.dispatch({
+          type: "thread.session.set",
+          commandId: CommandId.makeUnsafe("cmd-session-seed"),
+          threadId: ThreadId.makeUnsafe("thread-1"),
+          session: {
+            threadId: ThreadId.makeUnsafe("thread-1"),
+            status: "ready",
+            providerName: "codex",
+            runtimeMode: "approval-required",
+            activeTurnId: null,
+            updatedAt: createdAt,
+            lastError: null,
+          },
+          createdAt,
+        }),
+      );
+    }
     provider.setSession({
       provider: "codex",
       status: "ready",
@@ -397,8 +412,9 @@ export function makeIngestionTestHarness() {
       runtimeEventRepository,
       sql: await runtime.runPromise(Effect.service(SqlClient.SqlClient)),
       readProjectedThread,
+      dispose,
     };
   }
 
-  return createHarness;
+  return Object.assign(createHarness, { makeTempDir });
 }
