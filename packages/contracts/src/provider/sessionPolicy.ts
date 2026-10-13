@@ -41,9 +41,15 @@ export const ClaudeProviderStartOptions = Schema.Struct({
   enableArtifacts: Schema.optional(Schema.Boolean),
 });
 
+// Providers whose only start option is the executable to launch.
+export const BinaryProviderStartOptions = Schema.Struct({
+  binaryPath: Schema.optional(TrimmedNonEmptyString),
+});
+
 export const ProviderStartOptions = Schema.Struct({
   codex: Schema.optional(CodexProviderStartOptions),
   claudeAgent: Schema.optional(ClaudeProviderStartOptions),
+  opencode: Schema.optional(BinaryProviderStartOptions),
   // Settings allows Computer Use, so the harness policy carries the computer guidance.
   allowComputerUse: Schema.optional(Schema.Boolean),
 });

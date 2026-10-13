@@ -3,6 +3,7 @@ import type { ServerProviderStatus } from "@glade/contracts/server/server";
 import type { ServerSettings } from "@glade/contracts/settings/settings";
 import type { Effect, FileSystem, Path } from "effect";
 import type { ChildProcessSpawner } from "effect/unstable/process";
+import type { AcpProviderProfile } from "../acp/acpProviderProfile.ts";
 import type { ProviderCredentialGrants } from "./providerChildEnvironment.ts";
 import type { PackageManagedProviderMaintenanceDefinition } from "./providerMaintenance.ts";
 
@@ -74,4 +75,6 @@ export interface ServerProviderDescriptor {
   readonly maintenance: PackageManagedProviderMaintenanceDefinition;
   readonly nativeHistory: { readonly archives: boolean };
   readonly mcp: { readonly writesRequireConfigVersion: boolean };
+  // Providers that speak the Agent Client Protocol run on the shared ACP adapter.
+  readonly acp?: AcpProviderProfile;
 }

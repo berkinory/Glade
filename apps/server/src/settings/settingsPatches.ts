@@ -39,6 +39,7 @@ export function providerStartOptionsFromServerSettings(
   const codexBinaryPath = providers.codex.binaryPath.trim();
   const codexHomePath = providers.codex.homePath.trim();
   const claudeBinaryPath = providers.claudeAgent.binaryPath.trim();
+  const openCodeBinaryPath = providers.opencode.binaryPath.trim();
   return {
     codex: {
       ...(codexBinaryPath ? { binaryPath: codexBinaryPath } : {}),
@@ -48,6 +49,7 @@ export function providerStartOptionsFromServerSettings(
       ...(claudeBinaryPath ? { binaryPath: claudeBinaryPath } : {}),
       enableArtifacts: providers.claudeAgent.enableArtifacts,
     },
+    opencode: openCodeBinaryPath ? { binaryPath: openCodeBinaryPath } : {},
     allowComputerUse: settings.allowComputerUse,
   };
 }

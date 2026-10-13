@@ -4,6 +4,7 @@
 
 ### New
 
+- OpenCode is available as a provider, including its free models. Supervised mode asks before OpenCode edits files or runs commands.
 - Chats stopped by a usage limit continue on their own once the limit resets. Cancel the wait from the chat, or turn it off in Settings.
 
 ### Improved

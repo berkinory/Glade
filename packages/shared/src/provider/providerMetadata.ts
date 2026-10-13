@@ -49,6 +49,8 @@ export interface ProviderDescriptor {
   readonly inheritedModelSlugs: readonly string[];
 
   readonly setupDocsHref: string;
+  // The provider's own install, update and configuration pages, linked from its settings row.
+  readonly installDocs: readonly { readonly label: string; readonly href: string }[];
   readonly usage: {
     readonly signInCommand: string;
     readonly learnMoreHref: string;
@@ -70,6 +72,11 @@ export const PROVIDER_DESCRIPTORS = defineProviderDescriptors([
     displayName: PROVIDER_DISPLAY_NAMES.codex,
     available: true,
     setupDocsHref: "https://github.com/berkinory/Glade/blob/main/docs/providers.md",
+    installDocs: [
+      { label: "Install", href: "https://developers.openai.com/codex/cli" },
+      { label: "Update", href: "https://developers.openai.com/codex/cli" },
+      { label: "Config", href: "https://github.com/openai/codex/blob/main/docs/config.md" },
+    ],
     capabilities: {
       turnSteering: true,
       asyncUserInput: true,
@@ -98,6 +105,11 @@ export const PROVIDER_DESCRIPTORS = defineProviderDescriptors([
     displayName: PROVIDER_DISPLAY_NAMES.claudeAgent,
     available: true,
     setupDocsHref: "https://github.com/berkinory/Glade/blob/main/docs/providers.md",
+    installDocs: [
+      { label: "Install", href: "https://code.claude.com/docs/en/installation" },
+      { label: "Update", href: "https://code.claude.com/docs/en/installation#update-claude-code" },
+      { label: "Config", href: "https://code.claude.com/docs/en/settings" },
+    ],
     capabilities: {
       turnSteering: true,
       asyncUserInput: false,
@@ -130,6 +142,36 @@ export const PROVIDER_DESCRIPTORS = defineProviderDescriptors([
       signInCommand: "claude",
       learnMoreHref: "https://docs.anthropic.com/en/docs/about-claude/models#rate-limits",
     },
+  },
+  {
+    kind: "opencode",
+    displayName: PROVIDER_DISPLAY_NAMES.opencode,
+    available: true,
+    setupDocsHref: "https://github.com/berkinory/Glade/blob/main/docs/providers.md",
+    installDocs: [
+      { label: "Install", href: "https://opencode.ai/docs/" },
+      { label: "Update", href: "https://opencode.ai/docs/cli/#upgrade" },
+      { label: "Config", href: "https://opencode.ai/docs/config/" },
+    ],
+    capabilities: {
+      turnSteering: false,
+      asyncUserInput: false,
+      forkBoundary: "none",
+      reconfiguresDuringActiveTurn: false,
+      compaction: "none",
+      skillMentionPrefix: "/",
+      sendTurnConfirmsAcceptance: false,
+      reasoningPreview: "streaming",
+      ownsInteractionSettlement: true,
+      sessionSlashCommands: "glade",
+      nativeReview: false,
+      reportsFastModeAvailability: false,
+      voiceTranscription: false,
+      autoRuntimeMode: "none",
+    },
+    nativeCommandAliases: {},
+    inheritedModelSlugs: [],
+    usage: null,
   },
 ] as const satisfies readonly ProviderDescriptor[]);
 

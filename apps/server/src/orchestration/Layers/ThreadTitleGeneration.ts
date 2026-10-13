@@ -45,15 +45,12 @@ const make = Effect.gen(function* () {
         ),
         Effect.map(providerStartOptionsFromServerSettings),
       );
-      const providerOptions = {
-        codex: { ...defaults.codex, ...input.providerOptions?.codex },
-        claudeAgent: { ...defaults.claudeAgent, ...input.providerOptions?.claudeAgent },
-      };
-      const startup = providerOptions[provider];
+      const binaryPath =
+        input.providerOptions?.[provider]?.binaryPath ?? defaults[provider]?.binaryPath;
       const catalog = yield* discovery
         .listModels({
           provider,
-          ...(startup?.binaryPath ? { binaryPath: startup.binaryPath } : {}),
+          ...(binaryPath ? { binaryPath } : {}),
         })
         .pipe(
           Effect.mapError(
@@ -109,7 +106,7 @@ const make = Effect.gen(function* () {
             cwd,
             model,
             ...(effort ? { effort } : {}),
-            ...(startup?.binaryPath ? { binaryPath: startup.binaryPath } : {}),
+            ...(binaryPath ? { binaryPath } : {}),
             instructions: THREAD_TITLE_INSTRUCTIONS,
             prompt: buildThreadTitlePrompt(input.message),
             outputSchema: toJsonSchemaObject(ThreadTitleOutput),

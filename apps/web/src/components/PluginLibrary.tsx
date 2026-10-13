@@ -13,7 +13,7 @@ import {
   type ProviderPluginDescriptor,
   type ProviderSkillDescriptor,
 } from "@glade/contracts/provider/providerDiscovery";
-import { useQuery } from "@tanstack/react-query";
+import { useQueries, useQuery } from "@tanstack/react-query";
 import React, { useMemo, type ReactNode, useDeferredValue, useState } from "react";
 import { PROVIDER_ICON_COMPONENT_BY_PROVIDER } from "./ProviderIcon";
 import { useStore } from "~/store";
@@ -331,27 +331,26 @@ export function PluginLibrary() {
   const enabledProviderOrder = DEFAULT_PROVIDER_ORDER.filter(
     (provider) => !settings.disabledProviders.includes(provider),
   );
-  const codexEnabled = enabledProviderOrder.includes("codex");
-  const claudeEnabled = enabledProviderOrder.includes("claudeAgent");
-  const codexCapabilitiesQuery = useQuery({
-    ...providerComposerCapabilitiesQueryOptions("codex"),
-    enabled: codexEnabled,
-  });
-  const claudeCapabilitiesQuery = useQuery({
-    ...providerComposerCapabilitiesQueryOptions("claudeAgent"),
-    enabled: claudeEnabled,
+  const capabilityQueries = useQueries({
+    queries: DEFAULT_PROVIDER_ORDER.map((provider) => ({
+      ...providerComposerCapabilitiesQueryOptions(provider),
+      enabled: enabledProviderOrder.includes(provider),
+    })),
   });
   // Cached capabilities outlive a provider being disabled, so enablement gates them here too.
-  const providerCapabilities: Record<ProviderKind, ProviderCapabilities> = {
-    codex: {
-      plugins: codexEnabled && supportsPluginDiscovery(codexCapabilitiesQuery.data),
-      skills: codexEnabled && supportsSkillDiscovery(codexCapabilitiesQuery.data),
-    },
-    claudeAgent: {
-      plugins: claudeEnabled && supportsPluginDiscovery(claudeCapabilitiesQuery.data),
-      skills: claudeEnabled && supportsSkillDiscovery(claudeCapabilitiesQuery.data),
-    },
-  };
+  const providerCapabilities = Object.fromEntries(
+    DEFAULT_PROVIDER_ORDER.map((provider, index): [ProviderKind, ProviderCapabilities] => {
+      const enabled = enabledProviderOrder.includes(provider);
+      const capabilities = capabilityQueries[index]?.data;
+      return [
+        provider,
+        {
+          plugins: enabled && supportsPluginDiscovery(capabilities),
+          skills: enabled && supportsSkillDiscovery(capabilities),
+        },
+      ];
+    }),
+  ) as Record<ProviderKind, ProviderCapabilities>;
   const supportsSelectedTab =
     selectedTab === "plugins"
       ? providerCapabilities[selectedProvider].plugins

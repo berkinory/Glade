@@ -1,6 +1,7 @@
 import { Schema } from "effect";
+import { ProviderKind } from "../core/baseSchemas";
 
-const AuthenticationProvider = Schema.Literals(["claudeAgent", "codex"]);
+const AuthenticationProvider = ProviderKind;
 export const ProviderAuthenticationRequest = Schema.Struct({
   provider: AuthenticationProvider,
   action: Schema.Literals(["status", "start", "write", "resize", "close"]),

@@ -1,5 +1,3 @@
-import type { ProviderKind } from "@glade/contracts/core/baseSchemas";
-
 export function formatCompact(value: number | null | undefined): string {
   if (value === null || value === undefined || !Number.isFinite(value)) {
     return "—";
@@ -66,15 +64,6 @@ export function formatShortDate(day: string | null): string | null {
     return null;
   }
   return MONTH_DAY_FORMATTER.format(new Date(Date.UTC(year, month - 1, date)));
-}
-
-export function formatProviderLabel(provider: ProviderKind): string {
-  switch (provider) {
-    case "codex":
-      return "Codex";
-    case "claudeAgent":
-      return "Claude";
-  }
 }
 
 export function formatProfileUsageBasis(metric: "tokens" | "turns"): string {

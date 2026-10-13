@@ -9,7 +9,14 @@ import ts from "typescript";
 const providerOwners = [
   { kind: "codex", owner: "codex" },
   { kind: "claudeAgent", owner: "claude" },
+  { kind: "opencode", owner: "opencode" },
 ] as const;
+
+// The registries are where provider kinds are declared, so they name every provider.
+const providerRegistries = new Set([
+  "packages/contracts/src/core/baseSchemas.ts",
+  "packages/shared/src/provider/providerMetadata.ts",
+]);
 
 const root = path.resolve(import.meta.dirname, "../..");
 const allowlistPath = path.join(import.meta.dirname, "providerNeutralityAllowlist.json");
@@ -60,7 +67,7 @@ const files = execFileSync(
   .split("\0")
   .filter((file) => /^(?:apps|packages)\/[^/]+\/src\/.+\.(?:ts|tsx)$/u.test(file))
   .filter((file) => existsSync(path.join(root, file)))
-  .filter((file) => !isTestCode(file) && !isProviderOwned(file));
+  .filter((file) => !isTestCode(file) && !isProviderOwned(file) && !providerRegistries.has(file));
 
 const actual = new Map<string, number>();
 for (const file of files) {

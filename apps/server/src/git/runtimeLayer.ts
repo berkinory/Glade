@@ -19,10 +19,11 @@ import { ServerSettingsLive } from "../settings/serverSettings";
 const TextGenerationProvidersLive = Layer.effect(
   TextGenerationProviders,
   Effect.gen(function* () {
-    const implementations = {
+    // Providers without Git writing support have no entry; callers report them as unsupported.
+    const implementations: Partial<Record<ProviderKind, TextGenerationShape>> = {
       codex: yield* CodexTextGeneration,
       claudeAgent: yield* ClaudeTextGeneration,
-    } satisfies Partial<Record<ProviderKind, TextGenerationShape>>;
+    };
     return {
       get: (provider: ProviderKind) => implementations[provider],
       listProviders: () => Object.keys(implementations) as ProviderKind[],

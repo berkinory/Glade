@@ -29,6 +29,12 @@ export const ClaudeServerProviderSettings = Schema.Struct({
 });
 export type ClaudeServerProviderSettings = typeof ClaudeServerProviderSettings.Type;
 
+export const OpenCodeServerProviderSettings = Schema.Struct({
+  ...ProviderSettingsBase,
+  binaryPath: StringSetting.pipe(Schema.withDecodingDefault(() => "opencode")),
+});
+export type OpenCodeServerProviderSettings = typeof OpenCodeServerProviderSettings.Type;
+
 const DisabledSkillNames = Schema.Array(Schema.String.check(Schema.isMaxLength(256))).pipe(
   Schema.withDecodingDefault(() => []),
 );
@@ -62,6 +68,7 @@ export const ServerSettings = Schema.Struct({
   providers: Schema.Struct({
     codex: CodexServerProviderSettings.pipe(Schema.withDecodingDefault(() => ({}))),
     claudeAgent: ClaudeServerProviderSettings.pipe(Schema.withDecodingDefault(() => ({}))),
+    opencode: OpenCodeServerProviderSettings.pipe(Schema.withDecodingDefault(() => ({}))),
   }).pipe(Schema.withDecodingDefault(() => ({}))),
   skills: SkillsServerSettings.pipe(Schema.withDecodingDefault(() => ({}))),
   // Both apply only to archived chats, and only to clean worktrees whose commits stay reachable.
@@ -118,6 +125,7 @@ export const ServerSettingsPatch = Schema.Struct({
           enableArtifacts: Schema.optionalKey(Schema.Boolean),
         }),
       ),
+      opencode: Schema.optionalKey(Schema.Struct(ProviderSettingsBasePatch)),
     }),
   ),
   skills: Schema.optionalKey(
