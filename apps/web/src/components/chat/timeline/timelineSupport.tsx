@@ -244,7 +244,7 @@ export interface MessagesTimelineProps {
   pinnedMessageIds?: ReadonlySet<MessageId>;
   onTogglePinMessage?: (messageId: MessageId) => void;
   onForkFromMessage?: (messageId: MessageId) => void;
-  forkProvider?: "codex" | "claudeAgent";
+  forkBoundary?: "turn" | "message";
   enteringUserMessageIds?: ReadonlySet<MessageId>;
   tailAnchorMessageId?: MessageId | null;
   tailAnchorScrollInFlightRef?: RefObject<boolean> | undefined;

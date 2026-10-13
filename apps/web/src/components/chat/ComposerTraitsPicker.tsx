@@ -1,4 +1,5 @@
 import { Brain03Icon, ChevronDownIcon, EnergyFilledIcon, SettingsIcon } from "~/lib/icons";
+import { providerCapabilities } from "@glade/shared/provider/providerMetadata";
 import { CLAUDE_FAST_MODE_BILLING_NOTE } from "~/lib/fastModeStatus";
 import { type ProviderKind, type ThreadId } from "@glade/contracts/core/baseSchemas";
 import { type ProviderOptionDescriptor } from "@glade/contracts/provider/model";
@@ -266,7 +267,7 @@ export function ComposerTraitsPicker(props: {
                   Fast mode
                 </span>
               </MenuCheckboxItem>
-              {fastModeNotice || provider === "claudeAgent" ? (
+              {fastModeNotice || providerCapabilities(provider).reportsFastModeAvailability ? (
                 <div
                   className={cn(
                     "px-2 pb-1 text-ui-xs leading-snug",

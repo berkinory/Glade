@@ -24,6 +24,15 @@ export interface ProviderCapabilities {
   readonly reasoningPreview: "streaming" | "completed";
   // The adapter settles its own pending approvals and questions when a turn ends.
   readonly ownsInteractionSettlement: boolean;
+  // `native` providers handle session commands such as clear, compact, model and fast through their
+  // own slash commands, so Glade does not offer its versions of them.
+  readonly sessionSlashCommands: "glade" | "native";
+  // The provider runs code review natively instead of through a review prompt.
+  readonly nativeReview: boolean;
+  // The provider reports whether it actually serves fast mode; the selection is only a request.
+  readonly reportsFastModeAvailability: boolean;
+  // The provider can transcribe voice notes.
+  readonly voiceTranscription: boolean;
 }
 
 export interface ProviderDescriptor {
@@ -31,6 +40,8 @@ export interface ProviderDescriptor {
   readonly displayName: string;
   readonly available: boolean;
   readonly capabilities: ProviderCapabilities;
+  // Native slash command aliases, keyed by the canonical command name.
+  readonly nativeCommandAliases: Readonly<Record<string, readonly string[]>>;
 
   readonly setupDocsHref: string;
   readonly usage: {
@@ -64,7 +75,12 @@ export const PROVIDER_DESCRIPTORS = defineProviderDescriptors([
       sendTurnConfirmsAcceptance: true,
       reasoningPreview: "completed",
       ownsInteractionSettlement: false,
+      sessionSlashCommands: "glade",
+      nativeReview: true,
+      reportsFastModeAvailability: false,
+      voiceTranscription: true,
     },
+    nativeCommandAliases: {},
     usage: {
       signInCommand: "codex login",
       learnMoreHref: "https://platform.openai.com/usage",
@@ -85,6 +101,21 @@ export const PROVIDER_DESCRIPTORS = defineProviderDescriptors([
       sendTurnConfirmsAcceptance: false,
       reasoningPreview: "streaming",
       ownsInteractionSettlement: true,
+      sessionSlashCommands: "native",
+      nativeReview: false,
+      reportsFastModeAvailability: true,
+      voiceTranscription: false,
+    },
+    nativeCommandAliases: {
+      clear: ["reset", "new"],
+      config: ["settings"],
+      desktop: ["app"],
+      exit: ["quit"],
+      feedback: ["bug"],
+      mobile: ["ios", "android"],
+      permissions: ["allowed-tools"],
+      "remote-control": ["rc"],
+      resume: ["continue"],
     },
     usage: {
       signInCommand: "claude",
@@ -108,7 +139,19 @@ const UNKNOWN_PROVIDER_CAPABILITIES: ProviderCapabilities = {
   sendTurnConfirmsAcceptance: false,
   reasoningPreview: "completed",
   ownsInteractionSettlement: false,
+  sessionSlashCommands: "glade",
+  nativeReview: false,
+  reportsFastModeAvailability: false,
+  voiceTranscription: false,
 };
+
+export function providerNativeCommandAliases(
+  kind: string,
+): Readonly<Record<string, readonly string[]>> {
+  return (
+    PROVIDER_DESCRIPTORS.find((descriptor) => descriptor.kind === kind)?.nativeCommandAliases ?? {}
+  );
+}
 
 export function providerCapabilities(kind: string): ProviderCapabilities {
   return (

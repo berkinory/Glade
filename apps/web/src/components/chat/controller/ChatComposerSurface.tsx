@@ -1,4 +1,5 @@
 import { Spinner } from "~/components/ui/spinner";
+import { providerCapabilities } from "@glade/shared/provider/providerMetadata";
 import { pendingRequestInstanceKey } from "@glade/shared/threads/threadSummary";
 import type { ThreadId, TurnId } from "@glade/contracts/core/baseSchemas";
 import { ComposerPromptEditor } from "~/components/ComposerPromptEditor";
@@ -68,9 +69,9 @@ export function ChatComposerSurface({
     isComposerEditorDisabled,
     isNativeSubagent,
     setIsContextWindowMeterOpen,
-    standaloneClaudeCompactDisabledReason,
-    isRequestingClaudeCompaction,
-    onCompactClaudeContext,
+    standaloneCompactDisabledReason,
+    isRequestingCompaction,
+    onCompactContext,
     isAbandoningLegacyCacheHold,
     onAbandonLegacyCacheHold,
   } = controller.transcript;
@@ -543,14 +544,14 @@ export function ChatComposerSurface({
                         <ContextWindowMeter
                           usage={runtimeUsageContextWindow}
                           onOpenChange={setIsContextWindowMeterOpen}
-                          {...(selectedProvider === "claudeAgent" &&
-                          activeThread?.session?.provider === "claudeAgent" &&
+                          {...(providerCapabilities(selectedProvider).compaction === "promptTurn" &&
+                          activeThread?.session?.provider === selectedProvider &&
                           isServerThread
                             ? {
                                 compactAction: {
-                                  disabledReason: standaloneClaudeCompactDisabledReason,
-                                  isSubmitting: isRequestingClaudeCompaction,
-                                  onCompact: onCompactClaudeContext,
+                                  disabledReason: standaloneCompactDisabledReason,
+                                  isSubmitting: isRequestingCompaction,
+                                  onCompact: onCompactContext,
                                 },
                               }
                             : {})}

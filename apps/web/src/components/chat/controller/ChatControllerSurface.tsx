@@ -1,4 +1,5 @@
 import { useCallback } from "react";
+import { providerCapabilities } from "@glade/shared/provider/providerMetadata";
 import { useNavigate } from "@tanstack/react-router";
 import type { ThreadId, TurnId } from "@glade/contracts/core/baseSchemas";
 import BranchToolbar from "~/components/BranchToolbar";
@@ -269,6 +270,7 @@ export function ChatControllerSurface({ controller }: { controller: ChatControll
     );
   }
   const presentation = createChatPresentation(controller, activeThread);
+  const forkBoundary = providerCapabilities(activeThread.modelSelection.provider).forkBoundary;
   const {
     activeThreadDisplayTitle,
     environmentHeaderState,
@@ -537,7 +539,7 @@ export function ChatControllerSurface({ controller }: { controller: ChatControll
                     pinnedMessageIds={pinnedMessageIds}
                     onTogglePinMessage={handleTogglePinMessage}
                     onForkFromMessage={handleForkFromMessage}
-                    forkProvider={activeThread.modelSelection.provider}
+                    {...(forkBoundary !== "none" ? { forkBoundary } : {})}
                     enteringUserMessageIds={enteringUserMessageIds}
                     tailAnchorMessageId={
                       tailAnchor !== null && tailAnchor.threadId === activeThread.id

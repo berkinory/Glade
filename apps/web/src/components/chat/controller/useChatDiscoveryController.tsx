@@ -1,4 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
+import { providerCapabilities } from "@glade/shared/provider/providerMetadata";
 import { useActiveEnvironment, useLocalDesktopActive } from "~/environments/activeEnvironment";
 import { editorsForEnvironment } from "~/environments/remoteEditors";
 import { LOCAL_ENVIRONMENT } from "~/environments/environmentKey";
@@ -324,7 +325,9 @@ export function useChatDiscoveryController({
       ? null
       : activeProviderStatus;
 
-  const voiceProviderStatus = findProviderStatus(providerStatuses, "codex");
+  const voiceProviderStatus =
+    providerStatuses.find((status) => providerCapabilities(status.provider).voiceTranscription) ??
+    null;
 
   const refreshProviderStatuses = useRefreshProviderStatusesNow();
 

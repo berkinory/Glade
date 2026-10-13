@@ -1,4 +1,5 @@
 import { type MessageId } from "@glade/contracts/core/baseSchemas";
+import { providerCapabilities } from "@glade/shared/provider/providerMetadata";
 import { deriveAssociatedWorktreeMetadata } from "@glade/shared/threads/threadWorkspace";
 import { useCallback } from "react";
 import { toastManager } from "../components/ui/toast";
@@ -9,6 +10,7 @@ import {
 import { resolveForkThreadEnvironment } from "../lib/threadEnvironment";
 import { newCommandId, newMessageId, newThreadId } from "../lib/utils";
 import { readNativeApi } from "../nativeApi";
+import type { ChatMessage } from "../types";
 import type { ComposerSlashCommandInput } from "./composerSlashCommandTypes";
 export function useComposerForkCommands(input: {
   thread: Pick<
@@ -55,18 +57,23 @@ export function useComposerForkCommands(input: {
         return true;
       }
 
+      const forkBoundary = providerCapabilities(selectedProvider).forkBoundary;
+      const nativeForkBoundary = (message: ChatMessage) =>
+        forkBoundary === "turn"
+          ? message.turnId
+          : forkBoundary === "message"
+            ? message.providerMessageId
+            : undefined;
       const forkMessage = inputOptions?.throughMessageId
         ? activeThread.messages.find((message) => message.id === inputOptions.throughMessageId)
         : activeThread.messages.findLast(
             (message) =>
-              message.role === "assistant" &&
-              !message.streaming &&
-              (selectedProvider === "codex" ? message.turnId : message.providerMessageId),
+              message.role === "assistant" && !message.streaming && nativeForkBoundary(message),
           );
       if (
         !forkMessage ||
         selectedProvider !== activeThread.modelSelection.provider ||
-        (selectedProvider === "codex" ? !forkMessage.turnId : !forkMessage.providerMessageId)
+        !nativeForkBoundary(forkMessage)
       ) {
         toastManager.add({ type: "warning", title: "This message has no native fork point" });
         return false;
@@ -119,7 +126,7 @@ export function useComposerForkCommands(input: {
     ],
   );
 
-  const runCodexReviewStart = useCallback(
+  const runNativeReviewStart = useCallback(
     async (target: "changes" | "base-branch") => {
       const api = readNativeApi();
       if (!api || !activeThread || !activeProject) {
@@ -228,15 +235,15 @@ export function useComposerForkCommands(input: {
 
   const handleReviewTargetSelection = useCallback(
     async (target: "changes" | "base-branch") => {
-      if (selectedProvider === "codex") {
-        await runCodexReviewStart(target);
+      if (providerCapabilities(selectedProvider).nativeReview) {
+        await runNativeReviewStart(target);
       } else {
         const replacement = buildSlashReviewComposerPrompt(target === "base-branch" ? "base" : "");
         editorActions.setComposerPromptValue(replacement);
       }
       editorActions.scheduleComposerFocus();
     },
-    [editorActions, selectedProvider, runCodexReviewStart],
+    [editorActions, selectedProvider, runNativeReviewStart],
   );
 
   const runForkThread = useCallback(
@@ -276,7 +283,7 @@ export function useComposerForkCommands(input: {
 
   return {
     createForkThreadFromSlashCommand,
-    runCodexReviewStart,
+    runNativeReviewStart,
     handleReviewTargetSelection,
     handleForkTargetSelection,
     handleForkFromMessage,

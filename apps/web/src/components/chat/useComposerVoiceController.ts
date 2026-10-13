@@ -228,9 +228,11 @@ export function useComposerVoiceController(
       voiceRecordingStartedAtRef.current = performance.now();
       onRecordingStarted();
       const api = readNativeApi();
+      const voiceProvider = activeProviderStatus?.provider;
+      if (voiceProvider === undefined) return;
       void api?.server
         .prewarmVoice?.({
-          provider: "codex",
+          provider: voiceProvider,
           cwd: activeProject.cwd,
           ...(activeThreadId ? { threadId: activeThreadId } : {}),
         })
@@ -261,7 +263,8 @@ export function useComposerVoiceController(
     }
 
     const api = readNativeApi();
-    if (!api) {
+    const voiceProvider = activeProviderStatus?.provider;
+    if (!api || voiceProvider === undefined) {
       toastManager.add({
         type: "error",
         title: "Voice transcription is unavailable right now.",
@@ -296,7 +299,7 @@ export function useComposerVoiceController(
         }
         return api.server
           .transcribeVoice({
-            provider: "codex",
+            provider: voiceProvider,
             cwd: activeProject.cwd,
             ...(activeThreadId ? { threadId: activeThreadId } : {}),
             ...payload,
