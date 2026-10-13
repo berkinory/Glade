@@ -257,9 +257,10 @@ export function createStreamSubscriptions(
     const refresh = (async () => {
       state.shellSnapshotSequence = -1;
       state.pendingShellEvents = [];
-      await context.api.orchestration
-        .subscribeShell()
-        .catch(() => loadBootstrapShellSnapshotIfMissing(generation));
+      const shellSubscribed = await context.api.orchestration.subscribeShell().then(
+        () => true,
+        () => loadBootstrapShellSnapshotIfMissing(generation).then(() => false),
+      );
       await enqueueThreadSubscriptionOperation(async () => {
         state.threadSnapshotSequenceById.clear();
         state.threadResumeSeedSequenceById.clear();
@@ -289,6 +290,7 @@ export function createStreamSubscriptions(
         );
         await reconcileThreadSubscriptions(context.visibleThreadIdsRef.current);
       });
+      return shellSubscribed;
     })().finally(() => {
       if (state.scopedSubscriptionRefresh === refresh) {
         state.scopedSubscriptionRefresh = null;

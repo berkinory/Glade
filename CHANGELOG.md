@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+### Improved
+
+- Long chats open and scroll more smoothly.
+
 ### Fixed
 
 - Every project in the sidebar now opens and closes with the same animation, not only the project of the open chat.

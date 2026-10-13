@@ -345,6 +345,9 @@ export function subscribeStreamEvents(
     });
   });
 
+  // Started before the welcome listener: a cached welcome replays synchronously on registration.
+  let mountBootstrap: Promise<boolean> | null = subscriptions.ensureScopedSubscriptions();
+
   const unsubWelcome = context.onWelcome((payload) => {
     void (async () => {
       if (context.local) {
@@ -353,7 +356,15 @@ export function subscribeStreamEvents(
           chatWorkspaceRoot: payload.chatWorkspaceRoot,
         });
       }
-      await subscriptions.ensureScopedSubscriptions();
+      // Subscribe requests resolve when a stream starts, not on its snapshot, so the first welcome
+      // usually lands after the mount bootstrap finished. Resubscribing then would drop the open chat
+      // mid-snapshot and load it twice. A socket that reopened in between has already restarted those
+      // streams in the transport, so only a failed bootstrap or a later welcome resubscribes.
+      const bootstrap = mountBootstrap;
+      mountBootstrap = null;
+      if (!(await (bootstrap?.catch(() => false) ?? false))) {
+        await subscriptions.ensureScopedSubscriptions();
+      }
       if (state.disposed || !context.local) {
         return;
       }
@@ -477,8 +488,6 @@ export function subscribeStreamEvents(
   );
 
   state.subscribed = true;
-
-  void subscriptions.ensureScopedSubscriptions();
 
   const threadDetailCatchupInterval = window.setInterval(() => {
     const now = Date.now();

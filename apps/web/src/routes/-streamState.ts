@@ -53,7 +53,8 @@ export function createStreamState() {
     reconcileThreadSubscriptionsChain: Promise.resolve(),
     threadCatchupBackoffById: new Map<ThreadId, ThreadCatchupBackoff>(),
     shellSnapshotFallbackTimer: null as number | null,
-    scopedSubscriptionRefresh: null as Promise<void> | null,
+    // Resolves to whether the shell subscription request succeeded.
+    scopedSubscriptionRefresh: null as Promise<boolean> | null,
     subscribed: false,
   };
 }
