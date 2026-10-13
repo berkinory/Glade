@@ -56,6 +56,24 @@ try {
       }
     }
   }
+  # Both sources can report success without staging anything newer than the runner image's
+  # definitions. Microsoft's standalone definition package installs the latest ones directly.
+  if (-not (Test-SignaturesCurrent (Get-MpComputerStatus))) {
+    try {
+      $package = Join-Path $env:RUNNER_TEMP 'mpam-fe.exe'
+      Invoke-WebRequest -Uri 'https://go.microsoft.com/fwlink/?LinkID=121721&arch=x64' -OutFile $package
+      $packageSignature = Get-AuthenticodeSignature $package
+      if ($packageSignature.Status -ne 'Valid' -or $packageSignature.SignerCertificate.Subject -notmatch '^CN=Microsoft ') {
+        throw "The Defender definition package is not signed by Microsoft: $($packageSignature.SignerCertificate.Subject)"
+      }
+      $install = Start-Process -FilePath $package -ArgumentList '-q' -Wait -PassThru
+      if ($install.ExitCode -ne 0) { throw "The Defender definition package exited with code $($install.ExitCode)." }
+      if (Test-SignaturesCurrent (Get-MpComputerStatus)) { $signatureUpdate = 'definition package' }
+      else { Write-Warning 'The Defender definition package left the definitions stale.' }
+    } catch {
+      Write-Warning "Defender definition package failed: $($_.Exception.Message)"
+    }
+  }
   $report.signatureUpdate = $signatureUpdate
   for ($attempt = 0; $attempt -lt 12; $attempt++) {
     if ((Get-MpComputerStatus).RealTimeProtectionEnabled) { break }
