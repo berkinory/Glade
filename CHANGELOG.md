@@ -14,6 +14,7 @@
 - Scrolling over a visual in a live reply stops following the reply, like scrolling the transcript.
 - A named pipe in a project no longer freezes file previews or search.
 - A delayed Codex completion no longer makes the next running turn look finished.
+- Idle cleanup no longer stops a chat that just started working again.
 
 ## 0.2.6 - 2026-10-14
 

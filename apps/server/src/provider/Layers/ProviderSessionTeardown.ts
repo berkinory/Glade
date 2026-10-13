@@ -13,7 +13,7 @@ import {
 import { ProviderAdapterRegistry } from "../Services/ProviderAdapterRegistry.ts";
 import { type ProviderServiceShape } from "../Services/ProviderService.ts";
 import { Effect, Option } from "effect";
-import { hasResumeCursor } from "../core/providerRuntimeBinding";
+import { hasResumeCursor, runtimeActiveTurnId } from "../core/providerRuntimeBinding";
 import {
   decodeInputOrValidationError,
   ClearSessionResumeCursorInput,
@@ -158,8 +158,10 @@ export const ProviderSessionTeardownLive = Layer.effect(
         } else if (!isExpectedIdleStopCurrent()) {
           return;
         }
-        return yield* lifecycle.run(input.threadId, (lease) =>
-          Effect.gen(function* () {
+        const idleSince =
+          rawInput.onlyIfIdleSince === undefined ? undefined : Date.parse(rawInput.onlyIfIdleSince);
+        return yield* lifecycle.run(input.threadId, (lease) => {
+          const stop = Effect.gen(function* () {
             if (!isExpectedIdleStopCurrent()) {
               return;
             }
@@ -178,8 +180,33 @@ export const ProviderSessionTeardownLive = Layer.effect(
               const activeSession = activeSessions.find(
                 (session) => session.threadId === input.threadId,
               );
+              if (
+                idleSince !== undefined &&
+                (activeSession?.status === "connecting" ||
+                  activeSession?.status === "running" ||
+                  activeSession?.activeTurnId !== undefined)
+              ) {
+                return;
+              }
               if (activeSession?.resumeCursor !== undefined) {
                 resumeCursor = activeSession.resumeCursor;
+              }
+            }
+            if (idleSince !== undefined) {
+              // The sweep decided from a stale snapshot; only state read after the adapter probe,
+              // with new dispatch fenced, proves the session is still idle.
+              const current = Option.getOrUndefined(yield* directory.getBinding(input.threadId));
+              const lastSeen = Date.parse(current?.lastSeenAt ?? "");
+              if (
+                !current ||
+                !Number.isFinite(idleSince) ||
+                !Number.isFinite(lastSeen) ||
+                lastSeen > idleSince ||
+                runtimeActiveTurnId(current.runtimePayload) !== undefined ||
+                idle.hasLiveTasks(input.threadId) ||
+                bindings.hasTurnDispatchInFlight(input.threadId)
+              ) {
+                return;
               }
             }
 
@@ -218,12 +245,21 @@ export const ProviderSessionTeardownLive = Layer.effect(
             );
             lease.commit();
             idle.retireRuntimeIdleGeneration(input.threadId, expectedIdleGeneration);
-          }),
-        );
+          });
+          // Fenced only after taking the lifecycle lock: an explicit stop holding that lock may
+          // itself be waiting for an earlier idle stop to finish.
+          return idleSince !== undefined && expectedIdleGeneration !== undefined
+            ? idle.fenceIdleCleanup(input.threadId, expectedIdleGeneration, stop)
+            : stop;
+        });
       });
 
     const stopRuntimeSession: StopRuntimeSession = (rawInput) =>
-      stopRuntimeSessionInternal(rawInput);
+      rawInput.onlyIfIdleSince === undefined
+        ? stopRuntimeSessionInternal(rawInput)
+        : idle.runIdleSweepStop(rawInput.threadId, (generation) =>
+            stopRuntimeSessionInternal(rawInput, generation),
+          );
 
     const hasLiveRuntimeTasks: ProviderServiceShape["hasLiveRuntimeTasks"] = (input) =>
       Effect.sync(() => idle.hasLiveTasks(input.threadId));

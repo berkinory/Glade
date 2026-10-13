@@ -54,15 +54,20 @@ const makeProviderSessionReaper = (options?: ProviderSessionReaperLiveOptions) =
           .pipe(Effect.map(Option.getOrUndefined));
         if (thread?.session?.activeTurnId != null) continue;
 
-        yield* providerService.stopRuntimeSession({ threadId: binding.threadId }).pipe(
-          Effect.catchCause((cause) =>
-            Effect.logWarning("provider session reaper failed to stop stale session", {
-              threadId: binding.threadId,
-              provider: binding.provider,
-              cause: Cause.pretty(cause),
-            }),
-          ),
-        );
+        yield* providerService
+          .stopRuntimeSession({
+            threadId: binding.threadId,
+            onlyIfIdleSince: new Date(now - inactivityThresholdMs).toISOString(),
+          })
+          .pipe(
+            Effect.catchCause((cause) =>
+              Effect.logWarning("provider session reaper failed to stop stale session", {
+                threadId: binding.threadId,
+                provider: binding.provider,
+                cause: Cause.pretty(cause),
+              }),
+            ),
+          );
       }
     });
 

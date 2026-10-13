@@ -161,15 +161,18 @@ export function ProviderIdleRuntimeLive(runtimeIdleStopMs: number) {
                   : Effect.void,
               ),
             );
-          const existingIdleStop = runtimeIdleStopsInFlight.get(threadId);
           const displacedIdleStop =
-            existingIdleStop !== undefined || runtimeIdleTimers.has(threadId);
-          const waitForExistingIdleStop =
-            existingIdleStop !== undefined ? Effect.promise(() => existingIdleStop) : Effect.void;
+            runtimeIdleStopsInFlight.has(threadId) || runtimeIdleTimers.has(threadId);
+          // An idle stop can publish its fence while this waits. Claiming must happen in the same
+          // synchronous step that saw no fence, or the stop could revalidate before the work starts.
+          const claimIdleWork: Effect.Effect<void> = Effect.suspend(() => {
+            const stop = runtimeIdleStopsInFlight.get(threadId);
+            return stop
+              ? Effect.promise(() => stop).pipe(Effect.andThen(claimIdleWork))
+              : Effect.sync(() => clearRuntimeIdleTimer(threadId));
+          });
           return waitForInterruptionFence.pipe(
-            Effect.andThen(waitForExistingIdleStop),
-            Effect.tap(() => Effect.sync(() => clearRuntimeIdleTimer(threadId))),
-            Effect.flatMap(() => waitForRuntimeIdleStop(threadId)),
+            Effect.andThen(claimIdleWork),
             Effect.flatMap(() => effect),
             Effect.onExit((exit) =>
               Exit.isSuccess(exit)
@@ -182,6 +185,56 @@ export function ProviderIdleRuntimeLive(runtimeIdleStopMs: number) {
             ),
           );
         });
+
+      const runIdleSweepStop = <A, E, R>(
+        threadId: ThreadId,
+        stop: (generation: symbol) => Effect.Effect<A, E, R>,
+      ): Effect.Effect<A, E, R> =>
+        Effect.suspend(() => {
+          const inFlight = runtimeIdleStopsInFlight.get(threadId);
+          if (inFlight) {
+            return Effect.promise(() => inFlight).pipe(
+              Effect.andThen(runIdleSweepStop(threadId, stop)),
+            );
+          }
+          const displacedTimer = runtimeIdleTimers.has(threadId);
+          clearRuntimeIdleTimer(threadId);
+          const generation = runtimeIdleGenerations.get(threadId)!;
+          return stop(generation).pipe(
+            Effect.ensuring(
+              Effect.sync(() => {
+                if (displacedTimer && isRuntimeIdleGenerationCurrent(threadId, generation))
+                  scheduleRuntimeIdleStop(threadId);
+                else retireRuntimeIdleGeneration(threadId, generation);
+              }),
+            ),
+          );
+        });
+
+      const fenceIdleCleanup = <A, E, R>(
+        threadId: ThreadId,
+        generation: symbol,
+        effect: Effect.Effect<A, E, R>,
+      ): Effect.Effect<A, E, R> =>
+        Effect.acquireUseRelease(
+          Effect.sync(() => {
+            let release!: () => void;
+            const fence = new Promise<void>((resolve) => {
+              release = resolve;
+            });
+            runtimeIdleStopsInFlight.set(threadId, fence);
+            // The stop's own session.exited must not invalidate the generation it is retiring.
+            runtimeIdleCleanupGenerations.set(threadId, generation);
+            return { fence, release };
+          }),
+          () => effect,
+          ({ fence, release }) =>
+            Effect.sync(() => {
+              if (runtimeIdleStopsInFlight.get(threadId) === fence)
+                runtimeIdleStopsInFlight.delete(threadId);
+              release();
+            }),
+        );
 
       const reconcileRuntimeIdleTimer = (event: ProviderRuntimeEvent) => {
         if (isNativeChildRuntimeEvent(event)) {
@@ -364,6 +417,8 @@ export function ProviderIdleRuntimeLive(runtimeIdleStopMs: number) {
       return {
         clearRuntimeIdleTimer,
         runIdleSensitiveProviderWork,
+        runIdleSweepStop,
+        fenceIdleCleanup,
         reconcileRuntimeIdleTimer,
         waitForLiveRuntimeTasksToSettle,
         waitForRuntimeIdleStop,

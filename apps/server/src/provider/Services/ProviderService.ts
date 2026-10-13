@@ -121,6 +121,9 @@ export interface ProviderServiceShape {
 
   readonly stopRuntimeSession: (input: {
     readonly threadId: ThreadId;
+    // Idle cleanup: stop only if nothing has used the session since this time, rechecked under
+    // the lifecycle lock.
+    readonly onlyIfIdleSince?: string;
   }) => Effect.Effect<void, ProviderServiceError>;
 
   /**

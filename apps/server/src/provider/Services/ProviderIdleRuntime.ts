@@ -20,6 +20,18 @@ interface ProviderIdleRuntimeShape {
     effect: Effect.Effect<A, E, R>,
     options?: { readonly scheduleIdleStopOnSuccess?: boolean },
   ) => Effect.Effect<A, E | ProviderValidationError, R>;
+  // Claims idle ownership for a sweep's stop. The stop sees `generation` invalidated by any work
+  // that claims the runtime meanwhile; a rejected sweep restores the timer it displaced.
+  readonly runIdleSweepStop: <A, E, R>(
+    threadId: ThreadId,
+    stop: (generation: symbol) => Effect.Effect<A, E, R>,
+  ) => Effect.Effect<A, E, R>;
+  // Holds new idle-sensitive work back while an idle stop revalidates and tears down.
+  readonly fenceIdleCleanup: <A, E, R>(
+    threadId: ThreadId,
+    generation: symbol,
+    effect: Effect.Effect<A, E, R>,
+  ) => Effect.Effect<A, E, R>;
   readonly reconcileRuntimeIdleTimer: (event: ProviderRuntimeEvent) => void;
   readonly waitForLiveRuntimeTasksToSettle: (threadId: ThreadId) => Effect.Effect<void>;
   readonly waitForRuntimeIdleStop: (threadId: ThreadId) => Effect.Effect<void>;

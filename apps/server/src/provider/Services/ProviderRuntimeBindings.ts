@@ -29,6 +29,7 @@ interface ProviderRuntimeBindingsShape {
     threadId: ThreadId,
     dispatch: (generation: number) => Effect.Effect<A, E, R>,
   ) => Effect.Effect<A, E | ProviderValidationError, R>;
+  readonly hasTurnDispatchInFlight: (threadId: ThreadId) => boolean;
   readonly persistDispatchedTurn: (
     input: StartedTurnPersistenceInput,
   ) => Effect.Effect<void, ProviderSessionDirectoryWriteError>;

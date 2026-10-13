@@ -554,6 +554,8 @@ export const ProviderRuntimeBindingsLive = Layer.effect(
       withBindingWriteLock,
       upsertSessionBinding,
       runTurnDispatch,
+      hasTurnDispatchInFlight: (threadId: ThreadId) =>
+        (dispatchStateByThread.get(threadId)?.inFlightGenerations.size ?? 0) > 0,
       persistDispatchedTurn: (input: StartedTurnPersistenceInput) => {
         rememberSuccessfulTurnDispatch(input);
         return persistStartedTurn(input);

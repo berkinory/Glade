@@ -1,4 +1,4 @@
-import { Effect, Option } from "effect";
+import { Deferred, Effect, Fiber, Option } from "effect";
 import { ProviderService } from "../Services/ProviderService.ts";
 import { ProviderSessionDirectory } from "../Services/ProviderSessionDirectory.ts";
 import { ProviderAdapterProcessError } from "../core/Errors.ts";
@@ -123,6 +123,38 @@ idleCleanup.layer("ProviderServiceLive idle cleanup", (it) => {
       yield* sleep(1_100);
       assert.equal(idleCleanup.codex.stopSession.mock.calls.length, 1);
       assert.isTrue(yield* idleCleanup.codex.adapter.hasSession(threadId));
+      yield* provider.stopSession({ threadId });
+    }),
+  );
+
+  it.effect("an idle sweep does not stop a session whose turn is being dispatched", () =>
+    Effect.gen(function* () {
+      const provider = yield* ProviderService;
+      const threadId = asThreadId("thread-idle-sweep-dispatch");
+      yield* provider.startSession(threadId, {
+        provider: "codex",
+        threadId,
+        runtimeMode: "full-access",
+      });
+      const releaseSend = yield* Deferred.make<void>();
+      const originalSend = idleCleanup.codex.sendTurn.getMockImplementation()!;
+      const sendsBefore = idleCleanup.codex.sendTurn.mock.calls.length;
+      idleCleanup.codex.sendTurn.mockImplementationOnce((input) =>
+        Deferred.await(releaseSend).pipe(Effect.andThen(originalSend(input))),
+      );
+      const turn = yield* provider.sendTurn({ threadId, input: "new work" }).pipe(Effect.forkChild);
+      yield* waitUntil(() => idleCleanup.codex.sendTurn.mock.calls.length === sendsBefore + 1);
+      idleCleanup.codex.stopSession.mockClear();
+
+      if (!provider.stopRuntimeSession) assert.fail("Expected stopRuntimeSession");
+      yield* provider.stopRuntimeSession({
+        threadId,
+        onlyIfIdleSince: new Date().toISOString(),
+      });
+
+      assert.equal(idleCleanup.codex.stopSession.mock.calls.length, 0);
+      yield* Deferred.succeed(releaseSend, undefined);
+      yield* Fiber.join(turn);
       yield* provider.stopSession({ threadId });
     }),
   );
