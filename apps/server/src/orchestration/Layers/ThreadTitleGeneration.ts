@@ -2,10 +2,9 @@ import { ServerSettingsService } from "../../settings/serverSettings";
 import { providerStartOptionsFromServerSettings } from "../../settings/settingsPatches";
 import { toJsonSchemaObject } from "../../git/textGenerationShared";
 import { Effect, FileSystem, Layer, Schema, Semaphore } from "effect";
-import type { ModelSelection } from "@glade/contracts/provider/sessionPolicy";
 import { ThreadTitleGeneration } from "../Services/ThreadTitleGeneration";
 import type { ThreadTitleGenerationInput } from "../Services/ThreadTitleGeneration";
-import { CodexAdapter } from "../../provider/Services/CodexAdapter";
+import { ProviderAdapterRegistry } from "../../provider/Services/ProviderAdapterRegistry";
 import { TextGenerationError } from "../../git/Errors";
 import {
   buildThreadTitlePrompt,
@@ -14,11 +13,9 @@ import {
   THREAD_TITLE_INSTRUCTIONS,
 } from "../threadTitlePrompt";
 import { ProviderDiscoveryService } from "../../provider/Services/ProviderDiscoveryService";
-import { buildClaudeProcessEnv } from "../../provider/claude/claudeProcessEnv";
-import { runProcess } from "../../platform/processRunner";
 
 const make = Effect.gen(function* () {
-  const codex = yield* CodexAdapter;
+  const registry = yield* ProviderAdapterRegistry;
   const discovery = yield* ProviderDiscoveryService;
   const fs = yield* FileSystem.FileSystem;
   const settings = yield* ServerSettingsService;
@@ -48,15 +45,12 @@ const make = Effect.gen(function* () {
         ),
         Effect.map(providerStartOptionsFromServerSettings),
       );
-      const providerOptions = {
-        codex: { ...defaults.codex, ...input.providerOptions?.codex },
-        claudeAgent: { ...defaults.claudeAgent, ...input.providerOptions?.claudeAgent },
-      };
-      const startup = providerOptions[provider];
+      const binaryPath =
+        input.providerOptions?.[provider]?.binaryPath ?? defaults[provider]?.binaryPath;
       const catalog = yield* discovery
         .listModels({
           provider,
-          ...(startup?.binaryPath ? { binaryPath: startup.binaryPath } : {}),
+          ...(binaryPath ? { binaryPath } : {}),
         })
         .pipe(
           Effect.mapError(
@@ -73,8 +67,24 @@ const make = Effect.gen(function* () {
           operation: "generateThreadTitle",
           detail: "Title provider is disabled in Settings.",
         });
-      const preferredModel = provider === "codex" ? "gpt-6-luna" : "claude-sonnet-5-5";
-      const select = (model: string): ModelSelection => {
+      const adapter = yield* registry.getByProvider(provider).pipe(
+        Effect.mapError(
+          (cause) =>
+            new TextGenerationError({
+              operation: "generateThreadTitle",
+              detail: cause.message,
+              cause,
+            }),
+        ),
+      );
+      const titleGeneration = adapter.titleGeneration;
+      if (!titleGeneration)
+        return yield* new TextGenerationError({
+          operation: "generateThreadTitle",
+          detail: "This provider cannot generate conversation titles.",
+        });
+      const preferredModel = titleGeneration.preferredModel;
+      const effortFor = (model: string) => {
         const descriptor = catalog.models.find(
           (entry) => entry.slug === model || entry.resolvedModel === model,
         );
@@ -84,132 +94,51 @@ const make = Effect.gen(function* () {
         const efforts =
           descriptor?.supportedReasoningEfforts?.map((entry) => entry.value) ??
           (effortOption?.type === "select" ? effortOption.options.map((option) => option.id) : []);
-        const effort = ["minimal", "low", "medium", "high", "xhigh", "max", "ultra"].find((value) =>
+        return ["minimal", "low", "medium", "high", "xhigh", "max", "ultra"].find((value) =>
           efforts.includes(value),
         );
-        return provider === "codex"
-          ? { provider, model, ...(effort ? { options: { reasoningEffort: effort } } : {}) }
-          : { provider, model, ...(effort ? { options: { effort } } : {}) };
       };
-      const attempt = (selection: ModelSelection) => {
-        if (selection.provider === "codex")
-          return codex
-            .generateThreadTitle({
-              threadId: input.threadId,
-              cwd,
-              model: selection.model,
-              ...(selection.options?.reasoningEffort
-                ? { effort: selection.options.reasoningEffort }
-                : {}),
-              instructions: THREAD_TITLE_INSTRUCTIONS,
-              prompt: buildThreadTitlePrompt(input.message),
-              outputSchema: toJsonSchemaObject(ThreadTitleOutput),
-            })
-            .pipe(
-              Effect.flatMap(Schema.decodeUnknownEffect(Schema.fromJsonString(ThreadTitleOutput))),
-              Effect.map((result) => result.title),
-              Effect.mapError(
-                (cause) =>
-                  new TextGenerationError({
-                    operation: "generateThreadTitle",
-                    detail: cause.message,
-                    cause,
-                  }),
-              ),
-            );
-        return Effect.gen(function* () {
-          const result = yield* Effect.tryPromise({
-            try: (signal) =>
-              runProcess(
-                startup?.binaryPath ?? "claude",
-                [
-                  "--print",
-                  "--output-format",
-                  "json",
-                  "--model",
-                  selection.model,
-                  ...(selection.options?.effort ? ["--effort", selection.options.effort] : []),
-                  "--tools",
-                  "",
-                  "--disable-slash-commands",
-                  "--strict-mcp-config",
-                  "--mcp-config",
-                  '{"mcpServers":{}}',
-                  "--setting-sources",
-                  "",
-                  "--settings",
-                  '{"disableAllHooks":true,"claudeMdExcludes":["**/*"]}',
-                  "--no-session-persistence",
-                  "--system-prompt",
-                  THREAD_TITLE_INSTRUCTIONS,
-                  "--json-schema",
-                  JSON.stringify(toJsonSchemaObject(ThreadTitleOutput)),
-                ],
-                {
-                  cwd,
-                  stdin: buildThreadTitlePrompt(input.message),
-                  env: buildClaudeProcessEnv(),
-                  signal,
-                  allowNonZeroExit: true,
-                  timeoutMs: 45_000,
-                  maxBufferBytes: 256_000,
-                },
-              ),
-            catch: (cause) =>
-              new TextGenerationError({
-                operation: "generateThreadTitle",
-                detail: cause instanceof Error ? cause.message : "Claude title generation failed.",
-                cause,
-              }),
-          });
-          if (!result.stdout.trim())
-            return yield* new TextGenerationError({
-              operation: "generateThreadTitle",
-              detail: result.stderr.trim() || "Claude title generation failed.",
-            });
-          const decoded = yield* Schema.decodeUnknownEffect(
-            Schema.fromJsonString(
-              Schema.Struct({
-                structured_output: Schema.optional(ThreadTitleOutput),
-                is_error: Schema.optional(Schema.Boolean),
-                errors: Schema.optional(Schema.Array(Schema.String)),
-                result: Schema.optional(Schema.String),
-              }),
-            ),
-          )(result.stdout).pipe(
+      const attempt = (model: string) => {
+        const effort = effortFor(model);
+        return titleGeneration
+          .generate({
+            threadId: input.threadId,
+            cwd,
+            model,
+            ...(effort ? { effort } : {}),
+            ...(binaryPath ? { binaryPath } : {}),
+            instructions: THREAD_TITLE_INSTRUCTIONS,
+            prompt: buildThreadTitlePrompt(input.message),
+            outputSchema: toJsonSchemaObject(ThreadTitleOutput),
+          })
+          .pipe(
+            Effect.flatMap(Schema.decodeUnknownEffect(ThreadTitleOutput)),
+            Effect.map((result) => result.title),
             Effect.mapError(
               (cause) =>
                 new TextGenerationError({
                   operation: "generateThreadTitle",
-                  detail: "Claude did not return a valid title.",
+                  detail: cause.message,
                   cause,
                 }),
             ),
           );
-          if (result.code !== 0 || decoded.is_error || !decoded.structured_output)
-            return yield* new TextGenerationError({
-              operation: "generateThreadTitle",
-              detail:
-                decoded.errors?.join("\n") ||
-                decoded.result ||
-                result.stderr.trim() ||
-                "Claude did not return a title.",
-            });
-          return decoded.structured_output.title;
-        });
       };
-      const preferredAvailable = catalog.models.some(
-        (entry) => entry.slug === preferredModel || entry.resolvedModel === preferredModel,
-      );
-      const selectedModel = preferredAvailable ? preferredModel : input.modelSelection.model;
-      const raw = yield* attempt(select(selectedModel)).pipe(
+      const selectedModel =
+        preferredModel !== undefined &&
+        catalog.models.some(
+          (entry) => entry.slug === preferredModel || entry.resolvedModel === preferredModel,
+        )
+          ? preferredModel
+          : input.modelSelection.model;
+      const raw = yield* attempt(selectedModel).pipe(
         Effect.catch((error) => {
           const unavailable =
             /(?:unrecognized_model|model_not_found|invalid_model|model[^\n]*(?:not found|not available|not supported|unavailable|does not exist|access|permission)|(?:access|permission)[^\n]*model)/i.test(
               error.detail,
             );
           return selectedModel !== input.modelSelection.model && unavailable
-            ? attempt(select(input.modelSelection.model))
+            ? attempt(input.modelSelection.model)
             : Effect.fail(error);
         }),
       );

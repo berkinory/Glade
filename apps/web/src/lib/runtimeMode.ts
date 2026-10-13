@@ -3,8 +3,8 @@ import type { ProviderModelDescriptor } from "@glade/contracts/provider/provider
 import type { RuntimeMode } from "@glade/contracts/provider/sessionPolicy";
 import type { ServerProviderStatus } from "@glade/contracts/server/server";
 import {
+  modelSupportsAutoRuntimeMode,
   normalizeRuntimeModeForProvider,
-  providerSupportsAutoRuntimeMode,
 } from "@glade/shared/threads/runtimeMode";
 
 export { normalizeRuntimeModeForProvider };
@@ -14,12 +14,9 @@ export function providerModelSupportsAutoRuntimeMode(
   runtimeModel?: ProviderModelDescriptor,
   providerStatus?: ServerProviderStatus | null,
 ): boolean {
-  if (!providerSupportsAutoRuntimeMode(provider)) {
-    return false;
-  }
   return (
     providerStatus?.supportsAutoRuntimeMode === true &&
-    (provider !== "claudeAgent" || runtimeModel?.supportsAutoMode === true)
+    modelSupportsAutoRuntimeMode(provider, runtimeModel?.supportsAutoMode)
   );
 }
 

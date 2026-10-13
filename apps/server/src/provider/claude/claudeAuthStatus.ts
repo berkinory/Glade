@@ -9,7 +9,11 @@ import type {
   ServerProviderStatusState,
 } from "@glade/contracts/server/server";
 
+import { asNonEmptyString } from "@glade/shared/text/text";
+import { asRecord } from "@glade/shared/transport/payloadValues";
+import { Option, Result } from "effect";
 import {
+  decodeUnknownJson,
   detailFromResult,
   extractAuthBoolean,
   toTitleCaseWords,
@@ -170,4 +174,32 @@ export function claudeAuthMetadata(input: {
     };
   }
   return undefined;
+}
+
+const AUTH_METHOD_KEYS = ["authMethod", "auth_method"] as const;
+const AUTH_METHOD_CONTAINER_KEYS = ["auth", "account", "session"] as const;
+
+function findAuthMethodDeep(value: unknown): Option.Option<string> {
+  if (Array.isArray(value)) {
+    return Option.firstSomeOf(value.map(findAuthMethodDeep));
+  }
+  return Option.fromNullishOr(asRecord(value)).pipe(
+    Option.flatMap((record) => {
+      const direct = Option.firstSomeOf(
+        AUTH_METHOD_KEYS.map((key) => Option.fromNullishOr(asNonEmptyString(record[key]))),
+      );
+      if (Option.isSome(direct)) return direct;
+      return Option.firstSomeOf(
+        AUTH_METHOD_CONTAINER_KEYS.map((key) =>
+          Option.fromNullishOr(asRecord(record[key])).pipe(Option.flatMap(findAuthMethodDeep)),
+        ),
+      );
+    }),
+  );
+}
+
+export function extractClaudeAuthMethodFromOutput(result: CommandResult): string | undefined {
+  const parsed = decodeUnknownJson(result.stdout.trim());
+  if (Result.isFailure(parsed)) return undefined;
+  return Option.getOrUndefined(findAuthMethodDeep(parsed.success));
 }

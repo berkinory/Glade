@@ -221,6 +221,7 @@ describe("Claude processLifecycle", () => {
       if (turnCompleted?.type === "turn.completed") {
         assert.equal(String(turnCompleted.turnId), String(turn.turnId));
         assert.equal(turnCompleted.payload.state, "failed");
+        assert.equal(turnCompleted.payload.failureReason, "stale-resume");
         assert.equal(turnCompleted.providerRefs?.providerThreadId, undefined);
       }
       assert.equal(yield* adapter.hasSession(THREAD_ID), false);

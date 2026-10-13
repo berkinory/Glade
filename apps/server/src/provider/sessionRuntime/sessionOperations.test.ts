@@ -371,6 +371,29 @@ routing.layer("Provider service sessionOperations", (it) => {
       }
     }),
   );
+
+  it.effect("starts fresh from Glade's transcript after a rewind ends the native session", () =>
+    Effect.gen(function* () {
+      const provider = yield* ProviderService;
+      const threadId = asThreadId("thread-transcript-rewind");
+      const startInput = {
+        provider: "codex",
+        threadId,
+        cwd: "/tmp/project",
+        runtimeMode: "full-access",
+      } as const;
+      yield* provider.startSession(threadId, startInput);
+      routing.codex.rollbackThread.mockImplementationOnce((id) =>
+        routing.codex.stopSession(id).pipe(Effect.as({ threadId: id, turns: [] as const })),
+      );
+
+      yield* provider.rollbackConversation({ threadId, numTurns: 1 });
+      const restarted = yield* provider.startSessionWithOutcome!(threadId, startInput);
+
+      assert.equal(routing.codex.startSession.mock.calls.at(-1)?.[0].resumeCursor, undefined);
+      assert.equal(restarted.priorTranscriptBootstrapPending, true);
+    }),
+  );
 });
 
 const liveFallback = makeProviderServiceLayer();

@@ -87,9 +87,38 @@ export interface ProviderThreadSnapshot {
   readonly cwd?: string | null;
 }
 
+export interface ProviderStructuredRequestInput {
+  readonly cwd: string;
+  // Omitted to run on the provider's current model.
+  readonly model?: string;
+  readonly effort?: string;
+  readonly binaryPath?: string;
+  readonly instructions: string;
+  readonly prompt: string;
+  readonly outputSchema: unknown;
+}
+
+interface ProviderThreadTitleInput extends ProviderStructuredRequestInput {
+  readonly threadId: ThreadId;
+  readonly model: string;
+}
+
+export interface ProviderTitleGeneration<TError> {
+  // Used when the provider's model catalog offers it; otherwise the thread's own model.
+  readonly preferredModel?: string;
+  // Runs one isolated, tool-free request and returns its structured output.
+  readonly generate: (input: ProviderThreadTitleInput) => Effect.Effect<unknown, TError>;
+}
+
 export interface ProviderAdapterShape<TError> {
   readonly provider: ProviderKind;
   readonly capabilities: ProviderAdapterCapabilities;
+  readonly titleGeneration?: ProviderTitleGeneration<TError>;
+  // One isolated, tool-free request returning structured output; Git writing runs on it for
+  // providers without their own Git text generation.
+  readonly structuredRequest?: (
+    input: ProviderStructuredRequestInput,
+  ) => Effect.Effect<unknown, TError>;
   readonly listMcpServers?: (
     input: ProviderManagementContext,
   ) => Effect.Effect<ProviderListMcpServersResult, TError>;
@@ -172,6 +201,8 @@ export interface ProviderAdapterShape<TError> {
 
   readonly readThread: (threadId: ThreadId) => Effect.Effect<ProviderThreadSnapshot, TError>;
 
+  // An adapter that cannot trim its native conversation ends the session instead; the next turn then
+  // starts fresh from Glade's trimmed transcript.
   readonly rollbackThread: (threadId: ThreadId, numTurns: number) => Effect.Effect<void, TError>;
 
   readonly compactThread?: (

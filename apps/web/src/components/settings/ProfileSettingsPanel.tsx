@@ -24,11 +24,11 @@ import { useProfileName } from "../profile/useProfileName";
 import { useProfileAvatarColor } from "../profile/useProfileAvatarColor";
 import { useProfileAvatarImage } from "../profile/useProfileAvatarImage";
 import { ProfileAvatar } from "../profile/ProfileAvatar";
+import { PROVIDER_DISPLAY_NAMES } from "@glade/contracts/provider/model";
 import {
   formatCompact,
   formatDays,
   formatNumber,
-  formatProviderLabel,
   formatProfileUsageBasis,
   toDisplayName,
 } from "../profile/profileFormatting";
@@ -172,7 +172,7 @@ function ProfileContent({
               label="Most used provider"
               value={
                 topProvider.provider
-                  ? `${formatProviderLabel(topProvider.provider)}${topProvider.percent !== null ? ` · ${topProvider.percent}% of ${formatProfileUsageBasis(topProvider.metric)}` : ""}`
+                  ? `${PROVIDER_DISPLAY_NAMES[topProvider.provider]}${topProvider.percent !== null ? ` · ${topProvider.percent}% of ${formatProfileUsageBasis(topProvider.metric)}` : ""}`
                   : "—"
               }
             />
@@ -349,7 +349,7 @@ function ModelUsageRow({
           )}
           <span className="truncate">
             {model === "unknown"
-              ? `Unknown model (${provider === "unknown" ? "unknown provider" : formatProviderLabel(provider)})`
+              ? `Unknown model (${provider === "unknown" ? "unknown provider" : PROVIDER_DISPLAY_NAMES[provider]})`
               : model}
           </span>
         </span>

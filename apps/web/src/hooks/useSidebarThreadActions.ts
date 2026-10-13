@@ -444,7 +444,7 @@ export function useSidebarThreadActions(input: {
       const api = readNativeApi();
       const confirmationMessage = [
         `Delete thread "${thread.title}"?`,
-        "This permanently clears this conversation and deletes its Codex or Claude session history.",
+        "This permanently clears this conversation and deletes its provider session history where the provider allows it.",
       ].join("\n");
       const confirmed = api
         ? await api.dialogs.confirm(confirmationMessage)

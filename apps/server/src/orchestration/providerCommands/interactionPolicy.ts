@@ -47,25 +47,6 @@ export function isUnknownPendingUserInputRequestError(
   return Cause.pretty(cause).toLowerCase().includes("unknown pending user-input request");
 }
 
-function isClaudeContextWindowUserInputRejection(error: ProviderServiceError): boolean {
-  if (
-    error._tag !== "ProviderAdapterRequestError" ||
-    error.provider !== "claudeAgent" ||
-    error.method !== "item/tool/respondToUserInput"
-  ) {
-    return false;
-  }
-  const detail = error.detail.toLowerCase();
-  return (
-    detail.includes("context window") ||
-    detail.includes("context limit") ||
-    detail.includes("context length") ||
-    detail.includes("context_length_exceeded") ||
-    detail.includes("prompt is too long") ||
-    detail.includes("input_length and max_tokens")
-  );
-}
-
 export function interactionFailureSettlementStatus(
   cause: Cause.Cause<ProviderServiceError>,
   isUnknownPendingRequest: boolean,
@@ -74,9 +55,8 @@ export function interactionFailureSettlementStatus(
     onNone: () => "uncertain" as const,
     onSome: (error) => {
       if (
-        (error._tag === "ProviderAdapterRequestError" &&
-          error.method === "permission.reply.acknowledge") ||
-        isClaudeContextWindowUserInputRejection(error)
+        error._tag === "ProviderAdapterRequestError" &&
+        error.method === "permission.reply.acknowledge"
       ) {
         return "retryable" as const;
       }
@@ -89,14 +69,8 @@ export function interactionFailureSettlementStatus(
   });
 }
 
-export function isStaleClaudeResumeError(error: unknown): boolean {
-  if (Schema.is(ProviderAdapterRequestError)(error)) {
-    return (
-      error.provider === "claudeAgent" &&
-      error.detail.toLowerCase().includes("no conversation found with session id")
-    );
-  }
-  return String(error).toLowerCase().includes("no conversation found with session id");
+export function isStaleResumeError(error: unknown): boolean {
+  return Schema.is(ProviderAdapterRequestError)(error) && error.reason === "stale-resume";
 }
 
 export function isRollbackStillInProgressError(error: unknown): boolean {

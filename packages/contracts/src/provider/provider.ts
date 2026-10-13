@@ -83,9 +83,11 @@ export type ProviderSendTurnInput = typeof ProviderSendTurnInput.Type;
 export const ProviderSteerTurnInput = ProviderSendTurnInput;
 export type ProviderSteerTurnInput = typeof ProviderSteerTurnInput.Type;
 
+// A fork boundary is either the native turn that produced a message or the native message itself,
+// depending on the provider's fork capability.
 export const ProviderForkPoint = Schema.Union([
-  Schema.Struct({ provider: Schema.Literal("codex"), turnId: TurnId }),
-  Schema.Struct({ provider: Schema.Literal("claudeAgent"), messageId: TrimmedNonEmptyString }),
+  Schema.Struct({ provider: ProviderKind, turnId: TurnId }),
+  Schema.Struct({ provider: ProviderKind, messageId: TrimmedNonEmptyString }),
 ]);
 export type ProviderForkPoint = typeof ProviderForkPoint.Type;
 

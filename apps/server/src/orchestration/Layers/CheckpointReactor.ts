@@ -54,6 +54,7 @@ import { isGitRepository } from "../../git/isRepo.ts";
 import { resolveProviderSessionThread } from "../providerSessionThread.ts";
 import { hasPeerTurnInCheckout, providerSessionHasInFlightTurn } from "../checkoutPeerActivity.ts";
 import { CHECKPOINT_BASELINE_SKIPPED_ACTIVITY_KIND } from "../providerCommands/preTurnBaseline.ts";
+import { isPromptTurnCompaction } from "../compactionPolicy.ts";
 
 type ReactorInput =
   | {
@@ -291,11 +292,14 @@ const make = Effect.gen(function* () {
   const appendBaselineUnavailableActivity = Effect.fnUntraced(function* (input: {
     readonly threadId: ThreadId;
     readonly turnId: TurnId;
-    readonly thread: Pick<OrchestrationThread, "activities">;
+    readonly thread: Pick<OrchestrationThread, "activities" | "messages" | "modelSelection">;
     readonly createdAt: string;
   }) {
     const messageId = yield* persistedTurnMessageId(input.threadId, input.turnId);
     if (messageId === undefined) return;
+    // A native compaction turn changes no files, so it has no snapshot to miss.
+    const message = input.thread.messages.find((entry) => entry.id === messageId);
+    if (isPromptTurnCompaction(input.thread.modelSelection.provider, message?.text)) return;
     if (
       input.thread.activities.some(
         (activity) =>
@@ -416,7 +420,7 @@ const make = Effect.gen(function* () {
   const captureAndDispatchCheckpoint = Effect.fnUntraced(function* (input: {
     readonly threadId: ThreadId;
     readonly turnId: TurnId;
-    readonly thread: Pick<OrchestrationThread, "messages" | "activities">;
+    readonly thread: Pick<OrchestrationThread, "messages" | "activities" | "modelSelection">;
     readonly cwd: string;
     readonly turnCount: number;
     readonly status: "ready" | "missing" | "error";

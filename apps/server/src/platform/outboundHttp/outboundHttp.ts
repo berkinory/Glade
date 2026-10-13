@@ -13,7 +13,7 @@ import {
   isFakeIpDnsAddress,
   normalizeOutboundOrigin,
   stripOutboundSensitiveHeaders,
-} from "./outboundHttpPolicy";
+} from "./outboundHttpPolicy.ts";
 
 export type OutboundHttpErrorCode =
   | "aborted"
@@ -39,7 +39,7 @@ export class OutboundHttpError extends Error {
   }
 }
 
-export interface OutboundHttpPolicy {
+interface OutboundHttpPolicy {
   readonly service: string;
   readonly allowedOrigins: ReadonlyArray<string>;
   readonly timeoutMs: number;
@@ -56,7 +56,7 @@ export interface OutboundHttpPolicy {
   readonly allowFakeIpDnsAddresses?: boolean;
 }
 
-export interface OutboundHttpRequest {
+interface OutboundHttpRequest {
   readonly policy: OutboundHttpPolicy;
   readonly url: string | URL;
   readonly method?: "GET" | "HEAD" | "POST" | "PUT" | "PATCH" | "DELETE";
@@ -262,13 +262,20 @@ function requestHeaders(headers: Headers): Record<string, string> {
   return result;
 }
 
-async function resolvePinnedAddress(
+interface PinnedAddress {
+  readonly address: string;
+  readonly family: 4 | 6;
+}
+
+type PinnedAddresses = readonly [PinnedAddress, ...PinnedAddress[]];
+
+async function resolvePinnedAddresses(
   url: URL,
   requirePublicAddress: boolean,
   allowLoopbackHttp: boolean,
   allowFakeIpDnsAddresses: boolean,
   signal: AbortSignal,
-): Promise<{ readonly address: string; readonly family: 4 | 6 }> {
+): Promise<PinnedAddresses> {
   if (signal.aborted) throw abortedError(signal.reason);
   const hostname =
     url.hostname.startsWith("[") && url.hostname.endsWith("]")
@@ -285,10 +292,10 @@ async function resolvePinnedAddress(
   const literalFamily = Net.isIP(hostname);
   if (literalFamily === 4 || literalFamily === 6) {
     assertAddressAllowed(hostname);
-    return { address: hostname, family: literalFamily };
+    return [{ address: hostname, family: literalFamily }];
   }
 
-  let addresses: ReadonlyArray<{ readonly address: string; readonly family: 4 | 6 }>;
+  let addresses: ReadonlyArray<PinnedAddress>;
   try {
     addresses = (await Promise.race([
       Dns.lookup(hostname, { all: true, verbatim: true }),
@@ -297,24 +304,22 @@ async function resolvePinnedAddress(
           once: true,
         });
       }),
-    ])) as ReadonlyArray<{ readonly address: string; readonly family: 4 | 6 }>;
+    ])) as ReadonlyArray<PinnedAddress>;
   } catch (cause) {
     if (cause instanceof OutboundHttpError) throw cause;
     throw new OutboundHttpError("dns", "Outbound destination DNS lookup failed.", cause);
   }
-  if (addresses.length === 0) {
-    throw new OutboundHttpError("dns", "Outbound destination DNS lookup returned no addresses.");
-  }
   for (const result of addresses) assertAddressAllowed(result.address);
-  const selected = addresses[0];
-  if (!selected) {
+  const [first, ...rest] = addresses;
+  if (!first) {
     throw new OutboundHttpError("dns", "Outbound destination DNS lookup returned no addresses.");
   }
-  return selected;
+  return [first, ...rest];
 }
 
+// Every address was validated, so Happy Eyeballs may fall back from an unreachable IPv6 route.
 export function invokePinnedDnsLookup(
-  pinned: { readonly address: string; readonly family: 4 | 6 },
+  pinned: PinnedAddresses,
   options: { readonly all?: boolean | undefined } | undefined,
 
   callback: (
@@ -326,10 +331,10 @@ export function invokePinnedDnsLookup(
   // Socket setup must attach its error listeners before lookup completion can fail TLS.
   queueMicrotask(() => {
     if (options?.all) {
-      callback(null, [{ address: pinned.address, family: pinned.family }]);
+      callback(null, [...pinned]);
       return;
     }
-    callback(null, pinned.address, pinned.family);
+    callback(null, pinned[0].address, pinned[0].family);
   });
 }
 
@@ -344,7 +349,7 @@ async function requestHop(input: {
   readonly allowFakeIpDnsAddresses: boolean;
   readonly signal: AbortSignal;
 }): Promise<OutboundHttpResponse> {
-  const pinned = await resolvePinnedAddress(
+  const pinned = await resolvePinnedAddresses(
     input.url,
     input.requirePublicAddress,
     input.allowLoopbackHttp,
@@ -361,31 +366,48 @@ async function requestHop(input: {
       else resolve(result);
     };
     const transport = input.url.protocol === "https:" ? Https : Http;
-    const request = transport.request(
-      input.url,
-      {
-        method: input.method,
-        headers: requestHeaders(input.headers),
-        signal: input.signal,
-        lookup: (_hostname, options, callback) => {
-          invokePinnedDnsLookup(pinned, options, callback);
-        },
+    // The HTTP option types omit Happy Eyeballs, but these options reach net.connect.
+    const options: Https.RequestOptions & Pick<Net.TcpNetConnectOpts, "autoSelectFamily"> = {
+      method: input.method,
+      headers: requestHeaders(input.headers),
+      signal: input.signal,
+      autoSelectFamily: true,
+      lookup: (_hostname, lookupOptions, callback) => {
+        invokePinnedDnsLookup(pinned, lookupOptions, callback);
       },
-      (response) => {
-        const headers = responseHeaders(response.headers);
-        const encoding = headers.get("content-encoding")?.trim().toLowerCase();
-        if (encoding && encoding !== "identity") {
-          response.destroy();
-          settle(
-            new OutboundHttpError(
-              "compressed-response",
-              "Compressed outbound responses are rejected so byte limits remain exact.",
-            ),
-          );
-          return;
-        }
-        const declaredLength = Number(headers.get("content-length"));
-        if (Number.isFinite(declaredLength) && declaredLength > input.maxResponseBytes) {
+    };
+    const request = transport.request(input.url, options, (response) => {
+      const headers = responseHeaders(response.headers);
+      const encoding = headers.get("content-encoding")?.trim().toLowerCase();
+      if (encoding && encoding !== "identity") {
+        response.destroy();
+        settle(
+          new OutboundHttpError(
+            "compressed-response",
+            "Compressed outbound responses are rejected so byte limits remain exact.",
+          ),
+        );
+        return;
+      }
+      const declaredLength = Number(headers.get("content-length"));
+      if (Number.isFinite(declaredLength) && declaredLength > input.maxResponseBytes) {
+        response.destroy();
+        settle(
+          new OutboundHttpError(
+            "response-too-large",
+            `Outbound response exceeded the ${input.maxResponseBytes}-byte limit.`,
+          ),
+        );
+        return;
+      }
+
+      const chunks: Uint8Array[] = [];
+      let size = 0;
+      response.on("data", (chunk: Buffer | Uint8Array | string) => {
+        const bytes =
+          typeof chunk === "string" ? new TextEncoder().encode(chunk) : new Uint8Array(chunk);
+        size += bytes.byteLength;
+        if (size > input.maxResponseBytes) {
           response.destroy();
           settle(
             new OutboundHttpError(
@@ -395,45 +417,27 @@ async function requestHop(input: {
           );
           return;
         }
+        chunks.push(bytes);
+      });
+      response.once("end", () => {
+        const body = new Uint8Array(size);
+        let offset = 0;
+        for (const chunk of chunks) {
+          body.set(chunk, offset);
+          offset += chunk.byteLength;
+        }
+        settle({
+          status: response.statusCode ?? 0,
+          headers,
+          body,
+          url: input.url.href,
+        });
+      });
 
-        const chunks: Uint8Array[] = [];
-        let size = 0;
-        response.on("data", (chunk: Buffer | Uint8Array | string) => {
-          const bytes =
-            typeof chunk === "string" ? new TextEncoder().encode(chunk) : new Uint8Array(chunk);
-          size += bytes.byteLength;
-          if (size > input.maxResponseBytes) {
-            response.destroy();
-            settle(
-              new OutboundHttpError(
-                "response-too-large",
-                `Outbound response exceeded the ${input.maxResponseBytes}-byte limit.`,
-              ),
-            );
-            return;
-          }
-          chunks.push(bytes);
-        });
-        response.once("end", () => {
-          const body = new Uint8Array(size);
-          let offset = 0;
-          for (const chunk of chunks) {
-            body.set(chunk, offset);
-            offset += chunk.byteLength;
-          }
-          settle({
-            status: response.statusCode ?? 0,
-            headers,
-            body,
-            url: input.url.href,
-          });
-        });
-
-        response.on("error", (cause) => {
-          settle(new OutboundHttpError("request", "Outbound response failed.", cause));
-        });
-      },
-    );
+      response.on("error", (cause) => {
+        settle(new OutboundHttpError("request", "Outbound response failed.", cause));
+      });
+    });
 
     request.on("error", (cause) => {
       if (input.signal.aborted) {
@@ -451,7 +455,7 @@ function isRedirectStatus(status: number): boolean {
   return status === 301 || status === 302 || status === 303 || status === 307 || status === 308;
 }
 
-export class OutboundHttpClient {
+class OutboundHttpClient {
   async request(input: OutboundHttpRequest): Promise<OutboundHttpResponse> {
     const policy = input.policy;
     const allowLoopbackHttp = policy.allowLoopbackHttp === true;
@@ -563,7 +567,7 @@ export class OutboundHttpClient {
 
 export const outboundHttp = new OutboundHttpClient();
 
-export function decodeOutboundText(response: OutboundHttpResponse): string {
+function decodeOutboundText(response: OutboundHttpResponse): string {
   return new TextDecoder().decode(response.body);
 }
 

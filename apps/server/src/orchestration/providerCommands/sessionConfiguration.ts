@@ -17,6 +17,7 @@ import { ProviderAdapterValidationError } from "../../provider/core/Errors.ts";
 import { providerDisabledSettingsMessage } from "../../provider/core/enabledProviderAdapter.ts";
 import { providerStartOptionsFromServerSettings } from "../../settings/settingsPatches";
 import { resolveThreadWorkspaceState } from "@glade/shared/threads/threadEnvironment";
+import { providerCapabilities } from "@glade/shared/provider/providerMetadata";
 import { type ProviderSession } from "@glade/contracts/provider/provider";
 import { providerWorkspaceChanged } from "../projectRelocationPaths.ts";
 import { isAwaitingRequestedTurn } from "../turnStartSession.ts";
@@ -304,11 +305,14 @@ export function makeProviderSessionConfiguration(input: {
         return { ...reuse };
       }
 
-      if (currentProvider === "claudeAgent" && reusableSession.activeTurnId != null) {
+      if (
+        !providerCapabilities(reusableSession.provider).reconfiguresDuringActiveTurn &&
+        reusableSession.activeTurnId != null
+      ) {
         return yield* new ProviderAdapterValidationError({
-          provider: currentProvider,
+          provider: reusableSession.provider,
           operation: "session/reconfigure",
-          issue: "Wait for Claude's active turn to finish before changing session settings.",
+          issue: "Wait for the active turn to finish before changing session settings.",
         });
       }
 
@@ -360,7 +364,11 @@ export function makeProviderSessionConfiguration(input: {
       };
     }
 
-    if (thread.forkSourceThreadId && !handoffStart) {
+    const transcriptFork =
+      Boolean(thread.forkSourceThreadId) &&
+      !handoffStart &&
+      providerCapabilities(preferredProvider).forkBoundary === "transcript";
+    if (thread.forkSourceThreadId && !handoffStart && !transcriptFork) {
       if (!providerService.forkThread)
         return yield* new ProviderAdapterValidationError({
           provider: preferredProvider ?? thread.modelSelection.provider,
@@ -425,7 +433,7 @@ export function makeProviderSessionConfiguration(input: {
 
     const registerPriorTranscriptBootstrapOnFreshStart =
       shouldRegisterContextBootstrap &&
-      options?.registerPriorTranscriptBootstrapOnFreshStart === true;
+      (options?.registerPriorTranscriptBootstrapOnFreshStart === true || transcriptFork);
     const startOutcome = yield* startProviderSessionWithOutcome(
       handoffStart && options.handoffResumeCursor != null ? options.handoffResumeCursor : undefined,
       registerPriorTranscriptBootstrapOnFreshStart,

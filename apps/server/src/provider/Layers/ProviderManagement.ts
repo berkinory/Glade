@@ -11,6 +11,7 @@ import {
 import { ProviderAdapterRegistry } from "../Services/ProviderAdapterRegistry.ts";
 import { ProviderValidationError } from "../core/Errors.ts";
 import { ServerSettingsService } from "../../settings/serverSettings.ts";
+import { serverProviderDescriptor } from "../builtInProviders.ts";
 
 const invalid = (operation: string, issue: string) =>
   new ProviderValidationError({ operation, issue });
@@ -96,7 +97,7 @@ export const ProviderManagementLive = Layer.effect(
             "Only an add operation accepts server configuration.",
           );
         if (
-          parsed.provider === "codex" &&
+          serverProviderDescriptor(parsed.provider).mcp.writesRequireConfigVersion &&
           ["add", "remove", "enable", "disable"].includes(parsed.action) &&
           !parsed.expectedVersion
         )

@@ -1,5 +1,6 @@
 import { GitCommitHorizontalIcon, GitPullRequestIcon, PlusMinusSquare01Icon } from "~/lib/icons";
 import type { ProjectId, ThreadId } from "@glade/contracts/core/baseSchemas";
+import { PROVIDER_DISPLAY_NAMES } from "@glade/contracts/provider/model";
 import { useNavigate } from "@tanstack/react-router";
 import { useQueryClient } from "@tanstack/react-query";
 import {
@@ -90,7 +91,7 @@ export function MainWorkspace(props: {
     (store) => store.draftsByThreadId[props.threadId]?.activeProvider,
   );
   const chatProvider = draftProvider ?? provider ?? "codex";
-  const chatLabel = chatProvider === "claudeAgent" ? "Claude" : "Codex";
+  const chatLabel = PROVIDER_DISPLAY_NAMES[chatProvider];
   const [headerHost, setHeaderHost] = useState<HTMLDivElement | null>(null);
   const queryClient = useQueryClient();
   const subscribeDirty = useCallback(

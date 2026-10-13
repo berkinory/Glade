@@ -1,5 +1,5 @@
 import { SearchIcon } from "~/lib/icons";
-import { type ModelSlug, type ProviderModelOptions } from "@glade/contracts/provider/model";
+import { type ModelSlug, type ProviderOptionSelections } from "@glade/contracts/provider/model";
 import { type ProviderKind, type ThreadId } from "@glade/contracts/core/baseSchemas";
 import { type ProviderModelDescriptor } from "@glade/contracts/provider/providerDiscovery";
 import { type ServerProviderStatus } from "@glade/contracts/server/server";
@@ -7,11 +7,7 @@ import { useDeferredValue, useEffect, useRef, useState, type ReactNode } from "r
 import { appHistory } from "../../appNavigation";
 import { useComposerDraftStore } from "../../composerDraftStore";
 import { useStarredModels } from "../../hooks/useStarredModels";
-import {
-  buildNextProviderOptions,
-  type ProviderModelOption,
-  type ProviderOptions,
-} from "../../providerModelOptions";
+import { buildNextProviderOptions, type ProviderModelOption } from "../../providerModelOptions";
 import { starredModelSlotKey } from "~/lib/starredModels";
 import { cn } from "~/lib/utils";
 import { Input } from "../ui/input";
@@ -57,7 +53,7 @@ import {
 } from "./ProviderModelPicker";
 import { resolveRuntimeModelDescriptor } from "./runtimeModelCapabilities";
 export type ComposerModelSelectionOptions = {
-  modelOptions?: ProviderOptions;
+  modelOptions?: ProviderOptionSelections | undefined;
 };
 type ComposerModelPickerProps = {
   provider: ProviderKind;
@@ -81,7 +77,7 @@ type ComposerModelPickerProps = {
   runtimeModelsByProvider?: Partial<
     Record<ProviderKind, ReadonlyArray<ProviderModelDescriptor> | null | undefined>
   >;
-  modelOptions: ProviderModelOptions[ProviderKind] | undefined;
+  modelOptions: ProviderOptionSelections | undefined;
   prompt: string;
   onPromptChange: (prompt: string) => void;
   open?: boolean;
@@ -160,7 +156,7 @@ export function ComposerModelPicker(props: ComposerModelPickerProps) {
   const stickySelectionByProvider = useComposerDraftStore(
     (store) => store.stickyModelSelectionByProvider,
   );
-  const providerOptionsFor = (provider: ProviderKind): ProviderOptions | undefined =>
+  const providerOptionsFor = (provider: ProviderKind): ProviderOptionSelections | undefined =>
     provider === props.provider
       ? props.modelOptions
       : (draftSelectionByProvider?.[provider]?.options ??
@@ -258,14 +254,13 @@ export function ComposerModelPicker(props: ComposerModelPickerProps) {
         : {};
     const presetPatch = row.preset
       ? buildStarredModelOptionsPatch({
-          provider: row.provider,
           selection,
           starred: row.preset,
         })
       : {};
     props.onProviderModelChange(row.provider, model, {
       modelOptions: resolveComposerModelOptions(
-        buildNextProviderOptions(row.provider, providerOptionsFor(row.provider), {
+        buildNextProviderOptions(providerOptionsFor(row.provider), {
           ...effortPatch,
           ...presetPatch,
         }),

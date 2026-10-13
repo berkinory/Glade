@@ -19,6 +19,7 @@ import {
   toValidationError,
 } from "../core/providerServiceValidation";
 import { asRecord } from "@glade/shared/transport/payloadValues";
+import { PRIOR_TRANSCRIPT_BOOTSTRAP_PENDING } from "../core/providerRuntimeBinding.ts";
 import { ProviderIdleRuntime } from "../Services/ProviderIdleRuntime";
 
 export const ProviderSessionReadsLive = Layer.effect(
@@ -96,13 +97,14 @@ export const ProviderSessionReadsLive = Layer.effect(
                 operation: "ProviderService.rollbackConversation",
                 issue: "The provider session changed during rewind.",
               });
-            if (session && binding) {
+            if (binding) {
               yield* directory.upsert({
                 ...binding,
-                resumeCursor: session.resumeCursor,
+                resumeCursor: session ? session.resumeCursor : null,
                 status: "stopped",
                 runtimePayload: {
                   ...asRecord(binding.runtimePayload),
+                  ...(session ? {} : { [PRIOR_TRANSCRIPT_BOOTSTRAP_PENDING]: true }),
                   activeTurnId: null,
                   lastRuntimeEvent: "provider.rollbackConversation",
                   lastRuntimeEventAt: new Date().toISOString(),

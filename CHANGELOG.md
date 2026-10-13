@@ -4,12 +4,14 @@
 
 ### New
 
+- OpenCode, Grok Build and Cursor are available as providers, including OpenCode's free models. Their models, each model's own effort levels and their native slash commands appear in the composer, their chats get generated titles, they can write commit messages, pull requests and branch names, and Supervised mode asks before they edit files or run commands. Their chats can be forked, compacted, edited and rewound, and Usage & limits shows Cursor, Grok and OpenCode Go limits from your own sign-in.
 - Chats stopped by a usage limit continue on their own once the limit resets. Cancel the wait from the chat, or turn it off in Settings.
 - The Environment panel lists the chat's background tasks, such as test runs and builds, with how long they have run, and can stop them. A server an agent starts shows once, under Local Servers, marked with the chat and task that started it.
 - One Update all button in the sidebar updates provider CLIs on this computer and every connected host, then installs the Glade update. Running chats can resume automatically after the restart, and hosts get the new version when they reconnect.
 
 ### Improved
 
+- Model search ignores case, spacing, punctuation and word order, so "gpt5" finds GPT-5.
 - Shell commands that write files read as edits: a Python or JavaScript script that writes a file, `sed -i`, `perl -pi` and `cat > file` show "Edited", "Wrote" or "Appended to" with the file, and count as edited files in their tool group.
 - Scripts show their language's icon, such as Python, Node or Bun, and code passed to a command through a heredoc is highlighted in its own language under the command.
 - Several searches in one command say what they looked for and where, such as "Searched for visibility, LevelDto +3 in Game/Runtime", instead of "Searched 2 times".
@@ -45,6 +47,9 @@
 
 ### Fixed
 
+- A visual reply that arrives while a reply streams no longer sometimes says it tried to navigate away.
+- An approved request no longer leaves an extra unnamed tool row in the chat.
+- After a chat switches to another provider, the new provider can use Glade's tools from its first reply.
 - Editing a message or rewinding a chat no longer plays the turn finished sound or shows a completion notification.
 - Progress updates from background tasks and subagents no longer appear in the chat as "Reasoning update" rows; their cards and the Environment panel show them.
 - Forking a chat from an earlier reply works while the chat is still running. Only the reply that is still being written cannot be forked, and its fork button stays hidden until it finishes.

@@ -16,7 +16,7 @@ import {
 
 export type ProviderModelPrefetchSettings = Pick<
   AppSettings,
-  "defaultProvider" | "claudeBinaryPath" | "codexBinaryPath"
+  "defaultProvider" | "providerBinaryPaths"
 >;
 
 const NEW_THREAD_MODEL_PREFETCH_STALE_TIME_MS = 30 * 60_000;
@@ -79,30 +79,15 @@ function providerModelsPrefetchQueryOptions(
     priority?: "background" | "prefetch" | undefined;
   },
 ) {
-  const { priority, provider, settings } = input;
-
-  switch (provider) {
-    case "claudeAgent":
-      return providerModelsQueryOptions(
-        {
-          provider: "claudeAgent",
-          binaryPath: settings.claudeBinaryPath || null,
-          priority,
-          cwd: input.cwd ?? null,
-        },
-        queryClient,
-      );
-    case "codex":
-      return providerModelsQueryOptions(
-        {
-          provider: "codex",
-          binaryPath: settings.codexBinaryPath || null,
-          cwd: input.cwd ?? null,
-          priority,
-        },
-        queryClient,
-      );
-  }
+  return providerModelsQueryOptions(
+    {
+      provider: input.provider,
+      binaryPath: input.settings.providerBinaryPaths[input.provider] || null,
+      cwd: input.cwd ?? null,
+      priority: input.priority,
+    },
+    queryClient,
+  );
 }
 
 function prefetchProviderModelsForNewThread(

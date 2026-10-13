@@ -1,7 +1,7 @@
 import type { ProviderKind, ThreadId } from "@glade/contracts/core/baseSchemas";
 import type { ProviderModelDescriptor } from "@glade/contracts/provider/providerDiscovery";
 import { useEffect, useRef } from "react";
-import type { ProviderOptions } from "~/providerModelOptions";
+import type { ProviderOptionSelections } from "@glade/contracts/provider/model";
 import {
   getComposerTraitSelection,
   planComposerEffortChange,
@@ -14,7 +14,7 @@ export function useComposerEffortCycle(input: {
   threadId: ThreadId;
   provider: ProviderKind;
   model: string;
-  modelOptions: ProviderOptions | undefined;
+  modelOptions: ProviderOptionSelections | undefined;
   runtimeModel: ProviderModelDescriptor | undefined;
   pickerOpen: boolean;
   setPickerOpen: (open: boolean) => void;
@@ -62,7 +62,6 @@ export function useComposerEffortCycle(input: {
           (resolveComposerEffortLadderIndex(selection) + 1) % selection.effortLevels.length
         ]!;
       const plan = planComposerEffortChange({
-        provider: input.provider,
         selection,
         prompt: "",
         value: next.value,

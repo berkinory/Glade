@@ -180,15 +180,18 @@ export function makeClaudeSessionBranching(input: {
           issue: "The source Claude session has no resumable native cursor.",
         });
       }
-      if (input.forkPoint && input.forkPoint.provider !== "claudeAgent") {
+      if (
+        input.forkPoint &&
+        (input.forkPoint.provider !== "claudeAgent" || !("messageId" in input.forkPoint))
+      ) {
         return yield* new ProviderAdapterValidationError({
           provider: PROVIDER,
           operation: "forkThread",
-          issue: "Invalid Claude fork point provider.",
+          issue: "Invalid Claude fork point.",
         });
       }
       const upToMessageId =
-        input.forkPoint?.provider === "claudeAgent"
+        input.forkPoint && "messageId" in input.forkPoint
           ? input.forkPoint.messageId
           : (liveSource?.lastAssistantUuid ?? sourceState?.resumeSessionAt);
       const sourceCwd = liveSource?.session.cwd ?? input.sourceCwd;

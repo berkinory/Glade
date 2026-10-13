@@ -15,7 +15,7 @@ import {
   type ProviderStartOptions,
 } from "@glade/contracts/provider/sessionPolicy";
 import { buildTemporaryWorktreeBranchName } from "@glade/shared/git/git";
-import { providerSupportsNativeTurnSteering } from "@glade/shared/provider/providerMetadata";
+import { providerCapabilities } from "@glade/shared/provider/providerMetadata";
 import { useCallback } from "react";
 import { promoteThreadCreate } from "~/lib/threadCreatePromotion";
 import { newCommandId, randomUUID } from "~/lib/utils";
@@ -485,7 +485,7 @@ export function useChatTurnExecution({
           activeThread?.session?.provider ?? selectedModelSelectionForSend.provider;
         if (
           dispatchMode === "steer" &&
-          !providerSupportsNativeTurnSteering(liveProviderForSteerGate)
+          !providerCapabilities(liveProviderForSteerGate).turnSteering
         ) {
           const nextSteerGate = {
             sawInterruptGap: false,

@@ -1,4 +1,6 @@
 import openaiMark from "../assets/brands/openai.svg?url";
+import grokMark from "../assets/brands/grok.svg?url";
+import opencodeMark from "../assets/brands/opencode.svg?url";
 import { createBrandIcon } from "./createBrandIcon";
 
 export const AndroidStudioIcon = createBrandIcon("/brands/androidstudio-original.svg");
@@ -13,6 +15,8 @@ export const GoLandIcon = createBrandIcon("/brands/goland.svg", true);
 export const IntelliJIdeaIcon = createBrandIcon("/brands/intellijidea.svg");
 export const Iterm2Icon = createBrandIcon("/brands/iterm2-color.svg");
 export const OpenAIIcon = createBrandIcon(openaiMark, true);
+export const OpenCodeIcon = createBrandIcon(opencodeMark, true);
+export const GrokIcon = createBrandIcon(grokMark, true);
 export const PhpStormIcon = createBrandIcon("/brands/phpstorm.svg");
 export const PyCharmIcon = createBrandIcon("/brands/pycharm.svg");
 export const RiderIcon = createBrandIcon("/brands/rider.svg");

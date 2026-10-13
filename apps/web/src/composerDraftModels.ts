@@ -1,23 +1,21 @@
 import { ProviderKind } from "@glade/contracts/core/baseSchemas";
 import {
-  type CodexReasoningEffort,
   type ModelSlug,
   type ProviderModelOptions,
+  type ProviderOptionSelections,
+  type ProviderOptionValue,
 } from "@glade/contracts/provider/model";
 import { type ModelSelection } from "@glade/contracts/provider/sessionPolicy";
 import * as Schema from "effect/Schema";
 
 import {
-  normalizeClaudeModelOptions,
   normalizeModelSlug,
   resolveSelectableModel,
+  trimOrNull,
 } from "@glade/shared/provider/model";
 import type { ComposerThreadDraftState } from "./composerDraftDomain";
-
-export const COMPOSER_PROVIDER_KINDS = [
-  "codex",
-  "claudeAgent",
-] as const satisfies readonly ProviderKind[];
+import { buildModelSelection } from "./providerModelOptions";
+import { DEFAULT_PROVIDER_ORDER } from "./providerOrdering";
 
 const isProviderKind = Schema.is(ProviderKind);
 
@@ -34,21 +32,6 @@ export interface EffectiveComposerModelState {
   modelOptions: ProviderModelOptions | null;
 }
 
-function mergeProviderModelOptionsFromSelections(
-  ...selections: ReadonlyArray<ModelSelection | null | undefined>
-): ProviderModelOptions | null {
-  const result: Partial<Record<ProviderKind, ProviderModelOptions[ProviderKind]>> = {};
-  for (const selection of selections) {
-    if (!selection) continue;
-    if (selection.options) {
-      result[selection.provider] = selection.options;
-    } else {
-      delete result[selection.provider];
-    }
-  }
-  return Object.keys(result).length > 0 ? (result as ProviderModelOptions) : null;
-}
-
 function deriveEffectiveComposerModelOptions(input: {
   draft:
     | Pick<ComposerThreadDraftState, "modelSelectionByProvider" | "activeProvider">
@@ -57,130 +40,57 @@ function deriveEffectiveComposerModelOptions(input: {
   threadModelSelection: ModelSelection | null | undefined;
   projectModelSelection: ModelSelection | null | undefined;
 }): ProviderModelOptions | null {
-  const baseOptions = mergeProviderModelOptionsFromSelections(
+  const result: Partial<Record<ProviderKind, ProviderOptionSelections>> = {};
+  for (const selection of [
     input.projectModelSelection,
     input.threadModelSelection,
-  );
-  const draftSelections = input.draft?.modelSelectionByProvider;
-  if (!draftSelections) {
-    return baseOptions;
-  }
-
-  const result: Partial<Record<ProviderKind, ProviderModelOptions[ProviderKind]>> = baseOptions
-    ? { ...baseOptions }
-    : {};
-  for (const [provider, selection] of Object.entries(draftSelections) as Array<
-    [ProviderKind, ModelSelection | undefined]
-  >) {
+    ...Object.values(input.draft?.modelSelectionByProvider ?? {}),
+  ]) {
     if (!selection) continue;
     if (selection.options) {
-      result[provider] = selection.options;
+      result[selection.provider] = selection.options;
     } else {
-      delete result[provider];
+      delete result[selection.provider];
     }
   }
-  return Object.keys(result).length > 0 ? (result as ProviderModelOptions) : null;
+  return Object.keys(result).length > 0 ? result : null;
 }
 
 export function normalizeProviderKind(value: unknown): ProviderKind | null {
   return isProviderKind(value) ? value : null;
 }
 
-function trimStringOrUndefined(value: unknown): string | undefined {
-  if (typeof value !== "string") {
-    return undefined;
-  }
-  const trimmed = value.trim();
-  return trimmed.length > 0 ? trimmed : undefined;
+function asRecord(value: unknown): Record<string, unknown> | null {
+  return value && typeof value === "object" && !Array.isArray(value)
+    ? (value as Record<string, unknown>)
+    : null;
 }
 
-function booleanOrUndefined(value: unknown): boolean | undefined {
-  return typeof value === "boolean" ? value : undefined;
-}
-
-export function makeModelSelection(
-  provider: ProviderKind,
-  model: string,
-  options?: ProviderModelOptions[ProviderKind],
-  supportsAutoMode?: boolean,
-): ModelSelection {
-  switch (provider) {
-    case "codex":
-      return {
-        provider,
-        model,
-        ...(options
-          ? { options: options as Extract<ModelSelection, { provider: "codex" }>["options"] }
-          : {}),
-      };
-    case "claudeAgent":
-      return {
-        provider,
-        model,
-        ...(options
-          ? {
-              options: options as Extract<ModelSelection, { provider: "claudeAgent" }>["options"],
-            }
-          : {}),
-        ...(typeof supportsAutoMode === "boolean" ? { supportsAutoMode } : {}),
-      };
-  }
-}
-
-export function normalizeProviderModelOptions(
+// Blank strings mean unset, and values outside the contract's option value types are dropped.
+export function normalizeProviderOptionSelections(
   value: unknown,
-  provider?: ProviderKind | null,
-  legacy?: LegacyCodexFields,
-): ProviderModelOptions | null {
-  const candidate = value && typeof value === "object" ? (value as Record<string, unknown>) : null;
-  const codexCandidate =
-    candidate?.codex && typeof candidate.codex === "object"
-      ? (candidate.codex as Record<string, unknown>)
-      : null;
-  const claudeCandidate =
-    candidate?.claudeAgent && typeof candidate.claudeAgent === "object"
-      ? (candidate.claudeAgent as Record<string, unknown>)
-      : null;
-  const codexReasoningEffort: CodexReasoningEffort | undefined =
-    trimStringOrUndefined(codexCandidate?.reasoningEffort) ??
-    (provider === "codex" ? trimStringOrUndefined(legacy?.effort) : undefined);
-  const codexFastMode =
-    codexCandidate?.fastMode === true
-      ? true
-      : codexCandidate?.fastMode === false
-        ? false
-        : (provider === "codex" && legacy?.codexFastMode === true) ||
-            (typeof legacy?.serviceTier === "string" && legacy.serviceTier === "fast")
-          ? true
-          : undefined;
-  const codexServiceTier = trimStringOrUndefined(codexCandidate?.serviceTier);
-  const codex =
-    codexReasoningEffort !== undefined ||
-    codexFastMode !== undefined ||
-    codexServiceTier !== undefined
-      ? {
-          ...(codexReasoningEffort !== undefined ? { reasoningEffort: codexReasoningEffort } : {}),
-          ...(codexFastMode !== undefined ? { fastMode: codexFastMode } : {}),
-          ...(codexServiceTier !== undefined ? { serviceTier: codexServiceTier } : {}),
-        }
-      : undefined;
+): ProviderOptionSelections | undefined {
+  const result: Record<string, ProviderOptionValue> = {};
+  for (const [id, raw] of Object.entries(asRecord(value) ?? {})) {
+    const normalized = typeof raw === "string" ? trimOrNull(raw) : raw;
+    if (typeof normalized === "string" || typeof normalized === "boolean") result[id] = normalized;
+  }
+  return Object.keys(result).length > 0 ? result : undefined;
+}
 
-  const claudeThinking = booleanOrUndefined(claudeCandidate?.thinking);
-  const claudeEffort = trimStringOrUndefined(claudeCandidate?.effort);
-  const claudeFastMode = booleanOrUndefined(claudeCandidate?.fastMode);
-  const claudeUltracode = booleanOrUndefined(claudeCandidate?.ultracode);
-  const claude = normalizeClaudeModelOptions(undefined, {
-    ...(claudeThinking !== undefined ? { thinking: claudeThinking } : {}),
-    ...(claudeEffort !== undefined ? { effort: claudeEffort } : {}),
-    ...(claudeFastMode !== undefined ? { fastMode: claudeFastMode } : {}),
-    ...(claudeUltracode !== undefined ? { ultracode: claudeUltracode } : {}),
-  });
-
-  if (!codex && !claude) return null;
-  return {
-    ...(codex ? { codex } : {}),
-    ...(claude ? { claudeAgent: claude } : {}),
+// The oldest drafts kept Codex settings at the top level of the draft instead of in its options.
+function withLegacyCodexOptions(
+  options: ProviderOptionSelections | undefined,
+  legacy: LegacyCodexFields | undefined,
+): ProviderOptionSelections | undefined {
+  const reasoningEffort = trimOrNull(legacy?.effort);
+  const fastMode = legacy?.codexFastMode === true || legacy?.serviceTier === "fast";
+  const merged = {
+    ...(reasoningEffort ? { reasoningEffort } : {}),
+    ...(fastMode ? { fastMode } : {}),
+    ...options,
   };
+  return Object.keys(merged).length > 0 ? merged : undefined;
 }
 
 export function normalizeModelSelection(
@@ -192,37 +102,24 @@ export function normalizeModelSelection(
     legacyCodex?: LegacyCodexFields;
   },
 ): ModelSelection | null {
-  const candidate = value && typeof value === "object" ? (value as Record<string, unknown>) : null;
-  const rawProvider = candidate?.provider ?? legacy?.provider;
-  const provider = normalizeProviderKind(rawProvider);
+  const candidate = asRecord(value);
+  const provider = normalizeProviderKind(candidate?.provider ?? legacy?.provider);
   if (provider === null) {
     return null;
   }
   const rawModel = candidate?.model ?? legacy?.model;
-  if (typeof rawModel !== "string") {
-    return null;
-  }
-  const model =
-    normalizeModelSlug(rawModel, provider) ??
-    (rawModel === "provider-default" || (provider === "claudeAgent" && rawModel === "default")
-      ? rawModel
-      : null);
+  const model = typeof rawModel === "string" ? trimOrNull(rawModel) : null;
   if (!model) {
     return null;
   }
-  const modelOptions = normalizeProviderModelOptions(
-    candidate?.options ? { [provider]: candidate.options } : legacy?.modelOptions,
-    provider,
-    provider === "codex" ? legacy?.legacyCodex : undefined,
+  const options = normalizeProviderOptionSelections(
+    candidate?.options ?? asRecord(legacy?.modelOptions)?.[provider],
   );
-  const options = provider === "codex" ? modelOptions?.codex : modelOptions?.claudeAgent;
-  return makeModelSelection(
+  return buildModelSelection(
     provider,
     model,
-    options,
-    provider === "claudeAgent" && typeof candidate?.supportsAutoMode === "boolean"
-      ? candidate.supportsAutoMode
-      : undefined,
+    provider === "codex" ? withLegacyCodexOptions(options, legacy?.legacyCodex) : options,
+    typeof candidate?.supportsAutoMode === "boolean" ? candidate.supportsAutoMode : undefined,
   );
 }
 
@@ -233,132 +130,14 @@ export function reconcileProviderScopedModelSelection(
   if (requested.options !== undefined || current?.provider !== requested.provider) {
     return requested;
   }
-  if (current.model === requested.model) {
-    const currentSupportsAutoMode =
-      current.provider === "claudeAgent" ? current.supportsAutoMode : undefined;
-    return makeModelSelection(
-      requested.provider,
-      requested.model,
-      current.options,
-      requested.provider === "claudeAgent"
-        ? (requested.supportsAutoMode ?? currentSupportsAutoMode)
-        : undefined,
-    );
-  }
-  if (current.provider !== "codex" && current.provider !== "claudeAgent") {
-    return requested;
-  }
-  return makeModelSelection(
+  return buildModelSelection(
     requested.provider,
     requested.model,
     current.options,
-    requested.provider === "claudeAgent" ? requested.supportsAutoMode : undefined,
+    current.model === requested.model
+      ? (requested.supportsAutoMode ?? current.supportsAutoMode)
+      : requested.supportsAutoMode,
   );
-}
-
-export function stripNonStickyModelOptions(selection: ModelSelection): ModelSelection {
-  if (
-    selection.provider !== "claudeAgent" ||
-    (!selection.options?.contextWindow && !selection.options?.autoCompactWindow)
-  ) {
-    return selection;
-  }
-  const {
-    contextWindow: _contextWindow,
-    autoCompactWindow: _autoCompactWindow,
-    ...rest
-  } = selection.options;
-  return makeModelSelection(
-    selection.provider,
-    selection.model,
-    Object.keys(rest).length > 0 ? rest : undefined,
-    selection.supportsAutoMode,
-  );
-}
-
-export function sanitizeStickyModelSelectionMap(
-  map: Partial<Record<ProviderKind, ModelSelection>>,
-): Partial<Record<ProviderKind, ModelSelection>> {
-  const claude = map.claudeAgent;
-  if (
-    claude?.provider !== "claudeAgent" ||
-    (!claude.options?.contextWindow && !claude.options?.autoCompactWindow)
-  ) {
-    return map;
-  }
-  return { ...map, claudeAgent: stripNonStickyModelOptions(claude) };
-}
-
-export function legacySyncModelSelectionOptions(
-  modelSelection: ModelSelection | null,
-  modelOptions: ProviderModelOptions | null | undefined,
-): ModelSelection | null {
-  if (modelSelection === null) {
-    return null;
-  }
-  const normalizedOptions = modelOptions?.[modelSelection.provider];
-  return makeModelSelection(
-    modelSelection.provider,
-    modelSelection.model,
-    normalizedOptions,
-    modelSelection.provider === "claudeAgent" ? modelSelection.supportsAutoMode : undefined,
-  );
-}
-
-export function legacyMergeModelSelectionIntoProviderModelOptions(
-  modelSelection: ModelSelection | null,
-  currentModelOptions: ProviderModelOptions | null | undefined,
-): ProviderModelOptions | null {
-  if (modelSelection?.options === undefined) {
-    return normalizeProviderModelOptions(currentModelOptions);
-  }
-  return legacyReplaceProviderModelOptions(
-    normalizeProviderModelOptions(currentModelOptions),
-    modelSelection.provider,
-    modelSelection.options,
-  );
-}
-
-function legacyReplaceProviderModelOptions(
-  currentModelOptions: ProviderModelOptions | null | undefined,
-  provider: ProviderKind,
-  nextProviderOptions: ProviderModelOptions[ProviderKind] | null | undefined,
-): ProviderModelOptions | null {
-  const { [provider]: _discardedProviderModelOptions, ...otherProviderModelOptions } =
-    currentModelOptions ?? {};
-  const normalizedNextProviderOptions = normalizeProviderModelOptions(
-    { [provider]: nextProviderOptions },
-    provider,
-  );
-
-  return normalizeProviderModelOptions({
-    ...otherProviderModelOptions,
-    ...(normalizedNextProviderOptions ? normalizedNextProviderOptions : {}),
-  });
-}
-
-export function legacyToModelSelectionByProvider(
-  modelSelection: ModelSelection | null,
-  modelOptions: ProviderModelOptions | null | undefined,
-): Partial<Record<ProviderKind, ModelSelection>> {
-  const result: Partial<Record<ProviderKind, ModelSelection>> = {};
-
-  if (modelOptions) {
-    for (const provider of COMPOSER_PROVIDER_KINDS) {
-      const options = modelOptions[provider];
-      if (options && Object.keys(options).length > 0) {
-        const model = modelSelection?.provider === provider ? modelSelection.model : "";
-        if (model) {
-          result[provider] = makeModelSelection(provider, model, options);
-        }
-      }
-    }
-  }
-
-  if (modelSelection) {
-    result[modelSelection.provider] = modelSelection;
-  }
-  return result;
 }
 
 export function deriveEffectiveComposerModelState(input: {
@@ -407,7 +186,7 @@ export function resolvePreferredComposerModelSelection(input: {
   defaultProvider?: ProviderKind | null | undefined;
 }): ModelSelection {
   const draftProviderWithSelection =
-    COMPOSER_PROVIDER_KINDS.find(
+    DEFAULT_PROVIDER_ORDER.find(
       (provider) => input.draft?.modelSelectionByProvider?.[provider] !== undefined,
     ) ?? null;
   const preferredProvider =

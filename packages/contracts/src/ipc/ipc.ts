@@ -503,11 +503,6 @@ export interface DesktopBridge {
     isSupported: () => Promise<boolean>;
     show: (input: DesktopNotificationInput) => Promise<boolean>;
   };
-  server?: {
-    transcribeVoice: (
-      input: ServerVoiceTranscriptionInput,
-    ) => Promise<ServerVoiceTranscriptionResult>;
-  };
   computer?: {
     getPermissions: () => Promise<DesktopComputerPermissions>;
     // Prompts for Accessibility; Screen Recording has no prompt, so openSettings opens its pane.

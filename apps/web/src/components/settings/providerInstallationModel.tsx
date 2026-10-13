@@ -1,14 +1,23 @@
 import type { ProviderKind } from "@glade/contracts/core/baseSchemas";
 import type { ServerProviderStatus } from "@glade/contracts/server/server";
 import { PROVIDER_DESCRIPTORS as VISIBLE_PROVIDER_DESCRIPTORS } from "@glade/shared/provider/providerMetadata";
+import { DEFAULT_SERVER_SETTINGS } from "@glade/contracts/settings/settings";
 import type { ReactNode } from "react";
 import type { AppSettings } from "~/appSettings";
 
-type ProviderInstallTextKey = "claudeBinaryPath" | "codexBinaryPath" | "codexHomePath";
+type ProviderInstallTextKey = "codexHomePath";
 type ProviderInstallBooleanKey = "claudeEnableArtifacts";
 export type ProviderInstallField =
   | {
+      readonly kind: "binaryPath";
+      readonly id: string;
+      readonly label: string;
+      readonly placeholder: string;
+      readonly description: ReactNode;
+    }
+  | {
       readonly kind: "text";
+      readonly id: string;
       readonly settingsKey: ProviderInstallTextKey;
       readonly label: string;
       readonly placeholder: string;
@@ -16,6 +25,7 @@ export type ProviderInstallField =
     }
   | {
       readonly kind: "boolean";
+      readonly id: string;
       readonly settingsKey: ProviderInstallBooleanKey;
       readonly label: string;
       readonly description: ReactNode;
@@ -32,78 +42,79 @@ export const PROVIDER_VISIBILITY_OPTIONS = VISIBLE_PROVIDER_DESCRIPTORS.map((des
   setupDocsHref: descriptor.setupDocsHref,
 }));
 
-const PROVIDER_INSTALL_SETTINGS: readonly ProviderInstallSettings[] = [
-  {
-    provider: "codex",
-    docs: [
-      { label: "Install", href: "https://developers.openai.com/codex/cli" },
-      { label: "Update", href: "https://developers.openai.com/codex/cli" },
-      { label: "Config", href: "https://github.com/openai/codex/blob/main/docs/config.md" },
-    ],
+// Settings that only one provider has, shown after its binary path.
+const PROVIDER_EXTRA_INSTALL_FIELDS: Partial<
+  Record<ProviderKind, readonly ProviderInstallField[]>
+> = {
+  codex: [
+    {
+      kind: "text",
+      id: "codexHomePath",
+      settingsKey: "codexHomePath",
+      label: "CODEX_HOME path",
+      placeholder: "CODEX_HOME",
+      description: "Optional custom Codex home and config directory.",
+    },
+  ],
+  claudeAgent: [
+    {
+      kind: "boolean",
+      id: "claudeEnableArtifacts",
+      settingsKey: "claudeEnableArtifacts",
+      label: "Artifacts, /design and /slides",
+      description: (
+        <>
+          Claude Code keeps Artifacts off in embedded sessions. Turn this on so <code>/design</code>{" "}
+          and <code>/slides</code> publish to claude.ai. Needs a claude.ai login on a Pro, Max, Team
+          or Enterprise plan, and applies to new sessions.
+        </>
+      ),
+    },
+  ],
+};
+
+export const VISIBLE_PROVIDER_INSTALL_SETTINGS: readonly ProviderInstallSettings[] =
+  VISIBLE_PROVIDER_DESCRIPTORS.map((descriptor) => ({
+    provider: descriptor.kind,
+    docs: descriptor.installDocs,
     fields: [
       {
-        kind: "text",
-        settingsKey: "codexBinaryPath",
-        label: "Codex binary path",
-        placeholder: "Codex binary path",
+        kind: "binaryPath",
+        id: `${descriptor.kind}BinaryPath`,
+        label: `${descriptor.displayName} binary path`,
+        placeholder: `${descriptor.displayName} binary path`,
         description: (
           <>
-            Leave blank to use <code>codex</code> from your PATH.
+            Leave blank to use{" "}
+            <code>{DEFAULT_SERVER_SETTINGS.providers[descriptor.kind].binaryPath}</code> from your
+            PATH.
           </>
         ),
       },
-      {
-        kind: "text",
-        settingsKey: "codexHomePath",
-        label: "CODEX_HOME path",
-        placeholder: "CODEX_HOME",
-        description: "Optional custom Codex home and config directory.",
-      },
+      ...(PROVIDER_EXTRA_INSTALL_FIELDS[descriptor.kind] ?? []),
     ],
-  },
-  {
-    provider: "claudeAgent",
-    docs: [
-      { label: "Install", href: "https://code.claude.com/docs/en/installation" },
-      { label: "Update", href: "https://code.claude.com/docs/en/installation#update-claude-code" },
-      { label: "Config", href: "https://code.claude.com/docs/en/settings" },
-    ],
-    fields: [
-      {
-        kind: "text",
-        settingsKey: "claudeBinaryPath",
-        label: "Claude binary path",
-        placeholder: "Claude binary path",
-        description: (
-          <>
-            Leave blank to use <code>claude</code> from your PATH.
-          </>
-        ),
-      },
-      {
-        kind: "boolean",
-        settingsKey: "claudeEnableArtifacts",
-        label: "Artifacts, /design and /slides",
-        description: (
-          <>
-            Claude Code keeps Artifacts off in embedded sessions. Turn this on so{" "}
-            <code>/design</code> and <code>/slides</code> publish to claude.ai. Needs a claude.ai
-            login on a Pro, Max, Team or Enterprise plan, and applies to new sessions.
-          </>
-        ),
-      },
-    ],
-  },
-];
+  }));
 
-export const VISIBLE_PROVIDER_INSTALL_SETTINGS = PROVIDER_INSTALL_SETTINGS;
-
-function isProviderInstallFieldDirty(
+export function readProviderInstallField(
+  provider: ProviderKind,
   field: ProviderInstallField,
   settings: AppSettings,
-  defaults: AppSettings,
-): boolean {
-  return settings[field.settingsKey] !== defaults[field.settingsKey];
+): string | boolean {
+  return field.kind === "binaryPath"
+    ? (settings.providerBinaryPaths[provider] ?? "")
+    : settings[field.settingsKey];
+}
+
+export function providerInstallFieldPatch(
+  provider: ProviderKind,
+  field: ProviderInstallField,
+  value: string | boolean,
+  settings: AppSettings,
+): Partial<AppSettings> {
+  if (field.kind === "binaryPath") {
+    return { providerBinaryPaths: { ...settings.providerBinaryPaths, [provider]: String(value) } };
+  }
+  return { [field.settingsKey]: value };
 }
 
 export function isProviderInstallConfigDirty(
@@ -111,14 +122,18 @@ export function isProviderInstallConfigDirty(
   settings: AppSettings,
   defaults: AppSettings,
 ): boolean {
-  return config.fields.some((field) => isProviderInstallFieldDirty(field, settings, defaults));
+  return config.fields.some(
+    (field) =>
+      readProviderInstallField(config.provider, field, settings) !==
+      readProviderInstallField(config.provider, field, defaults),
+  );
 }
 
 export function isProviderInstallSettingsDirty(
   settings: AppSettings,
   defaults: AppSettings,
 ): boolean {
-  return PROVIDER_INSTALL_SETTINGS.some((config) =>
+  return VISIBLE_PROVIDER_INSTALL_SETTINGS.some((config) =>
     isProviderInstallConfigDirty(config, settings, defaults),
   );
 }
@@ -127,25 +142,30 @@ export function createProviderInstallDisclosureState(
   settings: AppSettings,
 ): Record<ProviderKind, boolean> {
   return Object.fromEntries(
-    PROVIDER_INSTALL_SETTINGS.map((config) => [
+    VISIBLE_PROVIDER_INSTALL_SETTINGS.map((config) => [
       config.provider,
-      config.fields.some((field) => Boolean(settings[field.settingsKey])),
+      config.fields.some((field) =>
+        Boolean(readProviderInstallField(config.provider, field, settings)),
+      ),
     ]),
   ) as Record<ProviderKind, boolean>;
 }
 
 export function createClosedProviderInstallDisclosureState(): Record<ProviderKind, boolean> {
   return Object.fromEntries(
-    PROVIDER_INSTALL_SETTINGS.map((config) => [config.provider, false]),
+    VISIBLE_PROVIDER_INSTALL_SETTINGS.map((config) => [config.provider, false]),
   ) as Record<ProviderKind, boolean>;
 }
 
 export function createProviderInstallResetPatch(defaults: AppSettings): Partial<AppSettings> {
-  return Object.fromEntries(
-    PROVIDER_INSTALL_SETTINGS.flatMap((config) =>
-      config.fields.map((field) => [field.settingsKey, defaults[field.settingsKey]]),
-    ),
-  ) as Partial<AppSettings>;
+  const patch: Partial<AppSettings> = {};
+  for (const config of VISIBLE_PROVIDER_INSTALL_SETTINGS) {
+    for (const field of config.fields) {
+      const value = readProviderInstallField(config.provider, field, defaults);
+      Object.assign(patch, providerInstallFieldPatch(config.provider, field, value, defaults));
+    }
+  }
+  return patch;
 }
 
 export function setProviderListMembership(

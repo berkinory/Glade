@@ -133,9 +133,13 @@ export function TimelineAssistantMessage({
     assistantCopyState.visible &&
     !row.assistantTurnInProgress &&
     Boolean(
-      controller.props.forkProvider === "codex"
+      controller.props.forkBoundary === "turn"
         ? row.message.turnId
-        : row.message.providerMessageId,
+        : controller.props.forkBoundary === "message"
+          ? row.message.providerMessageId
+          : controller.props.forkBoundary === "transcript"
+            ? row.message.id
+            : undefined,
     );
   const turnSummary = row.assistantTurnDiffSummary;
   const fileDiffStatByPath = new Map(

@@ -1,7 +1,8 @@
 import type { ProviderKind } from "@glade/contracts/core/baseSchemas";
 import type { RuntimeMode } from "@glade/contracts/provider/sessionPolicy";
+import { PROVIDER_DISPLAY_NAMES } from "@glade/contracts/provider/model";
+import { providerCapabilities } from "../provider/providerMetadata";
 
-const AUTO_RUNTIME_MODE_PROVIDERS = new Set<ProviderKind>(["codex", "claudeAgent"]);
 const RUNTIME_MODE_PRIVILEGE = {
   "approval-required": 0,
   auto: 1,
@@ -9,11 +10,27 @@ const RUNTIME_MODE_PRIVILEGE = {
 } as const satisfies Record<RuntimeMode, number>;
 
 export function providerSupportsAutoRuntimeMode(provider: ProviderKind): boolean {
-  return AUTO_RUNTIME_MODE_PROVIDERS.has(provider);
+  return providerCapabilities(provider).autoRuntimeMode !== "none";
 }
 
 export function unsupportedAutoRuntimeModeMessage(provider: ProviderKind): string {
-  return `Provider "${provider}" does not support Auto runtime mode. Auto is available only for Codex and Claude Code.`;
+  return `Provider "${provider}" does not support Auto runtime mode.`;
+}
+
+// An unknown model capability fails closed where the provider decides per model: its adapter refuses to
+// start Auto sessions without a confirmed flag, so accepting Auto here would only defer the failure.
+export function modelSupportsAutoRuntimeMode(
+  provider: ProviderKind,
+  supportsAutoMode: boolean | undefined,
+): boolean {
+  switch (providerCapabilities(provider).autoRuntimeMode) {
+    case "provider":
+      return supportsAutoMode !== false;
+    case "model":
+      return supportsAutoMode === true;
+    case "none":
+      return false;
+  }
 }
 
 export function autoRuntimeModeSelectionIssue(input: {
@@ -24,23 +41,19 @@ export function autoRuntimeModeSelectionIssue(input: {
     readonly supportsAutoMode?: boolean | undefined;
   };
 }): string | null {
+  const { provider, model, supportsAutoMode } = input.modelSelection;
   if (input.runtimeMode !== "auto") {
     return null;
   }
-  if (!providerSupportsAutoRuntimeMode(input.modelSelection.provider)) {
-    return unsupportedAutoRuntimeModeMessage(input.modelSelection.provider);
+  if (!providerSupportsAutoRuntimeMode(provider)) {
+    return unsupportedAutoRuntimeModeMessage(provider);
   }
-  if (
-    input.modelSelection.provider === "claudeAgent" &&
-    input.modelSelection.supportsAutoMode !== true
-  ) {
-    // Fail closed on an unknown capability: the Claude adapter refuses to start Auto sessions without a
-    // confirmed flag, so persisting Auto here would only defer the failure to runtime.
-    return input.modelSelection.supportsAutoMode === false
-      ? `Claude model "${input.modelSelection.model}" does not support Auto mode.`
-      : `Claude model "${input.modelSelection.model}" has not been verified to support Auto mode.`;
+  if (modelSupportsAutoRuntimeMode(provider, supportsAutoMode)) {
+    return null;
   }
-  return null;
+  return supportsAutoMode === false
+    ? `${PROVIDER_DISPLAY_NAMES[provider]} model "${model}" does not support Auto mode.`
+    : `${PROVIDER_DISPLAY_NAMES[provider]} model "${model}" has not been verified to support Auto mode.`;
 }
 
 export function runtimeModeEscalatesPrivilege(

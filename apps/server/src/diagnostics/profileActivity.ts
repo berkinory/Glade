@@ -99,9 +99,7 @@ export function normalizeUsageModel(
   model: string | null | undefined,
   provider: ProviderKind | "unknown",
 ): string {
-  return (
-    normalizeModelSlug(model, provider === "claudeAgent" ? "claudeAgent" : "codex") ?? "unknown"
-  );
+  return normalizeModelSlug(model, provider === "unknown" ? undefined : provider) ?? "unknown";
 }
 
 interface TokenModelUsageCount {

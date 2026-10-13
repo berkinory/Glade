@@ -16,11 +16,7 @@ import { CompactionAdmission } from "../../Services/CompactionAdmission";
 
 const COMPACTION_DISCOVERY_TIMEOUT_MS = 15_000;
 import { hasActiveClaudeRuntimeWork } from "./sessionResume";
-import {
-  normalizeClaudeModelOptions,
-  resolveApiModelId,
-  getEffectiveClaudeCodeEffort,
-} from "@glade/shared/provider/model";
+import { claudeModelOptions, resolveClaudeApiModelId } from "../claudeModelOptions.ts";
 import { nativeProviderRefs, buildUserMessageEffect } from "./messageContent";
 import { resolveSelectedClaudeThinkingToggle, selectedClaudeModelInfo } from "./modelCapabilities";
 import type { EffortLevel } from "@anthropic-ai/claude-agent-sdk";
@@ -179,10 +175,7 @@ export function makeClaudeTurnDispatch(input: {
         !isCompaction && input.modelSelection?.provider === "claudeAgent"
           ? input.modelSelection
           : undefined;
-      const selectedOptions = normalizeClaudeModelOptions(
-        modelSelection?.model,
-        modelSelection?.options,
-      );
+      const selectedOptions = claudeModelOptions(modelSelection);
 
       if (context.turnState) {
         yield* completeTurn(context, "completed");
@@ -190,7 +183,7 @@ export function makeClaudeTurnDispatch(input: {
 
       let apiModelChanged = false;
       if (modelSelection?.model) {
-        const apiModelId = resolveApiModelId(modelSelection);
+        const apiModelId = resolveClaudeApiModelId(modelSelection);
         if (apiModelId !== context.currentApiModelId) {
           apiModelChanged = true;
           if (context.session.runtimeMode === "auto") {
@@ -236,7 +229,7 @@ export function makeClaudeTurnDispatch(input: {
 
       const requestedThinking = resolveSelectedClaudeThinkingToggle(
         selectedClaudeModelInfo(context.availableModels, modelSelection?.model),
-        selectedOptions?.thinking,
+        selectedOptions.thinking,
       );
       if (modelSelection && requestedThinking !== context.currentAlwaysThinkingEnabled) {
         yield* Effect.tryPromise({
@@ -251,7 +244,7 @@ export function makeClaudeTurnDispatch(input: {
 
       if (modelSelection) {
         const modelInfo = selectedClaudeModelInfo(context.availableModels, modelSelection.model);
-        const requestedEffort = getEffectiveClaudeCodeEffort(selectedOptions?.effort);
+        const requestedEffort = selectedOptions.effort ?? null;
         if (
           requestedEffort &&
           modelInfo &&
@@ -263,7 +256,7 @@ export function makeClaudeTurnDispatch(input: {
             issue: `Claude model "${modelInfo.displayName}" does not support ${requestedEffort} effort.`,
           });
         }
-        const requestedUltracode = selectedOptions?.ultracode;
+        const requestedUltracode = selectedOptions.ultracode;
         if (
           requestedUltracode &&
           modelInfo &&
@@ -275,7 +268,7 @@ export function makeClaudeTurnDispatch(input: {
             issue: `Claude model "${modelInfo.displayName}" does not support Ultracode.`,
           });
         }
-        const requestedFastMode = selectedOptions?.fastMode;
+        const requestedFastMode = selectedOptions.fastMode;
         if (requestedFastMode && modelInfo && modelInfo.supportsFastMode !== true) {
           return yield* new ProviderAdapterValidationError({
             provider: PROVIDER,

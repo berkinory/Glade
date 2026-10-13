@@ -6,8 +6,7 @@ import { ServerSettingsService } from "../../settings/serverSettings";
 import { PtyAdapter, type PtyProcess } from "../../terminal/Services/PTY";
 import { teardownProviderProcessTree } from "../../platform/supervisedProcessTeardown";
 import { makeKeyedLock } from "../core/keyedLock";
-import { buildClaudeProcessEnv } from "../claude/claudeProcessEnv";
-import { buildCodexProcessEnv } from "../codex/codexProcessEnv";
+import { serverProviderDescriptor } from "../builtInProviders";
 import {
   ProviderAuthentication,
   ProviderAuthenticationError,
@@ -66,23 +65,22 @@ export const ProviderAuthenticationLive = Layer.effect(
               const provider = current.providers[input.provider];
               if (!provider.enabled)
                 return yield* failure("Enable this provider before signing in.");
-              const env =
-                input.provider === "claudeAgent"
-                  ? buildClaudeProcessEnv({ homeDir: config.homeDir })
-                  : yield* Effect.tryPromise({
-                      try: () =>
-                        buildCodexProcessEnv({ homePath: current.providers.codex.homePath }),
-                      catch: () =>
-                        failure("The configured provider environment could not be loaded."),
-                    });
-              const command =
-                provider.binaryPath.trim() || (input.provider === "codex" ? "codex" : "claude");
+              const { cli, authentication } = serverProviderDescriptor(input.provider);
+              const env = yield* Effect.tryPromise({
+                try: () =>
+                  authentication.processEnv({ settings: current, homeDir: config.homeDir }),
+                catch: () => failure("The configured provider environment could not be loaded."),
+              });
               const plan = yield* Effect.try({
                 try: () =>
                   prepareProcess(
-                    command,
-                    input.provider === "codex" ? ["login"] : ["auth", "login"],
-                    { env, cwd: config.homeDir, requireExecutable: true },
+                    provider.binaryPath.trim() || cli.command,
+                    authentication.loginArgs,
+                    {
+                      env,
+                      cwd: config.homeDir,
+                      requireExecutable: true,
+                    },
                   ),
                 catch: () =>
                   failure("The configured provider CLI was not found or cannot be launched."),
@@ -121,9 +119,8 @@ export const ProviderAuthenticationLive = Layer.effect(
                       exitCode: null,
                       executable: plan.resolvedCommand,
                       home:
-                        input.provider === "codex"
-                          ? (env.CODEX_HOME ?? `${config.homeDir}/.codex`)
-                          : (env.CLAUDE_CONFIG_DIR ?? `${config.homeDir}/.claude`),
+                        env[authentication.home.envKey] ??
+                        `${config.homeDir}/${authentication.home.directory}`,
                     },
                   };
                   const offData = process.onData((data) => {

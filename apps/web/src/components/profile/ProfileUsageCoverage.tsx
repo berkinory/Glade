@@ -1,5 +1,5 @@
 import type { ProviderKind } from "@glade/contracts/core/baseSchemas";
-import { formatProviderLabel } from "./profileFormatting";
+import { PROVIDER_DISPLAY_NAMES } from "@glade/contracts/provider/model";
 
 export function ProfileUsageCoverage({
   unavailableProviders,
@@ -14,8 +14,8 @@ export function ProfileUsageCoverage({
   return (
     <p className={className}>
       Token usage is unavailable or zero for{" "}
-      {unavailableProviders.map(formatProviderLabel).join(", ")}. Percentages reflect tracked tokens
-      only. Their turns still count toward activity totals.
+      {unavailableProviders.map((provider) => PROVIDER_DISPLAY_NAMES[provider]).join(", ")}.
+      Percentages reflect tracked tokens only. Their turns still count toward activity totals.
     </p>
   );
 }

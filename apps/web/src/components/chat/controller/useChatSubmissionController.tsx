@@ -1,4 +1,5 @@
 import { resolveFollowUpDispatchMode } from "~/appSettings";
+import { providerCapabilities } from "@glade/shared/provider/providerMetadata";
 import { useLayoutEffect, useRef } from "react";
 import { ComposerModelMenuTrigger } from "~/components/chat/ComposerModelMenuTrigger";
 import { ComposerModelPicker } from "~/components/chat/ComposerModelPicker";
@@ -294,7 +295,7 @@ export function useChatSubmissionController({
         modelOptions={selectedProviderModelOptions}
         runtimeModel={selectedRuntimeModel}
         fastModeNotice={
-          selectedProvider === "claudeAgent" && fastModeEnabled
+          providerCapabilities(selectedProvider).reportsFastModeAvailability && fastModeEnabled
             ? deriveFastModeUnavailableNotice(activeThread?.activities ?? [])
             : null
         }

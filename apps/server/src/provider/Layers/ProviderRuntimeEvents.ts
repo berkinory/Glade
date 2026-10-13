@@ -12,6 +12,7 @@ import { ProviderAdapterRegistry } from "../Services/ProviderAdapterRegistry";
 import { ThreadId, type ProviderKind } from "@glade/contracts/core/baseSchemas";
 import { makeEventNdjsonLogger } from "./EventNdjsonLogger";
 import { runProviderRuntimeEventPump } from "../core/providerRuntimeEventPump";
+import { makeProviderRuntimeMetrics } from "../core/providerRuntimeMetrics.ts";
 import { PROVIDER_RUNTIME_EVENT_BUFFER_CAPACITY } from "../core/providerServiceConfiguration";
 import { PersistenceDecodeError } from "../../persistence/Errors";
 import { runtimeEventRetiredGatewayTurnAuthority } from "../core/providerRuntimeBinding";
@@ -70,6 +71,7 @@ export function ProviderRuntimeEventsLive(options?: ProviderServiceLiveOptions) 
           ]),
         ),
       );
+      const runtimeMetrics = makeProviderRuntimeMetrics();
       const recoveries = yield* Ref.make(new Set<ThreadId>());
       const retiredGatewaySessionRecoveries = Ref.getUnsafe(recoveries);
       const persistedBatchEvents = new Map<string, PersistedProviderRuntimeEvent>();
@@ -118,6 +120,9 @@ export function ProviderRuntimeEventsLive(options?: ProviderServiceLiveOptions) 
                   }).pipe(
                     Effect.andThen(bindings.updateSessionBindingFromRuntimeEvent(acceptedEvent)),
                     Effect.andThen(publishRuntimeEvent(acceptedEvent, persisted)),
+                    Effect.andThen(
+                      Effect.sync(() => runtimeMetrics.observe(acceptedEvent, Date.now())),
+                    ),
                     Effect.andThen(scheduleRetiredGatewaySessionRecovery(acceptedEvent)),
                   ),
                 ),
@@ -313,6 +318,7 @@ export function ProviderRuntimeEventsLive(options?: ProviderServiceLiveOptions) 
               return current;
             }),
           ),
+        getRuntimeMetrics: () => Effect.sync(runtimeMetrics.snapshot),
         get streamEvents(): ProviderServiceShape["streamEvents"] {
           return Stream.fromPubSub(runtimeEventPubSub).pipe(Stream.map(({ event }) => event));
         },

@@ -517,11 +517,8 @@ describe("wsNativeApi", () => {
     });
   });
 
-  it.each([
-    ["even when the desktop bridge can transcribe", { transcribeVoice: vi.fn() }],
-    ["for browser voice", undefined],
-  ])("uses the bounded HTTP upload instead of WebSocket RPC %s", async (_case, server) => {
-    stubDesktopBridge(server ? { server } : {});
+  it("uses the bounded HTTP upload instead of WebSocket RPC", async () => {
+    stubDesktopBridge();
     const fetchMock = vi
       .fn<typeof fetch>()
       .mockResolvedValue(Response.json({ text: "hello" }, { status: 200 }));
@@ -536,7 +533,6 @@ describe("wsNativeApi", () => {
       expect.stringContaining("/api/voice/transcribe?"),
       expect.objectContaining({ method: "POST", body: Uint8Array.from([1, 2, 3]) }),
     );
-    if (server) expect(server.transcribeVoice).not.toHaveBeenCalled();
     expect(requestMock).not.toHaveBeenCalledWith(
       WS_METHODS.serverTranscribeVoice,
       expect.anything(),

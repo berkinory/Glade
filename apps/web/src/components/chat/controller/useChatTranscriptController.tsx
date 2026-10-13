@@ -1,4 +1,5 @@
 import { MessageId, ThreadId, type TurnId } from "@glade/contracts/core/baseSchemas";
+import { providerCapabilities } from "@glade/shared/provider/providerMetadata";
 import { resolveThreadBranchSourceCwd } from "@glade/shared/threads/threadEnvironment";
 import { useQuery } from "@tanstack/react-query";
 import { resolveThreadBrowseCwd } from "~/lib/threadEnvironment";
@@ -336,10 +337,12 @@ export function useChatTranscriptController({
     composerCommandPicker,
     providerModelDiscoveryCwd,
     gitCwd,
-    discoverNativeCompaction: selectedProvider === "claudeAgent" && isContextWindowMeterOpen,
+    discoverNativeCompaction:
+      providerCapabilities(selectedProvider).compaction === "promptTurn" &&
+      isContextWindowMeterOpen,
   });
 
-  const { compact: onCompactClaudeContext, isSubmitting: isRequestingClaudeCompaction } =
+  const { compact: onCompactContext, isSubmitting: isRequestingCompaction } =
     useThreadCompaction(threadId);
 
   const [isAbandoningLegacyCacheHold, setIsAbandoningLegacyCacheHold] = useState(false);
@@ -422,9 +425,9 @@ export function useChatTranscriptController({
     supportsTextNativeReviewCommand,
     isComposerMenuLoading,
     canCompactThread,
-    standaloneClaudeCompactDisabledReason: null,
-    onCompactClaudeContext,
-    isRequestingClaudeCompaction,
+    standaloneCompactDisabledReason: null,
+    onCompactContext,
+    isRequestingCompaction,
     isAbandoningLegacyCacheHold,
     onAbandonLegacyCacheHold,
     activeRootBranch,

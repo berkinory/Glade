@@ -45,7 +45,7 @@ import {
   makeDrainableWorker,
   startDrainableWorkerProducers,
 } from "../../platform/workers/drainableWorker";
-import { providerSupportsNativeTurnSteering } from "@glade/shared/provider/providerMetadata";
+import { providerCapabilities } from "@glade/shared/provider/providerMetadata";
 import {
   buildSubagentIdentityDirectory,
   collectSubagentProviderThreadIds,
@@ -319,6 +319,21 @@ function assistantMessageSegmentKey(threadId: ThreadId, messageId: MessageId): s
   return JSON.stringify([threadId, messageId]);
 }
 
+// A provider whose reasoning previews stream sends readable reasoning as raw reasoning text; other
+// providers only send readable reasoning as summaries.
+function isReadableReasoningStream(provider: ProviderKind, streamKind: string): boolean {
+  return (
+    streamKind === "reasoning_summary_text" ||
+    (streamKind === "reasoning_text" &&
+      providerCapabilities(provider).reasoningPreview === "streaming")
+  );
+}
+
+// Providers that fork at a native message attach its id when the assistant message completes.
+const decodeNativeAssistantMessage = Schema.decodeUnknownOption(
+  Schema.Struct({ nativeMessageId: Schema.String }),
+);
+
 function reasoningSummaryBufferKey(
   event: ProviderRuntimeEvent,
   threadId = event.threadId,
@@ -328,8 +343,7 @@ function reasoningSummaryBufferKey(
   }
   if (
     event.type === "content.delta" &&
-    (event.payload.streamKind === "reasoning_summary_text" ||
-      (event.provider === "claudeAgent" && event.payload.streamKind === "reasoning_text"))
+    isReadableReasoningStream(event.provider, event.payload.streamKind)
   ) {
     return [threadId, event.turnId ?? "no-turn", event.itemId].join(":");
   }
@@ -2024,7 +2038,7 @@ const make = Effect.gen(function* () {
       // settlements from its callback owner. A foreground terminal event cannot prove a live background
       // callback ended.
       if (
-        event.provider !== "claudeAgent" &&
+        !providerCapabilities(event.provider).ownsInteractionSettlement &&
         !isNativeChildRuntimeEvent(event) &&
         isTerminalTurnEvent &&
         eventTurnId !== undefined
@@ -2102,12 +2116,11 @@ const make = Effect.gen(function* () {
       if (
         reasoningSummaryKey &&
         event.type === "content.delta" &&
-        (event.payload.streamKind === "reasoning_summary_text" ||
-          (event.provider === "claudeAgent" && event.payload.streamKind === "reasoning_text")) &&
+        isReadableReasoningStream(event.provider, event.payload.streamKind) &&
         event.payload.delta.length > 0
       ) {
         yield* appendBufferedReasoningSummary(reasoningSummaryKey, event);
-        if (event.provider === "claudeAgent") {
+        if (providerCapabilities(event.provider).reasoningPreview === "streaming") {
           const buffered = Option.getOrUndefined(
             yield* Cache.getOption(bufferedReasoningSummaryByKey, reasoningSummaryKey),
           );
@@ -2222,12 +2235,8 @@ const make = Effect.gen(function* () {
       }
 
       const nativeAssistantMessage =
-        event.provider === "claudeAgent" &&
-        event.type === "item.updated" &&
-        event.payload.itemType === "assistant_message"
-          ? Schema.decodeUnknownSync(Schema.Struct({ nativeMessageId: Schema.String }))(
-              event.payload.data,
-            )
+        event.type === "item.updated" && event.payload.itemType === "assistant_message"
+          ? Option.getOrUndefined(decodeNativeAssistantMessage(event.payload.data))
           : undefined;
       const assistantCompletion =
         (event.type === "item.completed" || nativeAssistantMessage !== undefined) &&
@@ -2591,7 +2600,7 @@ const make = Effect.gen(function* () {
       const isNativeSteer =
         event.payload.dispatchMode === "steer" &&
         steerProvider !== undefined &&
-        providerSupportsNativeTurnSteering(steerProvider);
+        providerCapabilities(steerProvider).turnSteering;
       let deliveryTurnId: TurnId | undefined;
       if (isNativeSteer) {
         let activeTurnId = thread?.session?.activeTurnId ?? undefined;
@@ -2616,14 +2625,18 @@ const make = Effect.gen(function* () {
           nextAssistantDeliveryMode,
         );
       }
-      if (!deliveryTurnId || nextAssistantDeliveryMode !== "streaming") {
+      if (
+        !deliveryTurnId ||
+        nextAssistantDeliveryMode !== "streaming" ||
+        steerProvider === undefined
+      ) {
         return;
       }
 
       const flushEvent: ProviderRuntimeEvent = {
         type: "turn.started",
         eventId: event.eventId,
-        provider: (steerProvider ?? "codex") as ProviderKind,
+        provider: steerProvider as ProviderKind,
         createdAt: event.payload.createdAt,
         threadId: event.payload.threadId,
         turnId: deliveryTurnId,

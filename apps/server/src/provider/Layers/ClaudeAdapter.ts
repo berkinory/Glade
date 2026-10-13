@@ -1,10 +1,12 @@
 import { updateClaudeNativeHistory } from "../claude/adapter/nativeHistory.ts";
+import { claudeTitleGeneration } from "../claude/adapter/threadTitle.ts";
 import {
   ClaudeAdapterLiveOptions,
   ClaudeQueryRuntime,
 } from "../claude/adapter/adapterConfiguration";
 import { Effect, FileSystem, Option, Layer } from "effect";
 import { ServerConfig } from "../../server/config.ts";
+import { DEFAULT_SERVER_SETTINGS } from "@glade/contracts/settings/settings";
 import { ServerSettingsService } from "../../settings/serverSettings.ts";
 import { AgentGatewayCredentials } from "../../agentGateway/Services/AgentGatewayCredentials.ts";
 import type { SDKUserMessage, Options as ClaudeQueryOptions } from "@anthropic-ai/claude-agent-sdk";
@@ -368,6 +370,7 @@ function makeClaudeAdapter(options?: ClaudeAdapterLiveOptions) {
         supportsTurnSteering: true,
         supportsLiveTurnDiffPatch: false,
       },
+      titleGeneration: claudeTitleGeneration,
       startSession,
       canResumeNativeConversation: (resumeCursor) =>
         readClaudeResumeState(resumeCursor)?.resume !== undefined,
@@ -392,7 +395,17 @@ function makeClaudeAdapter(options?: ClaudeAdapterLiveOptions) {
       hasSession,
       stopAll,
       getComposerCapabilities,
-      listCommands,
+      // Artifact commands follow this provider's own setting, not the caller's request.
+      listCommands: (input) =>
+        serverSettings.getSettings.pipe(
+          Effect.orElseSucceed(() => DEFAULT_SERVER_SETTINGS),
+          Effect.flatMap((settings) =>
+            listCommands({
+              ...input,
+              enableArtifacts: settings.providers.claudeAgent.enableArtifacts,
+            }),
+          ),
+        ),
       listSkills,
       listModels,
       listAgents,

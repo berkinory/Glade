@@ -15,6 +15,7 @@ import {
 } from "@glade/contracts/settings/settings";
 import { TrimmedNonEmptyString, ProviderKind } from "@glade/contracts/core/baseSchemas";
 import { normalizeModelSlug, resolveSelectableModel } from "@glade/shared/provider/model";
+import { PROVIDER_DESCRIPTOR_BY_KIND } from "@glade/shared/provider/providerMetadata";
 
 import { useLocalStorage } from "./hooks/useLocalStorage";
 import { EnvMode } from "./components/BranchToolbar.logic";
@@ -163,32 +164,13 @@ const PersistedProviderKindList = Schema.Array(Schema.String).pipe(
   ),
 );
 
-const PersistedHiddenModels = Schema.Array(
-  Schema.Struct({
-    provider: Schema.String,
-    slug: Schema.String,
-  }),
-).pipe(
-  Schema.decodeTo(
-    Schema.Array(
-      Schema.Struct({
-        provider: ProviderKind,
-        slug: Schema.String,
-      }),
-    ),
-    SchemaTransformation.transform({
-      decode: (entries): ReadonlyArray<{ provider: ProviderKind; slug: string }> =>
-        entries.flatMap((entry) => {
-          const resolved = resolvePersistedProviderListEntry(entry.provider);
-          return resolved === undefined ? [] : [{ provider: resolved, slug: entry.slug }];
-        }),
-      encode: (entries) => entries,
-    }),
-  ),
-);
-
 const AppSettingsSchema = Schema.Struct({
-  claudeBinaryPath: Schema.String.check(Schema.isMaxLength(4096)).pipe(withDefaults(() => "")),
+  // Mirrors the server's per-provider binary paths. Stored copies are dropped because the server owns
+  // these values; unknown kinds are stripped on decode.
+  providerBinaryPaths: Schema.Record(
+    ProviderKind,
+    Schema.optionalKey(Schema.String.check(Schema.isMaxLength(4096))),
+  ).pipe(withDefaults(() => ({}))),
   claudeEnableArtifacts: Schema.Boolean.pipe(withDefaults(() => false)),
 
   onboardingCompletedAt: Schema.NullOr(Schema.String).pipe(withDefaults((): string | null => null)),
@@ -200,7 +182,6 @@ const AppSettingsSchema = Schema.Struct({
   terminalFontFamily: Schema.String.check(Schema.isMaxLength(256)).pipe(
     withDefaults(() => DEFAULT_TERMINAL_FONT_FAMILY),
   ),
-  codexBinaryPath: Schema.String.check(Schema.isMaxLength(4096)).pipe(withDefaults(() => "")),
   sidebarUsageProviders: PersistedProviderKindList.pipe(withDefaults(() => [])),
   sidebarUsageWindow: Schema.Literals(["five-hour", "weekly", "both"]).pipe(
     withDefaults(() => "both" as const),
@@ -267,8 +248,6 @@ const AppSettingsSchema = Schema.Struct({
   disabledProviders: PersistedProviderKindList.pipe(withDefaults(() => [])),
 
   providerOrder: PersistedProviderKindList.pipe(withDefaults(() => [...DEFAULT_PROVIDER_ORDER])),
-
-  hiddenModels: PersistedHiddenModels.pipe(withDefaults(() => [])),
 });
 export type AppSettings = typeof AppSettingsSchema.Type;
 
@@ -356,11 +335,21 @@ function normalizeProviderBinaryPathOverride(
   return trimmed;
 }
 
+function normalizeProviderBinaryPaths(
+  paths: AppSettings["providerBinaryPaths"],
+): AppSettings["providerBinaryPaths"] {
+  return Object.fromEntries(
+    DEFAULT_PROVIDER_ORDER.map((provider) => [
+      provider,
+      normalizeProviderBinaryPathOverride(provider, paths[provider]),
+    ]),
+  );
+}
+
 function normalizeAppSettings(settings: AppSettings): AppSettings {
   return {
     ...settings,
-    claudeBinaryPath: normalizeProviderBinaryPathOverride("claudeAgent", settings.claudeBinaryPath),
-    codexBinaryPath: normalizeProviderBinaryPathOverride("codex", settings.codexBinaryPath),
+    providerBinaryPaths: normalizeProviderBinaryPaths(settings.providerBinaryPaths),
     uiDensity: normalizeUiDensityValue(settings.uiDensity),
     chatWidth: normalizeChatWidthModeValue(settings.chatWidth),
     chatFontSizePx: normalizeChatFontSizePx(settings.chatFontSizePx),
@@ -369,10 +358,9 @@ function normalizeAppSettings(settings: AppSettings): AppSettings {
     hiddenProviders: normalizeHiddenProviders(settings.hiddenProviders),
     disabledProviders: normalizeHiddenProviders(settings.disabledProviders),
     sidebarUsageProviders: [...new Set(settings.sidebarUsageProviders)].filter(
-      (provider) => provider === "codex" || provider === "claudeAgent",
+      (provider) => PROVIDER_DESCRIPTOR_BY_KIND[provider].usage !== null,
     ),
     providerOrder: normalizeProviderOrder(settings.providerOrder),
-    hiddenModels: [],
   };
 }
 
@@ -406,9 +394,10 @@ export function didProviderCommandDiscoverySettingsChange(
 
 function serverSettingsToAppSettings(settings: ServerSettingsView): Partial<AppSettings> {
   return {
-    claudeBinaryPath: settings.providers.claudeAgent.binaryPath,
+    providerBinaryPaths: Object.fromEntries(
+      DEFAULT_PROVIDER_ORDER.map((provider) => [provider, settings.providers[provider].binaryPath]),
+    ),
     claudeEnableArtifacts: settings.providers.claudeAgent.enableArtifacts,
-    codexBinaryPath: settings.providers.codex.binaryPath,
     codexHomePath: settings.providers.codex.homePath,
     defaultThreadEnvMode: settings.defaultThreadEnvMode,
     enableAssistantStreaming: settings.enableAssistantStreaming,
@@ -503,18 +492,20 @@ function appSettingsPatchToServerSettingsPatch(
     };
     if (!model) serverPatch.textGenerationModelSelection = null;
   }
-  if (hasOwn(patch, "codexBinaryPath") || hasOwn(patch, "codexHomePath")) {
-    providers.codex = {
-      ...(hasOwn(patch, "codexBinaryPath") ? { binaryPath: patch.codexBinaryPath ?? "" } : {}),
-      ...(hasOwn(patch, "codexHomePath") ? { homePath: patch.codexHomePath ?? "" } : {}),
-    };
+  // A binary path patch names only the providers it changes.
+  for (const provider of DEFAULT_PROVIDER_ORDER) {
+    const binaryPath = patch.providerBinaryPaths?.[provider];
+    if (binaryPath !== undefined) {
+      providers[provider] = { ...providers[provider], binaryPath };
+    }
   }
-  if (hasOwn(patch, "claudeBinaryPath") || hasOwn(patch, "claudeEnableArtifacts")) {
+  if (hasOwn(patch, "codexHomePath")) {
+    providers.codex = { ...providers.codex, homePath: patch.codexHomePath ?? "" };
+  }
+  if (hasOwn(patch, "claudeEnableArtifacts")) {
     providers.claudeAgent = {
-      ...(hasOwn(patch, "claudeBinaryPath") ? { binaryPath: patch.claudeBinaryPath ?? "" } : {}),
-      ...(hasOwn(patch, "claudeEnableArtifacts")
-        ? { enableArtifacts: Boolean(patch.claudeEnableArtifacts) }
-        : {}),
+      ...providers.claudeAgent,
+      enableArtifacts: Boolean(patch.claudeEnableArtifacts),
     };
   }
   if (hasOwn(patch, "disabledProviders")) {
@@ -550,9 +541,7 @@ function buildInitialServerSettingsMigrationPatch(settings: AppSettings): Server
   const defaults = DEFAULT_APP_SETTINGS;
 
   for (const key of [
-    "claudeBinaryPath",
     "claudeEnableArtifacts",
-    "codexBinaryPath",
     "codexHomePath",
     "defaultThreadEnvMode",
     "enableAssistantStreaming",
@@ -572,6 +561,7 @@ function normalizeStoredAppSettings(settings: AppSettings): AppSettings {
   return {
     ...normalizeAppSettings(settings),
 
+    providerBinaryPaths: {},
     disabledProviders: [],
   };
 }
@@ -607,7 +597,7 @@ export function getAppModelOptions(
     options.push({
       provider,
       slug: normalizedSelectedModel,
-      name: formatProviderModelOptionName({ provider, slug: normalizedSelectedModel }),
+      name: formatProviderModelOptionName(normalizedSelectedModel),
       isSelectedHint: true,
     });
   }
@@ -667,7 +657,7 @@ export function getGitTextGenerationModelOptions(
     deduped.push({
       provider: selectedProvider,
       slug: selectedModel,
-      name: formatProviderModelOptionName({ provider: selectedProvider, slug: selectedModel }),
+      name: formatProviderModelOptionName(selectedModel),
       isSelectedHint: true,
     });
   }
@@ -684,30 +674,16 @@ export function resolveAppModelSelection(
 }
 
 export function getProviderStartOptions(
-  settings: Pick<AppSettings, "claudeBinaryPath" | "codexBinaryPath" | "codexHomePath">,
+  settings: Pick<AppSettings, "providerBinaryPaths" | "codexHomePath">,
 ): ProviderStartOptions | undefined {
-  const claudeBinaryPath = normalizeProviderBinaryPathOverride(
-    "claudeAgent",
-    settings.claudeBinaryPath,
-  );
-  const codexBinaryPath = normalizeProviderBinaryPathOverride("codex", settings.codexBinaryPath);
-  const providerOptions: ProviderStartOptions = {
-    ...(codexBinaryPath || settings.codexHomePath
-      ? {
-          codex: {
-            ...(codexBinaryPath ? { binaryPath: codexBinaryPath } : {}),
-            ...(settings.codexHomePath ? { homePath: settings.codexHomePath } : {}),
-          },
-        }
-      : {}),
-    ...(claudeBinaryPath
-      ? {
-          claudeAgent: {
-            binaryPath: claudeBinaryPath,
-          },
-        }
-      : {}),
-  };
+  const providerOptions: Mutable<ProviderStartOptions> = {};
+  for (const provider of DEFAULT_PROVIDER_ORDER) {
+    const binaryPath = getCustomBinaryPathForProvider(settings, provider);
+    if (binaryPath) providerOptions[provider] = { binaryPath };
+  }
+  if (settings.codexHomePath) {
+    providerOptions.codex = { ...providerOptions.codex, homePath: settings.codexHomePath };
+  }
 
   return Object.keys(providerOptions).length > 0 ? providerOptions : undefined;
 }
@@ -733,15 +709,10 @@ export function resolveFollowUpDispatchMode(input: {
 }
 
 export function getCustomBinaryPathForProvider(
-  settings: Pick<AppSettings, "claudeBinaryPath" | "codexBinaryPath">,
+  settings: Pick<AppSettings, "providerBinaryPaths">,
   provider: ProviderKind,
 ): string {
-  switch (provider) {
-    case "codex":
-      return normalizeProviderBinaryPathOverride(provider, settings.codexBinaryPath);
-    case "claudeAgent":
-      return normalizeProviderBinaryPathOverride(provider, settings.claudeBinaryPath);
-  }
+  return normalizeProviderBinaryPathOverride(provider, settings.providerBinaryPaths[provider]);
 }
 
 const RESOLVED_DEFAULT_APP_SETTINGS = normalizeAppSettings({

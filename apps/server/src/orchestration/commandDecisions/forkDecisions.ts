@@ -1,4 +1,6 @@
 import { Effect } from "effect";
+import type { ProviderForkPoint } from "@glade/contracts/provider/provider";
+import { providerCapabilities } from "@glade/shared/provider/providerMetadata";
 import { EventId } from "@glade/contracts/core/baseSchemas";
 import type { OrchestrationCommand } from "@glade/contracts/orchestration/commands";
 import type { OrchestrationEvent } from "@glade/contracts/orchestration/events";
@@ -77,24 +79,30 @@ export const decideForkCreate = Effect.fnUntraced(function* ({
       detail: "This reply is still running. Fork from it once its turn finishes.",
     });
   }
-  const forkPoint =
-    sourceThread.modelSelection.provider === "codex" && forkMessage.turnId
-      ? { provider: "codex" as const, turnId: forkMessage.turnId }
-      : sourceThread.modelSelection.provider === "claudeAgent" && forkMessage.providerMessageId
-        ? { provider: "claudeAgent" as const, messageId: forkMessage.providerMessageId }
+  const provider = sourceThread.modelSelection.provider;
+  const forkBoundary = providerCapabilities(provider).forkBoundary;
+  const forkPoint: ProviderForkPoint | undefined =
+    forkBoundary === "turn" && forkMessage.turnId
+      ? { provider, turnId: forkMessage.turnId }
+      : forkBoundary === "message" && forkMessage.providerMessageId
+        ? { provider, messageId: forkMessage.providerMessageId }
         : undefined;
-  if (!forkPoint)
+  // A transcript fork has no native boundary: the fork's first session starts fresh and carries the
+  // copied conversation as transcript context.
+  if (!forkPoint && forkBoundary !== "transcript")
     return yield* new OrchestrationCommandInvariantError({
       commandType: command.type,
       detail: "This message has no recorded native fork identifier.",
     });
-  const laterNativeMessage = sourceThread.messages
-    .slice(forkIndex + 1)
-    .some((message) =>
-      forkPoint.provider === "codex"
-        ? message.turnId === forkPoint.turnId
-        : message.providerMessageId === forkPoint.messageId,
-    );
+  const laterNativeMessage =
+    forkPoint !== undefined &&
+    sourceThread.messages
+      .slice(forkIndex + 1)
+      .some((message) =>
+        "turnId" in forkPoint
+          ? message.turnId === forkPoint.turnId
+          : message.providerMessageId === forkPoint.messageId,
+      );
   if (laterNativeMessage)
     return yield* new OrchestrationCommandInvariantError({
       commandType: command.type,
@@ -129,7 +137,7 @@ export const decideForkCreate = Effect.fnUntraced(function* ({
       subagentNickname: null,
       subagentRole: null,
       forkSourceThreadId: command.sourceThreadId,
-      forkPoint,
+      ...(forkPoint ? { forkPoint } : {}),
       handoff: null,
       createdAt: command.createdAt,
       updatedAt: command.createdAt,

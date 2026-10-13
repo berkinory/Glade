@@ -164,7 +164,7 @@ export function useChatActionsController({
         resolvedModel,
 
         selectionOptions?.modelOptions,
-        provider === "claudeAgent" ? runtimeModel?.supportsAutoMode : undefined,
+        runtimeModel?.supportsAutoMode,
       );
       const providerStatus = findProviderStatus(providerStatuses, provider);
       const nextRuntimeMode =

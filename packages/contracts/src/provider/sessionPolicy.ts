@@ -1,6 +1,6 @@
 import { Schema } from "effect";
-import { TrimmedNonEmptyString, NonNegativeInt } from "../core/baseSchemas";
-import { CodexModelOptions, ClaudeModelOptions } from "./model";
+import { TrimmedNonEmptyString, NonNegativeInt, ProviderKind } from "../core/baseSchemas";
+import { ProviderOptionSelections } from "./model";
 
 export const ProviderApprovalPolicy = Schema.Literals([
   "untrusted",
@@ -19,24 +19,13 @@ export const ProviderSandboxMode = Schema.Literals([
 
 export type ProviderSandboxMode = typeof ProviderSandboxMode.Type;
 
-export const CodexModelSelection = Schema.Struct({
-  provider: Schema.Literal("codex"),
+export const ModelSelection = Schema.Struct({
+  provider: ProviderKind,
   model: TrimmedNonEmptyString,
-  options: Schema.optional(CodexModelOptions),
-});
-
-export type CodexModelSelection = typeof CodexModelSelection.Type;
-
-export const ClaudeModelSelection = Schema.Struct({
-  provider: Schema.Literal("claudeAgent"),
-  model: TrimmedNonEmptyString,
-  options: Schema.optional(ClaudeModelOptions),
+  options: Schema.optional(ProviderOptionSelections),
+  // Reported by the model's descriptor; Auto runtime mode needs it where the provider decides per model.
   supportsAutoMode: Schema.optional(Schema.Boolean),
 });
-
-export type ClaudeModelSelection = typeof ClaudeModelSelection.Type;
-
-export const ModelSelection = Schema.Union([CodexModelSelection, ClaudeModelSelection]);
 
 export type ModelSelection = typeof ModelSelection.Type;
 
@@ -52,9 +41,17 @@ export const ClaudeProviderStartOptions = Schema.Struct({
   enableArtifacts: Schema.optional(Schema.Boolean),
 });
 
+// Providers whose only start option is the executable to launch.
+export const BinaryProviderStartOptions = Schema.Struct({
+  binaryPath: Schema.optional(TrimmedNonEmptyString),
+});
+
 export const ProviderStartOptions = Schema.Struct({
   codex: Schema.optional(CodexProviderStartOptions),
   claudeAgent: Schema.optional(ClaudeProviderStartOptions),
+  opencode: Schema.optional(BinaryProviderStartOptions),
+  grok: Schema.optional(BinaryProviderStartOptions),
+  cursor: Schema.optional(BinaryProviderStartOptions),
   // Settings allows Computer Use, so the harness policy carries the computer guidance.
   allowComputerUse: Schema.optional(Schema.Boolean),
 });

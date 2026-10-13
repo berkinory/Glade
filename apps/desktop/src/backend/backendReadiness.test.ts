@@ -84,14 +84,22 @@ describe("waitForHttpReady", () => {
       )
       .mockResolvedValueOnce(new Response(null, { status: 200 }));
 
-    await waitForHttpReady("http://127.0.0.1:3773", {
-      fetchImpl,
-      timeoutMs: 100,
-      intervalMs: 0,
-      requestTimeoutMs: 1,
-    });
+    vi.useFakeTimers();
+    try {
+      const readiness = waitForHttpReady("http://127.0.0.1:3773", {
+        fetchImpl,
+        timeoutMs: 10_000,
+        intervalMs: 0,
+        requestTimeoutMs: 1_000,
+      });
 
-    expect(fetchImpl).toHaveBeenCalledTimes(2);
+      await vi.advanceTimersByTimeAsync(1_001);
+
+      await expect(readiness).resolves.toBeUndefined();
+      expect(fetchImpl).toHaveBeenCalledTimes(2);
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it("keeps observing a live backend beyond sixty seconds when no deadline is configured", async () => {

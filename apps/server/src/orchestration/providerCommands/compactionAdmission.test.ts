@@ -37,7 +37,7 @@ describe("durable compaction admission", () => {
             admission.admitted();
             dispatched = true;
           });
-          const pending = yield* withCompactionAdmission(engine, event, work).pipe(
+          const pending = yield* withCompactionAdmission(engine, event, "claudeAgent", work).pipe(
             Effect.forkChild,
           );
           yield* Deferred.await(preparing);
@@ -49,7 +49,9 @@ describe("durable compaction admission", () => {
           });
           const cancelled = yield* Fiber.await(pending);
           yield* Deferred.succeed(ready, undefined);
-          const replayed = yield* Effect.exit(withCompactionAdmission(engine, event, work));
+          const replayed = yield* Effect.exit(
+            withCompactionAdmission(engine, event, "claudeAgent", work),
+          );
           return {
             cancelled: Exit.isFailure(cancelled),
             replayed: Exit.isFailure(replayed),

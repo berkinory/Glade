@@ -27,6 +27,7 @@ import {
 import { buildSearchableModelOptions } from "../../hooks/useComposerCommandMenuItems";
 import { useProviderModelCatalog } from "../../hooks/useProviderModelCatalog";
 import { buildModelSelection } from "../../providerModelOptions";
+import { DEFAULT_PROVIDER_ORDER } from "../../providerOrdering";
 import type { Project } from "../../types";
 import { type Thread } from "../../types";
 import {
@@ -133,10 +134,9 @@ export function useChatProviderModels({
       (threadModelSelection?.provider === provider ? threadModelSelection.model : null) ??
       (projectModelSelection?.provider === provider ? projectModelSelection.model : null);
 
-    return {
-      codex: resolveHint("codex"),
-      claudeAgent: resolveHint("claudeAgent"),
-    };
+    return Object.fromEntries(
+      DEFAULT_PROVIDER_ORDER.map((provider) => [provider, resolveHint(provider)]),
+    ) as Record<ProviderKind, string | null>;
   }, [
     activeProject?.defaultModelSelection,
     activeThread?.modelSelection,
@@ -170,16 +170,13 @@ export function useChatProviderModels({
   });
   const draftModelSelectionForSelectedProvider =
     composerDraft.modelSelectionByProvider[selectedProvider] ?? null;
-  const persistedClaudeSupportsAutoMode =
-    selectedProvider === "claudeAgent"
-      ? draftModelSelectionForSelectedProvider?.provider === "claudeAgent" &&
-        draftModelSelectionForSelectedProvider.model === selectedModel
-        ? draftModelSelectionForSelectedProvider.supportsAutoMode
-        : activeThread?.modelSelection.provider === "claudeAgent" &&
-            activeThread.modelSelection.model === selectedModel
-          ? activeThread.modelSelection.supportsAutoMode
-          : undefined
-      : undefined;
+  const persistedSupportsAutoMode =
+    draftModelSelectionForSelectedProvider?.model === selectedModel
+      ? draftModelSelectionForSelectedProvider.supportsAutoMode
+      : activeThread?.modelSelection.provider === selectedProvider &&
+          activeThread.modelSelection.model === selectedModel
+        ? activeThread.modelSelection.supportsAutoMode
+        : undefined;
   const selectedRuntimeModel = useMemo(() => {
     const discovered = resolveRuntimeModelDescriptor({
       provider: selectedProvider,
@@ -189,15 +186,10 @@ export function useChatProviderModels({
     if (discovered) {
       return discovered;
     }
-    return selectedProvider === "claudeAgent" &&
-      typeof persistedClaudeSupportsAutoMode === "boolean"
-      ? {
-          slug: selectedModel,
-          name: selectedModel,
-          supportsAutoMode: persistedClaudeSupportsAutoMode,
-        }
+    return typeof persistedSupportsAutoMode === "boolean"
+      ? { slug: selectedModel, name: selectedModel, supportsAutoMode: persistedSupportsAutoMode }
       : undefined;
-  }, [persistedClaudeSupportsAutoMode, runtimeModelsByProvider, selectedModel, selectedProvider]);
+  }, [persistedSupportsAutoMode, runtimeModelsByProvider, selectedModel, selectedProvider]);
   const composerProviderState = useMemo(
     () =>
       getComposerProviderState({
@@ -217,7 +209,7 @@ export function useChatProviderModels({
       selectedProvider,
       selectedModel,
       selectedModelOptionsForDispatch,
-      selectedProvider === "claudeAgent" ? selectedRuntimeModel?.supportsAutoMode : undefined,
+      selectedRuntimeModel?.supportsAutoMode,
     );
   }, [
     handoffSelection,
@@ -260,7 +252,13 @@ export function useChatProviderModels({
           ? activeProject.defaultModelSelection
           : null;
   const providerModelsLoading = selectedProviderModelsLoading;
-  const selectedProviderRequiresRuntimeModels = !selectedModel;
+  // Until the catalog names the selected model, its label would be guessed from the raw id (such as
+  // "opencode/big-pickle"), so the trigger shows its loading state instead.
+  const selectedProviderRequiresRuntimeModels =
+    !selectedModel ||
+    !modelOptionsByProvider[selectedProvider].some(
+      (option) => option.slug === selectedModelForPicker,
+    );
   const showComposerModelBootstrapSkeleton = shouldShowComposerModelBootstrapSkeleton({
     selectedProvider,
     selectedModel,

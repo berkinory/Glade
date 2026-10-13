@@ -1,4 +1,5 @@
 import { createHash } from "node:crypto";
+import { providerCapabilities } from "@glade/shared/provider/providerMetadata";
 import { TurnId, EventId, ApprovalRequestId, ThreadId } from "@glade/contracts/core/baseSchemas";
 import { nonEmptyTrimmed } from "@glade/shared/text/text";
 import { type ProviderRuntimeEvent } from "@glade/contracts/provider/runtimeEvents";
@@ -73,9 +74,9 @@ export function projectProviderRuntimeActivities(
       : {};
 
   if (
-    ((event.provider === "codex" && event.type === "item.completed") ||
-      (event.provider === "claudeAgent" &&
-        (event.type === "item.updated" || event.type === "item.completed"))) &&
+    (event.type === "item.completed" ||
+      (event.type === "item.updated" &&
+        providerCapabilities(event.provider).reasoningPreview === "streaming")) &&
     event.payload.itemType === "reasoning" &&
     event.itemId !== undefined &&
     readableReasoningDetail(event.payload.detail) !== undefined

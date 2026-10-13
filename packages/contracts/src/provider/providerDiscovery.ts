@@ -1,8 +1,8 @@
 import { Schema } from "effect";
-import { TrimmedNonEmptyString } from "../core/baseSchemas";
+import { ProviderKind, TrimmedNonEmptyString } from "../core/baseSchemas";
 import { ProviderOptionChoice, ProviderOptionDescriptor } from "./model";
 
-const ProviderDiscoveryKind = Schema.Literals(["codex", "claudeAgent"]);
+const ProviderDiscoveryKind = ProviderKind;
 
 export const ProviderSkillInterface = Schema.Struct({
   displayName: Schema.optional(TrimmedNonEmptyString),

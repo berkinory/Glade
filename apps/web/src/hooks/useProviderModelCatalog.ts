@@ -3,7 +3,7 @@ import type {
   ProviderModelDescriptor,
 } from "@glade/contracts/provider/providerDiscovery";
 import type { ProviderKind } from "@glade/contracts/core/baseSchemas";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQueries, useQuery, useQueryClient, type UseQueryResult } from "@tanstack/react-query";
 import { useEffect, useMemo } from "react";
 
 import { getAppModelOptions, useAppSettings } from "../appSettings";
@@ -16,6 +16,7 @@ import {
 } from "../lib/providerDiscoveryReactQuery";
 import { serverConfigQueryOptions } from "../lib/serverReactQuery";
 import { mergeDynamicModelOptions, type ProviderModelOption } from "../providerModelOptions";
+import { DEFAULT_PROVIDER_ORDER } from "../providerOrdering";
 
 export interface ProviderModelCatalog {
   modelOptionsByProvider: Record<
@@ -32,6 +33,34 @@ export interface ProviderModelCatalog {
 }
 
 const EMPTY_PROVIDER_AGENTS: ReadonlyArray<ProviderAgentDescriptor> = [];
+
+function mapProviders<Value>(
+  valueFor: (provider: ProviderKind) => Value,
+): Record<ProviderKind, Value> {
+  return Object.fromEntries(
+    DEFAULT_PROVIDER_ORDER.map((provider) => [provider, valueFor(provider)]),
+  ) as Record<ProviderKind, Value>;
+}
+
+// A module-level combine keeps its identity across renders, so TanStack Query structurally shares the
+// per-provider record and consumers only see a new object when a query result changes.
+function indexQueriesByProvider<Data>(
+  results: ReadonlyArray<UseQueryResult<Data, Error>>,
+): Record<
+  ProviderKind,
+  Pick<UseQueryResult<Data, Error>, "data" | "error" | "isFetching" | "isLoading" | "isPending">
+> {
+  return mapProviders((provider) => {
+    const result = results[DEFAULT_PROVIDER_ORDER.indexOf(provider)]!;
+    return {
+      data: result.data,
+      error: result.error,
+      isFetching: result.isFetching,
+      isLoading: result.isLoading,
+      isPending: result.isPending,
+    };
+  });
+}
 
 export function useProviderModelCatalog(input: {
   selectedProvider: ProviderKind;
@@ -59,32 +88,25 @@ export function useProviderModelCatalog(input: {
     return prefetchProviderSet?.has(provider) ?? !hiddenProviderSet.has(provider);
   };
 
-  const modelQueryOptionsByProvider = {
-    claudeAgent: providerModelsQueryOptions(
+  const binaryPathFor = (provider: ProviderKind) => settings.providerBinaryPaths[provider] || null;
+  const modelsQueryOptionsFor = (provider: ProviderKind) =>
+    providerModelsQueryOptions(
       {
-        provider: "claudeAgent",
-        binaryPath: settings.claudeBinaryPath || null,
+        provider,
+        binaryPath: binaryPathFor(provider),
         cwd: cwd ?? null,
-        enabled: shouldDiscoverProvider("claudeAgent"),
+        enabled: shouldDiscoverProvider(provider),
       },
       queryClient,
-    ),
-    codex: providerModelsQueryOptions(
-      {
-        provider: "codex",
-        binaryPath: settings.codexBinaryPath || null,
-        cwd: cwd ?? null,
-        enabled: shouldDiscoverProvider("codex"),
-      },
-      queryClient,
-    ),
-  } as const;
-  const claudeQuery = useQuery(modelQueryOptionsByProvider.claudeAgent);
-  const codexQuery = useQuery(modelQueryOptionsByProvider.codex);
-  const queries = { claudeAgent: claudeQuery, codex: codexQuery } as const;
+    );
+  const modelQueries = useQueries({
+    queries: DEFAULT_PROVIDER_ORDER.map(modelsQueryOptionsFor),
+    combine: indexQueriesByProvider,
+  });
 
+  const selectedModelsQueryOptions = modelsQueryOptionsFor(selectedProvider);
   const [, , modelProvider, modelBinaryPath, modelApiEndpoint, modelCwd, accountIdentity] =
-    modelQueryOptionsByProvider[selectedProvider].queryKey;
+    selectedModelsQueryOptions.queryKey;
   const selectedProviderModelsQueryKey = useMemo(
     () =>
       providerDiscoveryQueryKeys.models(
@@ -96,57 +118,43 @@ export function useProviderModelCatalog(input: {
       ),
     [modelProvider, modelBinaryPath, modelApiEndpoint, modelCwd, accountIdentity],
   );
-  const selectedProviderModelsEnabled = modelQueryOptionsByProvider[selectedProvider].enabled;
+  const selectedProviderModelsEnabled = selectedModelsQueryOptions.enabled;
   useEffect(() => {
     if (!selectedProviderModelsEnabled) return;
     return prioritizeProviderModelDiscovery(selectedProviderModelsQueryKey);
   }, [selectedProviderModelsQueryKey, selectedProviderModelsEnabled]);
 
-  const claudeAgentsQuery = useQuery(
-    providerAgentsQueryOptions({
-      provider: "claudeAgent",
-      binaryPath: settings.claudeBinaryPath || null,
-      cwd: cwd ?? null,
-      enabled: shouldDiscoverProvider("claudeAgent") && !claudeQuery.isPending,
-    }),
-  );
-  const codexAgentsQuery = useQuery(
-    providerAgentsQueryOptions({
-      provider: "codex",
-      binaryPath: settings.codexBinaryPath || null,
-      cwd: cwd ?? null,
-      enabled: shouldDiscoverProvider("codex") && !codexQuery.isPending,
-    }),
-  );
+  const agentQueries = useQueries({
+    queries: DEFAULT_PROVIDER_ORDER.map((provider) =>
+      providerAgentsQueryOptions({
+        provider,
+        binaryPath: binaryPathFor(provider),
+        cwd: cwd ?? null,
+        enabled: shouldDiscoverProvider(provider) && !modelQueries[provider].isPending,
+      }),
+    ),
+    combine: indexQueriesByProvider,
+  });
 
-  const modelOptionsByProvider = useMemo(() => {
-    const staticOptions = {
-      codex: getAppModelOptions("codex", modelHintByProvider?.codex),
-      claudeAgent: getAppModelOptions("claudeAgent", modelHintByProvider?.claudeAgent),
-    };
-    const result: ProviderModelCatalog["modelOptionsByProvider"] = { ...staticOptions };
-    const dynamicSources = { claudeAgent: claudeQuery.data, codex: codexQuery.data };
-    for (const provider of ["claudeAgent", "codex"] as const) {
-      const discovery = dynamicSources[provider];
-      const dynamicModels = discovery?.models;
-      const hasCodexCatalog =
-        provider === "codex" &&
-        discovery?.source === "codex-app-server" &&
-        discovery.error === undefined;
-      if (dynamicModels && (dynamicModels.length > 0 || hasCodexCatalog)) {
-        result[provider] = mergeDynamicModelOptions({
-          provider,
-          staticOptions: staticOptions[provider],
-          dynamicModels,
-        });
-      }
-    }
-    return result;
-  }, [modelHintByProvider, claudeQuery.data, codexQuery.data]);
+  const modelOptionsByProvider = useMemo(
+    () =>
+      mapProviders((provider) => {
+        const staticOptions = getAppModelOptions(provider, modelHintByProvider?.[provider]);
+        const discovery = modelQueries[provider].data;
+        const dynamicModels = discovery?.models;
+        // The Codex app server reports its full catalog, so an empty list from it is authoritative.
+        const isAuthoritativeCatalog =
+          discovery?.source === "codex-app-server" && discovery.error === undefined;
+        return dynamicModels && (dynamicModels.length > 0 || isAuthoritativeCatalog)
+          ? mergeDynamicModelOptions({ staticOptions, dynamicModels })
+          : staticOptions;
+      }),
+    [modelHintByProvider, modelQueries],
+  );
 
   const runtimeModelsByProvider = useMemo<ProviderModelCatalog["runtimeModelsByProvider"]>(
-    () => ({ claudeAgent: claudeQuery.data?.models ?? [], codex: codexQuery.data?.models ?? [] }),
-    [claudeQuery.data?.models, codexQuery.data?.models],
+    () => mapProviders((provider) => modelQueries[provider].data?.models ?? []),
+    [modelQueries],
   );
   const selectedRuntimeModel = useMemo(
     () =>
@@ -158,9 +166,7 @@ export function useProviderModelCatalog(input: {
     [selectedProvider, modelHintByProvider, runtimeModelsByProvider],
   );
   const selectedDynamicAgents =
-    selectedProvider === "claudeAgent"
-      ? (claudeAgentsQuery.data?.agents ?? EMPTY_PROVIDER_AGENTS)
-      : (codexAgentsQuery.data?.agents ?? EMPTY_PROVIDER_AGENTS);
+    agentQueries[selectedProvider].data?.agents ?? EMPTY_PROVIDER_AGENTS;
   const selectedRuntimeAgents = useMemo<ReadonlyArray<ProviderAgentDescriptor>>(
     () =>
       selectedDynamicAgents.map((agent) =>
@@ -171,24 +177,23 @@ export function useProviderModelCatalog(input: {
     [selectedDynamicAgents],
   );
   const discoveryErrorsByProvider = useMemo<ProviderModelCatalog["discoveryErrorsByProvider"]>(
-    () => ({
-      claudeAgent: claudeQuery.data?.error ?? claudeQuery.error?.message,
-      codex: codexQuery.data?.error ?? codexQuery.error?.message,
-    }),
-    [claudeQuery.data?.error, codexQuery.data?.error, claudeQuery.error, codexQuery.error],
+    () =>
+      mapProviders(
+        (provider) => modelQueries[provider].data?.error ?? modelQueries[provider].error?.message,
+      ),
+    [modelQueries],
   );
+  const selectedQuery = modelQueries[selectedProvider];
   const selectedProviderRuntimeModelDiscoveryPending =
-    queries[selectedProvider].data === undefined && queries[selectedProvider].isFetching;
-  const selectedQuery = queries[selectedProvider];
+    selectedQuery.data === undefined && selectedQuery.isFetching;
   const selectedProviderModelsLoading =
     selectedQuery.isLoading || (selectedQuery.isFetching && selectedQuery.data === undefined);
 
   return {
     modelOptionsByProvider,
-    loadingModelProviders: {
-      codex: codexQuery.isFetching && codexQuery.data === undefined,
-      claudeAgent: claudeQuery.isFetching && claudeQuery.data === undefined,
-    },
+    loadingModelProviders: mapProviders(
+      (provider) => modelQueries[provider].isFetching && modelQueries[provider].data === undefined,
+    ),
     runtimeModelsByProvider,
     selectedRuntimeModel,
     selectedRuntimeAgents,

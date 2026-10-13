@@ -2,7 +2,7 @@ import { asObjectRecord } from "@glade/shared/transport/payloadValues";
 import type { OrchestrationThread } from "@glade/contracts/orchestration/threadEntities";
 import { providerUsageLearnMoreHref } from "@glade/shared/provider/providerUsage";
 
-export interface RateLimitWindow {
+interface RateLimitWindow {
   window: string;
   usedPercent?: number | undefined;
   utilization?: number | undefined;
@@ -86,10 +86,7 @@ function windowLabelFromDuration(windowDurationMins: number | undefined): string
   return undefined;
 }
 
-export function normalizeRateLimitLabel(
-  label: string | undefined,
-  windowDurationMins?: number,
-): string {
+function normalizeRateLimitLabel(label: string | undefined, windowDurationMins?: number): string {
   if (!label) return windowLabelFromDuration(windowDurationMins) ?? "Current";
 
   const normalized = label

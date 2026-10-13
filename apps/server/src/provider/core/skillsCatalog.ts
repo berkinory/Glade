@@ -3,7 +3,7 @@ import * as nodePath from "node:path";
 
 import type { ProviderKind } from "@glade/contracts/core/baseSchemas";
 import type { ProviderSkillDescriptor } from "@glade/contracts/provider/providerDiscovery";
-import { discoverClaudePluginSkillRoots } from "../claude/claudePluginSkills.ts";
+import { BUILT_IN_PROVIDERS, serverProviderDescriptor } from "../builtInProviders.ts";
 import {
   type FrontmatterValue,
   parseSkillFrontmatter,
@@ -280,8 +280,6 @@ interface SkillsCatalogRootInput extends SkillsCatalogDiscoveryInput {
   readonly includeGladeRoot?: boolean;
 }
 
-const HOME_ORIGIN_ORDER = ["glade", "codex", "claude", "agents"] as const;
-
 const SKILLS_CATALOG_CACHE_TTL_MS = 15_000;
 const SKILLS_CATALOG_CACHE_MAX_ENTRIES = 64;
 
@@ -310,69 +308,55 @@ async function ensureGladeSkillsDir(gladeBaseDir: string): Promise<string> {
   return dir;
 }
 
-type SkillsHomeOrigin = (typeof HOME_ORIGIN_ORDER)[number];
-
-interface SkillOriginRootSpec {
-  readonly homeRoots: (input: SkillsCatalogDiscoveryInput) => string[];
-  readonly projectRootNames: readonly string[];
+// Each origin scans `<home>/<directory>/skills` and `<directory>/skills` in every project ancestor.
+interface SkillOrigin {
+  readonly scope: string;
+  readonly directory: string;
 }
 
-const SKILL_ORIGIN_ROOTS = {
-  glade: {
-    homeRoots: (input) => [gladeSkillsDir(input.gladeBaseDir)],
-    projectRootNames: [".glade"],
-  },
-  codex: {
-    homeRoots: (input) => [nodePath.join(input.homeDir, ".codex", "skills")],
-    projectRootNames: [".codex"],
-  },
-  claude: {
-    homeRoots: (input) => [nodePath.join(input.homeDir, ".claude", "skills")],
-    projectRootNames: [".claude"],
-  },
-  agents: {
-    homeRoots: (input) => [nodePath.join(input.homeDir, ".agents", "skills")],
-    projectRootNames: [".agents"],
-  },
-} as const satisfies Record<SkillsHomeOrigin, SkillOriginRootSpec>;
+const GLADE_ORIGIN = "glade";
+const SKILL_ORIGINS: ReadonlyArray<SkillOrigin> = [
+  { scope: GLADE_ORIGIN, directory: ".glade" },
+  ...BUILT_IN_PROVIDERS.flatMap((provider) => provider.skills.origins),
+  { scope: "agents", directory: ".agents" },
+];
+const HOME_ORIGIN_ORDER = SKILL_ORIGINS.map((origin) => origin.scope);
 
-const PROVIDER_SKILL_ORIGIN_PREFERENCES = {
-  codex: ["codex", "agents"],
-  claudeAgent: ["claude"],
-} as const satisfies Partial<Record<ProviderKind, readonly SkillsHomeOrigin[]>>;
+const originDirectory = (origin: string): string | undefined =>
+  SKILL_ORIGINS.find((candidate) => candidate.scope === origin)?.directory;
 
-function homeRootsForOrigin(
-  origin: SkillsHomeOrigin,
-  input: SkillsCatalogDiscoveryInput,
-): string[] {
-  return SKILL_ORIGIN_ROOTS[origin].homeRoots(input);
+function homeRootsForOrigin(origin: string, input: SkillsCatalogDiscoveryInput): string[] {
+  if (origin === GLADE_ORIGIN) return [gladeSkillsDir(input.gladeBaseDir)];
+  const directory = originDirectory(origin);
+  return directory ? [nodePath.join(input.homeDir, directory, "skills")] : [];
 }
 
-function projectRootNamesForOrigin(origin: SkillsHomeOrigin): readonly string[] {
-  return SKILL_ORIGIN_ROOTS[origin].projectRootNames;
+function projectRootNamesForOrigin(origin: string): readonly string[] {
+  const directory = originDirectory(origin);
+  return directory ? [directory] : [];
 }
 
 function preferredOriginsForProvider(
   provider: ProviderKind | null | undefined,
-): ReadonlyArray<SkillsHomeOrigin> {
-  return provider ? (PROVIDER_SKILL_ORIGIN_PREFERENCES[provider] ?? []) : [];
+): ReadonlyArray<string> {
+  return provider ? serverProviderDescriptor(provider).skills.preferredScopes : [];
 }
 
 function orderedOriginsForProvider(
   provider: ProviderKind | null | undefined,
   includeGladeRoot = true,
   includeRemainingOrigins = true,
-): SkillsHomeOrigin[] {
+): string[] {
   const preferred = preferredOriginsForProvider(provider);
   const ordered = [...preferred];
-  if (includeGladeRoot && !ordered.includes("glade")) {
-    ordered.push("glade");
+  if (includeGladeRoot && !ordered.includes(GLADE_ORIGIN)) {
+    ordered.push(GLADE_ORIGIN);
   }
   if (!includeRemainingOrigins) {
-    return ordered.filter((origin) => includeGladeRoot || origin !== "glade");
+    return ordered.filter((origin) => includeGladeRoot || origin !== GLADE_ORIGIN);
   }
   for (const origin of HOME_ORIGIN_ORDER) {
-    if (!includeGladeRoot && origin === "glade") {
+    if (!includeGladeRoot && origin === GLADE_ORIGIN) {
       continue;
     }
     if (!ordered.includes(origin)) {
@@ -384,7 +368,7 @@ function orderedOriginsForProvider(
 
 function rootsForOrderedOrigins(
   input: SkillsCatalogRootInput,
-  orderedOrigins: ReadonlyArray<SkillsHomeOrigin>,
+  orderedOrigins: ReadonlyArray<string>,
 ): SkillRoot[] {
   const homeRoots = orderedOrigins.flatMap((origin) =>
     homeRootsForOrigin(origin, input).map((path) => ({ path, scope: origin })),
@@ -452,10 +436,20 @@ export async function discoverSkillsCatalog(
     await ensureGladeSkillsDir(input.gladeBaseDir);
     const roots = [
       ...skillsCatalogRoots(input),
-      ...(await discoverClaudePluginSkillRoots({
-        homeDir: input.homeDir,
-        ...(input.cwd ? { cwd: input.cwd } : {}),
-      })),
+      ...(
+        await Promise.all(
+          BUILT_IN_PROVIDERS.flatMap(({ skills }) =>
+            skills.pluginRoots
+              ? [
+                  skills.pluginRoots({
+                    homeDir: input.homeDir,
+                    ...(input.cwd ? { cwd: input.cwd } : {}),
+                  }),
+                ]
+              : [],
+          ),
+        )
+      ).flat(),
     ];
     const skills = input.includeDuplicateOrigins
       ? await collectSkillDescriptorsFromRoots(roots)

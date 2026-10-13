@@ -5,7 +5,16 @@ import {
   type ParsedCliVersion,
 } from "../core/cliVersion.ts";
 
-import { PROVIDER_COMPATIBILITY, isProviderVersionSupported } from "../core/compatibility.ts";
+import { PROVIDER_DISPLAY_NAMES } from "@glade/contracts/provider/model";
+import { isProviderVersionSupported } from "../core/compatibility.ts";
+import type { ProviderCli } from "../core/serverProviderDescriptor.ts";
+import { CODEX_PROTOCOL_VERSION } from "./protocol/version.ts";
+
+export const CODEX_CLI: ProviderCli = {
+  command: "codex",
+  displayName: PROVIDER_DISPLAY_NAMES.codex,
+  minimumVersion: CODEX_PROTOCOL_VERSION,
+};
 
 function parseSemver(version: string): ParsedCliVersion | null {
   const normalized = normalizeCliVersion(version);
@@ -54,12 +63,12 @@ export function parseCodexCliVersion(output: string): string | null {
 }
 
 export function isCodexCliVersionSupported(version: string): boolean {
-  return isProviderVersionSupported("codex", version);
+  return isProviderVersionSupported(CODEX_CLI, version);
 }
 
 export function formatCodexCliUpgradeMessage(
   version: string | null,
-  minimumVersion = PROVIDER_COMPATIBILITY.codex.minimumVersion,
+  minimumVersion = CODEX_CLI.minimumVersion,
 ): string {
   const versionLabel = version ? `v${version}` : "the installed version";
   return `Codex CLI ${versionLabel} is too old for Glade. Upgrade to v${minimumVersion} or newer and restart Glade.`;

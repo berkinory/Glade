@@ -17,6 +17,7 @@ import type {
 } from "@glade/contracts/provider/provider";
 import type { ProviderKind, ThreadId } from "@glade/contracts/core/baseSchemas";
 import type { ProviderRuntimeEvent } from "@glade/contracts/provider/runtimeEvents";
+import type { ServerDiagnosticsProviderRuntime } from "@glade/contracts/server/server";
 import { ServiceMap } from "effect";
 import type { Effect, Stream } from "effect";
 
@@ -169,6 +170,8 @@ export interface ProviderServiceShape {
   readonly getRuntimeEventPumpHealth: () => Effect.Effect<
     ReadonlyArray<ProviderRuntimeEventPumpHealth>
   >;
+
+  readonly getRuntimeMetrics: () => Effect.Effect<ReadonlyArray<ServerDiagnosticsProviderRuntime>>;
 
   readonly streamEvents: Stream.Stream<ProviderRuntimeEvent>;
 

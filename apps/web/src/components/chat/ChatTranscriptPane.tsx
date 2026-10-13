@@ -50,7 +50,7 @@ interface ChatTranscriptPaneProps {
   pinnedMessageIds?: ReadonlySet<MessageId>;
   onTogglePinMessage?: (messageId: MessageId) => void;
   onForkFromMessage?: (messageId: MessageId) => void;
-  forkProvider?: "codex" | "claudeAgent";
+  forkBoundary?: "turn" | "message" | "transcript";
   enteringUserMessageIds?: ComponentProps<typeof MessagesTimeline>["enteringUserMessageIds"];
   tailAnchorMessageId?: ComponentProps<typeof MessagesTimeline>["tailAnchorMessageId"];
   tailAnchorScrollInFlightRef?: ComponentProps<
@@ -119,7 +119,7 @@ export function ChatTranscriptPane({
   pinnedMessageIds,
   onTogglePinMessage,
   onForkFromMessage,
-  forkProvider,
+  forkBoundary,
   enteringUserMessageIds,
   tailAnchorMessageId,
   tailAnchorScrollInFlightRef,
@@ -245,9 +245,9 @@ export function ChatTranscriptPane({
                   onForkFromMessage,
                 }
               : {})}
-            {...(forkProvider
+            {...(forkBoundary
               ? {
-                  forkProvider,
+                  forkBoundary,
                 }
               : {})}
             {...(enteringUserMessageIds

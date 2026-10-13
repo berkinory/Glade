@@ -46,7 +46,6 @@ import {
   normalizeDesktopWsUrl,
   resolveDesktopWsUrlFromEnv,
 } from "./ipcValidation";
-import { registerDesktopVoiceTranscriptionHandler } from "./voiceTranscription";
 import { registerNotificationPermissionIpc } from "./notificationPermissions";
 import { registerBrowserViewIpc } from "./browserViewIpc";
 import { registerComputerPermissionsIpc } from "./computerPermissionsIpc";
@@ -453,7 +452,6 @@ export function createRegisterDesktopIpc({
           ...(typeof input?.threadId === "string" ? { threadId: input.threadId } : {}),
         }),
     );
-    registerDesktopVoiceTranscriptionHandler();
     registerBrowserViewIpc(desktopHost);
     registerComputerPermissionsIpc(computerPermissions, () => desktopHost()?.computer ?? null);
   }

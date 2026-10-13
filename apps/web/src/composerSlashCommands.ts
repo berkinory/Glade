@@ -1,4 +1,8 @@
 import { type GitBranch } from "@glade/contracts/git/git";
+import {
+  providerCapabilities,
+  providerNativeCommandAliases,
+} from "@glade/shared/provider/providerMetadata";
 import { type ProviderKind } from "@glade/contracts/core/baseSchemas";
 import {
   BUILT_IN_COMPOSER_SLASH_COMMANDS,
@@ -25,27 +29,11 @@ export interface ComposerSlashInvocation {
 export type FastSlashCommandAction = "toggle" | "on" | "off" | "status" | "invalid";
 export type ForkSlashCommandTarget = "local" | "worktree";
 
-const CLAUDE_NATIVE_COMMAND_ALIASES: Record<string, readonly string[]> = {
-  clear: ["reset", "new"],
-  config: ["settings"],
-  desktop: ["app"],
-  exit: ["quit"],
-  feedback: ["bug"],
-  mobile: ["ios", "android"],
-  permissions: ["allowed-tools"],
-  "remote-control": ["rc"],
-  resume: ["continue"],
-};
-
 function getProviderNativeSlashCommandAliases(
   provider: ProviderKind,
   command: string,
 ): readonly string[] {
-  const normalizedCommand = normalizeComposerSlashCommandName(command);
-  if (provider !== "claudeAgent") {
-    return [];
-  }
-  return CLAUDE_NATIVE_COMMAND_ALIASES[normalizedCommand] ?? [];
+  return providerNativeCommandAliases(provider)[normalizeComposerSlashCommandName(command)] ?? [];
 }
 
 function expandProviderNativeSlashCommandNames(
@@ -66,10 +54,6 @@ function expandProviderNativeSlashCommandNames(
   return [...expandedNames];
 }
 
-function providerUsesAppOwnedReviewSlashCommand(provider: ProviderKind): boolean {
-  return provider === "codex";
-}
-
 function shouldKeepBuiltInSlashCommandDespiteNativeCollision(
   provider: ProviderKind,
   command: ComposerSlashCommand,
@@ -79,7 +63,7 @@ function shouldKeepBuiltInSlashCommandDespiteNativeCollision(
     command === "feedback" ||
     command === "fork" ||
     command === "rename" ||
-    (providerUsesAppOwnedReviewSlashCommand(provider) && command === "review")
+    (providerCapabilities(provider).nativeReview && command === "review")
   );
 }
 
@@ -98,7 +82,7 @@ export function shouldHideProviderNativeCommandFromComposerMenu(
     (normalizedCommand === "feedback" && appCommandIsAvailable) ||
     (normalizedCommand === "fork" && appCommandIsAvailable) ||
     (normalizedCommand === "rename" && appCommandIsAvailable) ||
-    (providerUsesAppOwnedReviewSlashCommand(provider) && normalizedCommand === "review")
+    (providerCapabilities(provider).nativeReview && normalizedCommand === "review")
   );
 }
 
@@ -106,7 +90,7 @@ export function providerSupportsTextNativeReviewCommand(
   provider: ProviderKind,
   nativeCommandNames: ReadonlyArray<{ readonly name: string } | string>,
 ): boolean {
-  if (providerUsesAppOwnedReviewSlashCommand(provider)) {
+  if (providerCapabilities(provider).nativeReview) {
     return false;
   }
   return nativeCommandNames.some((command) => {
@@ -336,7 +320,7 @@ export function getAvailableComposerSlashCommands(input: {
   );
 
   const availableCommands: ComposerSlashCommand[] =
-    input.provider !== "claudeAgent"
+    providerCapabilities(input.provider).sessionSlashCommands === "glade"
       ? [
           "clear",
           ...(input.canOfferCompactCommand ? (["compact"] as const) : []),

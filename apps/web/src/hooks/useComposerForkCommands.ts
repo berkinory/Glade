@@ -1,4 +1,5 @@
 import { type MessageId } from "@glade/contracts/core/baseSchemas";
+import { providerCapabilities } from "@glade/shared/provider/providerMetadata";
 import { deriveAssociatedWorktreeMetadata } from "@glade/shared/threads/threadWorkspace";
 import { useCallback } from "react";
 import { toastManager } from "../components/ui/toast";
@@ -9,6 +10,7 @@ import {
 import { resolveForkThreadEnvironment } from "../lib/threadEnvironment";
 import { newCommandId, newMessageId, newThreadId } from "../lib/utils";
 import { readNativeApi } from "../nativeApi";
+import type { ChatMessage } from "../types";
 import type { ComposerSlashCommandInput } from "./composerSlashCommandTypes";
 export function useComposerForkCommands(input: {
   thread: Pick<
@@ -59,6 +61,15 @@ export function useComposerForkCommands(input: {
       const runningTurnId =
         activeThread.session?.activeTurnId ??
         (activeThread.latestTurn?.state === "running" ? activeThread.latestTurn.turnId : null);
+      const forkBoundary = providerCapabilities(selectedProvider).forkBoundary;
+      const forkPointOf = (message: ChatMessage) =>
+        forkBoundary === "turn"
+          ? message.turnId
+          : forkBoundary === "message"
+            ? message.providerMessageId
+            : forkBoundary === "transcript"
+              ? message.id
+              : undefined;
       const forkMessage = inputOptions?.throughMessageId
         ? activeThread.messages.find((message) => message.id === inputOptions.throughMessageId)
         : activeThread.messages.findLast(
@@ -66,7 +77,7 @@ export function useComposerForkCommands(input: {
               message.role === "assistant" &&
               !message.streaming &&
               (runningTurnId === null || message.turnId !== runningTurnId) &&
-              (selectedProvider === "codex" ? message.turnId : message.providerMessageId),
+              forkPointOf(message),
           );
       if (forkMessage && runningTurnId !== null && forkMessage.turnId === runningTurnId) {
         toastManager.add({
@@ -79,9 +90,9 @@ export function useComposerForkCommands(input: {
       if (
         !forkMessage ||
         selectedProvider !== activeThread.modelSelection.provider ||
-        (selectedProvider === "codex" ? !forkMessage.turnId : !forkMessage.providerMessageId)
+        !forkPointOf(forkMessage)
       ) {
-        toastManager.add({ type: "warning", title: "This message has no native fork point" });
+        toastManager.add({ type: "warning", title: "This message cannot be forked" });
         return false;
       }
       const nextThreadId = newThreadId();
@@ -132,7 +143,7 @@ export function useComposerForkCommands(input: {
     ],
   );
 
-  const runCodexReviewStart = useCallback(
+  const runNativeReviewStart = useCallback(
     async (target: "changes" | "base-branch") => {
       const api = readNativeApi();
       if (!api || !activeThread || !activeProject) {
@@ -241,15 +252,15 @@ export function useComposerForkCommands(input: {
 
   const handleReviewTargetSelection = useCallback(
     async (target: "changes" | "base-branch") => {
-      if (selectedProvider === "codex") {
-        await runCodexReviewStart(target);
+      if (providerCapabilities(selectedProvider).nativeReview) {
+        await runNativeReviewStart(target);
       } else {
         const replacement = buildSlashReviewComposerPrompt(target === "base-branch" ? "base" : "");
         editorActions.setComposerPromptValue(replacement);
       }
       editorActions.scheduleComposerFocus();
     },
-    [editorActions, selectedProvider, runCodexReviewStart],
+    [editorActions, selectedProvider, runNativeReviewStart],
   );
 
   const runForkThread = useCallback(
@@ -289,7 +300,7 @@ export function useComposerForkCommands(input: {
 
   return {
     createForkThreadFromSlashCommand,
-    runCodexReviewStart,
+    runNativeReviewStart,
     handleReviewTargetSelection,
     handleForkTargetSelection,
     handleForkFromMessage,

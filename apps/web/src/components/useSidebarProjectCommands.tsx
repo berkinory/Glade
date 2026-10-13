@@ -290,7 +290,7 @@ export function useSidebarProjectCommands(context: ReturnType<typeof useSidebarT
         ? [
             `Remove project "${project.name}"?`,
             `This will delete ${projectThreads.length} ${pluralize(projectThreads.length, "thread")} in this folder and remove the project.`,
-            "Their Codex or Claude session history will also be deleted.",
+            "Their provider session history will also be deleted where the provider allows it.",
           ].join("\n")
         : `Remove project "${project.name}"?`,
     );

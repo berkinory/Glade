@@ -1,4 +1,5 @@
 import { useThreadCompaction } from "./useThreadCompaction";
+import { providerCapabilities } from "@glade/shared/provider/providerMetadata";
 import { useQuery } from "@tanstack/react-query";
 import { useCallback } from "react";
 import { useLocalDesktopActive } from "~/environments/activeEnvironment";
@@ -64,7 +65,7 @@ export function useComposerSlashCommands(input: ComposerSlashCommandInput) {
     supportsFastSlashCommand,
     canOfferCompactCommand,
     canOfferReviewCommand: true,
-    canOfferForkCommand: true,
+    canOfferForkCommand: providerCapabilities(selectedProvider).forkBoundary !== "none",
     canOfferExportCommand,
     canOfferComputerUseCommand: isLocalDesktop && allowComputerUse,
     providerNativeCommandNames,
@@ -77,7 +78,7 @@ export function useComposerSlashCommands(input: ComposerSlashCommandInput) {
       setComposerDraftProviderModelOptions(
         threadId,
         selectedProvider,
-        buildNextProviderOptions(selectedProvider, currentProviderModelOptions, {
+        buildNextProviderOptions(currentProviderModelOptions, {
           fastMode: enabled,
         }),
         {
@@ -132,34 +133,34 @@ export function useComposerSlashCommands(input: ComposerSlashCommandInput) {
 
   const {
     createForkThreadFromSlashCommand,
-    runCodexReviewStart,
+    runNativeReviewStart,
     handleReviewTargetSelection,
     handleForkTargetSelection,
     handleForkFromMessage,
   } = useComposerForkCommands(input);
 
-  const checkClaudeFastSlashCommandAvailability = useCallback(async (): Promise<boolean> => {
+  const checkNativeFastSlashCommandAvailability = useCallback(async (): Promise<boolean> => {
     const api = readNativeApi();
     if (!api || !providerCommandDiscoveryCwd) {
       editorActions.clearComposerSlashDraft();
       toastManager.add({
         type: "warning",
         title: "Fast mode could not be checked",
-        description: "Claude command discovery is unavailable right now.",
+        description: "Provider command discovery is unavailable right now.",
       });
       return false;
     }
 
     try {
       const result = await api.provider.listCommands({
-        provider: "claudeAgent",
+        provider: selectedProvider,
         cwd: providerCommandDiscoveryCwd,
         threadId,
         forceReload: true,
       });
       if (
         hasProviderNativeSlashCommand(
-          "claudeAgent",
+          selectedProvider,
           result.commands.map((command) => command.name),
           "fast",
         )
@@ -180,10 +181,10 @@ export function useComposerSlashCommands(input: ComposerSlashCommandInput) {
     toastManager.add({
       type: "info",
       title: "Fast mode is unavailable",
-      description: "Claude did not expose /fast for this account or environment.",
+      description: "The provider did not expose /fast for this account or environment.",
     });
     return false;
-  }, [editorActions, providerCommandDiscoveryCwd, threadId]);
+  }, [editorActions, providerCommandDiscoveryCwd, selectedProvider, threadId]);
 
   const runExportSlashCommand = useCallback(() => {
     if (!canOfferExportCommand) {
@@ -239,8 +240,11 @@ export function useComposerSlashCommands(input: ComposerSlashCommandInput) {
   const handleStandaloneSlashCommand = useCallback(
     async (trimmed: string): Promise<boolean> => {
       const fastSlashAction = parseFastSlashCommandAction(trimmed);
-      if (selectedProvider === "claudeAgent" && fastSlashAction !== null) {
-        if (await checkClaudeFastSlashCommandAvailability()) {
+      if (
+        providerCapabilities(selectedProvider).sessionSlashCommands === "native" &&
+        fastSlashAction !== null
+      ) {
+        if (await checkNativeFastSlashCommandAvailability()) {
           return false;
         }
         return true;
@@ -294,7 +298,7 @@ export function useComposerSlashCommands(input: ComposerSlashCommandInput) {
         return true;
       }
       if (slashInvocation.command === "review") {
-        if (selectedProvider === "codex") {
+        if (providerCapabilities(selectedProvider).nativeReview) {
           const normalizedArgs = slashInvocation.args.trim().toLowerCase();
           if (normalizedArgs.length === 0) {
             editorActions.clearComposerSlashDraft();
@@ -312,7 +316,7 @@ export function useComposerSlashCommands(input: ComposerSlashCommandInput) {
             return true;
           }
           editorActions.clearComposerSlashDraft();
-          await runCodexReviewStart(target);
+          await runNativeReviewStart(target);
           return true;
         }
         if (supportsTextNativeReviewCommand && slashInvocation.args.length === 0) {
@@ -367,7 +371,7 @@ export function useComposerSlashCommands(input: ComposerSlashCommandInput) {
     },
     [
       availableBuiltInSlashCommands,
-      checkClaudeFastSlashCommandAvailability,
+      checkNativeFastSlashCommandAvailability,
       compactProviderThread,
       createForkThreadFromSlashCommand,
       editorActions,
@@ -378,7 +382,7 @@ export function useComposerSlashCommands(input: ComposerSlashCommandInput) {
       openReviewTargetPicker,
       selectedProvider,
       supportsTextNativeReviewCommand,
-      runCodexReviewStart,
+      runNativeReviewStart,
       runExportSlashCommand,
       runFastSlashCommand,
 
@@ -487,7 +491,7 @@ export function useComposerSlashCommands(input: ComposerSlashCommandInput) {
       }
 
       if (item.command === "review") {
-        if (selectedProvider === "codex") {
+        if (providerCapabilities(selectedProvider).nativeReview) {
           const applied = clearSlashCommandFromComposer();
           if (!wasPromptReplacementApplied(applied)) {
             return;

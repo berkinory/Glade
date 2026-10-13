@@ -233,8 +233,17 @@ export function makeAgentGatewayMcpTransport(input: {
           "do-not-retry",
         );
       }
-      const liveProvider = callerThread.value.session?.providerName;
-      if ((liveProvider ?? callerThread.value.modelSelection.provider) !== callerSession.provider) {
+      const liveProvider =
+        callerThread.value.session?.providerName ?? callerThread.value.modelSelection.provider;
+      // A handoff's destination connects while its session starts, before the session is bound to
+      // the thread, so the pending destination is the owner-to-be.
+      const handoff = callerThread.value.handoff;
+      const handoffDestination =
+        handoff?.stage === "pending" ? handoff.destinationModelSelection.provider : undefined;
+      if (
+        liveProvider !== callerSession.provider &&
+        handoffDestination !== callerSession.provider
+      ) {
         return invalidSessionResponse(
           "provider-mismatch",
           "caller_session_inactive: Provider session no longer owns this thread. Do not retry with this token; re-lease thread ownership before calling again.",

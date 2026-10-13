@@ -109,7 +109,7 @@ and snapshots older ones before removing them; those snapshots expire after 30 d
 
 ## Providers, models, and sessions
 
-A provider is the coding-agent runtime Glade operates, currently Claude Code or Codex.
+A provider is the coding-agent runtime Glade operates, currently Claude Code, Codex, OpenCode, Grok Build or Cursor.
 
 The provider supplies:
 

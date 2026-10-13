@@ -1,6 +1,7 @@
 import { rememberedThreadVisit } from "./threadVisitPersistence";
 import { deriveBackgroundWork } from "@glade/shared/threads/backgroundWork";
-import type { ProviderKind } from "@glade/contracts/core/baseSchemas";
+import { ProviderKind } from "@glade/contracts/core/baseSchemas";
+import { Schema } from "effect";
 import type { OrchestrationSessionStatus } from "@glade/contracts/orchestration/threadEntities";
 import { resolveThreadBranchRegressionGuard } from "@glade/shared/git/git";
 import { deriveThreadSummaryMetadata } from "@glade/shared/threads/threadSummary";
@@ -52,7 +53,7 @@ export function normalizeThreadSession(
       ? incoming.lastError
       : undefined;
   const nextSession = {
-    provider: toLegacyProvider(incoming.providerName),
+    provider: knownProvider(incoming.providerName),
     status: toLegacySessionStatus(incoming.status),
     orchestrationStatus: incoming.status,
     activeTurnId: incoming.activeTurnId ?? undefined,
@@ -432,8 +433,10 @@ function toLegacySessionStatus(
   }
 }
 
-function toLegacyProvider(providerName: string | null): ProviderKind {
-  return providerName === "claudeAgent" ? "claudeAgent" : "codex";
+const isProviderKind = Schema.is(ProviderKind);
+
+function knownProvider(providerName: string | null): ProviderKind | undefined {
+  return providerName !== null && isProviderKind(providerName) ? providerName : undefined;
 }
 
 export function resolveThreadSidebarMetadata(

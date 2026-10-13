@@ -2,7 +2,7 @@ import { type ProviderModelDescriptor } from "@glade/contracts/provider/provider
 
 import { type StarredModel, starredModelSlotKey } from "~/lib/starredModels";
 import { cn } from "~/lib/utils";
-import { type ProviderOptions } from "../../providerModelOptions";
+import { type ProviderOptionSelections } from "@glade/contracts/provider/model";
 import { PROVIDER_ICON_COMPONENT_BY_PROVIDER } from "../ProviderIcon";
 import { ShortcutKbd } from "../ui/kbd";
 import { MenuItem } from "../ui/menu";
@@ -22,7 +22,7 @@ export function ComposerModelPickerRow(props: {
 
   shortcutHint: string | null;
 
-  providerOptions: ProviderOptions | undefined;
+  providerOptions: ProviderOptionSelections | undefined;
   runtimeModels: ReadonlyArray<ProviderModelDescriptor> | null | undefined;
   prompt: string;
 

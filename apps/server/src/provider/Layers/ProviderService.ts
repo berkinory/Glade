@@ -159,6 +159,7 @@ const makeProviderService = Effect.gen(function* () {
     ...history,
     closeRuntimeEvents,
     getRuntimeEventPumpHealth: events.getRuntimeEventPumpHealth,
+    getRuntimeMetrics: events.getRuntimeMetrics,
     get streamEvents(): ProviderServiceShape["streamEvents"] {
       return events.streamEvents;
     },

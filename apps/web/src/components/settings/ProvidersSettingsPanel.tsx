@@ -65,6 +65,8 @@ import {
   PROVIDER_VISIBILITY_OPTIONS,
   VISIBLE_PROVIDER_INSTALL_SETTINGS,
   isProviderInstallConfigDirty,
+  providerInstallFieldPatch,
+  readProviderInstallField,
   isProviderInstallSettingsDirty,
   createProviderInstallDisclosureState,
   createClosedProviderInstallDisclosureState,
@@ -84,7 +86,10 @@ function providerSetupStatusLabel(input: {
   if (status.authStatus === "unauthenticated") return "Needs sign-in";
   if (status.status === "update-required") return "Update required";
   if (status.status !== "ready") return "Needs attention";
-  if (status.authStatus === "unknown") return "Installed · sign-in not verified";
+  // A provider that runs without a sign-in, such as OpenCode's free models, names what it offers.
+  if (status.authStatus === "unknown") {
+    return status.authLabel ? `Ready · ${status.authLabel}` : "Installed · sign-in not verified";
+  }
   return "Connected";
 }
 function ProviderDocsLinks({ docs }: { docs: ProviderInstallSettings["docs"] }) {
@@ -160,11 +165,17 @@ function ProviderUpdateAction(props: {
   );
 }
 function ProviderInstallFieldControl(props: {
+  provider: ProviderKind;
   field: ProviderInstallField;
   settings: AppSettings;
   updateSettings: (patch: Partial<AppSettings>) => void;
 }) {
-  const id = `provider-install-${props.field.settingsKey}`;
+  const id = `provider-install-${props.field.id}`;
+  const value = readProviderInstallField(props.provider, props.field, props.settings);
+  const update = (nextValue: string | boolean) =>
+    props.updateSettings(
+      providerInstallFieldPatch(props.provider, props.field, nextValue, props.settings),
+    );
   if (props.field.kind === "boolean") {
     return (
       <label
@@ -181,12 +192,8 @@ function ProviderInstallFieldControl(props: {
         </span>
         <Switch
           id={id}
-          checked={props.settings[props.field.settingsKey]}
-          onCheckedChange={(checked) =>
-            props.updateSettings({
-              [props.field.settingsKey]: Boolean(checked),
-            })
-          }
+          checked={value === true}
+          onCheckedChange={(checked) => update(Boolean(checked))}
         />
       </label>
     );
@@ -201,12 +208,8 @@ function ProviderInstallFieldControl(props: {
         size="sm"
         variant="soft"
         className="mt-1"
-        value={props.settings[props.field.settingsKey]}
-        onCommit={(nextValue) =>
-          props.updateSettings({
-            [props.field.settingsKey]: nextValue,
-          } as Partial<AppSettings>)
-        }
+        value={String(value)}
+        onCommit={update}
         placeholder={props.field.placeholder}
         spellCheck={false}
       />
@@ -422,7 +425,8 @@ function ProviderToolRow(props: {
               ) : null}
               {props.config.fields.map((field) => (
                 <ProviderInstallFieldControl
-                  key={field.settingsKey}
+                  key={field.id}
+                  provider={props.config.provider}
                   field={field}
                   settings={props.settings}
                   updateSettings={props.updateSettings}

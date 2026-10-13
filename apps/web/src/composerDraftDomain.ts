@@ -15,7 +15,7 @@ import {
   type ProviderMentionReference,
   type ProviderSkillReference,
 } from "@glade/contracts/provider/providerDiscovery";
-import { type ProviderModelOptions } from "@glade/contracts/provider/model";
+import { type ProviderOptionSelections } from "@glade/contracts/provider/model";
 import * as Equal from "effect/Equal";
 import * as Schema from "effect/Schema";
 
@@ -244,15 +244,11 @@ export interface ComposerDraftStoreState {
     modelSelection: ModelSelection | null | undefined,
   ) => void;
   setModelSelectionAndSticky: (threadId: ThreadId, modelSelection: ModelSelection) => void;
-  setModelOptions: (
-    threadId: ThreadId,
-    modelOptions: ProviderModelOptions | null | undefined,
-  ) => void;
   applyStickyState: (threadId: ThreadId) => void;
   setProviderModelOptions: (
     threadId: ThreadId,
     provider: ProviderKind,
-    nextProviderOptions: ProviderModelOptions[ProviderKind] | null | undefined,
+    nextProviderOptions: ProviderOptionSelections | null | undefined,
     options?: {
       model?: string | null;
       persistSticky?: boolean;

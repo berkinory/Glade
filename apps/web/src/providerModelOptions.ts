@@ -1,17 +1,13 @@
 import { formatModelDisplayName } from "@glade/shared/provider/model";
 import {
-  type ClaudeModelOptions,
-  type CodexModelOptions,
-  type ProviderModelOptions,
+  type ProviderOptionSelections,
+  type ProviderOptionValue,
 } from "@glade/contracts/provider/model";
-import {
-  type ClaudeModelSelection,
-  type CodexModelSelection,
-  type ModelSelection,
-} from "@glade/contracts/provider/sessionPolicy";
+import { type ModelSelection } from "@glade/contracts/provider/sessionPolicy";
 import { type ProviderKind } from "@glade/contracts/core/baseSchemas";
 
-export type ProviderOptions = ProviderModelOptions[ProviderKind];
+// An undefined value clears that option.
+export type ProviderOptionPatch = Readonly<Record<string, ProviderOptionValue | undefined>>;
 
 export interface ProviderModelOption {
   isDefault?: boolean;
@@ -28,11 +24,8 @@ export interface ProviderModelOptionGroup {
   options: ProviderModelOption[];
 }
 
-export function formatProviderModelOptionName(input: {
-  provider: ProviderKind;
-  slug: string;
-}): string {
-  const trimmedSlug = input.slug.trim();
+export function formatProviderModelOptionName(slug: string): string {
+  const trimmedSlug = slug.trim();
   if (trimmedSlug.length === 0) {
     return trimmedSlug;
   }
@@ -41,7 +34,6 @@ export function formatProviderModelOptionName(input: {
 }
 
 export function mergeDynamicModelOptions(input: {
-  provider: ProviderKind;
   staticOptions: ReadonlyArray<ProviderModelOption & { isSelectedHint?: boolean }>;
   dynamicModels: ReadonlyArray<{
     slug: string;
@@ -109,63 +101,27 @@ export function groupProviderModelOptions(
 }
 
 export function buildNextProviderOptions(
-  _provider: ProviderKind,
-  modelOptions: ProviderOptions | null | undefined,
-  patch: Record<string, unknown>,
-): ProviderOptions {
-  const next = { ...modelOptions, ...patch };
-  for (const [id, value] of Object.entries(next)) {
-    if (value === undefined) delete next[id as keyof typeof next];
+  modelOptions: ProviderOptionSelections | null | undefined,
+  patch: ProviderOptionPatch,
+): ProviderOptionSelections {
+  const next: Record<string, ProviderOptionValue> = { ...modelOptions };
+  for (const [id, value] of Object.entries(patch)) {
+    if (value === undefined) delete next[id];
+    else next[id] = value;
   }
   return next;
 }
 
-export function buildProviderOptionPatch(
-  _provider: ProviderKind,
-  optionId: string,
-  value: string | boolean,
-): Record<string, unknown> {
-  return { [optionId]: value };
-}
-
-export function buildModelSelection(
-  provider: "codex",
-  model: string,
-  options?: CodexModelOptions | null | undefined,
-): CodexModelSelection;
-export function buildModelSelection(
-  provider: "claudeAgent",
-  model: string,
-  options?: ClaudeModelOptions | null | undefined,
-  supportsAutoMode?: boolean | undefined,
-): ClaudeModelSelection;
 export function buildModelSelection(
   provider: ProviderKind,
   model: string,
-  options?: ProviderOptions | null | undefined,
-  supportsAutoMode?: boolean | undefined,
-): ModelSelection;
-export function buildModelSelection(
-  provider: ProviderKind,
-  model: string,
-  options?: ProviderOptions | null | undefined,
+  options?: ProviderOptionSelections | null | undefined,
   supportsAutoMode?: boolean | undefined,
 ): ModelSelection {
-  switch (provider) {
-    case "codex":
-      return options
-        ? {
-            provider,
-            model,
-            options: options as CodexModelOptions,
-          }
-        : { provider, model };
-    case "claudeAgent":
-      return {
-        provider,
-        model,
-        ...(options ? { options: options as ClaudeModelOptions } : {}),
-        ...(typeof supportsAutoMode === "boolean" ? { supportsAutoMode } : {}),
-      };
-  }
+  return {
+    provider,
+    model,
+    ...(options ? { options } : {}),
+    ...(typeof supportsAutoMode === "boolean" ? { supportsAutoMode } : {}),
+  };
 }

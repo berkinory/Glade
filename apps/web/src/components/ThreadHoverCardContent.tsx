@@ -1,4 +1,5 @@
 import { EnergyFilledIcon, WorkflowCircle04Icon, GitForkIcon, FolderIcon } from "~/lib/icons";
+import { providerCapabilities } from "@glade/shared/provider/providerMetadata";
 import type { ProviderKind, ThreadId } from "@glade/contracts/core/baseSchemas";
 import type { OrchestrationThreadPullRequest } from "@glade/contracts/orchestration/threadEntities";
 import type { ProviderListModelsResult } from "@glade/contracts/provider/providerDiscovery";
@@ -86,7 +87,9 @@ function ModelRow({
   const model = resolveThreadModelSummary(modelSelection, runtimeModel);
   if (!model) return null;
   const fastMode =
-    model.fastMode && (modelSelection.provider !== "claudeAgent" || fastModeNotice === null);
+    model.fastMode &&
+    (!providerCapabilities(modelSelection.provider).reportsFastModeAvailability ||
+      fastModeNotice === null);
   return (
     <span className={META_ROW_CLASS_NAME}>
       <ProviderIcon provider={model.provider} className={META_ICON_CLASS_NAME} />

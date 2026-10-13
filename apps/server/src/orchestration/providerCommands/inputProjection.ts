@@ -1,4 +1,5 @@
 import { ProviderKind } from "@glade/contracts/core/baseSchemas";
+import { providerCapabilities } from "@glade/shared/provider/providerMetadata";
 import { type ProviderSkillReference } from "@glade/contracts/provider/providerDiscovery";
 import { PROVIDER_SEND_TURN_MAX_INPUT_CHARS } from "@glade/contracts/orchestration/threadEntities";
 
@@ -12,7 +13,11 @@ export function normalizeSkillMentionTextForProvider(input: {
   readonly messageText: string;
   readonly skills?: ReadonlyArray<ProviderSkillReference>;
 }): string {
-  if (input.provider !== "codex" || !input.skills || input.skills.length === 0) {
+  if (
+    providerCapabilities(input.provider).skillMentionPrefix !== "$" ||
+    !input.skills ||
+    input.skills.length === 0
+  ) {
     return input.messageText;
   }
 

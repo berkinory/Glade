@@ -1,3 +1,8 @@
+import { asNonEmptyString } from "@glade/shared/text/text";
+import { asRecord } from "@glade/shared/transport/payloadValues";
+import { Option, Result, Schema } from "effect";
+import { decodeJsonResult } from "../../platform/schemaJson";
+
 export const PROVIDER_COMMAND_TIMEOUT_DETAIL = "Timed out while running command.";
 
 export interface CommandResult {
@@ -89,4 +94,42 @@ export function toTitleCaseWords(value: string): string {
     .filter(Boolean)
     .map((part) => part[0]!.toUpperCase() + part.slice(1).toLowerCase())
     .join(" ");
+}
+
+const SUBSCRIPTION_TYPE_KEYS = [
+  "subscriptionType",
+  "subscription_type",
+  "plan",
+  "tier",
+  "planType",
+  "plan_type",
+] as const;
+
+const SUBSCRIPTION_CONTAINER_KEYS = ["account", "subscription", "user", "billing"] as const;
+
+function findSubscriptionType(value: unknown): Option.Option<string> {
+  if (Array.isArray(value)) {
+    return Option.firstSomeOf(value.map(findSubscriptionType));
+  }
+  return Option.fromNullishOr(asRecord(value)).pipe(
+    Option.flatMap((record) => {
+      const direct = Option.firstSomeOf(
+        SUBSCRIPTION_TYPE_KEYS.map((key) => Option.fromNullishOr(asNonEmptyString(record[key]))),
+      );
+      if (Option.isSome(direct)) return direct;
+      return Option.firstSomeOf(
+        SUBSCRIPTION_CONTAINER_KEYS.map((key) =>
+          Option.fromNullishOr(asRecord(record[key])).pipe(Option.flatMap(findSubscriptionType)),
+        ),
+      );
+    }),
+  );
+}
+
+export const decodeUnknownJson = decodeJsonResult(Schema.Unknown);
+
+export function extractSubscriptionTypeFromOutput(result: CommandResult): string | undefined {
+  const parsed = decodeUnknownJson(result.stdout.trim());
+  if (Result.isFailure(parsed)) return undefined;
+  return Option.getOrUndefined(findSubscriptionType(parsed.success));
 }

@@ -14,10 +14,9 @@ import { PROVIDER_USAGE_PROVIDERS } from "@glade/shared/provider/providerUsage";
 
 import { ServerConfig } from "../../server/config";
 import { consumeCodexResetCredit } from "./codexResetCredits";
-import {
-  buildProviderChildEnvironment,
-  type ProviderChildKind,
-} from "../core/providerChildEnvironment";
+import { buildProviderChildEnvironment } from "../core/providerChildEnvironment";
+import { serverProviderDescriptor } from "../builtInProviders";
+import { CODEX_CREDENTIAL_GRANTS } from "../codex/codexProcessEnv";
 import { ServerSettingsService } from "../../settings/serverSettings";
 import { loadLocalProviderUsageLines } from "./providerUsageSnapshot";
 import { errorSnapshot } from "./parse";
@@ -25,9 +24,6 @@ import { PROVIDER_USAGE_FETCHERS } from "./registry";
 import type { ProviderUsageContext } from "./types";
 
 const LOCAL_ARCHIVE_PROVIDERS: ReadonlySet<ProviderKind> = new Set(["codex", "claudeAgent"]);
-
-const providerChildKind = (provider: ProviderKind): ProviderChildKind =>
-  provider === "claudeAgent" ? "claude" : provider;
 
 function buildContext(): ProviderUsageContext {
   return {
@@ -66,7 +62,7 @@ function buildProviderContext(
   return {
     ...ctx,
     env: buildProviderChildEnvironment({
-      provider: providerChildKind(provider),
+      credentialGrants: serverProviderDescriptor(provider).environment.credentialGrants,
       baseEnv: ctx.env,
     }),
   };
@@ -275,7 +271,10 @@ export const consumeCodexResetCreditEffect = Effect.fn(function* (
       try {
         return await consumeCodexResetCredit({
           binaryPath: settings.providers.codex.binaryPath,
-          env: buildProviderChildEnvironment({ provider: "codex", baseEnv: process.env }),
+          env: buildProviderChildEnvironment({
+            credentialGrants: CODEX_CREDENTIAL_GRANTS,
+            baseEnv: process.env,
+          }),
           cwd: serverConfig.homeDir,
           ...input,
         });

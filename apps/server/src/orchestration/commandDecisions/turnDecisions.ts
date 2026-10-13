@@ -15,7 +15,7 @@ import {
   formatAsyncUserInputResponse,
 } from "@glade/shared/threads/asyncUserInput";
 import { PROVIDER_SEND_TURN_MAX_INPUT_CHARS } from "@glade/contracts/orchestration/threadEntities";
-import { providerSupportsNativeTurnSteering } from "@glade/shared/provider/providerMetadata";
+import { providerCapabilities } from "@glade/shared/provider/providerMetadata";
 import type { OrchestrationEvent } from "@glade/contracts/orchestration/events";
 import {
   CommandDecisionInput,
@@ -109,15 +109,16 @@ export function decideTurnCommand({
           if (
             !questionMessage?.asyncUserInput ||
             questionMessage.role !== "assistant" ||
-            targetThread.modelSelection.provider !== "codex" ||
+            !providerCapabilities(targetThread.modelSelection.provider).asyncUserInput ||
             (targetThread.session?.providerName != null &&
-              targetThread.session.providerName !== "codex") ||
-            (command.modelSelection && command.modelSelection.provider !== "codex") ||
+              targetThread.session.providerName !== targetThread.modelSelection.provider) ||
+            (command.modelSelection &&
+              command.modelSelection.provider !== targetThread.modelSelection.provider) ||
             targetThread.parentThreadId !== null
           ) {
             return yield* new OrchestrationCommandInvariantError({
               commandType: command.type,
-              detail: "This asynchronous question is unavailable in this Codex thread.",
+              detail: "This asynchronous question is unavailable in this thread.",
             });
           }
 
@@ -174,7 +175,7 @@ export function decideTurnCommand({
           targetThread.parentThreadId === null &&
           (targetThread.claudeCacheReview != null ||
             (isThreadRunning &&
-              (dispatchMode === "queue" || !providerSupportsNativeTurnSteering(activeProvider))));
+              (dispatchMode === "queue" || !providerCapabilities(activeProvider).turnSteering)));
         const userMessageEvent: Omit<OrchestrationEvent, "sequence"> = {
           ...withEventBase({
             aggregateKind: "thread",

@@ -1,6 +1,6 @@
 import type { ServerGetProviderUsageSnapshotResult } from "@glade/contracts/server/server";
 
-import type { OpenUsageUsageLine } from "./openUsageRateLimits";
+import type { ServerProviderUsageLine } from "@glade/contracts/server/server";
 import type { ProviderRateLimit } from "./rateLimits";
 
 export function isProviderUsageSnapshotNonOk(
@@ -32,7 +32,7 @@ export function normalizeServerProviderUsageRateLimit(
 
 export function normalizeServerProviderUsageLines(
   snapshot: ServerGetProviderUsageSnapshotResult | null | undefined,
-): OpenUsageUsageLine[] {
+): ServerProviderUsageLine[] {
   if (!snapshot || snapshot.usageLines.length === 0) {
     return [];
   }

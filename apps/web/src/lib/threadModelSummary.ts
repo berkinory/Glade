@@ -7,7 +7,7 @@ import {
   resolveComposerTraitStatusLabel,
   showsComposerFastModeBadge,
 } from "~/components/chat/composerTraits";
-import { formatProviderModelOptionName, type ProviderOptions } from "~/providerModelOptions";
+import { formatProviderModelOptionName } from "~/providerModelOptions";
 
 export interface ThreadModelSummary {
   provider: ProviderKind;
@@ -27,7 +27,7 @@ export function resolveThreadModelSummary(
   }
 
   const provider = modelSelection.provider;
-  const modelLabel = formatProviderModelOptionName({ provider, slug: modelSelection.model });
+  const modelLabel = formatProviderModelOptionName(modelSelection.model);
   if (modelLabel.length === 0) {
     return null;
   }
@@ -36,7 +36,7 @@ export function resolveThreadModelSummary(
     provider,
     modelSelection.model,
     "",
-    modelSelection.options as ProviderOptions | undefined,
+    modelSelection.options,
     runtimeModel,
   );
   return {

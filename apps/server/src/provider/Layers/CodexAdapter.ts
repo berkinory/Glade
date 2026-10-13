@@ -77,7 +77,7 @@ import {
 import { normalizeCodexFailure } from "../codex/codexFailures.ts";
 import { ServerConfig } from "../../server/config.ts";
 import { normalizeCodexSubagentActivity } from "../codex/subagentActivity.ts";
-import { resolveCodexServiceTier } from "../codex/codexServiceTier.ts";
+import { codexModelOptions, resolveCodexServiceTier } from "../codex/codexModelOptions.ts";
 
 import { appendFileAttachmentsPromptBlock } from "../core/attachmentProjection.ts";
 import { gladeSkillsDir } from "../core/skillsCatalog.ts";
@@ -195,11 +195,10 @@ function codexModelSelectionOverrides(
   }
 
   const serviceTier = resolveCodexServiceTier(modelSelection);
+  const { reasoningEffort } = codexModelOptions(modelSelection);
   return {
     model: modelSelection.model,
-    ...(modelSelection.options?.reasoningEffort !== undefined
-      ? { effort: modelSelection.options.reasoningEffort }
-      : {}),
+    ...(reasoningEffort !== undefined ? { effort: reasoningEffort } : {}),
     ...(serviceTier !== undefined ? { serviceTier } : {}),
   };
 }
@@ -2466,11 +2465,14 @@ const makeCodexAdapter = (options?: CodexAdapterLiveOptions) =>
         supportsTurnSteering: true,
         supportsLiveTurnDiffPatch: true,
       },
-      generateThreadTitle: (input) =>
-        Effect.tryPromise({
-          try: (signal) => manager.generateThreadTitle(input, signal),
-          catch: (cause) => toRequestError(input.threadId, "turn/start", cause),
-        }),
+      titleGeneration: {
+        preferredModel: "gpt-6-luna",
+        generate: (input) =>
+          Effect.tryPromise({
+            try: async (signal) => JSON.parse(await manager.generateThreadTitle(input, signal)),
+            catch: (cause) => toRequestError(input.threadId, "turn/start", cause),
+          }),
+      },
       startSession,
       sendTurn,
       steerTurn,

@@ -1,11 +1,15 @@
 import { Brain03Icon, ChevronDownIcon, EnergyFilledIcon, SettingsIcon } from "~/lib/icons";
+import { getProviderOptionCurrentValue } from "@glade/shared/provider/model";
+import { providerCapabilities } from "@glade/shared/provider/providerMetadata";
 import { CLAUDE_FAST_MODE_BILLING_NOTE } from "~/lib/fastModeStatus";
 import { type ProviderKind, type ThreadId } from "@glade/contracts/core/baseSchemas";
-import { type ProviderOptionDescriptor } from "@glade/contracts/provider/model";
+import {
+  type ProviderOptionDescriptor,
+  type ProviderOptionSelections,
+} from "@glade/contracts/provider/model";
 import { type ProviderModelDescriptor } from "@glade/contracts/provider/providerDiscovery";
 import { Fragment } from "react";
 import { cn } from "~/lib/utils";
-import { type ProviderOptions } from "../../providerModelOptions";
 import { Button } from "../ui/button";
 import { ShortcutKbd } from "../ui/kbd";
 import { Separator } from "../ui/separator";
@@ -37,6 +41,7 @@ import {
   useComposerPickerRowShortcuts,
 } from "./composerPickerShortcuts";
 import { useComposerTraitCommit } from "./useComposerTraitCommit";
+import type { ProviderOptionPatch } from "../../providerModelOptions";
 
 const INHERIT_VALUE = "__inherit__";
 
@@ -45,29 +50,28 @@ type TraitSection = {
   label: string;
   value: string;
   options: ReadonlyArray<{ value: string; label: string }>;
-  patchFor: (value: string) => Record<string, unknown>;
+  patchFor: (value: string) => ProviderOptionPatch;
 };
 
 type SpeedToggle = {
   checked: boolean;
-  patchFor: (checked: boolean) => Record<string, unknown>;
+  patchFor: (checked: boolean) => ProviderOptionPatch;
 };
 
 function isSpeedDescriptor(descriptor: ProviderOptionDescriptor): boolean {
   return descriptor.id === "serviceTier" || descriptor.id === "fastMode";
 }
 
-function resolveSpeedToggle(
-  descriptor: ProviderOptionDescriptor,
-  modelOptions: ProviderOptions | undefined,
-): SpeedToggle | null {
+// The descriptor already carries the selection merged over the agent's own default, so the toggle
+// shows the speed the turn will actually run at, the same value the trigger summarizes.
+function resolveSpeedToggle(descriptor: ProviderOptionDescriptor): SpeedToggle | null {
   const fastValue =
     descriptor.type === "boolean"
       ? true
       : descriptor.options.find((option) => option.id === "priority" || option.id === "fast")?.id;
   if (fastValue === undefined) return null;
   return {
-    checked: modelOptions?.[descriptor.id as keyof ProviderOptions] === fastValue,
+    checked: getProviderOptionCurrentValue(descriptor) === fastValue,
     patchFor: (checked) => ({
       [descriptor.id]: checked ? fastValue : descriptor.type === "boolean" ? false : undefined,
     }),
@@ -76,9 +80,9 @@ function resolveSpeedToggle(
 
 function resolveDescriptorSection(
   descriptor: ProviderOptionDescriptor,
-  modelOptions: ProviderOptions | undefined,
+  modelOptions: ProviderOptionSelections | undefined,
 ): TraitSection {
-  const current = modelOptions?.[descriptor.id as keyof ProviderOptions];
+  const current = modelOptions?.[descriptor.id];
   const defaultOption = {
     value: INHERIT_VALUE,
     label: descriptor.id === "thinking" ? "Auto" : "Default",
@@ -110,7 +114,7 @@ export function ComposerTraitsPicker(props: {
   threadId: ThreadId;
   provider: ProviderKind;
   model: string;
-  modelOptions: ProviderOptions | undefined;
+  modelOptions: ProviderOptionSelections | undefined;
   runtimeModel: ProviderModelDescriptor | undefined;
   fastModeNotice: string | null;
   hideLabel: boolean;
@@ -139,7 +143,7 @@ export function ComposerTraitsPicker(props: {
     patchFor: (value) => ({ [effortDescriptor.id]: value }),
   };
   const speedDescriptor = selection.descriptors.find(isSpeedDescriptor);
-  const speed = speedDescriptor ? resolveSpeedToggle(speedDescriptor, modelOptions) : null;
+  const speed = speedDescriptor ? resolveSpeedToggle(speedDescriptor) : null;
   const otherSections = selection.descriptors
     .filter(
       (descriptor) =>
@@ -253,9 +257,15 @@ export function ComposerTraitsPicker(props: {
           {...{ [TRAITS_PICKER_POPUP_ATTRIBUTE]: "" }}
         >
           {reasoning ? renderSection(reasoning) : null}
+          {otherSections.map((section, index) => (
+            <Fragment key={section.id}>
+              {index > 0 || reasoning ? <MenuSeparator /> : null}
+              {renderSection(section)}
+            </Fragment>
+          ))}
           {speed !== null ? (
             <>
-              {reasoning ? <MenuSeparator /> : null}
+              {reasoning || otherSections.length > 0 ? <MenuSeparator /> : null}
               <MenuCheckboxItem
                 variant="switch"
                 checked={speed.checked}
@@ -266,7 +276,7 @@ export function ComposerTraitsPicker(props: {
                   Fast mode
                 </span>
               </MenuCheckboxItem>
-              {fastModeNotice || provider === "claudeAgent" ? (
+              {fastModeNotice || providerCapabilities(provider).reportsFastModeAvailability ? (
                 <div
                   className={cn(
                     "px-2 pb-1 text-ui-xs leading-snug",
@@ -278,12 +288,6 @@ export function ComposerTraitsPicker(props: {
               ) : null}
             </>
           ) : null}
-          {otherSections.map((section, index) => (
-            <Fragment key={section.id}>
-              {index > 0 || reasoning || speed ? <MenuSeparator /> : null}
-              {renderSection(section)}
-            </Fragment>
-          ))}
         </ComposerPickerMenuPopup>
       </Menu>
     </>

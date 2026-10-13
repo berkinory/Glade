@@ -1,4 +1,3 @@
-import { DEFAULT_SERVER_SETTINGS } from "@glade/contracts/settings/settings";
 import {
   type ProviderComposerCapabilities,
   ProviderGetComposerCapabilitiesInput,
@@ -286,17 +285,7 @@ const make = Effect.gen(function* () {
           cached: false,
         };
       }
-      if (parsed.provider !== "claudeAgent") {
-        return yield* adapter.listCommands(parsed);
-      }
-
-      const settings = yield* serverSettings.getSettings.pipe(
-        Effect.orElseSucceed(() => DEFAULT_SERVER_SETTINGS),
-      );
-      return yield* adapter.listCommands({
-        ...parsed,
-        enableArtifacts: settings.providers.claudeAgent.enableArtifacts,
-      });
+      return yield* adapter.listCommands(parsed);
     });
 
   const listPlugins: ProviderDiscoveryServiceShape["listPlugins"] = (input) =>

@@ -1,7 +1,9 @@
 import type { OrchestrationEventStoreShape } from "../persistence/Services/OrchestrationEventStore";
+import { providerCapabilities } from "@glade/shared/provider/providerMetadata";
 import { CommandId, ThreadId } from "@glade/contracts/core/baseSchemas";
 import { GladeForkThreadInput } from "@glade/contracts/provider/agentGatewayTools";
 import { Effect, Option, Schema, Semaphore } from "effect";
+import { forkMessageId } from "../orchestration/forkImport";
 import type { OrchestrationEngineShape } from "../orchestration/Services/OrchestrationEngine";
 import type { ProjectionSnapshotQueryShape } from "../orchestration/Services/ProjectionSnapshotQuery";
 import { runtimeModeEscalatesPrivilege } from "@glade/shared/threads/runtimeMode";
@@ -51,8 +53,15 @@ export function makeForkThreadTool(
         const message = thread.messages.find((entry) => entry.id === input.messageId);
         if (!message || message.streaming || message.role !== "assistant")
           return yield* Effect.fail(new ToolInputError("Choose a completed assistant message."));
+        const forkBoundary = providerCapabilities(thread.modelSelection.provider).forkBoundary;
         const boundary =
-          thread.modelSelection.provider === "codex" ? message.turnId : message.providerMessageId;
+          forkBoundary === "turn"
+            ? message.turnId
+            : forkBoundary === "message"
+              ? message.providerMessageId
+              : forkBoundary === "transcript"
+                ? message.id
+                : undefined;
         if (!boundary)
           return yield* Effect.fail(
             new ToolInputError("This message has no native fork boundary."),
@@ -66,9 +75,11 @@ export function makeForkThreadTool(
         if (Option.isSome(existing)) {
           const fork = existing.value;
           const expectedPoint =
-            thread.modelSelection.provider === "codex"
-              ? { provider: "codex", turnId: boundary }
-              : { provider: "claudeAgent", messageId: boundary };
+            forkBoundary === "turn"
+              ? { provider: thread.modelSelection.provider, turnId: boundary }
+              : forkBoundary === "message"
+                ? { provider: thread.modelSelection.provider, messageId: boundary }
+                : undefined;
           const creationEvents = yield* events.readThreadEvents({
             threadId,
             throughSequenceInclusive: yield* events.getThreadHighWaterSequence(threadId),
@@ -76,10 +87,21 @@ export function makeForkThreadTool(
             limit: 1,
           });
           const creation = creationEvents[0];
+          // A transcript fork records no native point; its copy of the chosen message names the plan.
+          const samePoint = expectedPoint
+            ? creation?.type === "thread.created" &&
+              stableGatewayDigest(creation.payload.forkPoint) === stableGatewayDigest(expectedPoint)
+            : Option.match(yield* snapshots.getThreadDetailById(threadId), {
+                onNone: () => false,
+                onSome: (detail) =>
+                  detail.messages.some(
+                    (entry) => entry.id === forkMessageId(threadId, input.messageId),
+                  ),
+              });
           if (
             fork.forkSourceThreadId !== thread.id ||
             creation?.type !== "thread.created" ||
-            stableGatewayDigest(creation.payload.forkPoint) !== stableGatewayDigest(expectedPoint)
+            !samePoint
           )
             return yield* Effect.fail(
               new ToolInputError("requestId belongs to a different fork plan."),

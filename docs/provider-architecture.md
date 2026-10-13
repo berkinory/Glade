@@ -4,12 +4,15 @@ Glade treats provider integrations as adapters behind server-owned orchestration
 
 ## Implemented providers
 
-`ProviderAdapterRegistryLive` currently registers two first-class provider kinds:
+`ProviderAdapterRegistryLive` registers five provider kinds:
 
-- `codex`
-- `claudeAgent`
+- `codex`, on its own app-server adapter;
+- `claudeAgent`, on the Claude Agent SDK;
+- `opencode`, `grok` and `cursor`, on the shared Agent Client Protocol adapter.
 
 The registry is intentionally small. It maps `ProviderKind` to an adapter and lists the registered providers; it does not own session routing, persistence, or cross-provider orchestration.
+
+Server-only provider knowledge lives in one `ServerProviderDescriptor` per provider folder: the CLI and its minimum version, the sign-in command and home, child-environment credential grants, model-catalog identity inputs, skill roots, the health check, and update metadata. `provider/builtInProviders.ts` lists the descriptors, and generic server modules look one up by kind instead of branching on a provider name. An unknown kind is an error, not a default.
 
 ## Adapter contract
 
@@ -50,7 +53,7 @@ This separation is important: orchestration does not consume arbitrary native pr
 
 Codex protocol artifacts come from the pinned 0.158.0 CLI. `bun run --filter @glade/cli generate:codex-protocol -- --check` verifies reproducible generation. JSON Schema validates known native responses, notifications and server requests at ingress; unknown notifications are skipped, while unknown requests receive a method-not-found response. Model and MCP discovery follow native cursors.
 
-`provider/core/compatibility.ts` owns the admission baseline. Claude uses the configured executable resolved against its child environment, with no bundled CLI fallback. Codex launch passes managed MCP and shell-secret exclusions as native arguments while leaving the user's provider home and configuration files authoritative.
+Each provider's descriptor declares its minimum CLI version, and `provider/core/compatibility.ts` applies that admission baseline. Claude uses the configured executable resolved against its child environment, with no bundled CLI fallback. Codex launch passes managed MCP and shell-secret exclusions as native arguments while leaving the user's provider home and configuration files authoritative.
 
 Codex chat and discovery sessions lease one app-server per executable, provider home, launch arguments, extra skill roots and effective environment. The pool owns the transport, global request IDs and native thread routing; session state and gateway authority remain separate. Gateway credentials are supplied in each thread's MCP HTTP configuration, never in the shared process environment. Resume reloads that configuration before the thread becomes ready.
 
@@ -60,13 +63,21 @@ Shared Codex process stderr is logged once as process diagnostics, without attri
 
 Stopping a session interrupts its active turn and unsubscribes its native thread. Other leases keep the process alive; the last lease tears down the complete process tree and awaits exit proof. Shared crashes close all affected sessions and apply bounded restart backoff. The existing provider idle timeout still retires chat leases. Native Codex retains unsubscribed thread contexts according to its own lifecycle and creates configured MCP clients per thread, so sharing the app-server does not promise a shared MCP child process.
 
-Model selections name native models. Unset and legacy default selections resolve through live discovery: Codex uses `isDefault`, and Claude uses the `resolvedModel` of its hidden `default` entry. Native descriptors own model options; shared code retains legacy selections without guessing model-family capabilities. Claude applies acknowledged live flags, and native context usage replaces Glade budget overrides. Historical cache-review records remain readable only for explicit held-message recovery.
+Model selections name native models. Unset and legacy default selections resolve through live discovery: Codex uses `isDefault`, and Claude uses the `resolvedModel` of its hidden `default` entry. Native descriptors own model options. A selection stores the chosen values keyed by option descriptor id, and each adapter decodes its own; shared code and the composer read the descriptors instead of branching on the provider. Auto runtime mode is either provider-wide or confirmed per model through the descriptor's `supportsAutoMode`, as the provider's `autoRuntimeMode` capability declares. Claude applies acknowledged live flags, and native context usage replaces Glade budget overrides. Historical cache-review records remain readable only for explicit held-message recovery.
 
 `ProviderManagement` owns validation and protects managed gateway configuration before routing native MCP/plugin actions to adapters. Its contracts keep session-only actions distinct from persistent changes. Native failures retain their kind and retry state; an upstream retry without an attempt count does not acquire an invented counter. Codex account limits come from native account APIs instead of an undocumented HTTP endpoint or credential refresh implementation.
 
 Provider commands are delivered per native session owner. A chat owns its session; a native child uses its parent's, and a fork that has no live session of its own is created from its source's, so each is ordered with that owner. Different owners run concurrently, up to eight provider calls at once, so a stalled call in one chat does not hold another. Each owner keeps only sequence ranges per chat and reads its commands back from the event journal in order. The durable cursor advances only through the prefix every owner has settled. After a restart, the journal state of a command a later owner already finished, or its chat's quarantine, prevents a second send.
 
 A provider command that settles as dead or uncertain quarantines its chat. The intent source writes the blocking reason to the chat's session as soon as it settles, and once per chat at startup for a blocker that survives restart. The write merges over the latest durable session, so a running turn keeps its status and active turn, and it is dropped if a newer session lands first. Sending the next message still clears the blocker explicitly; the ambiguous command is never replayed.
+
+## Agent Client Protocol providers
+
+`provider/acp/` holds one adapter for every agent that speaks the Agent Client Protocol over stdio, built on `@agentclientprotocol/sdk`. `AcpAdapters` creates it for each descriptor that has an `acp` profile. The profile is data: the CLI arguments, the child environment for a runtime mode, a sign-in method to call after `initialize`, session config values applied when a session opens (always the agent's normal working mode, never a plan or read-only mode), a preferred title model, native slash commands to hide, and whether the agent saves model switches as its CLI default. Shared ACP code never branches on a provider kind.
+
+Each chat owns one ACP session. Chats with the same executable, spawn environment and system prompt share one agent process, since sessions carry their own working directory and a second session costs the agent a few megabytes instead of a whole process; the last chat to stop closes it, and a crash ends every chat it hosted. An agent that keeps one MCP client per server name for the whole process (OpenCode) would send every chat's Glade calls with the last chat's credentials, so while Glade's MCP server is attached each of its chats gets a private process. The resume cursor stores the native session id and resumes through `session/load` when the agent offers it; updates replayed during the load are discarded because the transcript is Glade's. The harness policy goes into the agent's system prompt through process arguments when the profile offers them (Grok's `--rules`), and otherwise rides on the first prompt of a fresh native session; it offers Glade's tools only when Glade's MCP server reached the agent. Agents with a native `/compact` command compact through it as a turn, and a successful end reports the context as compacted. The others compact by summary: the agent writes a continuation summary as a turn, the chat moves into a fresh native session on the same process, and the summary opens that session's first prompt; if the move fails the chat keeps its session and the turn reports why. Agents without a native fork fork by transcript: Glade copies the chat up to the chosen reply and the fork's first turn starts a fresh native session with that transcript as context. Gateway tools reach the agent as an HTTP MCP server when it advertises HTTP MCP support. Permission requests become Glade approvals in Supervised mode and are allowed once in Full Access; Glade never answers with a lasting grant. Interrupting answers outstanding permission requests as cancelled before `session/cancel`, as the protocol requires.
+
+ACP reports config options only for the model currently selected. Discovery opens a throwaway session, selects each model within a three-second budget to read its own options, and removes the session from the agent's history where the agent allows it. Agents that save model switches as their CLI default are never probed, and their title requests stay on the current model. The agent's thought-level option is offered under the shared `effort` id. A turn applies only option values the selected model offers. Title requests run in a throwaway session that rejects every permission request and parse the JSON object from the reply text, because ACP has neither structured output nor a tool-free prompt.
 
 ## Provider-specific state
 
@@ -94,7 +105,11 @@ A new first-class provider normally needs changes across several boundaries:
 6. web settings, provider/model picker metadata and icons;
 7. focused adapter tests plus regression coverage for lifecycle, interruption, resume, approvals, and event normalization.
 
+An agent that speaks ACP needs only its provider folder: the CLI definition, status check, descriptor with an `acp` profile, contracts and settings entries, and web icon. It inherits the shared adapter and its tests.
+
 Prefer capability-driven behavior and existing shared protocol helpers. Do not add provider-specific branches to orchestration when the difference can stay inside the adapter.
+
+`scripts/checks/providerNeutrality.ts` runs in `bun run check` and rejects provider-kind literals outside the provider's own folders under `apps/server/src/provider`. Existing leaks are listed in `scripts/checks/providerNeutralityAllowlist.json`, which may only shrink; after removing leaks, lower it with `bun scripts/checks/providerNeutrality.ts --update`.
 
 ## Related code
 
@@ -102,6 +117,7 @@ Prefer capability-driven behavior and existing shared protocol helpers. Do not a
 - `apps/server/src/provider/Layers/ProviderAdapterRegistry.ts` — concrete provider registry
 - `apps/server/src/provider/Layers/ProviderService.ts` — session-aware lifecycle routing
 - `apps/server/src/provider/Layers/ProviderDiscoveryService.ts` — model/agent/skill/command/plugin discovery routing
+- `apps/server/src/provider/acp/acpAdapter.ts` — shared Agent Client Protocol adapter, configured by `acpProviderProfile.ts`
 - `apps/server/src/provider/core/boundedCallbackIngress.ts` — bounded callback-producer ingress policy
 - `apps/server/src/orchestration/Layers/ProviderCommandReactor.ts` — orchestration intent to provider calls
 - `apps/server/src/orchestration/Layers/ProviderRuntimeIngestion.ts` — provider events to durable orchestration
@@ -125,7 +141,7 @@ policy only while the setting is on; workflow detail lives in the tool descripti
 per session, a session started under the other setting restarts with its resume cursor at its next
 turn start. The chat comes from the gateway session lease, never from tool input.
 
-Edit, revert and file undo preview scoped checkpoint restores before confirmation. Each removed turn contributes its git diff paths, with the first affected turn start as the restore target and the last affected turn end as the expected workspace state. Later file changes require explicit consent per path, and a fingerprint is revalidated before provider rollback and again before restoring. The real git index and unrelated files are preserved. Claude rollback starts its replacement native session before deleting the superseded history.
+Edit, revert and file undo preview scoped checkpoint restores before confirmation. Each removed turn contributes its git diff paths, with the first affected turn start as the restore target and the last affected turn end as the expected workspace state. Later file changes require explicit consent per path, and a fingerprint is revalidated before provider rollback and again before restoring. The real git index and unrelated files are preserved. Claude rollback starts its replacement native session before deleting the superseded history. ACP agents cannot trim a native conversation, so their rollback ends the native session and the next turn starts a fresh one with Glade's trimmed transcript as context.
 
 Claude agent discovery uses only the SDK’s `supportedAgents()` results. The SDK exposes name, description and model, without the originating configuration file path, so Glade does not fabricate an “open agent file” action. Claude child-message delivery uses its existing `PreToolUse` hook and the composer states that delivery occurs at the next tool call. Native task messages own lifecycle and progress. The isolated `claudeWorkflowRuntime.ts` reader remains because workflow child model and effort metadata are absent from those task messages.
 

@@ -7,15 +7,7 @@ import {
   toStorageSafePersistedAttachment,
 } from "./composerDraftAttachments";
 import type { ComposerDraftStoreState } from "./composerDraftDomain";
-import {
-  legacyMergeModelSelectionIntoProviderModelOptions,
-  legacySyncModelSelectionOptions,
-  legacyToModelSelectionByProvider,
-  normalizeModelSelection,
-  normalizeProviderKind,
-  normalizeProviderModelOptions,
-  sanitizeStickyModelSelectionMap,
-} from "./composerDraftModels";
+import { normalizeModelSelection, normalizeProviderKind } from "./composerDraftModels";
 import {
   EMPTY_PERSISTED_DRAFT_STORE_STATE,
   PersistedAssistantSelectionDraft,
@@ -278,28 +270,17 @@ export function normalizeCurrentPersistedComposerDraftStoreState(
     );
     stickyActiveProvider = normalizeProviderKind(normalizedPersistedState.stickyActiveProvider);
   } else {
-    const stickyModelOptions =
-      normalizeProviderModelOptions(normalizedPersistedState.stickyModelOptions) ?? {};
-    const normalizedStickyModelSelection = normalizeModelSelection(
+    const stickyModelSelection = normalizeModelSelection(
       normalizedPersistedState.stickyModelSelection,
       {
         provider: normalizedPersistedState.stickyProvider ?? "codex",
         model: normalizedPersistedState.stickyModel,
-        modelOptions: stickyModelOptions,
+        modelOptions: normalizedPersistedState.stickyModelOptions,
       },
     );
-    const nextStickyModelOptions = legacyMergeModelSelectionIntoProviderModelOptions(
-      normalizedStickyModelSelection,
-      stickyModelOptions,
-    );
-    const stickyModelSelection = legacySyncModelSelectionOptions(
-      normalizedStickyModelSelection,
-      nextStickyModelOptions,
-    );
-    stickyModelSelectionByProvider = legacyToModelSelectionByProvider(
-      stickyModelSelection,
-      nextStickyModelOptions,
-    );
+    stickyModelSelectionByProvider = stickyModelSelection
+      ? { [stickyModelSelection.provider]: stickyModelSelection }
+      : {};
     stickyActiveProvider = normalizeProviderKind(normalizedPersistedState.stickyProvider);
   }
 
@@ -307,7 +288,7 @@ export function normalizeCurrentPersistedComposerDraftStoreState(
     draftsByThreadId: normalizePersistedDraftsByThreadId(normalizedPersistedState.draftsByThreadId),
     draftThreadsByThreadId,
     projectDraftThreadIdByProjectId,
-    stickyModelSelectionByProvider: sanitizeStickyModelSelectionMap(stickyModelSelectionByProvider),
+    stickyModelSelectionByProvider,
     stickyActiveProvider,
   };
 }

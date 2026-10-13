@@ -37,12 +37,7 @@ function getProviderStartOptionsCustomBinaryPath(
   providerOptions: ProviderStartOptions | undefined,
   provider: ProviderKind,
 ): string | null {
-  switch (provider) {
-    case "codex":
-      return normalizeCustomBinaryPath(providerOptions?.codex?.binaryPath);
-    case "claudeAgent":
-      return normalizeCustomBinaryPath(providerOptions?.claudeAgent?.binaryPath);
-  }
+  return normalizeCustomBinaryPath(providerOptions?.[provider]?.binaryPath);
 }
 interface ChatProviderStatusInput {
   activeThread: Thread | undefined;

@@ -1,3 +1,4 @@
+import { ProviderFailureReason } from "@glade/contracts/provider/runtimePayloads";
 import { Schema } from "effect";
 
 import type { CheckpointServiceError } from "../../checkpointing/Errors.ts";
@@ -48,6 +49,9 @@ export class ProviderAdapterRequestError extends Schema.TaggedErrorClass<Provide
     provider: Schema.String,
     method: Schema.String,
     detail: Schema.String,
+    // Set by the adapter when the native resume id no longer names a conversation, so Glade can retry
+    // once and then start a fresh native session from its retained transcript.
+    reason: Schema.optional(ProviderFailureReason),
     cause: Schema.optional(Schema.Defect),
   },
 ) {

@@ -1,9 +1,18 @@
 import type { OrchestrationThread } from "@glade/contracts/orchestration/threadEntities";
 import { Schema, Option } from "effect";
+import { providerCapabilities } from "@glade/shared/provider/providerMetadata";
 import { threadHasInFlightTurn, threadHasCheckpointRevertInProgress } from "./commandInvariants.ts";
 
 const Task = Schema.Struct({ taskId: Schema.String, status: Schema.optional(Schema.String) });
 const decodeTask = Schema.decodeUnknownOption(Task);
+
+// A message that runs the provider's native compaction as a turn rather than reaching the model.
+export function isPromptTurnCompaction(provider: string, text: string | undefined): boolean {
+  return (
+    providerCapabilities(provider).compaction === "promptTurn" &&
+    /^\/compact(?:\s|$)/u.test(text?.trim() ?? "")
+  );
+}
 
 export function compactionBlockedReason(thread: OrchestrationThread): string | undefined {
   if (thread.archivedAt !== null) return "Unarchive the conversation before compacting.";
