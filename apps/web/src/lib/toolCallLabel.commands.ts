@@ -81,6 +81,16 @@ function segmentDisplay(
   const inspect = inspectPresentation(segment);
   if (inspect) {
     const [running, completed, targetKind] = inspect;
+    if (targetKind === "search" && extractSearchPatternAndPath(args).listsFiles) {
+      const summary = searchSummary(args);
+      return commandDisplay(
+        "Finding files",
+        "Found files",
+        summary.startsWith("for ") ? `with ${summary.slice(4)}` : summary,
+        rawCommand,
+        isRunning,
+      );
+    }
     const target =
       targetKind === "file" || targetKind === "directory"
         ? lastPathComponents(args, targetKind)
@@ -450,15 +460,16 @@ function hasInlineScriptFlag(args: string): boolean {
 }
 
 function searchSummary(args: string): string {
-  const { pattern, path } = extractSearchPatternAndPath(args);
-  if (pattern && path) {
-    return `for ${pattern} in ${path}`;
+  const { pattern, paths } = extractSearchPatternAndPath(args);
+  const where = paths.length > 1 ? `${paths[0]} +${paths.length - 1}` : paths[0];
+  if (pattern && where) {
+    return `for ${pattern} in ${where}`;
   }
   if (pattern) {
     return `for ${pattern}`;
   }
-  if (path) {
-    return `in ${path}`;
+  if (where) {
+    return `in ${where}`;
   }
   return "files";
 }

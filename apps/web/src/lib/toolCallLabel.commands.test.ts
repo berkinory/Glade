@@ -19,6 +19,14 @@ describe("command labels", () => {
     ['cd /repo && grep -rn "needle" apps/web/src | head -20', "Searched for needle in web/src"],
     ['cd /repo && rg -n "a" src; grep -n "b" lib', "Searched 2 times"],
     [
+      `cd /repo && grep -rEln "[\\"'](claudeAgent|codex)[\\"']" apps/web/src apps/server/src/orchestration packages/shared/src | grep -v "\\.test\\." | while read f; do echo "$(grep -cE x $f) $f"; done | sort -rn | head -30`,
+      "Found files with claudeAgent or codex in web/src +2",
+    ],
+    [
+      'grep -n "error\\|unavailable" apps/server/src/cache.ts',
+      "Searched for error or unavailable in src/cache.ts",
+    ],
+    [
       'cd /repo && cat .gitignore | head -40; grep -n "explore" .git/info/exclude',
       "Explored .gitignore",
     ],

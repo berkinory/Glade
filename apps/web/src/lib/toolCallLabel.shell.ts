@@ -14,75 +14,97 @@ export function compactPath(path: string): string {
   return parts.slice(-2).join("/");
 }
 
+// Options whose value is the next argument rather than a pattern or a path.
+const SEARCH_OPTIONS_WITH_VALUE = new Set([
+  "-t",
+  "-g",
+  "-m",
+  "-A",
+  "-B",
+  "-C",
+  "--type",
+  "--glob",
+  "--max-count",
+]);
+const SEARCH_PATTERN_OPTIONS = new Set(["-e", "--regexp"]);
+
 export function extractSearchPatternAndPath(args: string): {
   pattern: string | null;
-  path: string | null;
+  paths: string[];
+  // `-l` lists the files that match instead of the matching lines.
+  listsFiles: boolean;
 } {
   const tokens = tokenizeCommandArgs(args);
   let pattern: string | null = null;
-  let path: string | null = null;
-  let skipNext = false;
+  const positional: string[] = [];
+  let listsFiles = false;
 
-  for (const token of tokens) {
-    if (skipNext) {
-      skipNext = false;
+  for (let index = 0; index < tokens.length; index += 1) {
+    const token = tokens[index]!;
+    if (SEARCH_PATTERN_OPTIONS.has(token)) {
+      pattern ??= tokens[index + 1] ?? null;
+      index += 1;
+      continue;
+    }
+    if (SEARCH_OPTIONS_WITH_VALUE.has(token)) {
+      index += 1;
+      continue;
+    }
+    if (token === "--files-with-matches" || /^-[a-zA-Z]*l[a-zA-Z]*$/.test(token)) {
+      listsFiles = true;
       continue;
     }
     if (token.startsWith("-")) {
-      if (
-        token === "-t" ||
-        token === "-g" ||
-        token === "--type" ||
-        token === "--glob" ||
-        token === "--max-count"
-      ) {
-        skipNext = true;
-      }
       continue;
     }
-    if (!pattern) {
-      const normalizedPattern = normalizeSearchPatternToken(token);
-      if (!normalizedPattern) {
-        const normalizedPath = normalizeSearchPathToken(token);
-        if (normalizedPath && (!path || path === "current directory")) {
-          path = normalizedPath;
-        }
-        continue;
-      }
-      pattern = normalizedPattern;
-      continue;
-    }
-    if (!path || path === "current directory") {
-      path = normalizeSearchPathToken(token) ?? path;
-      continue;
-    }
+    positional.push(token);
   }
 
-  if (pattern && path === "current directory" && looksLikeSearchPath(pattern)) {
-    path = normalizeSearchPathToken(pattern);
+  if (pattern === null) {
+    pattern = positional.shift() ?? null;
+  }
+  // `rg src/` names a folder, not a pattern.
+  if (pattern !== null && positional.length === 0 && looksLikeSearchPath(pattern)) {
+    positional.push(pattern);
     pattern = null;
   }
-
-  return { pattern, path };
+  return {
+    pattern: pattern === null ? null : readableSearchPattern(pattern),
+    paths: positional.map((path) => compactPath(path.trim())).filter(Boolean),
+    listsFiles,
+  };
 }
 
-function normalizeSearchPatternToken(token: string): string | null {
-  const trimmed = token.trim();
-  if (!trimmed || trimmed === "." || trimmed === "..") {
-    return null;
-  }
-  if (!/[a-z0-9]/i.test(trimmed)) {
-    return null;
-  }
-  return trimmed.length > 30 ? `${trimmed.slice(0, 27)}...` : trimmed;
-}
+const MAX_SEARCH_PATTERN_CHARS = 40;
 
-function normalizeSearchPathToken(token: string): string | null {
-  const trimmed = token.trim();
-  if (!trimmed) {
+// Agents search with regular expressions; the row names what they looked for. `["'](claudeAgent|codex)["']`
+// reads as "claudeAgent or codex". A pattern with no words left keeps its raw text.
+function readableSearchPattern(pattern: string): string | null {
+  const literalDot = "\u0000";
+  const alternatives = pattern
+    .replace(/\\\|/g, "|")
+    .replace(/\[[^\]]*\]/g, "")
+    .replace(/\\[bBsSwWdD]/g, "")
+    .replace(/\\\./g, literalDot)
+    .replace(/\{\d*,?\d*\}/g, "")
+    .replace(/\\(.)/g, "$1")
+    .replace(/[()^$*+?.]/g, "")
+    .replaceAll(literalDot, ".")
+    .split("|")
+    .map((alternative) => alternative.trim())
+    .filter((alternative) => /[a-z0-9]/i.test(alternative));
+  const readable =
+    alternatives.length === 0
+      ? pattern.trim()
+      : alternatives.length <= 2
+        ? alternatives.join(" or ")
+        : `${alternatives.slice(0, 2).join(", ")} or ${alternatives.length - 2} more`;
+  if (!/[a-z0-9]/i.test(readable)) {
     return null;
   }
-  return compactPath(trimmed);
+  return readable.length > MAX_SEARCH_PATTERN_CHARS
+    ? `${readable.slice(0, MAX_SEARCH_PATTERN_CHARS - 3)}...`
+    : readable;
 }
 
 function looksLikeSearchPath(token: string): boolean {
