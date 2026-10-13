@@ -114,10 +114,10 @@ The composer draft legacy conversion remains for one release: UI state storage v
 The hosted Windows build scans the final `release-publish` installer with Microsoft
 Defender before uploading distributable assets. The signature update tries Microsoft Update
 first and falls back to Microsoft's direct MMPC source when that update fails or returns
-definitions that are older than 24 hours or that Defender reports as out of date. When both
+definitions that are older than 72 hours or that Defender reports as out of date. When both
 leave the definitions stale, it installs Microsoft's standalone definition package after checking
 that Microsoft signed it.
-Qualification requires active protection, signatures updated within 24 hours and not
+Qualification requires active protection, signatures updated within 72 hours and not
 reported out of date, explicit clean scan output, unchanged SHA-256 hashes,
 and no relevant detection or remediation. Missing or ambiguous evidence fails the build;
 publication already depends on every platform build succeeding. Diagnostic artifacts named

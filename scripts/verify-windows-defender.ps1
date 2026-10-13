@@ -17,7 +17,7 @@ function Assert-Protection {
   if ($Status.AMRunningMode -ne 'Normal') { throw 'Defender must be in active Normal mode.' }
   if (-not $Status.AMEngineVersion -or -not $Status.AntivirusSignatureVersion) { throw 'Missing Defender version evidence.' }
   if (-not (Test-SignaturesCurrent $Status)) {
-    throw 'Defender signatures are missing, reported out of date, future-dated or older than 24 hours.'
+    throw 'Defender signatures are missing, reported out of date, future-dated or older than 72 hours.'
   }
 }
 
@@ -25,7 +25,9 @@ function Test-SignaturesCurrent {
   param($Status)
   if ($Status.DefenderSignaturesOutOfDate -or -not $Status.AntivirusSignatureLastUpdated) { return $false }
   $updated = $Status.AntivirusSignatureLastUpdated.ToUniversalTime()
-  return $updated -le [DateTime]::UtcNow -and ([DateTime]::UtcNow - $updated).TotalHours -le 24
+  # Microsoft sometimes publishes no new definitions for more than a day, so a tighter limit can
+  # reject the newest definitions that exist.
+  return $updated -le [DateTime]::UtcNow -and ([DateTime]::UtcNow - $updated).TotalHours -le 72
 }
 
 try {
