@@ -145,6 +145,7 @@ import { ThreadDiagnosticsQuery } from "../../diagnostics/Services/ThreadDiagnos
 import { makeOwnerThreadDiagnosticReader } from "../../diagnostics/ownerThreadDiagnostics";
 import { OrchestrationEventStore } from "../../persistence/Services/OrchestrationEventStore";
 import { ProviderRuntimeEventRepository } from "../../persistence/Services/ProviderRuntimeEvents";
+import { ProviderService } from "../../provider/Services/ProviderService";
 import { WS_RPC_REQUIRED_SCOPES, type WsFeatureRpcTag } from "./wsRpcScopes";
 import { roleHasScope } from "../../auth/sessionScopes";
 import { makeWsRequestAdmission } from "./wsRequestAdmission";
@@ -408,6 +409,7 @@ const makeWsRpcHandlersLayer = () =>
       const providerDiscoveryService = yield* ProviderDiscoveryService;
       const providerManagement = yield* ProviderManagement;
       const providerHealth = yield* ProviderHealth;
+      const providerService = yield* ProviderService;
       const lifecycleEvents = yield* ServerLifecycleEvents;
       const eventLoopMonitor = yield* ServerEventLoopMonitor;
       const runtimeStartup = yield* ServerRuntimeStartup;
@@ -1856,9 +1858,10 @@ const makeWsRpcHandlersLayer = () =>
         [WS_METHODS.serverGetDiagnostics]: () =>
           rpcEffect(
             Effect.gen(function* () {
-              const [projection, fullChildProcesses] = yield* Effect.all([
+              const [projection, fullChildProcesses, providerRuntime] = yield* Effect.all([
                 projectionReadModelQuery.getCounts(),
                 Effect.promise(() => readDescendantProcesses(process.pid)),
+                providerService.getRuntimeMetrics(),
               ]);
               const memory = process.memoryUsage();
               const diagnostics: ServerDiagnosticsResult = {
@@ -1881,6 +1884,7 @@ const makeWsRpcHandlersLayer = () =>
                   0,
                 ),
                 projection,
+                providerRuntime,
               };
               return diagnostics;
             }),

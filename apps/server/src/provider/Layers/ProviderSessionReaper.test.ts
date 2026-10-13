@@ -96,6 +96,7 @@ function makeProviderServiceStub(input: {
     updateNativeHistory: () => unsupported(),
     closeRuntimeEvents: Effect.void,
     getRuntimeEventPumpHealth: () => unsupported(),
+    getRuntimeMetrics: () => unsupported(),
     streamEvents: Stream.empty,
   };
 }

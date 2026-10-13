@@ -440,6 +440,7 @@ export function makeReactorTestHarness() {
       updateNativeHistory: input?.updateNativeHistory ?? (() => unsupported()),
       closeRuntimeEvents: Effect.void,
       getRuntimeEventPumpHealth: () => Effect.succeed([]),
+      getRuntimeMetrics: () => Effect.succeed([]),
       streamEvents: Stream.fromPubSub(runtimeEventPubSub),
     };
 

@@ -325,6 +325,21 @@ export const ServerDiagnosticsChildProcess = Schema.Struct({
 });
 export type ServerDiagnosticsChildProcess = typeof ServerDiagnosticsChildProcess.Type;
 
+export const ServerDiagnosticsLatency = Schema.Struct({
+  count: NonNegativeInt,
+  p50Ms: Schema.optional(NonNegativeInt),
+  p95Ms: Schema.optional(NonNegativeInt),
+  maxMs: Schema.optional(NonNegativeInt),
+});
+export type ServerDiagnosticsLatency = typeof ServerDiagnosticsLatency.Type;
+
+export const ServerDiagnosticsProviderRuntime = Schema.Struct({
+  provider: ProviderKind,
+  timeToFirstTokenMs: ServerDiagnosticsLatency,
+  eventPublishLatencyMs: ServerDiagnosticsLatency,
+});
+export type ServerDiagnosticsProviderRuntime = typeof ServerDiagnosticsProviderRuntime.Type;
+
 export const ServerDiagnosticsResult = Schema.Struct({
   generatedAt: IsoDateTime,
   process: Schema.Struct({
@@ -339,6 +354,7 @@ export const ServerDiagnosticsResult = Schema.Struct({
     projectCount: NonNegativeInt,
     threadCount: NonNegativeInt,
   }),
+  providerRuntime: Schema.Array(ServerDiagnosticsProviderRuntime),
 });
 export type ServerDiagnosticsResult = typeof ServerDiagnosticsResult.Type;
 

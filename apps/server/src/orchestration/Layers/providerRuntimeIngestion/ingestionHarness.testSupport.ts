@@ -103,6 +103,7 @@ function createProviderServiceHarness(options?: { readonly persistedStream?: boo
     updateNativeHistory: () => unsupported(),
     closeRuntimeEvents: Effect.void,
     getRuntimeEventPumpHealth: () => Effect.succeed([]),
+    getRuntimeMetrics: () => Effect.succeed([]),
     streamEvents: Stream.fromPubSub(runtimeEventPubSub),
     // Only the already-persisted path uses this; when present the ingestion ignores `streamEvents`, so
     // ordinary harnesses must not provide it.
