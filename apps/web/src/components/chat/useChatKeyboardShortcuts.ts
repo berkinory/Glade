@@ -434,6 +434,7 @@ export function useChatKeyboardShortcuts({
         useWorkspaceSidebarStore
           .getState()
           .toggle(
+            activeThreadId,
             command === "explorer.toggle"
               ? "explorer"
               : command === "pullRequests.toggle"

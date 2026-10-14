@@ -13,6 +13,7 @@
 
 ### Fixed
 
+- Both sidebars start closed in each chat and remember that chat’s open state and selected workspace view.
 - Closing the last browser or terminal tab collapses the sidebar.
 - Visual replies show creation progress while the agent prepares their content.
 

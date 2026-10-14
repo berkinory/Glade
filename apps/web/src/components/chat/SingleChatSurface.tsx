@@ -29,7 +29,7 @@ import {
 } from "../../lib/workspaceFileOpener";
 import { requestExplorerFileReveal, requestExplorerReveal } from "../../explorerRevealRequestStore";
 import { selectWorkspaceFileTabs, useWorkspaceFileTabsStore } from "../../workspaceFileTabsStore";
-import { useWorkspaceSidebarStore } from "../../workspaceSidebarStore";
+import { selectWorkspaceSidebar, useWorkspaceSidebarStore } from "../../workspaceSidebarStore";
 import { useStore } from "../../store";
 import { createProjectSelector, createThreadWorkspaceMetadataSelector } from "../../storeSelectors";
 import { DeferredChatView } from "./ChatThreadSurfacePrimitives";
@@ -83,8 +83,12 @@ export function SingleChatSurface(props: {
   const selectMainTab = useMainWorkspaceStore((store) => store.selectTab);
   const openReview = useMainWorkspaceStore((store) => store.openReview);
   const mainWorkspace = useMainWorkspaceStore(selectMainWorkspace(props.threadId));
-  const sidebarOpen = useWorkspaceSidebarStore((store) => store.open);
-  const sidebarView = useWorkspaceSidebarStore((store) => store.view);
+  const sidebarOpen = useWorkspaceSidebarStore(
+    (store) => selectWorkspaceSidebar(props.threadId)(store).open,
+  );
+  const sidebarView = useWorkspaceSidebarStore(
+    (store) => selectWorkspaceSidebar(props.threadId)(store).view,
+  );
   const showView = useWorkspaceSidebarStore((store) => store.show);
   const toggleView = useWorkspaceSidebarStore((store) => store.toggle);
   const setSidebarOpen = useWorkspaceSidebarStore((store) => store.setOpen);
@@ -114,7 +118,7 @@ export function SingleChatSurface(props: {
   const [searchPaletteOpen, setSearchPaletteOpen] = useState(false);
   const [searchPaletteMode, setSearchPaletteMode] = useState<WorkspaceSearchPaletteMode>("files");
   const diffPanelOpen = sidebarOpen && sidebarView === "git";
-  const handleToggleDiff = () => toggleView("git");
+  const handleToggleDiff = () => toggleView(props.threadId, "git");
   const handleOpenTurnDiff = (turnId: TurnId, filePath?: string) =>
     openReview(props.threadId, {
       id: `diff:${turnId}`,
@@ -141,7 +145,7 @@ export function SingleChatSurface(props: {
 
   const handleOpenWorkspaceSearchDirectory = useCallback(
     (relativePath: string) => {
-      showView("explorer");
+      showView(props.threadId, "explorer");
       requestExplorerReveal(props.threadId, relativePath);
     },
     [showView, props.threadId],
@@ -188,7 +192,7 @@ export function SingleChatSurface(props: {
       openFile: (path) => {
         const directoryPath = resolveWorkspaceDirectoryOpenTarget(path, workspaceRoot);
         if (directoryPath !== null) {
-          showView("explorer");
+          showView(props.threadId, "explorer");
           requestExplorerReveal(props.threadId, directoryPath);
           return true;
         }
@@ -224,7 +228,7 @@ export function SingleChatSurface(props: {
       return;
     }
 
-    if (panelPatch.panel !== "diff") setSidebarOpen(false);
+    if (panelPatch.panel !== "diff") setSidebarOpen(props.threadId, false);
     else if (panelPatch.diffTurnId)
       openReview(props.threadId, {
         id: `diff:${panelPatch.diffTurnId}`,
@@ -232,7 +236,7 @@ export function SingleChatSurface(props: {
         turnId: panelPatch.diffTurnId,
         filePath: panelPatch.diffFilePath ?? null,
       });
-    else showView("git");
+    else showView(props.threadId, "git");
     void navigate({
       to: "/$threadId",
       params: { threadId: props.threadId },
@@ -348,8 +352,8 @@ export function SingleChatSurface(props: {
                 deferMount={isBrandNewDraftThread}
                 diffPanelOpen={diffPanelOpen}
                 onToggleDiff={handleToggleDiff}
-                onToggleTerminal={() => toggleView("terminal")}
-                onOpenTerminal={() => showView("terminal")}
+                onToggleTerminal={() => toggleView(props.threadId, "terminal")}
+                onOpenTerminal={() => showView(props.threadId, "terminal")}
                 onOpenTurnDiff={handleOpenTurnDiff}
               />
             </MainWorkspace>

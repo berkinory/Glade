@@ -159,7 +159,7 @@ export function ChatHeader({
         {isMobile && !minimalChrome ? (
           <ChatHeaderIconButton
             label="Files, Git and terminal"
-            onClick={() => useWorkspaceSidebarStore.getState().setOpen(true)}
+            onClick={() => useWorkspaceSidebarStore.getState().setOpen(activeThreadId, true)}
           >
             <LayoutAlignRightIcon className="size-3.5" />
           </ChatHeaderIconButton>

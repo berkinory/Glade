@@ -311,7 +311,9 @@ export function MainWorkspace(props: {
                   filePath={review.filePath}
                   cwd={props.workspaceRoot}
                   onOpenFile={(path) => openFile(props.threadId, path)}
-                  onCurrentChanges={() => useWorkspaceSidebarStore.getState().show("git")}
+                  onCurrentChanges={() =>
+                    useWorkspaceSidebarStore.getState().show(props.threadId, "git")
+                  }
                 />
               ) : null}
             </Suspense>

@@ -26,7 +26,7 @@ import { resolveThreadEnvironmentMode } from "@glade/shared/threads/threadEnviro
 import { newCommandId } from "~/lib/utils";
 import { readNativeApi } from "~/nativeApi";
 import { useProjectPreferencesStore } from "~/projectPreferencesStore";
-import { useWorkspaceSidebarStore } from "~/workspaceSidebarStore";
+import { selectWorkspaceSidebar, useWorkspaceSidebarStore } from "~/workspaceSidebarStore";
 import { useChatThreadContext } from "../ChatThreadContext";
 import type { useChatComposerController } from "./useChatComposerController";
 import type { useChatDiscoveryController } from "./useChatDiscoveryController";
@@ -121,7 +121,9 @@ export function useChatEnvironmentController({
     providerOptionsForDispatch,
   } = provider;
 
-  const rightDockOpen = useWorkspaceSidebarStore((store) => store.open);
+  const rightDockOpen = useWorkspaceSidebarStore(
+    (store) => selectWorkspaceSidebar(threadId)(store).open,
+  );
 
   const isMobileViewport = useIsMobile();
 

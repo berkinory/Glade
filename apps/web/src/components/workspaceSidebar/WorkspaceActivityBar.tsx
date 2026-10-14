@@ -14,7 +14,11 @@ import {
 } from "~/sidebarRowStyles";
 import { useStore } from "~/store";
 import { selectThreadTerminalState, useTerminalStateStore } from "~/terminalStateStore";
-import { WORKSPACE_SIDEBAR_VIEWS, useWorkspaceSidebarStore } from "~/workspaceSidebarStore";
+import {
+  selectWorkspaceSidebar,
+  WORKSPACE_SIDEBAR_VIEWS,
+  useWorkspaceSidebarStore,
+} from "~/workspaceSidebarStore";
 import { selectBrowserAgentActivity } from "../browser/BrowserAgentActivity.logic";
 import { CHAT_SURFACE_HEADER_HEIGHT_CLASS } from "../chat/chatHeaderControls";
 import { EMPTY_KEYBINDINGS } from "../sidebarSupport";
@@ -67,8 +71,12 @@ export function WorkspaceActivityBar(props: {
   layout?: "rail" | "row";
 }) {
   const isLocalDesktop = useLocalDesktopActive();
-  const open = useWorkspaceSidebarStore((store) => store.open);
-  const activeView = useWorkspaceSidebarStore((store) => store.view);
+  const open = useWorkspaceSidebarStore(
+    (store) => selectWorkspaceSidebar(props.threadId)(store).open,
+  );
+  const activeView = useWorkspaceSidebarStore(
+    (store) => selectWorkspaceSidebar(props.threadId)(store).view,
+  );
   const toggle = useWorkspaceSidebarStore((store) => store.toggle);
   const setOpen = useWorkspaceSidebarStore((store) => store.setOpen);
   const show = useWorkspaceSidebarStore((store) => store.show);
@@ -106,7 +114,9 @@ export function WorkspaceActivityBar(props: {
         label={label}
         tooltip={shortcut ? `${label} (${shortcut})` : label}
         active={open && activeView === view}
-        onClick={() => (props.layout === "row" ? show(view) : toggle(view))}
+        onClick={() =>
+          props.layout === "row" ? show(props.threadId, view) : toggle(props.threadId, view)
+        }
       >
         <span className="relative flex">
           <Icon className="size-4" aria-hidden />
@@ -139,7 +149,11 @@ export function WorkspaceActivityBar(props: {
     return (
       <nav aria-label="Workspace views" className="flex items-center gap-1">
         {viewButtons}
-        <ActivityBarButton label="Close" tooltip="Close" onClick={() => setOpen(false)}>
+        <ActivityBarButton
+          label="Close"
+          tooltip="Close"
+          onClick={() => setOpen(props.threadId, false)}
+        >
           <XIcon className="size-4" aria-hidden />
         </ActivityBarButton>
       </nav>
@@ -150,7 +164,7 @@ export function WorkspaceActivityBar(props: {
       label="Toggle sidebar"
       tooltip={open ? "Hide sidebar" : "Show sidebar"}
       expanded={open}
-      onClick={() => setOpen(!open)}
+      onClick={() => setOpen(props.threadId, !open)}
     >
       <LayoutAlignRightIcon className="size-4" aria-hidden />
     </ActivityBarButton>

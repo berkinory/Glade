@@ -8,6 +8,7 @@ import { cn } from "~/lib/utils";
 import { SIDEBAR_SECTION_LABEL_CLASS_NAME } from "~/sidebarRowStyles";
 import { useTerminalStateStore } from "~/terminalStateStore";
 import {
+  selectWorkspaceSidebar,
   WORKSPACE_SIDEBAR_VIEWS,
   type WorkspaceSidebarView,
   useWorkspaceSidebarStore,
@@ -45,7 +46,7 @@ function useTerminalViewSync(threadId: ThreadId, terminalVisible: boolean) {
   useEffect(() => {
     if (requestedByWorkspace) {
       setPresentationMode(threadId, "drawer");
-      show("terminal");
+      show(threadId, "terminal");
     } else if (terminalOpen !== terminalVisible) setTerminalOpen(threadId, terminalVisible);
   }, [
     requestedByWorkspace,
@@ -99,8 +100,12 @@ export function WorkspaceSidebar(props: {
 }) {
   const isLocalDesktop = useLocalDesktopActive();
   const isMobile = useIsMobile();
-  const open = useWorkspaceSidebarStore((store) => store.open);
-  const view = useWorkspaceSidebarStore((store) => store.view);
+  const open = useWorkspaceSidebarStore(
+    (store) => selectWorkspaceSidebar(props.threadId)(store).open,
+  );
+  const view = useWorkspaceSidebarStore(
+    (store) => selectWorkspaceSidebar(props.threadId)(store).view,
+  );
   const { wrapperRef, width, startResize } = usePanelWidthResize({
     ...SIDEBAR_WIDTH,
     chatMinWidth: CHAT_MIN_WIDTH_PX,
@@ -117,7 +122,8 @@ export function WorkspaceSidebar(props: {
           visible={visible}
           onLastClosed={() => {
             const state = useWorkspaceSidebarStore.getState();
-            if (state.view === "browser") state.setOpen(false);
+            if (selectWorkspaceSidebar(props.threadId)(state).view === "browser")
+              state.setOpen(props.threadId, false);
           }}
         />
       );
@@ -130,7 +136,8 @@ export function WorkspaceSidebar(props: {
           visible={visible}
           onLastClosed={() => {
             const state = useWorkspaceSidebarStore.getState();
-            if (state.view === "terminal") state.setOpen(false);
+            if (selectWorkspaceSidebar(props.threadId)(state).view === "terminal")
+              state.setOpen(props.threadId, false);
           }}
         />
       );

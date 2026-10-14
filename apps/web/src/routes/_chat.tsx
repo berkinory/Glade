@@ -11,7 +11,8 @@ import {
   goForwardInAppHistory,
   resolveAppNavigationState,
 } from "../appNavigation";
-import { MobileSidebarAutoClose } from "../components/MobileSidebarAutoClose";
+import { useCommittedChatRoute } from "../hooks/useCommittedChatRoute";
+import { selectWorkspaceSidebar, useWorkspaceSidebarStore } from "../workspaceSidebarStore";
 import ShortcutsDialog from "../components/ShortcutsDialog";
 import { RecentViewSwitcher } from "../components/RecentViewSwitcher";
 import { shouldRenderTerminalWorkspace } from "../components/ChatView.logic.subagents";
@@ -505,7 +506,17 @@ const SIDEBAR_GAP_CLASS =
 const SIDEBAR_INNER_CLASS = "app-sidebar-surface";
 
 function ChatRouteLayout() {
-  const [sidebarOpen, setSidebarOpen] = useState(true);
+  const { threadId } = useCommittedChatRoute();
+  const [nonChatSidebarOpen, setNonChatSidebarOpen] = useState(false);
+  const chatSidebarOpen = useWorkspaceSidebarStore(
+    (store) => selectWorkspaceSidebar(threadId)(store).leftOpen,
+  );
+  const setLeftOpen = useWorkspaceSidebarStore((store) => store.setLeftOpen);
+  const sidebarOpen = threadId ? chatSidebarOpen : nonChatSidebarOpen;
+  const setSidebarOpen = (open: boolean) => {
+    if (threadId) setLeftOpen(threadId, open);
+    else setNonChatSidebarOpen(open);
+  };
 
   const sidebarElement = (
     <Sidebar
@@ -537,15 +548,16 @@ function ChatRouteLayout() {
 
   return (
     <SidebarProvider
-      defaultOpen
+      defaultOpen={false}
       open={sidebarOpen}
       onOpenChange={setSidebarOpen}
+      openMobile={sidebarOpen}
+      onOpenMobileChange={setSidebarOpen}
       className="bg-[var(--app-shell-background)]"
       data-sidebar-side="left"
     >
       <ThreadRetentionMaintenanceToast />
       <ChatRouteGlobalShortcuts />
-      <MobileSidebarAutoClose />
       {sidebarElement}
       {mainContentShell}
     </SidebarProvider>

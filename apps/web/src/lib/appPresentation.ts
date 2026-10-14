@@ -31,10 +31,10 @@ export async function presentAppRequest(
           turnId: target.turnId,
           filePath: target.path ?? null,
         });
-      else useWorkspaceSidebarStore.getState().show("git");
+      else useWorkspaceSidebarStore.getState().show(request.threadId, "git");
     } else {
       useTerminalStateStore.getState().openChatThreadPage(request.threadId);
-      useWorkspaceSidebarStore.getState().show("terminal");
+      useWorkspaceSidebarStore.getState().show(request.threadId, "terminal");
     }
   } catch (cause) {
     error = cause instanceof Error ? cause.message : "Could not open the requested view.";
