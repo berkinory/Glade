@@ -367,12 +367,18 @@ export function makeClaudeDiscovery(input: {
           ),
       });
       return {
-        agents: agents.map((agent) => ({
-          name: agent.name,
-          displayName: agent.name,
-          ...(agent.description ? { description: agent.description } : {}),
-          ...(agent.model ? { model: agent.model } : {}),
-        })),
+        // Agent files are user-written frontmatter; a folded YAML description ends in a newline,
+        // and one untrimmed field failed the whole list against the contract.
+        agents: agents.map((agent) => {
+          const description = agent.description?.trim();
+          const model = agent.model?.trim();
+          return {
+            name: agent.name,
+            displayName: agent.name,
+            ...(description ? { description } : {}),
+            ...(model ? { model } : {}),
+          };
+        }),
         source: "sdk",
         cached: false,
       } satisfies ProviderListAgentsResult;

@@ -41,7 +41,7 @@ export function mapSupportedCommands(
         .filter((command) => command.name !== "goal" && command.name !== "plan")
         .map((cmd) => ({
           name: cmd.name,
-          description: cmd.description || undefined,
+          description: cmd.description.trim() || undefined,
         })),
       ...missingArtifactCommands,
     ],

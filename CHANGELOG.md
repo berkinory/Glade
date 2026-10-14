@@ -25,6 +25,7 @@
 - Glade no longer gets slower and uses more memory the longer it stays open.
 - Opening the diff of a large file no longer freezes Glade for seconds.
 - Codex plugins show again in the plugin library and in @ mentions.
+- A custom Claude agent with a multi-line description no longer empties the @ agent list.
 - Every project in the sidebar now opens and closes with the same animation, not only the project of the open chat.
 - Tool activity from Grok Build and other ACP agents no longer merges into an earlier turn's rows.
 - Clicking a chat in the sidebar while a subagent is open no longer misses or jumps.
