@@ -6,7 +6,7 @@ import { describe, expect, it } from "vitest";
 import { makeWsRequestAdmission } from "./wsRequestAdmission";
 
 describe("WsRequestAdmission", () => {
-  it("reserves bounded model discovery and control capacity during an expensive-read flood", async () => {
+  it("reserves bounded provider, model discovery and control capacity during an expensive-read flood", async () => {
     await Effect.runPromise(
       Effect.gen(function* () {
         const admission = yield* makeWsRequestAdmission;
@@ -26,6 +26,8 @@ describe("WsRequestAdmission", () => {
 
         const control = yield* admission.acquire(1, WS_METHODS.terminalAckOutput);
         expect(control.requestClass).toBe("control");
+        const usage = yield* admission.acquire(1, WS_METHODS.serverListProviderUsage);
+        expect(usage.requestClass).toBe("provider-read");
         const modelOne = yield* admission.acquire(1, WS_METHODS.providerListModels);
         const modelTwo = yield* admission.acquire(1, WS_METHODS.providerListModels);
         expect(
@@ -35,12 +37,13 @@ describe("WsRequestAdmission", () => {
         yield* admission.release(first);
         yield* admission.release(second);
         yield* admission.release(control);
+        yield* admission.release(usage);
         yield* admission.release(modelOne);
         yield* admission.release(modelTwo);
         expect(yield* admission.snapshot).toMatchObject({
           active: 0,
-          admittedTotal: 6,
-          releasedTotal: 6,
+          admittedTotal: 7,
+          releasedTotal: 7,
           rejectedTotal: 2,
         });
       }),

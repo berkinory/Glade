@@ -10,6 +10,7 @@ export type WsRequestClass =
   | "control"
   | "standard"
   | "expensive-read"
+  | "provider-read"
   | "model-discovery";
 
 const WS_REQUEST_CLASS_LIMITS: Readonly<Record<WsRequestClass, number>> = {
@@ -17,6 +18,7 @@ const WS_REQUEST_CLASS_LIMITS: Readonly<Record<WsRequestClass, number>> = {
   control: 16,
   standard: 12,
   "expensive-read": 2,
+  "provider-read": 2,
   "model-discovery": 2,
 };
 
@@ -59,12 +61,18 @@ const EXPENSIVE_READ_METHODS = new Set<string>([
   WS_METHODS.gitWorkingTreeDiffStats,
   WS_METHODS.gitSummarizeDiff,
   WS_METHODS.serverGetProviderUsageSnapshot,
-  WS_METHODS.serverListProviderUsage,
   WS_METHODS.serverGetDiagnostics,
-  WS_METHODS.serverPrewarmVoice,
-  WS_METHODS.serverTranscribeVoice,
   WS_METHODS.statsGetProfileStats,
   WS_METHODS.statsGetProfileTokenStats,
+]);
+
+// These wait on a provider's process or network for up to seconds while doing little work here.
+// Sharing the expensive-read budget, one usage refresh at startup held back git status and the
+// agent list for over a second.
+const PROVIDER_READ_METHODS = new Set<string>([
+  WS_METHODS.serverListProviderUsage,
+  WS_METHODS.serverPrewarmVoice,
+  WS_METHODS.serverTranscribeVoice,
   WS_METHODS.providerListCommands,
   WS_METHODS.providerListSkills,
   WS_METHODS.providerListSkillsCatalog,
@@ -80,6 +88,7 @@ function classifyWsRequest(method: string): WsRequestClass {
   if (method === WS_METHODS.providerListModels) return "model-discovery";
   if (CONTROL_METHODS.has(method)) return "control";
   if (EXPENSIVE_READ_METHODS.has(method)) return "expensive-read";
+  if (PROVIDER_READ_METHODS.has(method)) return "provider-read";
   return "standard";
 }
 
