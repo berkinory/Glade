@@ -19,6 +19,8 @@ export const MentionChipIcon = function MentionChipIcon(props: {
   path: string;
   theme: "light" | "dark";
   kind?: MentionChipKind;
+  // What the path is when the server checked it; otherwise it is guessed from the name.
+  entryKind?: "file" | "directory" | undefined;
   mentionReferences?: ReadonlyArray<ProviderMentionReference>;
   className?: string;
 }) {
@@ -62,7 +64,7 @@ export const MentionChipIcon = function MentionChipIcon(props: {
   return (
     <FileEntryIcon
       pathValue={props.path}
-      kind={inferEntryKindFromPath(props.path)}
+      kind={props.entryKind ?? inferEntryKindFromPath(props.path)}
       className={className}
     />
   );

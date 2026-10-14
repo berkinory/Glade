@@ -19,6 +19,8 @@ import {
   ProjectResolveWorkspaceFileReferencesResult,
   ProjectResolveOutOfRootFileReferenceInput,
   ProjectResolveOutOfRootFileReferenceResult,
+  ProjectStatLocalPathsInput,
+  ProjectStatLocalPathsResult,
   ProjectCreateLocalFilePreviewGrantInput,
   ProjectCreateLocalFilePreviewGrantResult,
   ProjectWriteFileInput,
@@ -95,6 +97,12 @@ export const WsProjectsResolveOutOfRootFileReferenceRpc = Rpc.make(
     error: WsRpcError,
   },
 );
+
+export const WsProjectsStatLocalPathsRpc = Rpc.make(WS_METHODS.projectsStatLocalPaths, {
+  payload: ProjectStatLocalPathsInput,
+  success: ProjectStatLocalPathsResult,
+  error: WsRpcError,
+});
 
 export const WsProjectsCreateLocalFilePreviewGrantRpc = Rpc.make(
   WS_METHODS.projectsCreateLocalFilePreviewGrant,

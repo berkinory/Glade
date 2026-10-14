@@ -29,6 +29,7 @@ export const WS_METHODS = {
   projectsSubscribeFileChange: "projects.subscribeFileChange",
   projectsResolveWorkspaceFileReferences: "projects.resolveWorkspaceFileReferences",
   projectsResolveOutOfRootFileReference: "projects.resolveOutOfRootFileReference",
+  projectsStatLocalPaths: "projects.statLocalPaths",
   projectsCreateLocalFilePreviewGrant: "projects.createLocalFilePreviewGrant",
   projectsWriteFile: "projects.writeFile",
   projectsManageEntry: "projects.manageEntry",

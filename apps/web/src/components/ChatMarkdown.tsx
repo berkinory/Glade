@@ -13,6 +13,7 @@ import { remarkWikiLinks } from "../lib/remarkWikiLinks";
 import {
   MARKDOWN_LINK_POSITION_SUFFIX_PATTERN,
   OpenableFileChip,
+  VerifiedLocalPathChip,
   VerifiedWorkspaceFileChip,
 } from "./MarkdownWorkspaceFileChip";
 import {
@@ -47,6 +48,11 @@ import { copyTextToClipboard } from "../lib/clipboard";
 import { resolveDiffThemeName, type DiffThemeName } from "../lib/diffRendering";
 import { dedentCode, parseCodeFenceInfo, type CodeFenceInfo } from "../lib/codeFence";
 import { pathLooksLikeKnownFile } from "../file-icons";
+import {
+  isLocalAbsolutePath,
+  localPathsEqual,
+  workspaceRelativePathOf,
+} from "@glade/shared/platform/path";
 import { FileEntryIcon } from "./chat/FileEntryIcon";
 import { isLocalImageMarkdownSrc } from "../lib/localImageUrls";
 import { repairMarkdownTableDelimiters } from "../lib/markdownTableRepair";
@@ -247,13 +253,26 @@ function inlineCodeFilePath(raw: string): string | null {
     return null;
   }
   const withoutPosition = value.replace(MARKDOWN_LINK_POSITION_SUFFIX_PATTERN, "");
-  if (resolveMarkdownFileLinkTarget(withoutPosition)) {
+  // A home-relative path is as explicit as an absolute one.
+  if (resolveMarkdownFileLinkTarget(withoutPosition) || /^~[\\/]./.test(withoutPosition)) {
     return value;
   }
   if (withoutPosition.length > INLINE_CODE_FILE_PATH_MAX_LENGTH) {
     return null;
   }
   return pathLooksLikeKnownFile(withoutPosition) ? value : null;
+}
+// The path to check on disk when an inline reference points outside the workspace: an absolute or
+// home-relative path, or a relative one that climbs out of it. Null for one inside the workspace.
+function outsideWorkspaceReference(filePath: string, cwd: string | undefined): string | null {
+  if (/^~[\\/]/.test(filePath)) return filePath;
+  const target = resolveMarkdownFileLinkTarget(filePath, cwd);
+  const targetPath = target?.replace(MARKDOWN_LINK_POSITION_SUFFIX_PATTERN, "");
+  if (!target || !targetPath || !isLocalAbsolutePath(targetPath)) return null;
+  if (cwd && (localPathsEqual(targetPath, cwd) || workspaceRelativePathOf(targetPath, cwd))) {
+    return null;
+  }
+  return target;
 }
 function ComposerChipElement(props: {
   serializedSegment: string | undefined;
@@ -697,6 +716,24 @@ const MARKDOWN_COMPONENTS: Components = {
         const findLabelProps = {
           label: <FindAwareMarkdownText text={filePath} sourceOffset={sourceOffset} />,
         };
+        const outsideReference = outsideWorkspaceReference(filePath, cwd);
+        if (outsideReference) {
+          const outsidePath = outsideReference.replace(MARKDOWN_LINK_POSITION_SUFFIX_PATTERN, "");
+          // A path the turn's own tools touched exists; anything else is checked on disk.
+          return knownAbsoluteFilePaths?.some((known) => localPathsEqual(known, outsidePath)) ? (
+            <OpenableFileChip
+              targetPath={outsideReference}
+              theme={resolvedTheme}
+              {...findLabelProps}
+            />
+          ) : (
+            <VerifiedLocalPathChip
+              reference={outsideReference}
+              theme={resolvedTheme}
+              {...findLabelProps}
+            />
+          );
+        }
         const knownTarget = resolveChatFileChipTarget(filePath, undefined, knownAbsoluteFilePaths);
         if (knownTarget) {
           return (

@@ -8,7 +8,12 @@ import type {
   ProjectSearchEntriesResult,
   ProjectSearchLocalEntriesResult,
 } from "@glade/contracts/workspace/project";
-import { PROJECT_SEARCH_CONTENT_MIN_QUERY_LENGTH } from "@glade/contracts/workspace/project";
+import {
+  PROJECT_RESOLVE_WORKSPACE_FILE_REFERENCES_MAX_PATHS,
+  PROJECT_SEARCH_CONTENT_MIN_QUERY_LENGTH,
+  PROJECT_STAT_LOCAL_PATHS_MAX_PATHS,
+  type ProjectLocalPathEntry,
+} from "@glade/contracts/workspace/project";
 import { isLocalAbsolutePath } from "@glade/shared/platform/path";
 import { queryOptions, type QueryClient } from "@tanstack/react-query";
 import { ensureNativeApi } from "~/nativeApi";
@@ -16,7 +21,7 @@ import {
   EXPENSIVE_READ_RETRY_OPTIONS,
   expensiveReadErrorRefetchInterval,
 } from "./expensiveReadRetry";
-import { resolveWorkspaceFileReferenceBatched } from "./workspaceFileReferenceBatch";
+import { makeReferenceBatcher } from "./referenceBatcher";
 
 export const projectQueryKeys = {
   all: ["projects"] as const,
@@ -31,6 +36,7 @@ export const projectQueryKeys = {
     ["projects", "resolve-out-of-root-file-reference", cwd, relativePath] as const,
   resolveWorkspaceFileReference: (cwd: string | null, relativePath: string | null) =>
     ["projects", "resolve-workspace-file-reference", cwd, relativePath] as const,
+  statLocalPath: (path: string | null) => ["projects", "stat-local-path", path] as const,
   searchEntries: (
     cwd: string | null,
     query: string,
@@ -293,10 +299,7 @@ export function projectResolveWorkspaceFileReferenceQueryOptions(input: {
       if (!input.cwd || !input.relativePath) {
         throw new Error("Workspace file reference resolution is unavailable.");
       }
-      return resolveWorkspaceFileReferenceBatched({
-        cwd: input.cwd,
-        relativePath: input.relativePath,
-      });
+      return resolveWorkspaceFileReferenceBatched(input.cwd, input.relativePath);
     },
     enabled:
       (input.enabled ?? true) &&
@@ -305,6 +308,33 @@ export function projectResolveWorkspaceFileReferenceQueryOptions(input: {
       typeof window !== "undefined",
     staleTime: DEFAULT_WORKSPACE_FILE_REFERENCE_STALE_TIME,
     ...EXPENSIVE_READ_RETRY_OPTIONS,
+  });
+}
+
+const resolveWorkspaceFileReferenceBatched = makeReferenceBatcher<string | null>({
+  maxBatchSize: PROJECT_RESOLVE_WORKSPACE_FILE_REFERENCES_MAX_PATHS,
+  request: async (cwd, relativePaths) =>
+    (await ensureNativeApi().projects.resolveWorkspaceFileReferences({ cwd, relativePaths }))
+      .relativePaths,
+});
+
+const statLocalPathBatched = makeReferenceBatcher<ProjectLocalPathEntry | null>({
+  maxBatchSize: PROJECT_STAT_LOCAL_PATHS_MAX_PATHS,
+  request: async (_group, paths) =>
+    (await ensureNativeApi().projects.statLocalPaths({ paths })).entries,
+});
+
+// Whether an absolute or home-relative path a reply names exists on the server's machine, and
+// whether it is a file or a folder.
+export function projectStatLocalPathQueryOptions(path: string | null) {
+  return queryOptions<ProjectLocalPathEntry | null>({
+    queryKey: projectQueryKeys.statLocalPath(path),
+    queryFn: () => {
+      if (!path) throw new Error("Local path checks are unavailable.");
+      return statLocalPathBatched("", path);
+    },
+    enabled: path !== null && typeof window !== "undefined",
+    staleTime: 60_000,
   });
 }
 

@@ -42,6 +42,7 @@ export const WS_RPC_REQUIRED_SCOPES: Record<WsFeatureRpcTag, AuthScope> = {
   [WS_METHODS.projectsSubscribeFileChange]: "filesystem:read",
   [WS_METHODS.projectsResolveWorkspaceFileReferences]: "filesystem:read",
   [WS_METHODS.projectsResolveOutOfRootFileReference]: "filesystem:read",
+  [WS_METHODS.projectsStatLocalPaths]: "filesystem:read",
   [WS_METHODS.projectsCreateLocalFilePreviewGrant]: "filesystem:read",
   [WS_METHODS.filesystemBrowse]: "filesystem:read",
   [WS_METHODS.projectsWriteFile]: "filesystem:write",

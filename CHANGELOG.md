@@ -11,6 +11,7 @@
 - Find in chat keeps up with typing in long replies, even with thousands of matches.
 - The Environment panel lists background tasks that are still running and only the latest turn's finished ones, instead of every task the chat ever started.
 - A tool call's details show exactly what it was given and what it returned, one box each, so a command reads as it ran instead of split into pieces.
+- Files and folders a reply names outside the project, such as `~/.zshrc` or `/tmp/run.log`, show as chips with their real icon once Glade finds them, and paths that do not exist stay plain text.
 
 ### Fixed
 

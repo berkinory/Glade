@@ -168,6 +168,8 @@ import type {
   ProjectResolveWorkspaceFileReferencesResult,
   ProjectResolveOutOfRootFileReferenceInput,
   ProjectResolveOutOfRootFileReferenceResult,
+  ProjectStatLocalPathsInput,
+  ProjectStatLocalPathsResult,
   ProjectSearchEntriesInput,
   ProjectSearchEntriesResult,
   ProjectSearchContentInput,
@@ -577,6 +579,7 @@ export interface NativeApi {
     resolveOutOfRootFileReference: (
       input: ProjectResolveOutOfRootFileReferenceInput,
     ) => Promise<ProjectResolveOutOfRootFileReferenceResult>;
+    statLocalPaths: (input: ProjectStatLocalPathsInput) => Promise<ProjectStatLocalPathsResult>;
     createLocalFilePreviewGrant: (
       input: ProjectCreateLocalFilePreviewGrantInput,
     ) => Promise<ProjectCreateLocalFilePreviewGrantResult>;

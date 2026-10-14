@@ -9,6 +9,7 @@ const PROJECT_READ_FILE_PATH_MAX_LENGTH = 2048;
 const PROJECT_READ_FILE_MAX_BYTES = 1_000_000;
 const PROJECT_DIRECTORY_LIST_MAX_DEPTH = 32;
 export const PROJECT_RESOLVE_WORKSPACE_FILE_REFERENCES_MAX_PATHS = 128;
+export const PROJECT_STAT_LOCAL_PATHS_MAX_PATHS = 128;
 const ProjectEntryKind = Schema.Literals(["file", "directory"]);
 
 export const ProjectFileEncoding = Schema.Literals(["utf8", "utf8-bom"]);
@@ -249,6 +250,25 @@ export const ProjectResolveWorkspaceFileReferencesResult = Schema.Struct({
 });
 export type ProjectResolveWorkspaceFileReferencesResult =
   typeof ProjectResolveWorkspaceFileReferencesResult.Type;
+
+export const ProjectStatLocalPathsInput = Schema.Struct({
+  paths: Schema.Array(
+    TrimmedNonEmptyString.check(Schema.isMaxLength(PROJECT_READ_FILE_PATH_MAX_LENGTH)),
+  ).check(Schema.isMinLength(1), Schema.isMaxLength(PROJECT_STAT_LOCAL_PATHS_MAX_PATHS)),
+});
+export type ProjectStatLocalPathsInput = typeof ProjectStatLocalPathsInput.Type;
+
+export const ProjectLocalPathEntry = Schema.Struct({
+  path: TrimmedNonEmptyString,
+  kind: ProjectEntryKind,
+});
+export type ProjectLocalPathEntry = typeof ProjectLocalPathEntry.Type;
+
+// One entry per requested path, in order; null when it does not exist or was not checked.
+export const ProjectStatLocalPathsResult = Schema.Struct({
+  entries: Schema.Array(Schema.NullOr(ProjectLocalPathEntry)),
+});
+export type ProjectStatLocalPathsResult = typeof ProjectStatLocalPathsResult.Type;
 
 export const ProjectResolveOutOfRootFileReferenceInput = Schema.Struct({
   cwd: TrimmedNonEmptyString,

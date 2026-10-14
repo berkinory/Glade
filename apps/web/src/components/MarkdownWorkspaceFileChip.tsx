@@ -3,7 +3,10 @@ import type { ReactNode } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { showFileReferenceContextMenu } from "../lib/fileReferenceContextMenu";
 import { openWorkspaceFileReference, useWorkspaceFileOpener } from "../lib/workspaceFileOpener";
-import { projectResolveWorkspaceFileReferenceQueryOptions } from "../lib/projectReactQuery";
+import {
+  projectResolveWorkspaceFileReferenceQueryOptions,
+  projectStatLocalPathQueryOptions,
+} from "../lib/projectReactQuery";
 import { InlineMentionChip } from "./chat/InlineMentionChip";
 
 export const MARKDOWN_LINK_POSITION_SUFFIX_PATTERN = /:\d+(?::\d+)?$/;
@@ -39,9 +42,45 @@ export function VerifiedWorkspaceFileChip(props: {
   );
 }
 
+// A path outside the workspace, such as `~/.zshrc` or `/tmp/run.log`, becomes a chip once the
+// server finds it, with the icon of what it is. A folder is named but does not open.
+export function VerifiedLocalPathChip(props: {
+  reference: string;
+  theme: "light" | "dark";
+  label?: ReactNode;
+}) {
+  const position = MARKDOWN_LINK_POSITION_SUFFIX_PATTERN.exec(props.reference)?.[0] ?? "";
+  const query = useQuery(
+    projectStatLocalPathQueryOptions(
+      props.reference.slice(0, props.reference.length - position.length),
+    ),
+  );
+  const entry = query.data;
+  if (!entry) return <code>{props.label ?? props.reference}</code>;
+  if (entry.kind === "directory") {
+    return (
+      <InlineMentionChip
+        path={entry.path}
+        theme={props.theme}
+        entryKind="directory"
+        {...(props.label !== undefined ? { label: props.label } : {})}
+      />
+    );
+  }
+  return (
+    <OpenableFileChip
+      targetPath={`${entry.path}${position}`}
+      theme={props.theme}
+      entryKind="file"
+      {...(props.label !== undefined ? { label: props.label } : {})}
+    />
+  );
+}
+
 export function OpenableFileChip(props: {
   targetPath: string;
   theme: "light" | "dark";
+  entryKind?: "file" | "directory";
   label?: ReactNode;
   href?: string;
 }) {
@@ -52,6 +91,7 @@ export function OpenableFileChip(props: {
     <InlineMentionChip
       path={chipPath}
       theme={props.theme}
+      entryKind={props.entryKind}
       href={props.href ?? props.targetPath}
       onActivate={(event) => {
         event.preventDefault();

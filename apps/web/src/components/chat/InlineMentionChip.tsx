@@ -14,6 +14,7 @@ interface InlineMentionChipProps {
   path: string;
   theme: "light" | "dark";
   kind?: MentionChipKind;
+  entryKind?: "file" | "directory" | undefined;
   mentionReferences?: ReadonlyArray<ProviderMentionReference>;
 
   label?: ReactNode;
@@ -40,6 +41,7 @@ export function InlineMentionChip(props: InlineMentionChipProps) {
           path={props.path}
           theme={props.theme}
           {...(props.kind ? { kind: props.kind } : {})}
+          entryKind={props.entryKind}
           {...(props.mentionReferences ? { mentionReferences: props.mentionReferences } : {})}
         />
       }

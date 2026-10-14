@@ -128,6 +128,7 @@ import { KeepAwake } from "../../keepAwake/Services/KeepAwake";
 import { isLoopbackHost } from "../http/startupAccess";
 import { TerminalManager } from "../../terminal/Services/Manager";
 import { resolveOutOfRootFileReference } from "../../workspace/outOfRootFileReference";
+import { statLocalPaths } from "../../workspace/localPathStat";
 import { watchWorkspaceDirectories } from "../../workspace/workspaceDirectoryChanges";
 import { watchWorkspaceFile } from "../../workspace/workspaceFileChanges";
 import { WorkspaceEntries } from "../../workspace/Services/WorkspaceEntries";
@@ -1244,6 +1245,13 @@ const makeWsRpcHandlersLayer = () =>
               }),
             })),
             "Failed to resolve file reference outside the workspace",
+          ),
+        [WS_METHODS.projectsStatLocalPaths]: (input) =>
+          rpcEffect(
+            Effect.promise(async () => ({
+              entries: await statLocalPaths({ paths: input.paths, homeDir: config.homeDir }),
+            })),
+            "Failed to check local paths",
           ),
         [WS_METHODS.projectsCreateLocalFilePreviewGrant]: (input) =>
           rpcEffect(
