@@ -21,11 +21,12 @@ import { parseDiffRouteSearch } from "../diffRouteSearch";
 import { readNativeApi } from "../nativeApi";
 import { useStore } from "../store";
 import { createThreadExistsSelector, createThreadProjectIdSelector } from "../storeSelectors";
+import { RemoteChatUnavailable } from "../components/chat/RemoteChatUnavailable";
 import { SingleChatSurface } from "../components/chat/SingleChatSurface";
 import { resolveSingleProjectId } from "./-chatThreadRoute.logic";
 
 function ChatThreadRouteView() {
-  useRemoteEnvironments();
+  const environments = useRemoteEnvironments();
   const localThreadsHydrated = useStore((store) => store.threadsHydrated);
   const remoteEnvironmentsSettledNow = useStore(() => remoteEnvironmentsSettled());
   const hasKnownServerThreads = useStore((store) => (store.threadIds?.length ?? 0) > 0);
@@ -33,7 +34,9 @@ function ChatThreadRouteView() {
     select: (params) => ThreadId.makeUnsafe(params.threadId),
   });
   const search = Route.useSearch();
-  useActiveThreadEnvironment(threadId);
+  const environmentKey = useActiveThreadEnvironment(threadId);
+  const environment = environments.find((entry) => entry.key === environmentKey);
+  const hostHydrated = useStore(() => environment?.store.getState().threadsHydrated ?? true);
   const threadProjectIdSelector = createThreadProjectIdSelector(threadId);
   const threadExistsSelector = createThreadExistsSelector(threadId);
   const threadProjectId: ProjectId | null = useStore(threadProjectIdSelector);
@@ -153,6 +156,10 @@ function ChatThreadRouteView() {
 
   if (!routeThreadExists) {
     return null;
+  }
+
+  if (environment && (!environment.api || environment.incompatible || !hostHydrated)) {
+    return <RemoteChatUnavailable environment={environment} />;
   }
 
   return <SingleChatSurface threadId={threadId} search={search} projectId={activeProjectId} />;

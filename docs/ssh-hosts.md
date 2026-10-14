@@ -23,6 +23,11 @@ your machine.
 - **Reconnect** in a host's **…** menu in **Settings → SSH hosts** repairs it: it drops the
   connection, forgets the recorded machine, connects again asking any sign-in questions, and installs
   Glade there when it is missing. A healthy host just reconnects; nothing is reinstalled.
+- **Startup and offline lists.** Previously loaded SSH projects and chat titles appear immediately
+  from a local navigation cache, with the host’s connection state. Messages and live session state
+  load from the host after it connects. The cache is replaced by the host’s current list, including
+  removals; removing or repairing a host clears its cache. A host never connected from this app
+  has no cached list yet.
 - **Host projects** sit in the project list with local ones, marked with a server badge that shows
   the host and its connection state.
 - **New chats** in Home pick their machine in the environment picker (**Local**, or a host under

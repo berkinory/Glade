@@ -8,6 +8,8 @@
 
 ### Improved
 
+- SSH projects and chat lists appear from the last connection at startup, show host availability, and refresh automatically when the host reconnects.
+
 - Git commands start fewer helper processes on Windows, and worktree creation uses parallel checkout while respecting your Git settings.
 
 - Row highlights and hover actions respond immediately, and interface animations use consistent timing throughout Glade.

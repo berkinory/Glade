@@ -3,11 +3,15 @@ import { useQueryClient } from "@tanstack/react-query";
 import type { GitStatusResult } from "@glade/contracts/git/git";
 import { mergeGitStatusParts } from "@glade/shared/git/git";
 
+import { environmentOfPath } from "../environments/environmentStores";
+import { LOCAL_ENVIRONMENT } from "../environments/environmentKey";
+import { useRemoteEnvironments } from "../environments/remoteEnvironments";
 import { ensureNativeApi } from "../nativeApi";
 import { activeGitStatusCwds, gitQueryKeys } from "../lib/gitQueryOptions";
 
 export function useGitStatusPush() {
   const queryClient = useQueryClient();
+  const environments = useRemoteEnvironments();
   useEffect(() => {
     const refreshes = new Map<
       string,
@@ -57,6 +61,15 @@ export function useGitStatusPush() {
     const subscriptions = new Map<string, () => void>();
     const reconcile = () => {
       const active = activeGitStatusCwds(queryClient);
+      for (const cwd of active) {
+        const key = environmentOfPath(cwd);
+        if (
+          key !== LOCAL_ENVIRONMENT &&
+          !environments.some((entry) => entry.key === key && entry.api && !entry.incompatible)
+        ) {
+          active.delete(cwd);
+        }
+      }
       for (const [cwd, unsubscribe] of subscriptions) {
         if (!active.has(cwd)) {
           unsubscribe();
@@ -104,5 +117,5 @@ export function useGitStatusPush() {
       unsubscribe();
       subscriptions.forEach((stop) => stop());
     };
-  }, [queryClient]);
+  }, [queryClient, environments]);
 }
