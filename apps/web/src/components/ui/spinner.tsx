@@ -1,230 +1,155 @@
-import type { ComponentProps, ReactNode } from "react";
+import type { ComponentProps, CSSProperties, ReactNode } from "react";
 
-import { useMediaQuery } from "~/hooks/useMediaQuery";
 import { cn } from "~/lib/utils";
 
 type SpinnerVariant = "action" | "loading" | "working" | "subagent" | "voice";
 
-type SpinnerProps = ComponentProps<"svg"> & { variant?: SpinnerVariant };
+type SpinnerProps = ComponentProps<"span"> & { variant?: SpinnerVariant };
 
-const EASE = "0.65 0 0.35 1";
-const STEP_EASE = "0.7 0 0.3 1";
-const LINEAR = "0 0 1 1";
 const ARC_CIRCUMFERENCE = 2 * Math.PI * 9;
 
-function splines(...curves: string[]): Pick<ComponentProps<"animate">, "calcMode" | "keySplines"> {
-  return { calcMode: "spline", keySplines: curves.join(";") };
-}
-
-function growingArc(animate: boolean): ReactNode {
-  const gap = ARC_CIRCUMFERENCE;
+// Every moving part is a full-size layer that animates only transform and opacity, so the compositor
+// runs the motion without main-thread frames. Animating SVG attributes instead made Chromium restyle,
+// lay out and repaint the whole document every frame for as long as any spinner stayed visible.
+// Full-size layers also make translate percentages read as 1/24ths of the viewBox.
+function Layer(props: { className?: string; style?: CSSProperties; children: ReactNode }) {
   return (
-    <g stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
-      <circle r="9" strokeOpacity="0.14" />
-      <g>
-        <circle r="9" strokeDasharray={`${gap / 4} ${gap}`}>
-          {animate && (
-            <>
-              <animate
-                attributeName="stroke-dasharray"
-                values={`${gap * 0.03} ${gap};${gap * 0.62} ${gap};${gap * 0.03} ${gap}`}
-                keyTimes="0;0.5;1"
-                dur="1.4s"
-                repeatCount="indefinite"
-                {...splines("0.42 0 0.58 1", "0.42 0 0.58 1")}
-              />
-              <animate
-                attributeName="stroke-dashoffset"
-                values={`0;${-gap * 0.14};${-gap * 0.97}`}
-                keyTimes="0;0.5;1"
-                dur="1.4s"
-                repeatCount="indefinite"
-                {...splines("0.42 0 0.58 1", "0.42 0 0.58 1")}
-              />
-            </>
-          )}
-        </circle>
-        {animate && (
-          <animateTransform
-            attributeName="transform"
-            type="rotate"
-            values="0;360"
-            dur="1.4s"
-            repeatCount="indefinite"
-          />
-        )}
-      </g>
-    </g>
+    <span className={cn("absolute inset-0 block", props.className)} style={props.style}>
+      {props.children}
+    </span>
   );
 }
 
-const FOLD_SQUARES = [
-  { x: -9, y: -9, inward: "3 3", opacity: 1 },
-  { x: 1, y: -9, inward: "-3 3", opacity: 0.7 },
-  { x: -9, y: 1, inward: "3 -3", opacity: 0.7 },
-  { x: 1, y: 1, inward: "-3 -3", opacity: 0.45 },
+function Glyph({ children }: { children: ReactNode }) {
+  return (
+    <svg viewBox="-12 -12 24 24" fill="none" className="block size-full overflow-visible">
+      {children}
+    </svg>
+  );
+}
+
+function turningArc(): ReactNode {
+  return (
+    <>
+      <Layer>
+        <Glyph>
+          <circle r="9" stroke="currentColor" strokeWidth="2.5" strokeOpacity="0.14" />
+        </Glyph>
+      </Layer>
+      <Layer className="spinner-action-turn">
+        <Glyph>
+          <circle
+            r="9"
+            stroke="currentColor"
+            strokeWidth="2.5"
+            strokeLinecap="round"
+            strokeDasharray={`${ARC_CIRCUMFERENCE / 4} ${ARC_CIRCUMFERENCE}`}
+          />
+        </Glyph>
+      </Layer>
+    </>
+  );
+}
+
+// Each square is drawn in the top-left cell and rotated into its quadrant, so one inward translate
+// folds all four toward the center.
+const FOLD_QUADRANTS = [
+  { turn: 0, opacity: 1 },
+  { turn: 90, opacity: 0.7 },
+  { turn: 180, opacity: 0.45 },
+  { turn: 270, opacity: 0.7 },
 ];
 
-function foldingGrid(animate: boolean): ReactNode {
+function foldingGrid(): ReactNode {
   return (
-    <g fill="currentColor">
-      {FOLD_SQUARES.map(({ x, y, inward, opacity }) => (
-        <rect key={`${x},${y}`} x={x} y={y} width="8" height="8" rx="1.4" opacity={opacity}>
-          {animate && (
-            <>
-              <animateTransform
-                attributeName="transform"
-                type="translate"
-                values={`0 0;${inward};${inward};0 0`}
-                keyTimes="0;0.45;0.55;1"
-                dur="1.8s"
-                repeatCount="indefinite"
-                {...splines(EASE, LINEAR, EASE)}
+    <Layer className="spinner-loading-turn">
+      {FOLD_QUADRANTS.map(({ turn, opacity }) => (
+        <Layer key={turn} style={{ transform: `rotate(${turn}deg)` }}>
+          <Layer className="spinner-loading-fold">
+            <Glyph>
+              <rect
+                x="-9"
+                y="-9"
+                width="8"
+                height="8"
+                rx="1.4"
+                fill="currentColor"
+                opacity={opacity}
               />
-              <animate
-                attributeName="rx"
-                values="1.4;0.4;0.4;1.4"
-                keyTimes="0;0.45;0.55;1"
-                dur="1.8s"
-                repeatCount="indefinite"
-                {...splines(EASE, LINEAR, EASE)}
-              />
-            </>
-          )}
-        </rect>
+            </Glyph>
+          </Layer>
+        </Layer>
       ))}
-      {animate && (
-        // Accumulating keeps each quarter turn from snapping back when the cycle repeats.
-        <animateTransform
-          attributeName="transform"
-          type="rotate"
-          values="0;0;90;90"
-          keyTimes="0;0.45;0.55;1"
-          dur="3.6s"
-          repeatCount="indefinite"
-          accumulate="sum"
-          {...splines(LINEAR, EASE, LINEAR)}
-        />
-      )}
-    </g>
+    </Layer>
   );
 }
 
-function morphingSquare(animate: boolean): ReactNode {
+// The square is split into its inscribed circle and the four corners outside it, so fading the
+// corners reads as the square rounding off. Adding the corners inside an isolated group keeps the
+// antialiased seam between the pieces at full color, including translucent colors.
+const SQUARE_CORNERS_PATH =
+  "M-5.5-7H5.5A1.5 1.5 0 0 1 7-5.5V5.5A1.5 1.5 0 0 1 5.5 7H-5.5A1.5 1.5 0 0 1-7 5.5V-5.5A1.5 1.5 0 0 1-5.5-7ZM7 0A7 7 0 1 0-7 0A7 7 0 1 0 7 0Z";
+
+function morphingSquare(): ReactNode {
   return (
-    <rect x="-7" y="-7" width="14" height="14" rx="1.5" fill="currentColor">
-      {animate && (
-        <>
-          <animateTransform
-            attributeName="transform"
-            type="rotate"
-            values="0;180;360"
-            keyTimes="0;0.5;1"
-            dur="1.6s"
-            repeatCount="indefinite"
-            {...splines(EASE, EASE)}
-          />
-          <animateTransform
-            attributeName="transform"
-            type="scale"
-            values="1;0.7;1"
-            keyTimes="0;0.5;1"
-            dur="1.6s"
-            repeatCount="indefinite"
-            additive="sum"
-            {...splines(EASE, EASE)}
-          />
-          <animate
-            attributeName="rx"
-            values="1.5;7;1.5"
-            keyTimes="0;0.5;1"
-            dur="1.6s"
-            repeatCount="indefinite"
-            {...splines(EASE, EASE)}
-          />
-        </>
-      )}
-    </rect>
+    <Layer className="spinner-working-turn isolate">
+      <Layer>
+        <Glyph>
+          <circle r="7" fill="currentColor" />
+        </Glyph>
+      </Layer>
+      <Layer className="spinner-working-corners mix-blend-plus-lighter">
+        <Glyph>
+          <path d={SQUARE_CORNERS_PATH} fill="currentColor" fillRule="evenodd" />
+        </Glyph>
+      </Layer>
+    </Layer>
   );
 }
 
-function triangleOrbit(animate: boolean): ReactNode {
+function triangleOrbit(): ReactNode {
   return (
-    <g fill="currentColor">
+    <Layer className="spinner-subagent-orbit">
       {[1, 0.68, 0.42].map((opacity, index) => (
-        <g key={opacity} transform={`rotate(${index * 120})`}>
-          <circle cy="-7" r="3.4" opacity={opacity}>
-            {/* One tuck per 120 degree step: dots pull inward while moving and rest on the rim. */}
-            {animate && (
-              <>
-                <animate
-                  attributeName="cy"
-                  values="-7;-3.8;-7"
-                  keyTimes="0;0.5;1"
-                  dur="0.6s"
-                  repeatCount="indefinite"
-                  {...splines(STEP_EASE, STEP_EASE)}
-                />
-                <animate
-                  attributeName="r"
-                  values="3.4;2.4;3.4"
-                  keyTimes="0;0.5;1"
-                  dur="0.6s"
-                  repeatCount="indefinite"
-                  {...splines(STEP_EASE, STEP_EASE)}
-                />
-              </>
-            )}
-          </circle>
-        </g>
+        <Layer key={opacity} style={{ transform: `rotate(${index * 120}deg)` }}>
+          <Layer className="spinner-subagent-tuck">
+            <Glyph>
+              <circle cy="-7" r="3.4" fill="currentColor" opacity={opacity} />
+            </Glyph>
+          </Layer>
+        </Layer>
       ))}
-      {animate && (
-        <animateTransform
-          attributeName="transform"
-          type="rotate"
-          values="0;120;240;360"
-          keyTimes="0;0.3333;0.6667;1"
-          dur="1.8s"
-          repeatCount="indefinite"
-          {...splines(STEP_EASE, STEP_EASE, STEP_EASE)}
-        />
-      )}
-    </g>
+    </Layer>
   );
 }
 
-function stretchingPills(animate: boolean): ReactNode {
-  return (
-    <g fill="currentColor">
-      {[-10.5, -2.75, 5].map((x, index) => (
-        <rect key={x} x={x} y="-2.75" width="5.5" height="5.5" rx="2.75" opacity="0.38">
-          {animate &&
-            (
-              [
-                ["height", "5.5;15;5.5;5.5"],
-                ["y", "-2.75;-7.5;-2.75;-2.75"],
-                ["opacity", "0.38;1;0.38;0.38"],
-              ] as const
-            ).map(([attributeName, values]) => (
-              <animate
-                key={attributeName}
-                attributeName={attributeName}
-                values={values}
-                keyTimes="0;0.35;0.7;1"
-                dur="1.2s"
-                begin={`${index * 0.12 - 1.2}s`}
-                repeatCount="indefinite"
-                {...splines(EASE, EASE, LINEAR)}
-              />
-            ))}
-        </rect>
+// Each pill is two caps that slide apart around a bar that stretches between them, so it keeps its
+// round ends at every height. The pieces overlap; the voice spinner only sits on opaque colors.
+function stretchingPills(): ReactNode {
+  return [-10.5, -2.75, 5].map((x, index) => (
+    <Layer
+      key={x}
+      className="spinner-voice-pill"
+      style={{ "--spinner-voice-delay": `${index * 0.12 - 1.2}s` } as CSSProperties}
+    >
+      {["spinner-voice-cap-top", "spinner-voice-cap-bottom"].map((cap) => (
+        <Layer key={cap} className={cap}>
+          <Glyph>
+            <circle cx={x + 2.75} r="2.75" fill="currentColor" />
+          </Glyph>
+        </Layer>
       ))}
-    </g>
-  );
+      <Layer className="spinner-voice-bar">
+        <Glyph>
+          <rect x={x} y="-4.75" width="5.5" height="9.5" fill="currentColor" />
+        </Glyph>
+      </Layer>
+    </Layer>
+  ));
 }
 
-const GLYPHS: Record<SpinnerVariant, (animate: boolean) => ReactNode> = {
-  action: growingArc,
+const GLYPHS: Record<SpinnerVariant, () => ReactNode> = {
+  action: turningArc,
   loading: foldingGrid,
   working: morphingSquare,
   subagent: triangleOrbit,
@@ -232,19 +157,14 @@ const GLYPHS: Record<SpinnerVariant, (animate: boolean) => ReactNode> = {
 };
 
 export function Spinner({ className, variant = "loading", ...props }: SpinnerProps) {
-  const reducedMotion = useMediaQuery("(prefers-reduced-motion: reduce)");
   return (
-    <svg
+    <span
       aria-label="Loading"
       role="status"
-      width="16"
-      height="16"
       {...props}
-      viewBox="-12 -12 24 24"
-      fill="none"
-      className={cn("inline-block shrink-0", className)}
+      className={cn("relative inline-block size-4 shrink-0", className)}
     >
-      {GLYPHS[variant](!reducedMotion)}
-    </svg>
+      {GLYPHS[variant]()}
+    </span>
   );
 }

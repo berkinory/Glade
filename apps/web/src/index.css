@@ -265,30 +265,211 @@
 
 /* Live work labels keep their text stable and signal progress with a sweep instead. The fill is
    made transparent through text-fill-color so `currentColor` still resolves to the muted ink.
-   Stepped timing repaints the clipped text about 12 times a second instead of every frame. */
+   WorkTextShimmer steps the background position about 12 times a second. */
 .work-text-shimmer {
-  background: linear-gradient(100deg, currentColor 35%, var(--foreground) 50%, currentColor 65%) 0
-    0 / 300% 100%;
+  background: linear-gradient(100deg, currentColor 35%, var(--foreground) 50%, currentColor 65%)
+    100% 0 / 300% 100%;
   -webkit-background-clip: text;
   background-clip: text;
   -webkit-text-fill-color: transparent;
-  animation: work-text-shimmer 2.4s steps(30) infinite;
-}
-
-@keyframes work-text-shimmer {
-  from {
-    background-position: 100% 0;
-  }
-  to {
-    background-position: 0% 0;
-  }
 }
 
 @media (prefers-reduced-motion: reduce) {
   .work-text-shimmer {
-    animation: none;
     background: none;
     -webkit-text-fill-color: currentColor;
+  }
+}
+
+/* Spinner layers animate only transform and opacity so they stay on the compositor. Percentages
+   are of the full glyph box, so 12.5% is 3 units of the 24-unit viewBox. */
+.spinner-action-turn {
+  animation: spinner-turn 0.9s linear infinite;
+}
+
+@keyframes spinner-turn {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.spinner-working-turn {
+  animation: spinner-working-turn 1.6s cubic-bezier(0.65, 0, 0.35, 1) infinite;
+}
+
+.spinner-working-corners {
+  animation: spinner-working-corners 1.6s cubic-bezier(0.65, 0, 0.35, 1) infinite;
+}
+
+@keyframes spinner-working-turn {
+  0% {
+    transform: rotate(0deg) scale(1);
+  }
+  50% {
+    transform: rotate(180deg) scale(0.7);
+  }
+  100% {
+    transform: rotate(360deg) scale(1);
+  }
+}
+
+@keyframes spinner-working-corners {
+  50% {
+    opacity: 0;
+  }
+}
+
+/* A quarter turn once per two folds, at the moment the squares rest apart. */
+.spinner-loading-turn {
+  animation: spinner-loading-turn 14.4s cubic-bezier(0.65, 0, 0.35, 1) infinite;
+}
+
+@keyframes spinner-loading-turn {
+  0%,
+  11.25% {
+    transform: rotate(0deg);
+  }
+  13.75%,
+  36.25% {
+    transform: rotate(90deg);
+  }
+  38.75%,
+  61.25% {
+    transform: rotate(180deg);
+  }
+  63.75%,
+  86.25% {
+    transform: rotate(270deg);
+  }
+  88.75%,
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+.spinner-loading-fold {
+  animation: spinner-loading-fold 1.8s cubic-bezier(0.65, 0, 0.35, 1) infinite;
+}
+
+@keyframes spinner-loading-fold {
+  45%,
+  55% {
+    transform: translate(12.5%, 12.5%);
+  }
+}
+
+/* One 120 degree step per tuck: the dots pull inward while moving and rest on the rim. */
+.spinner-subagent-orbit {
+  animation: spinner-subagent-orbit 1.8s cubic-bezier(0.7, 0, 0.3, 1) infinite;
+}
+
+@keyframes spinner-subagent-orbit {
+  0% {
+    transform: rotate(0deg);
+  }
+  33.333% {
+    transform: rotate(120deg);
+  }
+  66.667% {
+    transform: rotate(240deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+.spinner-subagent-tuck {
+  transform-origin: 50% 20.833%;
+  animation: spinner-subagent-tuck 0.6s cubic-bezier(0.7, 0, 0.3, 1) infinite;
+}
+
+@keyframes spinner-subagent-tuck {
+  50% {
+    transform: translateY(13.333%) scale(0.706);
+  }
+}
+
+.spinner-voice-pill,
+.spinner-voice-bar,
+.spinner-voice-cap-top,
+.spinner-voice-cap-bottom {
+  animation-duration: 1.2s;
+  animation-timing-function: cubic-bezier(0.65, 0, 0.35, 1);
+  animation-delay: var(--spinner-voice-delay);
+  animation-iteration-count: infinite;
+}
+
+.spinner-voice-pill {
+  opacity: 0.38;
+  animation-name: spinner-voice-pill;
+}
+
+@keyframes spinner-voice-pill {
+  35% {
+    opacity: 1;
+  }
+  70%,
+  100% {
+    opacity: 0.38;
+  }
+}
+
+.spinner-voice-bar {
+  transform: scaleY(0);
+  animation-name: spinner-voice-bar;
+}
+
+@keyframes spinner-voice-bar {
+  35% {
+    transform: scaleY(1);
+  }
+  70%,
+  100% {
+    transform: scaleY(0);
+  }
+}
+
+.spinner-voice-cap-top {
+  animation-name: spinner-voice-cap-top;
+}
+
+@keyframes spinner-voice-cap-top {
+  35% {
+    transform: translateY(-19.792%);
+  }
+  70%,
+  100% {
+    transform: translateY(0);
+  }
+}
+
+.spinner-voice-cap-bottom {
+  animation-name: spinner-voice-cap-bottom;
+}
+
+@keyframes spinner-voice-cap-bottom {
+  35% {
+    transform: translateY(19.792%);
+  }
+  70%,
+  100% {
+    transform: translateY(0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .spinner-action-turn,
+  .spinner-working-turn,
+  .spinner-working-corners,
+  .spinner-loading-turn,
+  .spinner-loading-fold,
+  .spinner-subagent-orbit,
+  .spinner-subagent-tuck,
+  .spinner-voice-pill,
+  .spinner-voice-bar,
+  .spinner-voice-cap-top,
+  .spinner-voice-cap-bottom {
+    animation: none;
   }
 }
 

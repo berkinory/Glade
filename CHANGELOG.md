@@ -5,6 +5,7 @@
 ### Improved
 
 - Long chats open and scroll more smoothly.
+- Running chats use much less CPU and battery while agents work.
 
 ### Fixed
 

@@ -9,6 +9,7 @@ import {
   WORK_ROW_ICON_CLASS_NAME,
   WORK_ROW_ICON_SLOT_CLASS_NAME,
 } from "./workRowStyles";
+import { WorkTextShimmer } from "./WorkTextShimmer";
 
 const MAX_AVATARS = 3;
 
@@ -41,7 +42,7 @@ export function BackgroundWaitRow({ items }: { items: readonly BackgroundWaitIte
         </span>
       )}
       <span className="min-w-0 truncate">
-        <span className="work-text-shimmer">{describeBackgroundWait(items)}</span>
+        <WorkTextShimmer active>{describeBackgroundWait(items)}</WorkTextShimmer>
       </span>
     </>
   );

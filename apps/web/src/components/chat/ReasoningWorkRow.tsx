@@ -14,6 +14,7 @@ import {
   WORK_ROW_LINE_CLASS_NAME,
   WORK_ROW_MUTED_HOVER_TONE,
 } from "./workRowStyles";
+import { WorkTextShimmer } from "./WorkTextShimmer";
 
 function reasoningLabel(reasoning: NonNullable<WorkLogEntry["reasoning"]>): string {
   if (reasoning.live) return "Thinking";
@@ -40,9 +41,7 @@ export function ReasoningWorkRow(props: {
         className={cn(WORK_ROW_LINE_CLASS_NAME, WORK_ROW_MUTED_HOVER_TONE["tool-row"])}
         style={{ fontSize: `${fontSizePx}px` }}
       >
-        <span className={reasoning.live ? "work-text-shimmer" : undefined}>
-          {reasoningLabel(reasoning)}
-        </span>
+        <WorkTextShimmer active={reasoning.live}>{reasoningLabel(reasoning)}</WorkTextShimmer>
       </p>
     </>
   );

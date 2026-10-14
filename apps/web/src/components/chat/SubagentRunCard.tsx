@@ -40,6 +40,7 @@ import {
   memberEndMs,
   subagentStatusKind,
 } from "./SubagentRunCard.logic";
+import { WorkTextShimmer } from "./WorkTextShimmer";
 
 function isLiveKind(kind: SubagentStatusKind | null): boolean {
   return kind === "running" || kind === "queued";
@@ -125,9 +126,7 @@ export function SubagentRunCard({
             )}
           </span>
           <span className="min-w-0 truncate">
-            <span className={live ? "work-text-shimmer" : undefined}>
-              {describeRunHeader(members)}
-            </span>
+            <WorkTextShimmer active={live}>{describeRunHeader(members)}</WorkTextShimmer>
             {elapsed ? <span> · {elapsed}</span> : null}
           </span>
           <DisclosureChevron open={open} className="text-muted-foreground/70" />
@@ -241,7 +240,9 @@ function SubagentRunRow({
           {detail ? (
             <span className="flex min-w-0 items-center gap-1 text-muted-foreground">
               {live ? null : <ArrowRight02Icon className="size-3 shrink-0 opacity-60" />}
-              <span className={cn("truncate", live && "work-text-shimmer")}>{detail}</span>
+              <WorkTextShimmer active={live} className="truncate">
+                {detail}
+              </WorkTextShimmer>
             </span>
           ) : null}
         </span>

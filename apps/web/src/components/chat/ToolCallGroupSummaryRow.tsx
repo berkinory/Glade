@@ -31,6 +31,7 @@ import {
   WORK_ROW_ICON_SLOT_CLASS_NAME,
   WORK_ROW_LINE_CLASS_NAME,
 } from "./workRowStyles";
+import { WorkTextShimmer } from "./WorkTextShimmer";
 
 const ACTIVITY_ICONS: Record<Exclude<ToolCallGroupActivity, "tools">, IconComponent> = {
   edit: PencilEdit02Icon,
@@ -90,7 +91,7 @@ export function ToolCallGroupSummaryRow(props: {
           )}
         </span>
         <span className="min-w-0 truncate">
-          <span className={live ? "work-text-shimmer" : undefined}>{summary.label}</span>
+          <WorkTextShimmer active={live}>{summary.label}</WorkTextShimmer>
           {summary.latestStep ? <span> · {summary.latestStep}</span> : null}
         </span>
         <DisclosureChevron open={open} className="text-muted-foreground/70" />

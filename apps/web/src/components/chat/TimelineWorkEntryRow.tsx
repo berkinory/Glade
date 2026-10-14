@@ -102,6 +102,7 @@ import {
 } from "../../lib/toolCallLabel.presentations";
 import { formatLiveActivityMeta, useLiveActivityNow } from "../../lib/liveActivityPresentation";
 import { openWorkspaceFileReference, useWorkspaceFileOpener } from "../../lib/workspaceFileOpener";
+import { WorkTextShimmer } from "./WorkTextShimmer";
 const EMPTY_FILE_DIFF_STATS: ReadonlyMap<
   string,
   {
@@ -670,8 +671,8 @@ function ToolWorkEntryRow(props: TimelineWorkEntryRowProps) {
                     fontSize: `${rowFontSizePx}px`,
                   }}
                 >
-                  <span
-                    className={workEntry.toolStatus === "running" ? "work-text-shimmer" : undefined}
+                  <WorkTextShimmer
+                    active={workEntry.toolStatus === "running"}
                     data-work-entry-display-text="true"
                   >
                     {rowFilePath ? (
@@ -681,7 +682,7 @@ function ToolWorkEntryRow(props: TimelineWorkEntryRowProps) {
                     ) : (
                       displayText
                     )}
-                  </span>
+                  </WorkTextShimmer>
                   {liveActivityMetaText ? (
                     <span data-live-activity-meta="true"> · {liveActivityMetaText}</span>
                   ) : null}
