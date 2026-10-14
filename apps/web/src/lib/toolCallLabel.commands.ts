@@ -12,6 +12,7 @@ import {
   type ScriptLanguage,
   commandFileEffects,
   inlineScriptOf,
+  isFileWriteStep,
   resolveCommandPaths,
 } from "./commandFileEffects";
 import {
@@ -89,7 +90,7 @@ export function deriveReadableCommandDisplay(
   // A chain that does more than look around is named by the first thing it does besides writing.
   const acting = segments.filter((_, index) => !inspections[index]);
   const primary =
-    acting.find((segment) => commandFileEffects(segment).written.length === 0) ??
+    acting.find((segment) => !isFileWriteStep(segment, rawCommand)) ??
     acting[0] ??
     segments[0] ??
     rawCommand;

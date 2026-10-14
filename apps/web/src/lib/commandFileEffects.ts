@@ -127,13 +127,24 @@ const WRITE_COMPANIONS = new Set([
 // A command is named by the files it wrote only when every step writes or accompanies a write; a
 // script that edits a file and then runs a benchmark is a run.
 function writesOnly(rawCommand: string): boolean {
-  return commandSegments(rawCommand).every((segment) => {
-    const [tool] = splitToolAndArgs(segment);
-    if (WRITE_COMPANIONS.has(tool) || inPlaceEditTargets(segment).length > 0) return true;
-    return (
-      INTERPRETER_LANGUAGES[tool] !== undefined && typeof inlineScriptOf(segment)?.code === "string"
-    );
-  });
+  return commandSegments(rawCommand).every(
+    (segment) =>
+      WRITE_COMPANIONS.has(splitToolAndArgs(segment)[0]) || isFileWriteStep(segment, rawCommand),
+  );
+}
+
+/**
+ * Whether one step of `rawCommand` edits files: `sed -i`, or inline code for an interpreter whose
+ * text writes one. A heredoc's body is only in the whole command, so it is read from there.
+ */
+export function isFileWriteStep(segment: string, rawCommand: string): boolean {
+  if (inPlaceEditTargets(segment).length > 0) return true;
+  const [tool] = splitToolAndArgs(segment);
+  const language = INTERPRETER_LANGUAGES[tool];
+  const step = language ? inlineScriptOf(segment) : null;
+  if (!language || typeof step?.code !== "string") return false;
+  const code = step.code || inlineScriptOf(rawCommand)?.code;
+  return code ? codeFileEffects(language, code).written.length > 0 : false;
 }
 
 function unique(values: readonly string[]): string[] {

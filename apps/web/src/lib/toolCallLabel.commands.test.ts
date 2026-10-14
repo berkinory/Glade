@@ -57,6 +57,10 @@ describe("command labels", () => {
       "Ran Python script",
     ],
     ["cd /repo && sed -i '' 's/a/b/' a.ts && bun run check", "Ran bun run check"],
+    [
+      "cd /repo && python3 - <<'EOF'\np='src/a.rs'; s=open(p).read()\nopen(p,'w').write(s)\nEOF\ncargo build --release 2>&1 | head -30; cargo test --release 2>&1 | grep -E 'test result'",
+      "Ran cargo build --release",
+    ],
     ["echo done >> notes.txt", "Appended to notes.txt"],
     ["cd /repo && perl -pi -e 's/a/b/' a.ts b.ts", "Edited 2 files"],
     ["node -e \"require('fs').writeFileSync('out.json', '{}')\"", "Edited out.json"],
