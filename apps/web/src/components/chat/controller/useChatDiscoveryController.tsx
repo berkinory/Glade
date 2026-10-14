@@ -10,7 +10,6 @@ import { threadExportBlockedReason } from "@glade/shared/threads/threadExport";
 import { useLayoutEffect } from "react";
 import {
   resolveActiveTurnLiveDiffState,
-  resolveGitRepoUiState,
   resolveSettledThreadBranchMismatch,
 } from "../../ChatView.logic.worktree";
 import { useChatProviderStatus } from "~/components/chat/useChatProviderStatus";
@@ -355,15 +354,15 @@ export function useChatDiscoveryController({
       })
     : EMPTY_TERMINAL_RUNTIME_ENV;
 
-  const isGitRepo = resolveGitRepoUiState({ queriedIsRepo: branchesQuery.data?.isRepo });
+  const isGitRepo = branchesQuery.data?.isRepo === true;
 
-  const showGitActions = !isContainerLandingProject || Boolean(resolvedThreadWorktreePath);
+  const showGitActions =
+    branchesQuery.data !== undefined &&
+    (!isContainerLandingProject || Boolean(resolvedThreadWorktreePath));
 
   const repoDiffTotals = useRepoDiffTotals({
     gitCwd: threadWorkspaceCwd,
-    // The UI assumes a repository until the branch query answers; diff stats of a folder that is not
-    // one fail and retry, spawning git several times on every open.
-    isGitRepo: branchesQuery.data?.isRepo === true,
+    isGitRepo,
     refetchInterval: repoDiffBadgeRefreshIntervalMs,
   });
 

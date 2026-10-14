@@ -74,10 +74,6 @@ export function resolveEnvironmentPanelVisible(input: {
   return input.environmentEnabled && input.environmentPanelOpen;
 }
 
-export function resolveGitRepoUiState(input: { queriedIsRepo: boolean | undefined }): boolean {
-  return input.queriedIsRepo ?? true;
-}
-
 export interface SettledThreadBranchMismatch {
   readonly threadBranch: string;
   readonly currentBranch: string;
