@@ -7,7 +7,7 @@ import { deriveBackgroundTasks } from "./workLog.backgroundTasks";
 let sequence = 0;
 function activity(
   kind: string,
-  payload: Record<string, unknown> = {},
+  payload: OrchestrationThreadActivity["payload"] = {},
 ): OrchestrationThreadActivity {
   sequence += 1;
   return {
