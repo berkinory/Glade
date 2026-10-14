@@ -3,6 +3,7 @@ import type { Dirent } from "node:fs";
 import path from "node:path";
 import type { ProjectEntry } from "@glade/contracts/workspace/project";
 import type { ProcessRunOptions, ProcessRunResult } from "../../platform/processRunner";
+import { SCAN_IGNORED_DIRECTORY_NAMES } from "./scanIgnoredDirectories";
 
 export interface WorkspaceGitRunner {
   (args: readonly string[], options: ProcessRunOptions): Promise<ProcessRunResult>;
@@ -335,7 +336,7 @@ export async function buildWorkspaceIndex(
         if (!dirent.name || dirent.name === "." || dirent.name === "..") {
           continue;
         }
-        if (dirent.isDirectory() && IGNORED_DIRECTORY_NAMES.has(dirent.name)) {
+        if (dirent.isDirectory() && SCAN_IGNORED_DIRECTORY_NAMES.has(dirent.name)) {
           continue;
         }
         if (!dirent.isDirectory() && !dirent.isFile()) {

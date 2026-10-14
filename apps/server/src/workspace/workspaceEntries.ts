@@ -9,6 +9,7 @@ import {
   type WorkspaceGitRunner,
 } from "./search/workspaceIndex";
 import { getWorkspaceIndex, type CachedWorkspaceIndex } from "./search/workspaceIndexCache";
+import { SCAN_IGNORED_DIRECTORY_NAMES } from "./search/scanIgnoredDirectories";
 export {
   invalidateWorkspaceIndex,
   prewarmWorkspaceSearchIndex,
@@ -323,35 +324,6 @@ const LOCAL_SEARCH_DEFAULT_LIMIT = 50;
 const LOCAL_SEARCH_TIME_BUDGET_MS = 600;
 const LOCAL_SEARCH_READDIR_CONCURRENCY = 16;
 
-const LOCAL_SEARCH_IGNORED_DIRECTORY_NAMES = new Set([
-  ".git",
-  ".hg",
-  ".svn",
-  ".DS_Store",
-  ".Trash",
-  "node_modules",
-  ".next",
-  ".turbo",
-  ".cache",
-  ".convex",
-  ".pnpm-store",
-  ".yarn",
-  ".gradle",
-  ".m2",
-  ".nuget",
-  ".bundle",
-  "Library",
-  "Pods",
-  "dist",
-  "build",
-  "out",
-  "target",
-  "vendor",
-  "__pycache__",
-  ".venv",
-  "venv",
-]);
-
 export async function searchLocalEntries(
   input: ProjectSearchLocalEntriesInput,
 ): Promise<ProjectSearchLocalEntriesResult> {
@@ -398,7 +370,7 @@ export async function searchLocalEntries(
         for (const dirent of dirents) {
           const name = dirent.name;
           if (!name || name === "." || name === "..") continue;
-          if (LOCAL_SEARCH_IGNORED_DIRECTORY_NAMES.has(name)) continue;
+          if (SCAN_IGNORED_DIRECTORY_NAMES.has(name)) continue;
           if (!includeDotfiles && name.startsWith(".")) continue;
 
           const isDirectory = dirent.isDirectory();
