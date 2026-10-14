@@ -2,7 +2,7 @@ import type { ComponentProps, CSSProperties, ReactNode } from "react";
 
 import { cn } from "~/lib/utils";
 
-type SpinnerVariant = "action" | "loading" | "working" | "subagent" | "voice";
+type SpinnerVariant = "action" | "loading" | "subagent" | "voice";
 
 type SpinnerProps = ComponentProps<"span"> & { variant?: SpinnerVariant };
 
@@ -107,29 +107,6 @@ function foldingGrid(): ReactNode {
   );
 }
 
-// The square is split into its inscribed circle and the four corners outside it, so fading the
-// corners reads as the square rounding off. Adding the corners inside an isolated group keeps the
-// antialiased seam between the pieces at full color, including translucent colors.
-const SQUARE_CORNERS_PATH =
-  "M-5.5-7H5.5A1.5 1.5 0 0 1 7-5.5V5.5A1.5 1.5 0 0 1 5.5 7H-5.5A1.5 1.5 0 0 1-7 5.5V-5.5A1.5 1.5 0 0 1-5.5-7ZM7 0A7 7 0 1 0-7 0A7 7 0 1 0 7 0Z";
-
-function morphingSquare(): ReactNode {
-  return (
-    <Layer className="spinner-working-turn isolate">
-      <Layer>
-        <Glyph>
-          <circle r="7" fill="currentColor" />
-        </Glyph>
-      </Layer>
-      <Layer className="spinner-working-corners mix-blend-plus-lighter">
-        <Glyph>
-          <path d={SQUARE_CORNERS_PATH} fill="currentColor" fillRule="evenodd" />
-        </Glyph>
-      </Layer>
-    </Layer>
-  );
-}
-
 function triangleOrbit(): ReactNode {
   return (
     <Layer className="spinner-subagent-orbit">
@@ -174,7 +151,6 @@ function stretchingPills(): ReactNode {
 const GLYPHS: Record<SpinnerVariant, () => ReactNode> = {
   action: growingArc,
   loading: foldingGrid,
-  working: morphingSquare,
   subagent: triangleOrbit,
   voice: stretchingPills,
 };

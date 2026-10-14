@@ -22,7 +22,7 @@ export function SidebarStatusTrailingGlyph({ status }: { status: ThreadStatusPil
   if (status.pulse) {
     return (
       <span role="img" aria-label={status.label} className="inline-flex shrink-0">
-        <Spinner variant="working" className="size-3 text-muted-foreground/70" aria-hidden="true" />
+        <Spinner variant="action" className="size-3 text-muted-foreground/70" aria-hidden="true" />
       </span>
     );
   }

@@ -136,7 +136,7 @@ function WorktreeSetupStepGlyph({ status }: { status: WorktreeSetupStep["status"
     return <CircleCheckIcon className="size-2.5 text-[var(--color-text-foreground)]" />;
   }
   if (status === "active") {
-    return <Spinner variant="working" className="size-2.5 text-[var(--color-text-foreground)]" />;
+    return <Spinner variant="action" className="size-2.5 text-[var(--color-text-foreground)]" />;
   }
   if (status === "error") {
     return <AlertCircleIcon className="size-2.5 text-destructive" />;
@@ -161,7 +161,7 @@ export function WorktreeSetupCard({
       <div className="flex items-center gap-2">
         <GitForkIcon className="size-3.5 shrink-0 text-[var(--color-text-foreground-tertiary)]" />
         <span className="inline-flex items-center gap-2 text-ui-lg font-medium text-[var(--color-text-foreground-secondary)]">
-          <Spinner variant="working" aria-hidden="true" className="size-3.5" />
+          <Spinner variant="action" aria-hidden="true" className="size-3.5" />
           Preparing worktree...
         </span>
       </div>

@@ -675,7 +675,7 @@ function ToolWorkEntryRow(props: TimelineWorkEntryRowProps) {
                   ) : isPendingSubagentLaunch ? (
                     <Spinner variant="subagent" className={WORK_ROW_ICON_CLASS_NAME} />
                   ) : backgroundTask?.status === "running" ? (
-                    <Spinner variant="working" className={WORK_ROW_ICON_CLASS_NAME} />
+                    <Spinner variant="action" className={WORK_ROW_ICON_CLASS_NAME} />
                   ) : (
                     renderWorkEntryIcon(LeftIcon, WORK_ROW_ICON_CLASS_NAME)
                   )}

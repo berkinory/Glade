@@ -346,32 +346,6 @@
   }
 }
 
-.spinner-working-turn {
-  animation: spinner-working-turn 1.6s cubic-bezier(0.65, 0, 0.35, 1) infinite;
-}
-
-.spinner-working-corners {
-  animation: spinner-working-corners 1.6s cubic-bezier(0.65, 0, 0.35, 1) infinite;
-}
-
-@keyframes spinner-working-turn {
-  0% {
-    transform: rotate(0deg) scale(1);
-  }
-  50% {
-    transform: rotate(180deg) scale(0.7);
-  }
-  100% {
-    transform: rotate(360deg) scale(1);
-  }
-}
-
-@keyframes spinner-working-corners {
-  50% {
-    opacity: 0;
-  }
-}
-
 /* A quarter turn once per two folds, at the moment the squares rest apart. */
 .spinner-loading-turn {
   animation: spinner-loading-turn 14.4s cubic-bezier(0.65, 0, 0.35, 1) infinite;
@@ -516,8 +490,6 @@
   .spinner-action-near,
   .spinner-action-far,
   .spinner-action-head,
-  .spinner-working-turn,
-  .spinner-working-corners,
   .spinner-loading-turn,
   .spinner-loading-fold,
   .spinner-subagent-orbit,

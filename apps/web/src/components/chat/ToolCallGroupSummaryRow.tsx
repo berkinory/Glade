@@ -98,7 +98,7 @@ export function ToolCallGroupSummaryRow(props: {
       >
         <span className={WORK_ROW_ICON_SLOT_CLASS_NAME} aria-hidden>
           {live || summary.hasRunningEntry ? (
-            <Spinner variant="working" aria-hidden="true" className={WORK_ROW_ICON_CLASS_NAME} />
+            <Spinner variant="action" aria-hidden="true" className={WORK_ROW_ICON_CLASS_NAME} />
           ) : (
             renderGroupIcon(summary)
           )}

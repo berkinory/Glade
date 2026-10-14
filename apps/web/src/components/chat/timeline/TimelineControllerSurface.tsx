@@ -253,7 +253,7 @@ export function TimelineControllerSurface({ controller }: { controller: Timeline
           )}
           style={{ fontSize: `${appTypographyScale.chatPx}px` }}
         >
-          <Spinner variant="working" aria-hidden="true" className="size-3.5" />
+          <Spinner variant="action" aria-hidden="true" className="size-3.5" />
           {workingLabel}
         </div>
       )}

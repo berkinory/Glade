@@ -330,7 +330,7 @@ export function WorkflowRunCard({
       <ComposerStackedPanelHeaderRow>
         <ComposerStackedPanelRowMain title={workflowRun.description ?? undefined}>
           {compact && workflowRun.runningCount > 0 ? (
-            <Spinner variant="working" className={COMPOSER_STACKED_PANEL_ICON_CLASS_NAME} />
+            <Spinner variant="action" className={COMPOSER_STACKED_PANEL_ICON_CLASS_NAME} />
           ) : (
             <WorkflowSquare01Icon className={COMPOSER_STACKED_PANEL_ICON_CLASS_NAME} />
           )}

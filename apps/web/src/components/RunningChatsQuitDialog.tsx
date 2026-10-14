@@ -118,7 +118,7 @@ function RunningChatsQuitDialogContent({
           {chats.map((chat) => (
             <li key={chat.id} className="flex min-w-0 items-center gap-2.5">
               <Spinner
-                variant="working"
+                variant="action"
                 className="size-3 text-muted-foreground/70"
                 aria-hidden="true"
               />
