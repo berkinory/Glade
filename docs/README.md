@@ -18,8 +18,6 @@ This folder contains the Glade documentation and repository guides.
 - [Workspace layout](./workspace-layout.md) — repository structure and ownership.
 - [Handoff context](./handoff-context.md) - provider switches, parked sessions, history selection and delivery.
 - [Provider architecture](./provider-architecture.md) — provider integration boundaries.
-- [Git latency](./git-latency.md) - History measurements, repeatable native/WSL procedure and limits.
-- [Performance verification](./performance-verification.md) — measured development workloads and implementation limits.
 - [Runtime modes](./runtime-modes.md) — development and production runtime behavior.
 - [Transport](./transport.md) — communication between application processes.
 - [Encyclopedia](./encyclopedia.md) — detailed reference for the codebase.
