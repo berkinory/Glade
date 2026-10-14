@@ -361,7 +361,9 @@ export function useChatDiscoveryController({
 
   const repoDiffTotals = useRepoDiffTotals({
     gitCwd: threadWorkspaceCwd,
-    isGitRepo,
+    // The UI assumes a repository until the branch query answers; diff stats of a folder that is not
+    // one fail and retry, spawning git several times on every open.
+    isGitRepo: branchesQuery.data?.isRepo === true,
     refetchInterval: repoDiffBadgeRefreshIntervalMs,
   });
 
