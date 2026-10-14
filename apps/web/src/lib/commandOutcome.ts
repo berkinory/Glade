@@ -84,6 +84,17 @@ const DIAGNOSTIC_SUMMARIES: ReadonlyArray<(line: string) => Totals | null> = [
   },
 ];
 
+// unittest prints its total and its verdict on separate lines: `Ran 12 tests in 0.3s`, then `OK`,
+// `OK (skipped=1)` or `FAILED (failures=1, errors=2)`.
+function unittestTotals(lines: readonly string[]): Totals | null {
+  const ran = lines.map((line) => /^Ran (\d+) tests? in /.exec(line.trim())).find(Boolean);
+  if (!ran) return null;
+  const verdict = lines.find((line) => /^(?:OK|FAILED)\b/.test(line.trim())) ?? "";
+  const tally = (label: string) => Number(new RegExp(`${label}=(\\d+)`).exec(verdict)?.[1] ?? 0);
+  const failed = tally("failures") + tally("errors");
+  return { first: Number(ran[1]) - failed - tally("skipped"), second: failed };
+}
+
 function sumSummaries(
   lines: readonly string[],
   readers: ReadonlyArray<(line: string) => Totals | null>,
@@ -104,20 +115,28 @@ function sumSummaries(
 // The command names a test run or a check, so a summary-shaped line in its output is that summary
 // rather than text it happened to print.
 const TEST_COMMAND =
-  /\b(?:vitest|jest|pytest|cargo\s+test|go\s+test|bun\s+test|(?:bun|npm|pnpm|yarn)\s+(?:run\s+)?test[\w:-]*|turbo\s+(?:run\s+)?test)\b/;
+  /\b(?:vitest|jest|pytest|python3?\s+-m\s+unittest|cargo\s+test|go\s+test|bun\s+test|(?:bun|npm|pnpm|yarn)\s+(?:run\s+)?test[\w:-]*|turbo\s+(?:run\s+)?test)\b/;
 const CHECK_COMMAND =
   /\b(?:tsc|oxlint|eslint|biome|(?:bun|npm|pnpm|yarn)\s+(?:run\s+)?(?:check|lint|typecheck)[\w:-]*)\b/;
 
 // A line that states what went wrong, as programs print errors.
 const ERROR_LINE =
   /^(?:error|fatal|panic)\b|\b(?:command not found|no matches found|no such file|not found|permission denied|cannot|unable to|timed out|traceback|exception)\b|^\S+: .*\berror\b/i;
+// The shell's own complaint, such as `zsh:1: no matches found: *.py` or
+// `bash: line 1: foo: command not found`: the command it names never ran as written.
+const SHELL_DIAGNOSTIC = /^(?:zsh|bash|sh|dash)(?::\d+|: line \d+)?: /;
+// A program that names itself by its full path before its message, such as
+// `/usr/bin/python3: can't open file …`.
+const PROGRAM_PATH_PREFIX = /^(?:[A-Za-z]:)?[\\/][^\s:]*: /;
 const TOOL_ERROR = /^<tool_use_error>(.*?)(?:<\/tool_use_error>)?$/;
 const MAX_FAILURE_LINE_CHARS = 90;
 
 function failureLine(lines: readonly string[]): string | null {
   for (const raw of lines) {
     const line = raw.trim();
-    if (ERROR_LINE.test(line)) return truncateFailure(line);
+    if (ERROR_LINE.test(line)) {
+      return truncateFailure(line.replace(SHELL_DIAGNOSTIC, "").replace(PROGRAM_PATH_PREFIX, ""));
+    }
   }
   return null;
 }
@@ -143,7 +162,7 @@ export function parseSearchMatches(
   const matches: SearchMatch[] = [];
   for (const raw of lines) {
     const line = raw.trimEnd();
-    if (!line || line === "--") continue;
+    if (!line || line === "--" || SHELL_DIAGNOSTIC.test(line)) continue;
     if (shape.listsFiles) {
       if (!/^\s|\s{2,}/.test(line)) matches.push({ file: line, line: null, text: "" });
       continue;
@@ -206,6 +225,12 @@ export function describeCommandOutcome(input: {
   if (toolError) return { text: truncateFailure(toolError), failed: true };
 
   const search = commandSearchShape(command);
+  const shellDiagnostic = lines
+    .map((line) => line.trim())
+    .find((line) => SHELL_DIAGNOSTIC.test(line));
+  if (search && shellDiagnostic) {
+    return { text: truncateFailure(shellDiagnostic.replace(SHELL_DIAGNOSTIC, "")), failed: true };
+  }
   if (search) {
     // grep and rg exit with 1 when nothing matched; that is an answer, not a failure.
     const matches = commandSearchMatches(command, output) ?? [];
@@ -228,7 +253,7 @@ export function describeCommandOutcome(input: {
   }
 
   if (TEST_COMMAND.test(command)) {
-    const totals = sumSummaries(lines, TEST_SUMMARIES);
+    const totals = sumSummaries(lines, TEST_SUMMARIES) ?? unittestTotals(lines);
     if (totals) {
       return totals.second > 0
         ? { text: `${totals.second} failed, ${totals.first} passed`, failed: true }

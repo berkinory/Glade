@@ -54,9 +54,13 @@ describe("command labels", () => {
     ["cd /repo && cat > src/page.tsx <<'EOF'\nexport const a = 1;\nEOF", "Wrote src/page.tsx"],
     [
       "cd /repo && python3 - <<'EOF'\nopen('q.sql','w').write('x')\nEOF\npython3 qtime.py q.sql",
-      "Ran Python script",
+      "Ran qtime.py",
     ],
     ["cd /repo && sed -i '' 's/a/b/' a.ts && bun run check", "Ran bun run check"],
+    [
+      "cd /repo && python3 - <<'EOF'\np='app.py'; s=open(p).read()\nopen(p,'w').write(s)\nEOF\npython3 -m unittest -v 2>&1 | tail -5",
+      "Ran python3 -m unittest -v",
+    ],
     [
       "cd /repo && python3 - <<'EOF'\np='src/a.rs'; s=open(p).read()\nopen(p,'w').write(s)\nEOF\ncargo build --release 2>&1 | head -30; cargo test --release 2>&1 | grep -E 'test result'",
       "Ran cargo build --release",

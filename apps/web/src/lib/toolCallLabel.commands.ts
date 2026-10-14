@@ -291,7 +291,9 @@ function scriptDisplay(
       return commandDisplay("Querying", "Queried", compactPath(path), rawCommand, isRunning);
     }
   }
-  const script = inlineScriptOf(rawCommand);
+  // The step itself says whether it runs inline code or a file; in `python3 - <<EOF … EOF` followed
+  // by `python3 -m unittest`, the second step is the test run, not the script.
+  const script = inlineScriptOf(segment);
   if (!script) {
     return commandDisplay("Running", "Ran", compactInlineCommand(segment), rawCommand, isRunning);
   }

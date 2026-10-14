@@ -15,7 +15,8 @@
 - The sidebar stays quick with thousands of chats, in the Activity view too, where today's and yesterday's chats now show a page at a time.
 - Find in chat keeps up with typing in long replies, even with thousands of matches.
 - The Environment panel lists background tasks that are still running and only the latest turn's finished ones, instead of every task the chat ever started.
-- A tool call's details show exactly what it was given and what it returned, one box each, so a command reads as it ran instead of split into pieces.
+- A tool call's details show exactly what it was given and what it returned, one box each, so a command reads as it ran instead of split into pieces. The result box is labelled Output and shows the exit code only when a command fails.
+- Python test runs with unittest show how many tests passed and failed.
 - Files and folders a reply names outside the project, such as `~/.zshrc` or `/tmp/run.log`, show as chips with their real icon once Glade finds them, and paths that do not exist stay plain text.
 
 ### Fixed
@@ -34,6 +35,7 @@
 - Worktree branches get their generated name even when you send a second message right away.
 - Installing an update on macOS no longer reports a failure while the update is still being prepared.
 - A command that edits a file and then runs something else is named by what it runs, not as an edit.
+- A search the shell refused to run shows the shell's error instead of a match, and a failed command shows its error without the program's path in front.
 - Background tasks no longer show as running forever after the agent's session stopped or restarted.
 
 ## 0.2.6 - 2026-10-14

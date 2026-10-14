@@ -39,7 +39,10 @@ export function ToolIoDetails({
           />
         </div>
       ) : output ? (
-        <MarkdownToolCodeBlock language={output.format === "error" ? "text" : output.language}>
+        <MarkdownToolCodeBlock
+          language={output.format === "error" ? "text" : output.language}
+          title="Output"
+        >
           {output.text}
         </MarkdownToolCodeBlock>
       ) : null}

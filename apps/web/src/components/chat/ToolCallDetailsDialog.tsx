@@ -50,9 +50,17 @@ export function ToolCallDetailsContent({
             {formatShellCommand(details.command)}
           </MarkdownToolCodeBlock>
           {commandOutputText ? (
-            <MarkdownToolCodeBlock language="text">{commandOutputText}</MarkdownToolCodeBlock>
+            <MarkdownToolCodeBlock
+              language="text"
+              title="Output"
+              elapsed={failedExitLabel(details.output)}
+            >
+              {commandOutputText}
+            </MarkdownToolCodeBlock>
           ) : null}
-          {details.output ? <ToolOutputMetadata output={details.output} /> : null}
+          {details.output ? (
+            <ToolOutputMetadata output={details.output} exitShown={commandOutputText !== null} />
+          ) : null}
         </div>
       ) : null}
 
@@ -107,16 +115,26 @@ export function ToolCallDetailsContent({
   );
 }
 
-function ToolOutputMetadata({ output }: { output: WorkLogToolOutputDetails }) {
-  if (output.exitCode === undefined && !output.truncated) {
+// A failed command's exit code sits in its output's header; success needs no mark.
+function failedExitLabel(output: WorkLogToolOutputDetails | undefined): string | null {
+  return output?.exitCode !== undefined && output.exitCode !== 0 ? `exit ${output.exitCode}` : null;
+}
+
+function ToolOutputMetadata({
+  output,
+  exitShown,
+}: {
+  output: WorkLogToolOutputDetails;
+  exitShown: boolean;
+}) {
+  const exitLabel = exitShown ? null : failedExitLabel(output);
+  if (!exitLabel && !output.truncated) {
     return null;
   }
   return (
     <div className="flex flex-wrap items-center gap-2 text-ui-sm text-muted-foreground/68">
-      {output.exitCode !== undefined ? (
-        <span className="rounded-full border border-border/45 px-2 py-0.5">
-          Exit code {output.exitCode}
-        </span>
+      {exitLabel ? (
+        <span className="rounded-full border border-border/45 px-2 py-0.5">{exitLabel}</span>
       ) : null}
       {output.truncated ? (
         <span className="rounded-full border border-amber-500/30 bg-amber-500/8 px-2 py-0.5 text-amber-200/90">
@@ -129,16 +147,16 @@ function ToolOutputMetadata({ output }: { output: WorkLogToolOutputDetails }) {
 
 function ToolOutputSection({ output }: { output: WorkLogToolOutputDetails }) {
   return (
-    <ToolDetailSection title="Output">
-      <div className="space-y-3">
-        {output.output ? (
-          <MarkdownToolCodeBlock language="text">{output.output}</MarkdownToolCodeBlock>
-        ) : null}
-        {output.stdout ? <LabeledCodeBlock title="Stdout">{output.stdout}</LabeledCodeBlock> : null}
-        {output.stderr ? <LabeledCodeBlock title="Stderr">{output.stderr}</LabeledCodeBlock> : null}
-        <ToolOutputMetadata output={output} />
-      </div>
-    </ToolDetailSection>
+    <div className="space-y-3">
+      {output.output ? (
+        <MarkdownToolCodeBlock language="text" title="Output" elapsed={failedExitLabel(output)}>
+          {output.output}
+        </MarkdownToolCodeBlock>
+      ) : null}
+      {output.stdout ? <LabeledCodeBlock title="Stdout">{output.stdout}</LabeledCodeBlock> : null}
+      {output.stderr ? <LabeledCodeBlock title="Stderr">{output.stderr}</LabeledCodeBlock> : null}
+      <ToolOutputMetadata output={output} exitShown={Boolean(output.output)} />
+    </div>
   );
 }
 

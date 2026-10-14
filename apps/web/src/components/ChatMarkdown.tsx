@@ -146,6 +146,8 @@ interface ChatMarkdownProps {
   isStreaming?: boolean;
   className?: string | undefined;
   codeBlockMeta?: string | undefined;
+  // Names a code block by what it holds, such as "Output", in place of its language.
+  codeBlockTitle?: string | undefined;
   style?: CSSProperties | undefined;
   onImageExpand?: ((preview: ExpandedImagePreview) => void) | undefined;
   findQuery?: string | undefined;
@@ -337,7 +339,7 @@ function MarkdownCodeBlock({
   bodyRef: RefObject<HTMLDivElement | null>;
   children: ReactNode;
 }) {
-  const { codeBlockMeta } = useContext(MarkdownRenderContext)!;
+  const { codeBlockMeta, codeBlockTitle } = useContext(MarkdownRenderContext)!;
   const [copied, setCopied] = useState(false);
   const [wrap, setWrap] = useState(false);
   const copiedTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -368,7 +370,11 @@ function MarkdownCodeBlock({
   return (
     <div className="chat-markdown-codeblock" dir="ltr" data-wrap={wrap ? "true" : "false"}>
       <div className="chat-markdown-codeblock__header">
-        <CodeBlockHeaderTitle fence={fence} />
+        {codeBlockTitle ? (
+          <span className="chat-markdown-codeblock__lang">{codeBlockTitle}</span>
+        ) : (
+          <CodeBlockHeaderTitle fence={fence} />
+        )}
         <div className="chat-markdown-codeblock__actions">
           {codeBlockMeta ? (
             <span className="mr-1 text-ui-xs tabular-nums text-muted-foreground">
@@ -553,6 +559,7 @@ function UncachedShikiCodeBlock({
 }
 interface MarkdownRenderContextValue {
   codeBlockMeta: ChatMarkdownProps["codeBlockMeta"];
+  codeBlockTitle: ChatMarkdownProps["codeBlockTitle"];
   cwd: ChatMarkdownProps["cwd"];
   knownAbsoluteFilePaths: string[] | undefined;
   diffThemeName: DiffThemeName;
@@ -886,6 +893,7 @@ function ChatMarkdown({
   mentionReferences,
   terminalContexts,
   codeBlockMeta,
+  codeBlockTitle,
   renderAuthoredHtml,
 }: ChatMarkdownProps) {
   const isStreaming = isStreamingProp ?? false;
@@ -955,6 +963,7 @@ function ChatMarkdown({
   const renderContext = useMemo<MarkdownRenderContextValue>(
     () => ({
       codeBlockMeta,
+      codeBlockTitle,
       cwd,
       knownAbsoluteFilePaths,
       diffThemeName,
@@ -968,6 +977,7 @@ function ChatMarkdown({
     }),
     [
       codeBlockMeta,
+      codeBlockTitle,
       cwd,
       knownAbsoluteFilePaths,
       diffThemeName,

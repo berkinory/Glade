@@ -53,6 +53,27 @@ describe("describeCommandOutcome", () => {
     ["a clean check adds nothing", "bun run check", "Found 0 warnings and 0 errors.", false, null],
     ["a summary-shaped line in a commit", "git log -1", "      Tests  3 passed (3)", false, null],
     [
+      "unittest",
+      "python3 -m unittest -v 2>&1 | tail -5",
+      "Ran 2 tests in 0.000s\n\nFAILED (failures=1)",
+      false,
+      "1 failed, 1 passed",
+    ],
+    [
+      "a search the shell refused to run",
+      'grep -rn "def " --include=*.py .',
+      "Exit code 1\nzsh:1: no matches found: --include=*.py",
+      true,
+      "no matches found: --include=*.py",
+    ],
+    [
+      "a program that names itself by its path",
+      "python3 missing_script.py",
+      "Exit code 2\n/usr/bin/python3: can't open file '/x/missing_script.py': [Errno 2] No such file or directory",
+      true,
+      "can't open file '/x/missing_script.py': [Errno 2] No such file or directory",
+    ],
+    [
       "the error line of a failure",
       "cd /tmp && magick a.png b.png",
       "Exit code 1\nconverting\nmagick: unable to open image 'a.png': No such file or directory",

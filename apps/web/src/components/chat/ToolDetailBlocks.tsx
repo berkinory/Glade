@@ -9,7 +9,10 @@ export const TOOL_DETAILS_MARKDOWN_CLASS_NAME =
 export function MarkdownToolCodeBlock(props: {
   language: string;
   children: string;
+  // Header text on the right, such as how long a command ran or how it exited.
   elapsed?: string | null;
+  // Header text on the left in place of the language, such as "Output".
+  title?: string;
   // Short content that must be read whole, such as a command, wraps instead of scrolling sideways.
   wrap?: boolean;
 }) {
@@ -22,6 +25,7 @@ export function MarkdownToolCodeBlock(props: {
         props.wrap && "[&_pre]:break-words [&_pre]:whitespace-pre-wrap",
       )}
       codeBlockMeta={props.elapsed ?? undefined}
+      codeBlockTitle={props.title}
     />
   );
 }
