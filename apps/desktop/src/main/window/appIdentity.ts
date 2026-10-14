@@ -90,9 +90,9 @@ export function createAppIdentity(
   function readDesktopAppIcon(): DesktopAppIcon {
     try {
       const storedIcon = FS.readFileSync(DESKTOP_APP_ICON_PATH, "utf8").trim();
-      return isDesktopAppIcon(storedIcon) ? storedIcon : "default";
+      return isDesktopAppIcon(storedIcon) ? storedIcon : "dark";
     } catch {
-      return "default";
+      return "dark";
     }
   }
 

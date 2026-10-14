@@ -140,7 +140,7 @@ const PersistedDesktopAppIcon = Schema.String.pipe(
   Schema.decodeTo(
     DesktopAppIcon,
     SchemaTransformation.transform({
-      decode: (icon) => (icon === "dark" ? "dark" : "default"),
+      decode: (icon) => (icon === "default" ? "default" : "dark"),
       encode: (icon) => icon,
     }),
   ),
@@ -216,7 +216,7 @@ const AppSettingsSchema = Schema.Struct({
   enableProviderUpdateChecks: Schema.Boolean.pipe(withDefaults(() => true)),
   autoContinueAtUsageLimit: Schema.Boolean.pipe(withDefaults(() => true)),
   enableNativeFontSmoothing: Schema.Boolean.pipe(withDefaults(getDefaultNativeFontSmoothing)),
-  desktopAppIcon: PersistedDesktopAppIcon.pipe(withDefaults(() => "default" as const)),
+  desktopAppIcon: PersistedDesktopAppIcon.pipe(withDefaults(() => "dark" as const)),
 
   useCustomTitleBar: Schema.Boolean.pipe(withDefaults(() => true)),
   enableTaskCompletionToasts: Schema.Boolean.pipe(withDefaults(() => true)),
