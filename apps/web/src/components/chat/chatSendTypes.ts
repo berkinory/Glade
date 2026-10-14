@@ -64,7 +64,6 @@ export interface ChatTurnSubmissionInput {
   resolvedThreadWorktreePath: string | null;
   currentActiveGitBranch: string | null;
   isContainerLandingProject: boolean;
-  syncServerShellSnapshot: ReturnType<typeof useStore.getState>["syncServerShellSnapshot"];
   activeRootBranch: string | null;
   gitBranchSourceCwd: string | null;
   setStoreThreadError: (threadId: ThreadId, error: string | null) => void;
@@ -243,7 +242,6 @@ export type ChatTurnSubmissionControllerInput = {
     | "activeThread"
     | "sendPreflightInFlightRef"
     | "sendInFlightRef"
-    | "syncServerShellSnapshot"
     | "setStoreThreadError"
     | "queryClient"
     | "setComposerHighlightedItemId"

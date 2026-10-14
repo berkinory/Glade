@@ -2,7 +2,8 @@ import type { ClientOrchestrationCommand } from "@glade/contracts/orchestration/
 import type { NativeApi } from "@glade/contracts/ipc/ipc";
 import type { ThreadId } from "@glade/contracts/core/baseSchemas";
 import { markPromotedDraftThreads } from "../composerDraftStore";
-import { readNativeApi } from "../nativeApi";
+import { ensureEnvironmentNativeApi, readNativeApi } from "../nativeApi";
+import { environmentOfProject, environmentStore } from "../environments/environmentStores";
 import { useStore } from "../store";
 import { useSpacesUiStore } from "../spacesUiStore";
 import { getThreadFromState } from "../threadDerivation";
@@ -32,13 +33,16 @@ function isDuplicateThreadCreateError(error: unknown, threadId: ThreadId): boole
 }
 
 async function recoverPromotedThreadFromShellSnapshot(
-  api: NativeApi,
-  threadId: ThreadId,
+  command: ThreadCreateCommand,
 ): Promise<boolean> {
+  const environmentKey = environmentOfProject(command.projectId);
+  const store = environmentKey ? environmentStore(environmentKey) : null;
+  if (!environmentKey || !store) throw new Error("The chat's environment is unavailable.");
+  const api = ensureEnvironmentNativeApi(environmentKey);
   const snapshot = await api.orchestration.getShellSnapshot();
-  useStore.getState().syncServerShellSnapshot(snapshot);
+  store.getState().syncServerShellSnapshot(snapshot);
   markPromotedDraftThreads(new Set(snapshot.threads.map((thread) => thread.id)));
-  return getThreadFromState(useStore.getState(), threadId) !== undefined;
+  return getThreadFromState(store.getState(), command.threadId) !== undefined;
 }
 
 async function dispatchPromoteThreadCreate(
@@ -60,7 +64,7 @@ async function dispatchPromoteThreadCreate(
       throw error;
     }
     try {
-      if (await recoverPromotedThreadFromShellSnapshot(api, command.threadId)) {
+      if (await recoverPromotedThreadFromShellSnapshot(command)) {
         return "exists";
       }
     } catch {}

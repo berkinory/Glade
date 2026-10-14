@@ -13,6 +13,8 @@
 
 - Visual replies show creation progress while the agent prepares their content.
 
+- SSH chats send their first message on the selected host without switching machines or requiring a retry.
+
 - Chats with long inline scripts or many tool calls stay responsive when opening and updating the conversation.
 - Codex chats renew their connection after a stopped turn instead of blocking the next message.
 

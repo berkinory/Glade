@@ -8,7 +8,9 @@ import {
 import type { QueryClient } from "@tanstack/react-query";
 import { gitStatusQueryOptions } from "../../lib/gitQueryOptions";
 import { newCommandId, newProjectId } from "~/lib/utils";
-import { readNativeApi } from "~/nativeApi";
+import { ensureEnvironmentNativeApi } from "~/nativeApi";
+import { LOCAL_ENVIRONMENT } from "~/environments/environmentKey";
+import { environmentStore } from "~/environments/environmentStores";
 import { useComposerDraftStore } from "../../composerDraftStore";
 import type {
   ComposerAssistantSelectionAttachment,
@@ -23,11 +25,12 @@ import { formatFileCommentTitleSeed, type FileCommentDraft } from "../../lib/fil
 import {
   isDuplicateProjectCreateError,
   waitForRecoverableProjectForDuplicateCreate,
+  waitForRecoverableProjectInReadModel,
 } from "../../lib/projectCreateRecovery";
 import { formatTerminalContextLabel, type TerminalContextDraft } from "../../lib/terminalContext";
 import { buildModelSelection } from "../../providerModelOptions";
 import { readActiveSpaceId } from "../../spacesUiStore";
-import { useStore } from "../../store";
+import { PROJECT_CREATE_SYNC_ERROR } from "../../lib/projectCreation";
 import type { Project } from "../../types";
 import { type Thread } from "../../types";
 import { formatPastedTextTitleSeed } from "./queuedComposerPreview";
@@ -53,8 +56,6 @@ interface Input {
   copyLocalChangesToWorktree: boolean;
   currentActiveGitBranch: string | null;
   isContainerLandingProject: boolean;
-  api: NonNullable<ReturnType<typeof readNativeApi>>;
-  syncServerShellSnapshot: ReturnType<typeof useStore.getState>["syncServerShellSnapshot"];
   clearProjectDraftThreadId: ReturnType<
     typeof useComposerDraftStore.getState
   >["clearProjectDraftThreadId"];
@@ -87,8 +88,6 @@ export async function prepareChatSendWorkspace({
   copyLocalChangesToWorktree,
   currentActiveGitBranch,
   isContainerLandingProject,
-  api,
-  syncServerShellSnapshot,
   clearProjectDraftThreadId,
   setDraftThreadContext,
   activeRootBranch,
@@ -96,6 +95,10 @@ export async function prepareChatSendWorkspace({
   setStoreThreadError,
   queryClient,
 }: Input) {
+  const environmentKey = activeProject.environmentKey ?? LOCAL_ENVIRONMENT;
+  const api = ensureEnvironmentNativeApi(environmentKey);
+  const store = environmentStore(environmentKey);
+  if (!store) throw new Error("The chat's environment is unavailable.");
   const threadIdForSend = activeThread.id;
   const isFirstMessage = !isServerThread || !hasNativeUserMessages;
   const firstSendCreatedAt = new Date();
@@ -121,7 +124,7 @@ export async function prepareChatSendWorkspace({
   }
 
   const title = buildPromptThreadTitleFallback(titleSeed);
-  const currentStoreState = useStore.getState();
+  const currentStoreState = store.getState();
   // Keep an optimistically selected Space across the command/snapshot race. The server validates this
   // best-effort target and degrades genuinely stale/deleted ids to Void.
   const activeSpaceIdForSend = readActiveSpaceId();
@@ -180,7 +183,9 @@ export async function prepareChatSendWorkspace({
       const createdAt = firstSendCreatedAt.toISOString();
 
       const createProjectSpaceFields =
-        firstSendTarget.creation.kind === "project" ? { spaceId: activeSpaceIdForSend } : {};
+        firstSendTarget.creation.kind === "project" && environmentKey === LOCAL_ENVIRONMENT
+          ? { spaceId: activeSpaceIdForSend }
+          : {};
       try {
         await api.orchestration.dispatchCommand({
           type: "project.create",
@@ -215,7 +220,7 @@ export async function prepareChatSendWorkspace({
           throw error;
         }
 
-        syncServerShellSnapshot(snapshot);
+        store.getState().syncServerShellSnapshot(snapshot);
         targetProjectIdForSend = recoveredProject.id;
         targetProjectKindForSend = recoveredProject.kind ?? firstSendTarget.creation.kind;
         targetProjectCwdForSend = recoveredProject.workspaceRoot;
@@ -224,6 +229,17 @@ export async function prepareChatSendWorkspace({
       }
     }
 
+    // The draft's project determines its host. Publish that project before moving the draft,
+    // even when the command acknowledgement arrives before the host's event stream.
+    if (!store.getState().projects.some((project) => project.id === targetProjectIdForSend)) {
+      const { snapshot, project } = await waitForRecoverableProjectInReadModel({
+        projectId: targetProjectIdForSend,
+        loadSnapshot: () => api.orchestration.getShellSnapshot(),
+        recoverableKinds: new Set([targetProjectKindForSend]),
+      });
+      if (!snapshot || !project) throw new Error(PROJECT_CREATE_SYNC_ERROR);
+      store.getState().syncServerShellSnapshot(snapshot);
+    }
     clearProjectDraftThreadId(targetProjectIdForSend);
     setDraftThreadContext(threadIdForSend, {
       projectId: targetProjectIdForSend,
@@ -300,6 +316,7 @@ export async function prepareChatSendWorkspace({
     Boolean(baseBranchForWorktree) &&
     baseBranchForWorktree === activeRootBranch;
   return {
+    api,
     threadIdForSend,
     title,
     targetProjectIdForSend,
