@@ -25,9 +25,9 @@ import { ShowMoreFilesButton, usePagedFiles } from "~/components/chat/ShowMoreFi
 import { threadFindMarkdownProps } from "~/components/chat/threadFind.logic";
 import {
   EDITED_FILE_LIST_CLASS_NAME,
-  EditedFileRowContent,
   TimelineWorkEntryRow,
 } from "~/components/chat/TimelineWorkEntryRow";
+import { ToolEditedFileRow } from "~/components/chat/ToolEditedFileRow";
 import { summarizeToolCallGroup } from "~/components/chat/toolCallGroup.logic";
 import { ToolCallGroupSummaryRow } from "~/components/chat/ToolCallGroupSummaryRow";
 import ChatMarkdown from "~/components/ChatMarkdown";
@@ -142,15 +142,6 @@ export function TimelineAssistantMessage({
             : undefined,
     );
   const turnSummary = row.assistantTurnDiffSummary;
-  const fileDiffStatByPath = new Map(
-    (turnSummary?.files ?? []).map((file) => [
-      file.path,
-      {
-        additions: file.additions ?? 0,
-        deletions: file.deletions ?? 0,
-      },
-    ]),
-  );
   const inlineEditedFilesFromTurnSummary =
     (leadingWorkDisplay.hasGenericFileChangeEntry || inlineWorkDisplay.hasGenericFileChangeEntry) &&
     (turnSummary?.files.length ?? 0) > 0
@@ -201,16 +192,9 @@ export function TimelineAssistantMessage({
         workEntry={workEntry}
         chatMetaFontSizePx={appTypographyScale.chatMetaPx}
         textFontSizePx={normalizedChatFontSizePx}
-        fileDiffStatByPath={fileDiffStatByPath}
         markdownCwd={markdownCwd}
         onImageExpand={onImageExpand}
-        onOpenTurnDiff={onOpenTurnDiff}
         activityDetail={getAgentActivityDetail?.(workEntry.id)}
-        {...(turnSummary?.turnId
-          ? {
-              turnId: turnSummary.turnId,
-            }
-          : {})}
         timestampFormat={timestampFormat}
       />
     );
@@ -447,20 +431,15 @@ export function TimelineAssistantMessage({
         {inlineEditedFilesFromTurnSummary.length > 0 && (
           <div className={cn("mt-2", EDITED_FILE_LIST_CLASS_NAME)}>
             {inlineEditedFiles.visibleFiles.map((file) => (
-              <button
-                key={`inline-summary-edit:${row.message.id}:${file.path}`}
-                type="button"
-                className="group/file-row flex w-full max-w-full items-center gap-2 px-0 py-1.5 text-left focus-visible:outline-none"
-                title={file.path}
-                onClick={() => onOpenTurnDiff(turnSummary!.turnId, file.path)}
-              >
-                <EditedFileRowContent
+              <div key={`inline-summary-edit:${row.message.id}:${file.path}`} className="py-1.5">
+                <ToolEditedFileRow
                   filePath={file.path}
                   additions={file.additions}
                   deletions={file.deletions}
                   fontSizePx={normalizedChatFontSizePx}
+                  turnId={turnSummary!.turnId}
                 />
-              </button>
+              </div>
             ))}
             <ShowMoreFilesButton
               hiddenCount={inlineEditedFiles.hiddenCount}

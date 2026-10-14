@@ -83,7 +83,7 @@ export function selectThreadActivities(state: AppState, threadId: ThreadId): Thr
   );
 }
 
-function selectThreadTurnDiffSummaries(
+export function selectThreadTurnDiffSummaries(
   state: AppState,
   threadId: ThreadId,
 ): Thread["turnDiffSummaries"] {

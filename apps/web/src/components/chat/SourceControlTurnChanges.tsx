@@ -1,16 +1,7 @@
 import type { ThreadId, TurnId } from "@glade/contracts/core/baseSchemas";
-import { useQuery } from "@tanstack/react-query";
-import { useMemo } from "react";
 import { useAppSettings } from "~/appSettings";
-import { useStore } from "~/store";
-import { createThreadSelector } from "~/storeSelectors";
-import { inferCheckpointTurnCountByTurnId } from "~/session-logic";
-import { checkpointDiffQueryOptions } from "~/lib/providerReactQuery";
-import {
-  getRenderablePatch,
-  resolveDiffEntryByPath,
-  resolveFileDiffPath,
-} from "~/lib/diffRendering";
+import { resolveFileDiffPath } from "~/lib/diffRendering";
+import { findPatchFile, useTurnDiff } from "./useTurnDiff";
 import { useTheme } from "~/hooks/useTheme";
 import { FileDiffCard, FileDiffSurface } from "./FileDiffView";
 import { WorkspaceDiffFile } from "./WorkspaceDiffFile";
@@ -28,23 +19,10 @@ export function SourceControlTurnChanges(props: {
   onOpenFile: (path: string) => void;
   onCurrentChanges: () => void;
 }) {
-  const thread = useStore(useMemo(() => createThreadSelector(props.threadId), [props.threadId]));
-  const summaries = thread?.turnDiffSummaries ?? [];
-  const turn = summaries.find((summary) => summary.turnId === props.turnId);
-  const count =
-    turn?.checkpointTurnCount ?? inferCheckpointTurnCountByTurnId(summaries)[props.turnId];
-  const query = useQuery(
-    checkpointDiffQueryOptions({
-      threadId: props.threadId,
-      fromTurnCount: count === undefined ? null : Math.max(0, count - 1),
-      toTurnCount: count ?? null,
-      ignoreWhitespace: false,
-      cacheScope: `turn:${props.turnId}`,
-      live: false,
-      enabled: count !== undefined,
-    }),
-  );
-  const patch = getRenderablePatch(query.data?.diff, `turn:${props.turnId}`);
+  const { turn, count, query, patch } = useTurnDiff({
+    threadId: props.threadId,
+    turnId: props.turnId,
+  });
   const pagedFiles = usePagedFiles(patch?.kind === "files" ? patch.files : []);
   const { resolvedTheme } = useTheme();
   const diffStyle = useAppSettings().settings.diffLayout;
@@ -53,15 +31,7 @@ export function SourceControlTurnChanges(props: {
       Current changes
     </Button>
   );
-  // Tool rows name files the way the tool did, often as absolute paths; the diff holds repo-relative
-  // ones, so the two are matched by path suffix.
-  const selectedFile =
-    patch?.kind === "files" && props.filePath
-      ? resolveDiffEntryByPath(
-          new Map(patch.files.map((file) => [resolveFileDiffPath(file), file])),
-          props.filePath,
-        )
-      : null;
+  const selectedFile = props.filePath ? findPatchFile(patch, props.filePath) : null;
   if (!query.error && turn && count !== undefined && selectedFile) {
     return (
       <WorkspaceDiffFile

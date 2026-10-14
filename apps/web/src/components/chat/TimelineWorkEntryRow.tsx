@@ -3,7 +3,6 @@ import { SubagentRunCard } from "./SubagentRunCard";
 import { Spinner } from "../ui/spinner";
 import {
   WORK_ROW_BLOCK_CLASS_NAME,
-  WORK_ROW_GAP_CLASS_NAME,
   WORK_ROW_ICON_CLASS_NAME,
   WORK_ROW_ICON_SLOT_CLASS_NAME,
   WORK_ROW_LINE_CLASS_NAME,
@@ -45,7 +44,6 @@ import type { TimestampFormat } from "../../appSettings";
 import type { AgentActivityDetail } from "./agentActivity.logic";
 import { AgentActivityDetails } from "./AgentActivityDetails";
 import { hasToolCallDetailsContent } from "./ToolCallDetailsDialog.logic";
-import type { TurnId } from "@glade/contracts/core/baseSchemas";
 import { createElement, memo, useMemo, type ReactElement } from "react";
 import { useToolCallRevealSignal } from "./toolCallReveal";
 import { basenameOfPath } from "~/file-icons";
@@ -68,7 +66,7 @@ import { ReasoningWorkRow } from "./ReasoningWorkRow";
 import { commandRowMetaParts } from "./commandRowMeta.logic";
 import { RequestRetryRow } from "./RequestRetryRow";
 import { ShowMoreFilesButton, usePagedFiles } from "./ShowMoreFilesButton";
-import { DiffStatLabel } from "./DiffStatLabel";
+import { ToolEditedFileRow } from "./ToolEditedFileRow";
 import { type ExpandedImagePreview } from "./ExpandedImagePreview";
 import { LinkChipIcon } from "../LinkChipIcon";
 import { normalizeCompactToolLabel } from "./MessagesTimeline.logic.rowTypes";
@@ -412,17 +410,8 @@ type TimelineWorkEntryRowProps = {
   workEntry: TimelineWorkEntry;
   chatMetaFontSizePx: number;
   textFontSizePx?: number;
-  fileDiffStatByPath?: ReadonlyMap<
-    string,
-    {
-      additions: number;
-      deletions: number;
-    }
-  >;
   markdownCwd: string | undefined;
   onImageExpand: (preview: ExpandedImagePreview) => void;
-  turnId?: TurnId;
-  onOpenTurnDiff?: (turnId: TurnId, filePath?: string) => void;
   activityDetail?: AgentActivityDetail | undefined;
   timestampFormat: TimestampFormat;
 };
@@ -462,11 +451,8 @@ function ToolWorkEntryRow(props: TimelineWorkEntryRowProps) {
     workEntry,
     chatMetaFontSizePx,
     textFontSizePx: textFontSizePxProp,
-    fileDiffStatByPath,
     markdownCwd,
     onImageExpand,
-    turnId,
-    onOpenTurnDiff,
     activityDetail,
     timestampFormat,
   } = props;
@@ -531,6 +517,17 @@ function ToolWorkEntryRow(props: TimelineWorkEntryRowProps) {
     workEntry.liveActivity,
     workEntry.toolKind,
   );
+  // The turn ended while the tool's arguments were still arriving, so the tool never ran and there
+  // is nothing to show for it.
+  const stoppedBeforeRunning =
+    workEntry.activityKind === "tool.started" &&
+    workEntry.toolStatus !== "running" &&
+    !hasToolDetails;
+  const stoppedToolName =
+    workEntry.toolName && !workEntry.toolName.includes("__") ? workEntry.toolName : heading;
+  const shownText = stoppedBeforeRunning
+    ? `${stoppedToolName} · stopped before it ran`
+    : displayText;
   const providerContextLifecycle = workEntry.providerContextLifecycle;
   const monitorNotification = workEntry.monitorNotification;
   const opener = useWorkspaceFileOpener();
@@ -592,60 +589,23 @@ function ToolWorkEntryRow(props: TimelineWorkEntryRowProps) {
           }
         >
           {pagedChangedFiles.visibleFiles.map((changedFilePath) => {
-            const summaryStat = fileDiffStatByPath?.get(changedFilePath);
-            const changedFileStat =
-              summaryStat && summaryStat.additions + summaryStat.deletions > 0
-                ? summaryStat
-                : (resolveFileDiffStatByChangedPath(
-                    toolDiffStatsByPath,
-                    changedFilePath,
-                    changedFiles.length,
-                  ) ?? summaryStat);
-            const canOpenEditedDiff = Boolean(turnId && onOpenTurnDiff);
-            const canOpenEditedRow = canOpenToolDetails || canOpenEditedDiff;
-            const editedRowClassName = cn(
-              "group/file-row flex w-full max-w-full items-center text-left",
-              WORK_ROW_GAP_CLASS_NAME,
-              canOpenEditedRow ? "cursor-pointer focus-visible:outline-none" : "cursor-default",
+            const toolStat = resolveFileDiffStatByChangedPath(
+              toolDiffStatsByPath,
+              changedFilePath,
+              changedFiles.length,
             );
-            const editedRowChildren = (
-              <EditedFileRowContent
-                filePath={changedFilePath}
-                additions={changedFileStat?.additions}
-                deletions={changedFileStat?.deletions}
-                fontSizePx={rowFontSizePx}
-              />
-            );
-            if (hasToolDetails || (canOpenToolDetails && !canOpenEditedDiff)) {
-              return (
-                <ToolDetailsDisclosure
-                  key={`${workEntry.id}:${changedFilePath}`}
-                  details={workEntry.toolDetails}
-                  activity={workEntry.liveActivity}
-                  summaryClassName={editedRowClassName}
-                  dataFileChangeRow
-                >
-                  {editedRowChildren}
-                </ToolDetailsDisclosure>
-              );
-            }
             return (
-              <button
+              <ToolEditedFileRow
                 key={`${workEntry.id}:${changedFilePath}`}
-                type="button"
-                data-file-change-row="true"
-                className={editedRowClassName}
-                title={changedFilePath}
-                disabled={!canOpenEditedRow}
-                onClick={() => {
-                  if (!turnId || !onOpenTurnDiff) {
-                    return;
-                  }
-                  onOpenTurnDiff(turnId, changedFilePath);
-                }}
-              >
-                {editedRowChildren}
-              </button>
+                filePath={changedFilePath}
+                additions={toolStat?.additions}
+                deletions={toolStat?.deletions}
+                fontSizePx={rowFontSizePx}
+                turnId={workEntry.turnId ?? undefined}
+                toolDetails={workEntry.toolDetails}
+                liveActivity={workEntry.liveActivity}
+                toolKind={workEntry.toolKind}
+              />
             );
           })}
           <ShowMoreFilesButton
@@ -701,7 +661,7 @@ function ToolWorkEntryRow(props: TimelineWorkEntryRowProps) {
                     data-work-entry-display-text="true"
                     className={rowFilePath ? "shrink-0" : undefined}
                   >
-                    {rowFilePath ? heading : displayText}
+                    {rowFilePath ? heading : shownText}
                   </WorkTextShimmer>
                   {rowFilePath ? (
                     <FileNameChip
@@ -765,52 +725,3 @@ function ToolWorkEntryRow(props: TimelineWorkEntryRowProps) {
 const EDITED_FILE_LIST_SCROLL_THRESHOLD = 8;
 export const EDITED_FILE_LIST_CLASS_NAME =
   "scroll-fade-y max-h-[min(10lh,30vh)] space-y-0.5 overflow-y-auto";
-
-export function EditedFileRowContent(props: {
-  filePath: string;
-  additions: number | undefined;
-  deletions: number | undefined;
-  fontSizePx: number;
-}) {
-  const { filePath, additions, deletions, fontSizePx } = props;
-  const hasStat = (additions ?? 0) + (deletions ?? 0) > 0;
-  return (
-    <>
-      <span
-        className={cn(WORK_ROW_ICON_SLOT_CLASS_NAME, WORK_ROW_MUTED_HOVER_TONE["file-row"])}
-        data-tool-icon="edit"
-      >
-        <PencilEdit02Icon className={WORK_ROW_ICON_CLASS_NAME} />
-      </span>
-      <span
-        className={cn("font-system-ui shrink-0", WORK_ROW_MUTED_HOVER_TONE["file-row"])}
-        style={{
-          fontSize: `${fontSizePx}px`,
-        }}
-      >
-        Edited
-      </span>
-      <span
-        className={cn(
-          "font-system-ui min-w-0 max-w-[28rem]",
-          WORK_ROW_MUTED_HOVER_TONE["file-row"],
-        )}
-        style={{
-          fontSize: `${fontSizePx}px`,
-        }}
-      >
-        <FileNameChip path={filePath} />
-      </span>
-      {hasStat ? (
-        <span
-          className="font-system-ui shrink-0 tabular-nums whitespace-nowrap"
-          style={{
-            fontSize: `${fontSizePx}px`,
-          }}
-        >
-          <DiffStatLabel additions={additions ?? 0} deletions={deletions ?? 0} />
-        </span>
-      ) : null}
-    </>
-  );
-}

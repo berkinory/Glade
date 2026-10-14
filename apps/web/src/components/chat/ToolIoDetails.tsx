@@ -1,5 +1,7 @@
 import type { WorkLogToolDetails } from "~/lib/toolCallDetails";
 import type { WorkLogToolKind } from "~/workLog.types";
+import { basenameOfPath } from "~/file-icons";
+import { isLocalImageMarkdownSrc } from "~/lib/localImageUrls";
 import ChatMarkdown from "../ChatMarkdown";
 import { MarkdownToolCodeBlock, TOOL_DETAILS_MARKDOWN_CLASS_NAME } from "./ToolDetailBlocks";
 import { describeToolInput, describeToolOutput, toolInputFilePath } from "./ToolIoDetails.logic";
@@ -13,6 +15,18 @@ export function ToolIoDetails({
   details: WorkLogToolDetails;
   toolKind: WorkLogToolKind | undefined;
 }) {
+  const viewedImage = toolKind === "image_view" ? toolInputFilePath(details.input) : null;
+  if (viewedImage && isLocalImageMarkdownSrc(viewedImage)) {
+    // The image itself, through the same local preview a reply's images use; it loads only once
+    // the row is opened.
+    return (
+      <ChatMarkdown
+        text={`![${basenameOfPath(viewedImage)}](<${viewedImage}>)`}
+        cwd={undefined}
+        className={TOOL_DETAILS_MARKDOWN_CLASS_NAME}
+      />
+    );
+  }
   const input = details.input ? describeToolInput(details.input, toolKind) : null;
   const outputText = details.output?.output;
   const output = outputText

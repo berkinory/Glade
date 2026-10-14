@@ -1,4 +1,5 @@
 import { parseDiffFromFile, type FileDiffMetadata } from "@pierre/diffs";
+import type { ThreadId, TurnId } from "@glade/contracts/core/baseSchemas";
 import type { ReactNode } from "react";
 
 import { useTheme } from "~/hooks/useTheme";
@@ -7,6 +8,7 @@ import type { WorkLogToolDetails } from "../../lib/toolCallDetails";
 import { useActivateDiffWorkers } from "../DiffWorkerPoolProvider";
 import { FileDiffCard } from "./FileDiffView";
 import { ShowMoreFilesButton, usePagedFiles } from "./ShowMoreFilesButton";
+import { findPatchFile, useTurnDiff } from "./useTurnDiff";
 
 type ToolEdit = NonNullable<WorkLogToolDetails["edits"]>[number];
 
@@ -65,4 +67,17 @@ export function ToolEditsDiff(props: { edits: ReadonlyArray<ToolEdit> }) {
     );
   });
   return <ToolDiffFiles files={files} snippets />;
+}
+
+// A file's part of its turn's diff, for an edit whose tool reported no diff of its own.
+export function ToolTurnFileDiff(props: { threadId: ThreadId; turnId: TurnId; filePath: string }) {
+  const { count, query, patch } = useTurnDiff({ threadId: props.threadId, turnId: props.turnId });
+  const file = findPatchFile(patch, props.filePath);
+  if (file) return <ToolDiffFiles files={[file]} />;
+  const loading = count !== undefined && query.isPending;
+  return (
+    <p className="text-ui-xs text-muted-foreground">
+      {loading ? "Loading the change…" : "The change for this file is not available."}
+    </p>
+  );
 }

@@ -18,6 +18,11 @@ export function ChatThreadProvider({
   return <ChatThreadContext.Provider value={value}>{children}</ChatThreadContext.Provider>;
 }
 
+/** The open chat's id, or null where a row renders outside a chat (a card, a preview). */
+export function useOptionalChatThreadId(): ThreadId | null {
+  return useContext(ChatThreadContext)?.threadId ?? null;
+}
+
 export function useChatThreadContext(): ChatThreadContextValue {
   const context = useContext(ChatThreadContext);
   if (!context) throw new Error("ChatThreadProvider is required");

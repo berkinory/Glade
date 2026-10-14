@@ -351,7 +351,31 @@ function extractToolInput(
     if (record && Object.keys(record).length > 0) return record;
   }
   const query = nonEmptyTrimmed(item?.query);
-  return query ? { query } : undefined;
+  if (query) return { query };
+  // Codex reports the image it viewed as the item's path.
+  const path = nonEmptyTrimmed(item?.path);
+  return path ? { path } : undefined;
+}
+
+// Codex web searches carry what they searched or opened, and the pages they found, on the item.
+function webSearchResultText(item: Record<string, unknown> | null): string | undefined {
+  if (item?.type !== "webSearch") return undefined;
+  const results = Array.isArray(item?.results) ? item.results : [];
+  const action = asRecord(item?.action);
+  const openedUrl = action?.type === "openPage" ? nonEmptyTrimmed(action.url) : undefined;
+  const query = nonEmptyTrimmed(item?.query);
+  const lines = [
+    openedUrl ? `Opened ${openedUrl}` : query ? `Searched for ${query}` : undefined,
+    ...results.flatMap((value) => {
+      const result = asRecord(value);
+      const title = nonEmptyTrimmed(result?.title);
+      if (!title) return [];
+      const domain = nonEmptyTrimmed(result?.domain);
+      const snippet = nonEmptyTrimmed(result?.snippet);
+      return [`- **${title}**${domain ? ` · ${domain}` : ""}${snippet ? `\n  ${snippet}` : ""}`];
+    }),
+  ].filter((line): line is string => line !== undefined);
+  return lines.length > 0 ? lines.join("\n") : undefined;
 }
 
 function extractToolResult(payload: Record<string, unknown> | null): {
@@ -368,6 +392,7 @@ function extractToolResult(payload: Record<string, unknown> | null): {
     textFromContent(result?.content) ??
     textFromContent(itemResult?.content) ??
     textFromContent(item?.contentItems) ??
+    webSearchResultText(item) ??
     (structured !== undefined && structured !== null
       ? JSON.stringify(structured, null, 2)
       : undefined) ??

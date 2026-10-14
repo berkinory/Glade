@@ -11,7 +11,8 @@ export const SCRIPT_INTERPRETER_ICONS: Readonly<Record<string, IconComponent>> =
   python: PythonIcon,
   python3: PythonIcon,
   node: symbol("node"),
-  bun: symbol("bun"),
+  // Bun's own mark from svgl in its colors: as a one-color mask its face disappears into the bun.
+  bun: createBrandIcon("/brands/bun.svg"),
   deno: symbol("deno"),
   ruby: RubyIcon,
   perl: symbol("perl"),
