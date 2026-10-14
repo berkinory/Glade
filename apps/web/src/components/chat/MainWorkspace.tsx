@@ -75,6 +75,7 @@ export function MainWorkspace(props: {
 }) {
   const navigate = useNavigate();
   const state = useMainWorkspaceStore(selectMainWorkspace(props.threadId));
+  const setTabOrder = useMainWorkspaceStore((store) => store.setTabOrder);
   const selectTab = useMainWorkspaceStore((store) => store.selectTab);
   const pinReview = useMainWorkspaceStore((store) => store.pinReview);
   const closeReview = useMainWorkspaceStore((store) => store.closeReview);
@@ -145,6 +146,19 @@ export function MainWorkspace(props: {
       onClose: () => closeReview(props.threadId, tab.id),
     })),
   ];
+  const order = new Map(state.tabOrder.map((id, index) => [id, index]));
+  tabs.sort((left, right) => {
+    if (left.id === "chat") return -1;
+    if (right.id === "chat") return 1;
+    return (order.get(left.id) ?? order.size) - (order.get(right.id) ?? order.size);
+  });
+  const openTabOrder = tabs.filter((tab) => tab.id !== "chat").map((tab) => tab.id);
+  const tabOrderKey = JSON.stringify(openTabOrder);
+  const storedTabOrderKey = JSON.stringify(state.tabOrder);
+  useEffect(() => {
+    if (tabOrderKey !== storedTabOrderKey)
+      setTabOrder(props.threadId, JSON.parse(tabOrderKey) as string[]);
+  }, [props.threadId, tabOrderKey, storedTabOrderKey, setTabOrder]);
   const select = (id: string) => {
     if (id.startsWith("file:")) {
       const path = id.slice(5);
@@ -202,6 +216,7 @@ export function MainWorkspace(props: {
       tabs={tabs}
       activeId={resolvedId}
       onSelect={select}
+      onReorder={(ids) => setTabOrder(props.threadId, ids)}
     />
   );
   return (

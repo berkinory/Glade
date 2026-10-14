@@ -13,11 +13,13 @@ export type WorkspaceReviewTab =
 interface MainWorkspaceState {
   previewReviewId: string | null;
   activeTabId: string;
+  tabOrder: string[];
   reviews: WorkspaceReviewTab[];
 }
 
 const EMPTY_WORKSPACE: MainWorkspaceState = {
   activeTabId: "chat",
+  tabOrder: [],
   reviews: [],
   previewReviewId: null,
 };
@@ -70,6 +72,13 @@ function sanitizeWorkspace(value: unknown): MainWorkspaceState | null {
   return {
     activeTabId: typeof value.activeTabId === "string" ? value.activeTabId : "chat",
     reviews,
+    tabOrder: Array.isArray(value.tabOrder)
+      ? [
+          ...new Set(
+            value.tabOrder.filter((id): id is string => typeof id === "string" && id !== "chat"),
+          ),
+        ]
+      : [],
     previewReviewId:
       typeof value.previewReviewId === "string" &&
       reviews.some((tab) => tab.id === value.previewReviewId)
@@ -80,6 +89,7 @@ function sanitizeWorkspace(value: unknown): MainWorkspaceState | null {
 
 interface MainWorkspaceStore {
   states: Record<string, MainWorkspaceState | undefined>;
+  setTabOrder: (threadId: ThreadId, tabOrder: string[]) => void;
   selectTab: (threadId: ThreadId, tabId: string) => void;
   openReview: (threadId: ThreadId, tab: WorkspaceReviewTab, preview?: boolean) => void;
   pinReview: (threadId: ThreadId, tabId: string) => void;
@@ -90,6 +100,16 @@ export const useMainWorkspaceStore = create<MainWorkspaceStore>()(
   persist(
     (set) => ({
       states: {},
+      setTabOrder: (threadId, tabOrder) =>
+        set((store) => ({
+          states: {
+            ...store.states,
+            [threadId]: {
+              ...(store.states[threadId] ?? EMPTY_WORKSPACE),
+              tabOrder: [...new Set(tabOrder.filter((id) => id !== "chat"))],
+            },
+          },
+        })),
       selectTab: (threadId, activeTabId) =>
         set((store) => ({
           states: {

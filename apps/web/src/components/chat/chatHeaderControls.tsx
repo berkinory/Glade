@@ -106,8 +106,8 @@ export function SurfaceTabChip({
   );
   const labelClasses = cn(
     "flex min-w-0 items-center gap-1.5 text-left",
-    trailingClose && "flex-1 self-stretch rounded-[inherit] px-2.5",
-    trailingClose && onClose && "pr-7",
+    trailingClose && "flex-1 self-stretch rounded-[inherit] px-2",
+    trailingClose && onClose && "pr-5",
     labelClassName,
   );
   const labelContent = (

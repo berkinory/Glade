@@ -8,6 +8,8 @@
 
 ### Improved
 
+- Workspace tabs have tighter spacing and slide smoothly when dragged into a new order, remembered per chat while the main chat stays in place.
+
 - The composer has more room to write, with project, branch and SSH connection details grouped above the message field and kept visible throughout the chat.
 - SSH and paired remote projects and chat lists appear from the last connection at startup, show host availability, and refresh automatically when the host reconnects.
 

@@ -1,3 +1,7 @@
+import { DndContext, PointerSensor, closestCenter, useSensor, useSensors } from "@dnd-kit/core";
+import { restrictToHorizontalAxis } from "@dnd-kit/modifiers";
+import { SortableContext, arrayMove, horizontalListSortingStrategy } from "@dnd-kit/sortable";
+import { SortablePanelTab } from "./SortablePanelTab";
 import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from "react";
 import { cn } from "~/lib/utils";
 import { SurfaceTabChip } from "./chatHeaderControls";
@@ -24,9 +28,11 @@ export function PanelTabBar(props: {
   tabs: readonly PanelTab[];
   activeId: string | null;
   onSelect: (id: string) => void;
+  onReorder?: (ids: string[]) => void;
   actions?: ReactNode;
   contentTabs?: boolean;
 }) {
+  const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 6 } }));
   const scrollerRef = useRef<HTMLDivElement>(null);
   const wheelRegionRef = useRef<HTMLElement>(null);
   const [frozenWidths, setFrozenWidths] = useState<Record<string, number> | null>(null);
@@ -79,8 +85,10 @@ export function PanelTabBar(props: {
     const previous = scrollableTabs[index - 1];
     const frozenWidth = content ? frozenWidths?.[tab.id] : undefined;
     return (
-      <div
+      <SortablePanelTab
         key={tab.id}
+        id={tab.id}
+        disabled={pinned || !props.onReorder}
         data-tab-id={tab.id}
         data-separator={
           props.contentTabs &&
@@ -136,7 +144,7 @@ export function PanelTabBar(props: {
           }
           onDoubleClick={tab.onDoubleClick}
         />
-      </div>
+      </SortablePanelTab>
     );
   };
   return (
@@ -150,7 +158,7 @@ export function PanelTabBar(props: {
         >
           {pinnedTabs.map((tab, index) => renderTab(tab, index, true))}
           {props.contentTabs && pinnedTabs.length > 0 && scrollableTabs.length > 0 ? (
-            <span aria-hidden="true" className="mx-1 h-3 w-px shrink-0 bg-foreground/12" />
+            <span aria-hidden="true" className="h-3 w-px shrink-0 bg-foreground/12" />
           ) : null}
           <div
             ref={scrollerRef}
@@ -160,7 +168,26 @@ export function PanelTabBar(props: {
                 "scroll-fade-x [--scroll-fade-size:1rem] [--scroll-fade-reveal:1rem]",
             )}
           >
-            {scrollableTabs.map((tab, index) => renderTab(tab, index))}
+            <DndContext
+              sensors={sensors}
+              collisionDetection={closestCenter}
+              modifiers={[restrictToHorizontalAxis]}
+              onDragStart={() => setFrozenWidths(null)}
+              onDragEnd={({ active, over }) => {
+                if (!over || active.id === over.id) return;
+                const ids = scrollableTabs.map((tab) => tab.id);
+                const from = ids.indexOf(String(active.id));
+                const to = ids.indexOf(String(over.id));
+                if (from >= 0 && to >= 0) props.onReorder?.(arrayMove(ids, from, to));
+              }}
+            >
+              <SortableContext
+                items={scrollableTabs.map((tab) => tab.id)}
+                strategy={horizontalListSortingStrategy}
+              >
+                {scrollableTabs.map((tab, index) => renderTab(tab, index))}
+              </SortableContext>
+            </DndContext>
           </div>
         </nav>
       </div>
