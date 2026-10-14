@@ -233,6 +233,7 @@ export function createChatPresentation(
       ) : null}
       {showContainerChatWorkspacePicker ? (
         <ProjectPicker
+          selectionMode="project"
           align="start"
           side="top"
           triggerVariant="ghost"

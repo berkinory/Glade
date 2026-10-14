@@ -20,6 +20,8 @@
 
 ### Fixed
 
+- The new chat project picker only lists projects you have added, without unrelated folders from your home directory.
+
 - Hovering over chat rows gives titles the available space instead of reserving extra room for hidden metadata.
 
 - The right sidebar starts closed in each chat and remembers that chat’s open state, width, and selected workspace view.
