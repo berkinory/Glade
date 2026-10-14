@@ -42,6 +42,17 @@ export function makeSnapshotThreadQueries(input: { readonly sql: SqlClient.SqlCl
       `,
   });
 
+  const listStartedSessionThreadIdRows = SqlSchema.findAll({
+    Request: Schema.Void,
+    Result: ProjectionThreadIdLookupRowSchema,
+    execute: () =>
+      sql`
+        SELECT thread_id AS "threadId"
+        FROM projection_thread_sessions
+        WHERE status IN ('starting', 'running')
+      `,
+  });
+
   const listStaleInFlightThreadIdRows = SqlSchema.findAll({
     Request: StaleInFlightThreadLookupInput,
     Result: ProjectionThreadIdLookupRowSchema,
@@ -465,6 +476,7 @@ export function makeSnapshotThreadQueries(input: { readonly sql: SqlClient.SqlCl
       `,
   });
   return {
+    listStartedSessionThreadIdRows,
     listStaleInFlightThreadIdRows,
     listManagedWorktreeThreadRows,
     getActiveProjectRowByWorkspaceRoot,

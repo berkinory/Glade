@@ -59,6 +59,7 @@ const makeProjectionSnapshotQuery = Effect.gen(function* () {
     listPendingInteractionRowsByThread,
   } = makeSnapshotHistoryQueries({ sql, liveThreadScope });
   const {
+    listStartedSessionThreadIdRows,
     listStaleInFlightThreadIdRows,
     listManagedWorktreeThreadRows,
     getActiveProjectRowByWorkspaceRoot,
@@ -115,10 +116,12 @@ const makeProjectionSnapshotQuery = Effect.gen(function* () {
     getFullThreadDiffContext,
     getThreadShellById,
     getThreadShellsByIds,
+    listThreadShellsWithPossibleWork,
     listChildThreadShells,
     threadIdExistsIncludingDeleted,
     findSyntheticSubagentParentThread,
   } = makeSnapshotThreadLookup({
+    listStartedSessionThreadIdRows,
     listStaleInFlightThreadIdRows,
     listManagedWorktreeThreadRows,
     getThreadCheckpointContextThreadRow,
@@ -180,6 +183,7 @@ const makeProjectionSnapshotQuery = Effect.gen(function* () {
     getFullThreadDiffContext,
     getThreadShellById,
     getThreadShellsByIds,
+    listThreadShellsWithPossibleWork,
     listChildThreadShells,
     threadIdExistsIncludingDeleted,
     findSyntheticSubagentParentThread,

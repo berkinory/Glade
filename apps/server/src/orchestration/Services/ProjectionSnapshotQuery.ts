@@ -160,6 +160,13 @@ export interface ProjectionSnapshotQueryShape {
     threadIds: ReadonlyArray<ThreadId>,
   ) => Effect.Effect<ReadonlyArray<OrchestrationThreadShell>, ProjectionRepositoryError>;
 
+  // Threads whose session is starting or running, or whose latest turn has task activity: every
+  // thread that can count as working, without building the whole shell.
+  readonly listThreadShellsWithPossibleWork: () => Effect.Effect<
+    ReadonlyArray<OrchestrationThreadShell>,
+    ProjectionRepositoryError
+  >;
+
   // Non-deleted child threads (archived included), matching the shell snapshot's visibility.
   readonly listChildThreadShells: (
     parentThreadId: ThreadId,

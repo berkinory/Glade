@@ -23,6 +23,7 @@ export function fakeProjectionSnapshotQuery(
     getFullThreadDiffContext: unused,
     getThreadShellById: unused,
     getThreadShellsByIds: unused,
+    listThreadShellsWithPossibleWork: unused,
     listChildThreadShells: unused,
     threadIdExistsIncludingDeleted: unused,
     findSyntheticSubagentParentThread: unused,

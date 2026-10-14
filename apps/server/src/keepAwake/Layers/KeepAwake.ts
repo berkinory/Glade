@@ -174,10 +174,9 @@ const make = Effect.gen(function* () {
       Stream.runForEach(serverSettings.streamChanges, () => reconcile(holder)),
       { startImmediately: true },
     );
-    const working = yield* projectionSnapshotQuery.getShellSnapshot().pipe(
+    const working = yield* projectionSnapshotQuery.listThreadShellsWithPossibleWork().pipe(
       Effect.map(
-        (snapshot) =>
-          new Set(snapshot.threads.filter(isThreadWorking).map((thread) => thread.id as string)),
+        (threads) => new Set(threads.filter(isThreadWorking).map((thread) => thread.id as string)),
       ),
       Effect.catch((error) =>
         Effect.logWarning("keep-awake could not read running work; starting empty", {

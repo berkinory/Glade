@@ -1,8 +1,10 @@
-import type { ThreadId } from "@glade/contracts/core/baseSchemas";
+import { ThreadId } from "@glade/contracts/core/baseSchemas";
 import { OrchestrationThreadActivity } from "@glade/contracts/orchestration/threadEntities";
 import type { SqlClient } from "effect/unstable/sql/SqlClient";
 import { Effect, Schema } from "effect";
 import { toPersistenceSqlOrDecodeError } from "../../persistence/Errors";
+
+const ThreadIdRows = Schema.Array(Schema.Struct({ threadId: ThreadId }));
 
 const Rows = Schema.Array(
   Schema.Struct({
@@ -11,8 +13,28 @@ const Rows = Schema.Array(
   }),
 );
 
-// The kind list must stay identical to the predicate of
-// idx_projection_thread_activities_background_work, or SQLite stops using that partial index.
+// Task activities of each thread's latest turn. The kind list must stay identical to the predicate
+// of idx_projection_thread_activities_background_work, or SQLite stops using that partial index.
+const latestTurnTaskActivity = (sql: SqlClient) => sql`
+  a.kind IN ('task.started', 'task.updated', 'task.progress', 'task.completed', 'background-work.reset')
+  AND (a.turn_id = (SELECT t.turn_id FROM projection_turns t WHERE t.thread_id = a.thread_id ORDER BY t.requested_at DESC, t.turn_id DESC LIMIT 1)
+    OR (a.turn_id IS NULL AND a.created_at >= (SELECT MAX(t.requested_at) FROM projection_turns t WHERE t.thread_id = a.thread_id)))
+`;
+
+export function readThreadIdsWithBackgroundActivity(sql: SqlClient) {
+  return sql<{ threadId: string }>`
+    SELECT DISTINCT a.thread_id AS "threadId"
+    FROM projection_thread_activities a
+    WHERE ${latestTurnTaskActivity(sql)}
+  `.pipe(
+    Effect.flatMap(Schema.decodeUnknownEffect(ThreadIdRows)),
+    Effect.map((rows) => rows.map((row) => row.threadId)),
+    Effect.mapError(
+      toPersistenceSqlOrDecodeError("backgroundWork:threads", "backgroundWork:decode"),
+    ),
+  );
+}
+
 export function readBackgroundActivities(sql: SqlClient, threadIds?: readonly ThreadId[]) {
   return sql<{ threadId: string; activity: string }>`
     SELECT a.thread_id AS "threadId", json_object('id', a.activity_id, 'kind', a.kind,
@@ -20,9 +42,7 @@ export function readBackgroundActivities(sql: SqlClient, threadIds?: readonly Th
       'tone', a.tone, 'summary', a.summary, 'sequence', a.sequence) AS activity
     FROM projection_thread_activities a
     WHERE ${threadIds ? sql.in("a.thread_id", threadIds) : sql`1 = 1`}
-      AND a.kind IN ('task.started', 'task.updated', 'task.progress', 'task.completed', 'background-work.reset')
-      AND (a.turn_id = (SELECT t.turn_id FROM projection_turns t WHERE t.thread_id = a.thread_id ORDER BY t.requested_at DESC, t.turn_id DESC LIMIT 1)
-        OR (a.turn_id IS NULL AND a.created_at >= (SELECT MAX(t.requested_at) FROM projection_turns t WHERE t.thread_id = a.thread_id)))
+      AND ${latestTurnTaskActivity(sql)}
     ORDER BY a.created_at, a.activity_id
   `.pipe(
     Effect.flatMap(Schema.decodeUnknownEffect(Rows)),

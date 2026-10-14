@@ -1,4 +1,7 @@
-import { readBackgroundActivities } from "./backgroundWorkQuery";
+import {
+  readBackgroundActivities,
+  readThreadIdsWithBackgroundActivity,
+} from "./backgroundWorkQuery";
 import * as SqlClient from "effect/unstable/sql/SqlClient";
 import {
   type ProjectionSnapshotQueryShape,
@@ -28,6 +31,9 @@ import {
 } from "./snapshotAssembly";
 
 export function makeSnapshotThreadLookup(input: {
+  readonly listStartedSessionThreadIdRows: ReturnType<
+    typeof makeSnapshotThreadQueries
+  >["listStartedSessionThreadIdRows"];
   readonly listStaleInFlightThreadIdRows: ReturnType<
     typeof makeSnapshotThreadQueries
   >["listStaleInFlightThreadIdRows"];
@@ -72,6 +78,7 @@ export function makeSnapshotThreadLookup(input: {
   >["getSyntheticSubagentParentThreadRow"];
 }) {
   const {
+    listStartedSessionThreadIdRows,
     listStaleInFlightThreadIdRows,
     listManagedWorktreeThreadRows,
     getThreadCheckpointContextThreadRow,
@@ -357,6 +364,24 @@ export function makeSnapshotThreadLookup(input: {
       );
   };
 
+  const listThreadShellsWithPossibleWork: ProjectionSnapshotQueryShape["listThreadShellsWithPossibleWork"] =
+    () =>
+      Effect.all([
+        listStartedSessionThreadIdRows(undefined).pipe(
+          Effect.mapError(
+            toPersistenceSqlOrDecodeError(
+              "ProjectionSnapshotQuery.listThreadShellsWithPossibleWork:sessions:query",
+              "ProjectionSnapshotQuery.listThreadShellsWithPossibleWork:sessions:decodeRows",
+            ),
+          ),
+        ),
+        readThreadIdsWithBackgroundActivity(sql),
+      ]).pipe(
+        Effect.flatMap(([sessionRows, backgroundThreadIds]) =>
+          getThreadShellsByIds([...sessionRows.map((row) => row.threadId), ...backgroundThreadIds]),
+        ),
+      );
+
   const listChildThreadShells: ProjectionSnapshotQueryShape["listChildThreadShells"] = (
     parentThreadId,
   ) =>
@@ -428,6 +453,7 @@ export function makeSnapshotThreadLookup(input: {
     getFullThreadDiffContext,
     getThreadShellById,
     getThreadShellsByIds,
+    listThreadShellsWithPossibleWork,
     listChildThreadShells,
     threadIdExistsIncludingDeleted,
     findSyntheticSubagentParentThread,
