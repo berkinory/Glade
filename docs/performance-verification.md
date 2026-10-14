@@ -67,3 +67,58 @@ supply pathname, parameters and search together during navigation.
 Browser frame timings, cross-window events and cancelled navigation still need live
 verification. Existing missing Browser shell/icon imports prevent a clean full web
 typecheck; they are unrelated to these measurements.
+
+## Running chats, desktop uptime and cold start (October 2026)
+
+These measurements use a copy of a real 380 MB database (91 threads, 37,485 activities, 91,195
+events) in an isolated home on an Apple silicon MacBook. The user's database and provider homes
+were not modified.
+
+**Live work indicators.** While a turn ran, every spinner animated SVG attributes through SMIL,
+which made Chromium restyle, lay out and repaint the whole document every frame. Stepped CSS timing
+did not help the work-label sweep, because Chromium services a running animation every frame. In
+headless Chrome at 2x scale during a live Codex turn, the page did 61 layouts and 120 style
+recalculations a second, with 5.6-6.6% main-thread task time; afterwards it did 1 layout and 11-17
+recalculations a second, with 1.0-1.4%. In the Electron Dev app with one injected element each:
+
+| Element         | Renderer CPU before | Renderer CPU after | GPU CPU (both) |
+| --------------- | ------------------- | ------------------ | -------------- |
+| Working spinner | 7.0-8.1%            | 2.0%               | 5.5-5.8%       |
+| Work label      | 4.0-7.1%            | 1.5-1.7%           | 2.5-2.8%       |
+| Both            | 8.9-9.1%            | 2.8-3.0%           | 5.8-6.3%       |
+
+Spinners now animate only transform and opacity on whole layers, so the compositor runs them; the
+GPU still composites each frame of a smooth spinner. The label sweep keeps its 30 steps per 2.4
+seconds through one shared timer. Rendered frames of all five spinner variants were compared with
+the previous ones; the action arc is now a fixed quarter arc that turns.
+
+**Desktop main process.** The embedded Cua SDK's `waitForExit` polled its Rust future about 18
+times a second, and every poll left a libuv async handle behind. In a standalone Node process, one
+cross-thread wakeup cost 10 µs before any call, 149 µs after 20,000 calls and 3,750 µs after 60,000
+calls, with RSS growing from 34 to 271 MB. The Dev app's main process reached 6.0-6.8% CPU after 29
+minutes; the installed 0.2.6 app measured 21.8-23.2% CPU and 399-515 MB RSS after 2h11m-2h35m.
+Watching the synchronous connection state instead, the Dev main process stayed at 0.1% CPU and
+163-166 MB RSS through 29 minutes, made no further `waitForExit` polls, and still noticed a
+killed driver within a second.
+
+**Cold start.** The background-work query in every shell snapshot read 5,631 scattered activity
+rows to keep 313. With a cold page cache it took 426 ms in the SQLite shell and 628 ms inside the
+server, before the server reported ready. A partial index on the task kinds brings it to 53 ms and
+90 ms; warm it takes 5 ms instead of 8 ms, with identical results. Server start to ready on the
+copied database, three interleaved rounds:
+
+| Page cache | Before         | After      |
+| ---------- | -------------- | ---------- |
+| Cold       | 1,173-1,203 ms | 681-713 ms |
+| Warm       | 523-594 ms     | 508-569 ms |
+
+The desktop now gives the backend Node's compile cache. Under Electron's Node 24, warm server
+start fell from 415-447 ms to 365-401 ms once the cache was filled; the cache is written on a
+normal exit (5.2 MB). This was verified with the source build, not a packaged one.
+
+**Measured without changes.** Thread switches took 32-91 ms on revisits; the first open of the
+largest thread took about 240 ms, mostly server snapshot work and one 97 ms render. Wheel scrolling
+through that thread kept at least 85% of the viewport covered by rendered rows on every frame. A
+fresh server's first page load was the same with and without Claude usage scanning. The installed
+app's log shows about 230 ms between bootstrap and backend spawn that the source build does not
+reproduce (6 ms); packaged startup was not profiled.
