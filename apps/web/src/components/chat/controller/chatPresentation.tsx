@@ -1,6 +1,7 @@
 import { FolderIcon } from "~/lib/icons";
 import BranchToolbar, { RuntimeUsageControls } from "~/components/BranchToolbar";
 import { resolveActiveThreadTitle } from "../../ChatView.logic.worktree";
+import { ComposerStackedPanel } from "~/components/chat/ComposerStackedPanel";
 import { ComposerExtrasTrigger } from "~/components/chat/ComposerExtrasTrigger";
 import { ProjectPicker } from "~/components/chat/ProjectPicker";
 import {
@@ -148,17 +149,14 @@ export function createChatPresentation(
   const relocateComposerLeadingControls = composerFooterControlsPlan.relocateLeadingControls;
   const renderComposerFooterControls = (options: { iconOnly: boolean }) => ({
     leading: (
-      <>
-        <ComposerExtrasTrigger
-          open={isComposerExtrasPanelOpen}
-          panelId={COMPOSER_EXTRAS_PANEL_ID}
-          onToggle={() => {
-            setIsComposerExtrasPanelOpen((open) => !open);
-            scheduleComposerFocus();
-          }}
-        />
-        {isCenteredEmptyLanding ? null : <RemoteEnvironmentStatusChip />}
-      </>
+      <ComposerExtrasTrigger
+        open={isComposerExtrasPanelOpen}
+        panelId={COMPOSER_EXTRAS_PANEL_ID}
+        onToggle={() => {
+          setIsComposerExtrasPanelOpen((open) => !open);
+          scheduleComposerFocus();
+        }}
+      />
     ),
     runtime:
       !isVoiceRecording && !isVoiceTranscribing ? (
@@ -183,8 +181,7 @@ export function createChatPresentation(
         }
       : {}),
   };
-  const showEmptyLandingBranchToolbar =
-    isCenteredEmptyLanding && activeProject?.kind === "project" && !isHomeChatContainer;
+  const showComposerBranchToolbar = activeProject?.kind === "project" && !isHomeChatContainer;
   // A host's Home chats have no project picker of their own, so they offer the host's projects.
   const showEmptyLandingProjectPicker =
     isCenteredEmptyLanding &&
@@ -192,7 +189,7 @@ export function createChatPresentation(
     (activeProject?.kind === "project" || activeProject?.environmentKey !== undefined);
   const showEnvironmentPicker = isElectron && isCenteredEmptyLanding && isLocalDraftThread;
   const showContainerChatWorkspacePicker = isEmptyChatLanding && isHomeChatContainer;
-  const emptyLandingProjectChip =
+  const composerProjectChip =
     !showContainerChatWorkspacePicker &&
     !showEmptyLandingProjectPicker &&
     activeProjectDisplayName ? (
@@ -206,17 +203,21 @@ export function createChatPresentation(
         <span className="min-w-0 truncate">{activeProjectDisplayName}</span>
       </span>
     ) : null;
-  const showEmptyLandingControls =
-    isCenteredEmptyLanding &&
-    (showEnvironmentPicker ||
-      isEmptyChatLanding ||
-      showEmptyLandingProjectPicker ||
-      emptyLandingProjectChip !== null ||
-      showEmptyLandingBranchToolbar);
-  const emptyLandingControls = showEmptyLandingControls ? (
-    <div
-      data-empty-landing-controls="true"
-      className="chat-composer-shell mx-auto flex min-h-8 w-full min-w-0 flex-nowrap items-center gap-x-1.5 overflow-hidden !rounded-b-none !rounded-t-[var(--composer-radius)] px-1.5 py-1 transition-colors duration-(--ui-motion-default-duration) ease-out motion-reduce:transition-none sm:min-h-7"
+  const showComposerContextControls =
+    showEnvironmentPicker ||
+    isEmptyChatLanding ||
+    showEmptyLandingProjectPicker ||
+    composerProjectChip !== null ||
+    showComposerBranchToolbar;
+  const composerContextControls = showComposerContextControls ? (
+    <ComposerStackedPanel
+      data-composer-context-controls="true"
+      className="isolate flex min-h-10 min-w-0 flex-wrap items-center gap-1 px-2 py-1 [--composer-glass-stacked-opacity:80%] [--composer-glass-surface:var(--color-background-button-secondary)]"
+      attachedToPrevious={
+        (latestTurnLive && activeTurnLiveDiffState.hasChanges) ||
+        workflowRunState !== null ||
+        controller.session.queuedComposerTurns.length > 0
+      }
     >
       {showEnvironmentPicker ? (
         <EnvironmentPicker
@@ -264,19 +265,19 @@ export function createChatPresentation(
           onResetToHome={handleResetWorkspaceToHome}
         />
       ) : (
-        emptyLandingProjectChip
+        composerProjectChip
       )}
-      {}
+      {!showEnvironmentPicker ? <RemoteEnvironmentStatusChip /> : null}
       <div
-        aria-hidden={showEmptyLandingBranchToolbar ? undefined : true}
+        aria-hidden={showComposerBranchToolbar ? undefined : true}
         className={cn(
           "flex min-w-0 flex-1 items-center transition-[opacity,transform] duration-(--ui-motion-default-duration) ease-out motion-reduce:transition-none",
-          showEmptyLandingBranchToolbar
-            ? "translate-y-0 opacity-100"
+          showComposerBranchToolbar
+            ? "min-w-[min(100%,12rem)] translate-y-0 opacity-100"
             : "pointer-events-none opacity-0",
         )}
       >
-        {showEmptyLandingBranchToolbar ? (
+        {showComposerBranchToolbar ? (
           <BranchToolbar
             {...branchToolbarProps}
             className="mx-0 min-w-0 flex-1 !justify-start !px-0 !pb-0 !pt-0"
@@ -284,7 +285,7 @@ export function createChatPresentation(
           />
         ) : null}
       </div>
-    </div>
+    </ComposerStackedPanel>
   ) : null;
   const environmentPanelProps: Omit<EnvironmentPanelProps, "open" | "variant"> = {
     gitCwd: threadWorkspaceCwd,
@@ -335,7 +336,7 @@ export function createChatPresentation(
   return {
     showComposerLiveChangesHeader,
     showComposerWorkflowRunCard,
-    emptyLandingControls,
+    composerContextControls,
     relocateComposerLeadingControls,
     renderComposerFooterControls,
     activeThreadDisplayTitle,

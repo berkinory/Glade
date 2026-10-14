@@ -208,7 +208,7 @@ export function ChatComposerSurface({
     showComposerLiveChangesHeader,
     showComposerWorkflowRunCard,
 
-    emptyLandingControls,
+    composerContextControls,
     relocateComposerLeadingControls,
     renderComposerFooterControls,
   } = presentation;
@@ -386,7 +386,7 @@ export function ChatComposerSurface({
                 />
               </div>
             ) : null}
-            {emptyLandingControls}
+            {composerContextControls}
           </div>
           {!isNativeSubagent || pendingUserInputs.length > 0 ? (
             <div
