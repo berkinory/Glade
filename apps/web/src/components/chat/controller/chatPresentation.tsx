@@ -195,7 +195,7 @@ export function createChatPresentation(
     activeProjectDisplayName ? (
       <span
         className={cn(
-          "inline-flex min-w-0 max-w-56 shrink items-center gap-2 overflow-hidden rounded-full px-2 py-1 sm:max-w-64",
+          "inline-flex min-w-0 max-w-56 shrink items-center gap-1.5 overflow-hidden rounded-full px-1.5 py-1 sm:max-w-64",
           COMPOSER_TOOLBAR_TRIGGER_TEXT_CLASS_NAME,
         )}
       >
@@ -212,7 +212,7 @@ export function createChatPresentation(
   const composerContextControls = showComposerContextControls ? (
     <ComposerStackedPanel
       data-composer-context-controls="true"
-      className="isolate flex min-h-10 min-w-0 flex-wrap items-center gap-1 px-2 py-1 [--composer-glass-stacked-opacity:80%] [--composer-glass-surface:var(--color-background-button-secondary)]"
+      className="isolate flex min-h-9 w-9/10 min-w-0 flex-wrap items-center gap-0.5 px-1.5 py-0.5 [--composer-glass-stacked-opacity:80%] [--composer-glass-surface:var(--color-background-button-secondary)]"
       attachedToPrevious={
         (latestTurnLive && activeTurnLiveDiffState.hasChanges) ||
         workflowRunState !== null ||
@@ -223,7 +223,7 @@ export function createChatPresentation(
         <EnvironmentPicker
           onSelectEnvironment={handleSelectEnvironmentForEmptyDraft}
           triggerClassName={cn(
-            "h-8 px-2 py-1 sm:h-7 sm:px-2.5",
+            "h-7 px-2 py-1",
             COMPOSER_FOLDER_PICKER_CAPSULE_HOVER_CLASS_NAME,
             COMPOSER_TOOLBAR_TRIGGER_TEXT_CLASS_NAME,
           )}
@@ -235,7 +235,7 @@ export function createChatPresentation(
           side="top"
           triggerVariant="ghost"
           triggerClassName={cn(
-            "h-8 px-2 py-1 sm:h-7 sm:px-2.5",
+            "h-7 px-2 py-1",
             COMPOSER_FOLDER_PICKER_CAPSULE_HOVER_CLASS_NAME,
             COMPOSER_TOOLBAR_TRIGGER_TEXT_CLASS_NAME,
           )}
@@ -252,7 +252,7 @@ export function createChatPresentation(
           side="top"
           triggerVariant="ghost"
           triggerClassName={cn(
-            "h-8 px-2 py-1 sm:h-7 sm:px-2.5",
+            "h-7 px-2 py-1",
             COMPOSER_FOLDER_PICKER_CAPSULE_HOVER_CLASS_NAME,
             COMPOSER_TOOLBAR_TRIGGER_TEXT_CLASS_NAME,
           )}
