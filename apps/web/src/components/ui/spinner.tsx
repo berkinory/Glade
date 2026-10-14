@@ -107,18 +107,23 @@ function foldingGrid(): ReactNode {
   );
 }
 
+// The dots form a point-up triangle whose ink sits above the turning center: 1.75 of 24 units
+// when spread, 0.95 when tucked in. The orbit drops by the midpoint so it stays centered while it
+// pulses.
 function triangleOrbit(): ReactNode {
   return (
-    <Layer className="spinner-subagent-orbit">
-      {[1, 0.68, 0.42].map((opacity, index) => (
-        <Layer key={opacity} style={{ transform: `rotate(${index * 120}deg)` }}>
-          <Layer className="spinner-subagent-tuck">
-            <Glyph>
-              <circle cy="-7" r="3.4" fill="currentColor" opacity={opacity} />
-            </Glyph>
+    <Layer style={{ transform: "translateY(5.625%)" }}>
+      <Layer className="spinner-subagent-orbit">
+        {[1, 0.68, 0.42].map((opacity, index) => (
+          <Layer key={opacity} style={{ transform: `rotate(${index * 120}deg)` }}>
+            <Layer className="spinner-subagent-tuck">
+              <Glyph>
+                <circle cy="-7" r="3.4" fill="currentColor" opacity={opacity} />
+              </Glyph>
+            </Layer>
           </Layer>
-        </Layer>
-      ))}
+        ))}
+      </Layer>
     </Layer>
   );
 }

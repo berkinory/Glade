@@ -3,7 +3,7 @@ import { formatEffortLabel } from "@glade/shared/provider/effortLabel";
 import { useQuery } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
-import { AlertCircleIcon, ArrowRight02Icon, BotIcon, SquareFilledIcon } from "~/lib/icons";
+import { AlertCircleIcon, ArrowRight02Icon, SquareFilledIcon } from "~/lib/icons";
 import { useLiveClockNow } from "~/lib/liveActivityPresentation";
 import { providerComposerCapabilitiesQueryOptions } from "~/lib/providerDiscoveryReactQuery";
 import {
@@ -42,6 +42,8 @@ import {
 } from "./SubagentRunCard.logic";
 import { WorkTextShimmer } from "./WorkTextShimmer";
 
+const SUBAGENT_START_GRACE_MS = 2 * 60 * 1000;
+
 function isLiveKind(kind: SubagentStatusKind | null): boolean {
   return kind === "running" || kind === "queued";
 }
@@ -77,13 +79,25 @@ export function SubagentRunCard({
   fontSizePx,
 }: {
   run: WorkLogSubagentRun;
-  // The launch call is still running; a subagent that has not reported a status yet is starting.
+  // The launch is still under way: its call is running, or its turn is and an async launch has not
+  // heard from its subagents yet. A subagent with no status yet is then starting.
   launching: boolean;
   fontSizePx: number;
 }) {
   const { members } = run;
   const kinds = members.map((member) => subagentStatusKind(member.subagent));
-  const live = kinds.some(isLiveKind) || (launching && kinds.includes(null));
+  // A subagent that has not settled and reports no status yet, or only idle (its session is open
+  // but its first turn has not begun), is still starting. An async launch can finish its turn
+  // before that first status arrives, so a launch made shortly before the card appeared counts too;
+  // the grace keeps a subagent that never appeared from spinning in old chats.
+  const [mountedAtMs] = useState(() => Date.now());
+  const starting = members.some(
+    (member, index) =>
+      member.settledAt === undefined &&
+      (kinds[index] === null || kinds[index] === "idle") &&
+      (launching || mountedAtMs - Date.parse(member.launchedAt) < SUBAGENT_START_GRACE_MS),
+  );
+  const live = kinds.some(isLiveKind) || starting;
   const [userOpen, setUserOpen] = useState<boolean | null>(null);
   const open = userOpen ?? live;
   const nowMs = useLiveClockNow(live);
@@ -122,7 +136,10 @@ export function SubagentRunCard({
             ) : failed ? (
               <AlertCircleIcon className={cn(WORK_ROW_ICON_CLASS_NAME, "text-destructive/85")} />
             ) : (
-              <BotIcon className={WORK_ROW_ICON_CLASS_NAME} />
+              <SubagentAvatar
+                threadId={memberThreadId(members.at(-1)!)}
+                className={WORK_ROW_ICON_CLASS_NAME}
+              />
             )}
           </span>
           <span className="min-w-0 truncate">

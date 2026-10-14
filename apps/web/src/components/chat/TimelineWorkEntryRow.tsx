@@ -67,6 +67,8 @@ import { commandRowMetaParts } from "./commandRowMeta.logic";
 import { RequestRetryRow } from "./RequestRetryRow";
 import { ShowMoreFilesButton, usePagedFiles } from "./ShowMoreFilesButton";
 import { ToolEditedFileRow } from "./ToolEditedFileRow";
+import { useOptionalChatThreadId } from "./ChatThreadContext";
+import { useStore } from "~/store";
 import { type ExpandedImagePreview } from "./ExpandedImagePreview";
 import { LinkChipIcon } from "../LinkChipIcon";
 import { normalizeCompactToolLabel } from "./MessagesTimeline.logic.rowTypes";
@@ -416,15 +418,31 @@ type TimelineWorkEntryRowProps = {
   timestampFormat: TimestampFormat;
 };
 
+// An async subagent launch returns before its subagents report, so while its turn still runs and
+// the call has not failed, the launch is still starting.
+function useSubagentLaunchStarting(workEntry: TimelineWorkEntry): boolean {
+  const threadId = useOptionalChatThreadId();
+  const turnRunning = useStore((state) => {
+    const latestTurn = threadId ? state.threadTurnStateById?.[threadId]?.latestTurn : undefined;
+    return latestTurn?.state === "running" && latestTurn.turnId === workEntry.turnId;
+  });
+  if (workEntry.toolKind !== "agent") return false;
+  return (
+    workEntry.toolStatus === "running" ||
+    (turnRunning && workEntry.toolStatus !== "failed" && workEntry.toolStatus !== "cancelled")
+  );
+}
+
 export const TimelineWorkEntryRow = memo(function TimelineWorkEntryRow(
   props: TimelineWorkEntryRowProps,
 ) {
   const fontSizePx = props.textFontSizePx ?? props.chatMetaFontSizePx;
+  const launchStarting = useSubagentLaunchStarting(props.workEntry);
   if (props.workEntry.subagentRun) {
     return (
       <SubagentRunCard
         run={props.workEntry.subagentRun}
-        launching={props.workEntry.toolStatus === "running"}
+        launching={launchStarting}
         fontSizePx={fontSizePx}
       />
     );
@@ -443,10 +461,10 @@ export const TimelineWorkEntryRow = memo(function TimelineWorkEntryRow(
       />
     );
   }
-  return <ToolWorkEntryRow {...props} />;
+  return <ToolWorkEntryRow {...props} launchStarting={launchStarting} />;
 });
 
-function ToolWorkEntryRow(props: TimelineWorkEntryRowProps) {
+function ToolWorkEntryRow(props: TimelineWorkEntryRowProps & { launchStarting: boolean }) {
   const {
     workEntry,
     chatMetaFontSizePx,
@@ -462,8 +480,7 @@ function ToolWorkEntryRow(props: TimelineWorkEntryRowProps) {
   const linkIconUrl = workEntryLinkIconUrl(workEntry);
   // A launch that has not reported its subagents yet shows the run card's spinner, so the icon does
   // not change when the card takes this row's place.
-  const isPendingSubagentLaunch =
-    workEntry.toolKind === "agent" && workEntry.toolStatus === "running";
+  const isPendingSubagentLaunch = props.launchStarting;
   const classification = classifyWorkEntryTool(workEntry);
   const isGitHubToolRow = classification.isGitHub;
   const isGladeToolRow = !isGitHubToolRow && classification.gladeTitle !== null;
