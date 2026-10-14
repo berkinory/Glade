@@ -37,6 +37,7 @@ import {
 } from "./-rootDialogs";
 import { SshPromptDialog } from "../components/SshPromptDialog";
 import { WorkspaceRestoreDialog } from "../components/chat/WorkspaceRestoreDialog";
+import { CrashResumeDialog } from "../components/CrashResumeDialog";
 import { EnvironmentRouters } from "./-rootEnvironmentRouters";
 import { ProviderStatusRefreshCoordinator } from "./-rootProviders";
 export function RootRouteView() {
@@ -113,6 +114,7 @@ export function RootRouteView() {
             <GlobalShortcutsDialog />
             <GlobalFeedbackDialog />
             <WorkspaceRestoreDialog />
+            <CrashResumeDialog />
             <GlobalWhatsNewSurface />
             <TaskCompletionNotifications />
             <QueuedComposerDrainCoordinator />

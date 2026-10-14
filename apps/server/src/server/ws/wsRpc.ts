@@ -102,6 +102,7 @@ import {
   OrchestrationCommandPreviouslyRejectedError,
 } from "../../orchestration/Errors";
 import { makeDispatchCommandNormalizer } from "../../orchestration/dispatchCommandNormalization";
+import { getCrashResumeOffer, resolveCrashResume } from "../../orchestration/crashResume";
 import { prepareQuitResume } from "../../orchestration/quitResume";
 import { OrchestrationEngineService } from "../../orchestration/Services/OrchestrationEngine";
 import { ProviderCommandReactor } from "../../orchestration/Services/ProviderCommandReactor";
@@ -999,6 +1000,16 @@ const makeWsRpcHandlersLayer = () =>
               }),
             ),
             "Failed to prepare chats for resume after quit",
+          ),
+        [ORCHESTRATION_WS_METHODS.getCrashResumeOffer]: () =>
+          rpcEffect(
+            runtimeStartup.enqueueCommand(getCrashResumeOffer),
+            "Failed to load chats interrupted by an unexpected shutdown",
+          ),
+        [ORCHESTRATION_WS_METHODS.resolveCrashResume]: (input) =>
+          rpcEffect(
+            runtimeStartup.enqueueCommand(resolveCrashResume(input)),
+            "Failed to continue chats interrupted by an unexpected shutdown",
           ),
         [ORCHESTRATION_WS_METHODS.reconcileProviderDelivery]: (input) =>
           rpcEffect(

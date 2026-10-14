@@ -46,6 +46,7 @@ import {
   claimQuitResumeRecordAtStartup,
   resumeQuitInterruptedChats,
 } from "../../orchestration/quitResume";
+import { captureCrashInterruptedChats } from "../../orchestration/crashResume";
 import { reconcileRestartStuckTurns } from "../../orchestration/startupTurnReconciliation";
 import { ProviderSessionReaper } from "../../provider/Services/ProviderSessionReaper";
 import { ProviderRuntimeReconciler } from "../../provider/Services/ProviderRuntimeReconciler";
@@ -233,6 +234,12 @@ export const createEffectServer = Effect.fn(function* (
   );
   agentGatewayCredentials.setListeningPort(listeningPort);
   if (nodeServer) yield* remoteAccess.attach(nodeServer);
+  // Only a clean shutdown removes this file, so finding it means the previous process stopped
+  // unexpectedly. The single-instance lock rules out a live owner.
+  const fileSystem = yield* FileSystem.FileSystem;
+  const previousRunEndedUnexpectedly = yield* fileSystem
+    .exists(config.serverRuntimeStatePath)
+    .pipe(Effect.orElseSucceed(() => false));
   yield* persistServerRuntimeState({
     path: config.serverRuntimeStatePath,
     state: makePersistedServerRuntimeState({
@@ -260,7 +267,12 @@ export const createEffectServer = Effect.fn(function* (
     orchestrationReactor,
     // Heal turns orphaned by the previous process exit (their in-memory runtimes died, so they can
     // never complete on their own) before clients can observe the stale "Working" state.
-    reconcileRestartStuckTurns: reconcileRestartStuckTurns.pipe(
+    // Chats the unexpected exit cut off are recorded first, while their turns still read as running.
+    reconcileRestartStuckTurns: (previousRunEndedUnexpectedly
+      ? captureCrashInterruptedChats
+      : Effect.void
+    ).pipe(
+      Effect.andThen(reconcileRestartStuckTurns),
       Effect.provide(ProjectionPendingInteractionRepositoryLive),
     ),
     reactors: [

@@ -26,6 +26,7 @@ const CONTROL_METHODS = new Set<string>([
   ORCHESTRATION_WS_METHODS.dispatchCommand,
   ORCHESTRATION_WS_METHODS.reconcileProviderDelivery,
   ORCHESTRATION_WS_METHODS.prepareQuitResume,
+  ORCHESTRATION_WS_METHODS.resolveCrashResume,
   WS_METHODS.terminalWrite,
   WS_METHODS.terminalAckOutput,
   WS_METHODS.terminalResize,

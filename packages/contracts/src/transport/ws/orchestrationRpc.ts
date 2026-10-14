@@ -124,6 +124,24 @@ export const WsOrchestrationPrepareQuitResumeRpc = Rpc.make(
   },
 );
 
+export const WsOrchestrationGetCrashResumeOfferRpc = Rpc.make(
+  ORCHESTRATION_WS_METHODS.getCrashResumeOffer,
+  {
+    payload: OrchestrationRpcSchemas.getCrashResumeOffer.input,
+    success: OrchestrationRpcSchemas.getCrashResumeOffer.output,
+    error: WsRpcError,
+  },
+);
+
+export const WsOrchestrationResolveCrashResumeRpc = Rpc.make(
+  ORCHESTRATION_WS_METHODS.resolveCrashResume,
+  {
+    payload: OrchestrationRpcSchemas.resolveCrashResume.input,
+    success: OrchestrationRpcSchemas.resolveCrashResume.output,
+    error: WsRpcError,
+  },
+);
+
 export const WsOrchestrationSubscribeShellRpc = Rpc.make(ORCHESTRATION_WS_METHODS.subscribeShell, {
   payload: OrchestrationRpcSchemas.subscribeShell.input,
   success: OrchestrationShellStreamItem,

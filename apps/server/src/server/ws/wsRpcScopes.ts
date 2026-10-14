@@ -32,6 +32,8 @@ export const WS_RPC_REQUIRED_SCOPES: Record<WsFeatureRpcTag, AuthScope> = {
   [ORCHESTRATION_WS_METHODS.repairState]: "orchestration:operate",
   [ORCHESTRATION_WS_METHODS.reconcileProviderDelivery]: "orchestration:operate",
   [ORCHESTRATION_WS_METHODS.prepareQuitResume]: "orchestration:operate",
+  [ORCHESTRATION_WS_METHODS.getCrashResumeOffer]: "orchestration:read",
+  [ORCHESTRATION_WS_METHODS.resolveCrashResume]: "orchestration:operate",
 
   [WS_METHODS.projectsListDirectories]: "filesystem:read",
   [WS_METHODS.projectsSearchEntries]: "filesystem:read",

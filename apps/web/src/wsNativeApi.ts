@@ -727,6 +727,10 @@ function buildNativeApi(transport: WsTransport, listeners: NativeApiListeners): 
         transport.request(ORCHESTRATION_WS_METHODS.reconcileProviderDelivery, input),
       prepareQuitResume: (input) =>
         transport.request(ORCHESTRATION_WS_METHODS.prepareQuitResume, input),
+      getCrashResumeOffer: () =>
+        transport.request(ORCHESTRATION_WS_METHODS.getCrashResumeOffer, {}),
+      resolveCrashResume: (input) =>
+        transport.request(ORCHESTRATION_WS_METHODS.resolveCrashResume, input),
       subscribeShell: () => transport.request<void>(ORCHESTRATION_WS_METHODS.subscribeShell, {}),
       unsubscribeShell: () =>
         transport.request<void>(ORCHESTRATION_WS_METHODS.unsubscribeShell, {}),

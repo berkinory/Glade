@@ -77,23 +77,41 @@ export type QuitResumeRecordableThread = Pick<
   "id" | "deletedAt" | "latestTurn" | "session"
 >;
 
-type QuitResumeThread = Pick<
+type ResumeThread = Pick<
   OrchestrationThread,
-  "id" | "projectId" | "deletedAt" | "archivedAt" | "latestTurn" | "session" | "runtimeMode"
+  | "id"
+  | "title"
+  | "projectId"
+  | "deletedAt"
+  | "archivedAt"
+  | "latestTurn"
+  | "session"
+  | "runtimeMode"
 >;
-type QuitResumeProject = Pick<OrchestrationProject, "id" | "deletedAt">;
+type ResumeProject = Pick<OrchestrationProject, "id" | "deletedAt">;
 
-type QuitResumeSkipReason =
+type ResumeSkipReason =
   | "thread-missing"
   | "thread-deleted"
   | "project-missing"
   | ThreadResumePreconditionViolation;
 
-interface QuitResumePlan {
-  readonly commands: ReadonlyArray<ThreadTurnStartCommand>;
+export interface ResumeTurnEntry {
+  readonly threadId: ThreadId;
+  readonly turnId: TurnId | null;
+  readonly recordedAt: string;
+  // Command and message ids derive from it, so a replayed or repeated resume is deduplicated.
+  readonly key: string;
+}
+
+interface ResumePlan {
+  readonly resumable: ReadonlyArray<{
+    readonly entry: ResumeTurnEntry;
+    readonly thread: ResumeThread;
+  }>;
   readonly skipped: ReadonlyArray<{
     readonly threadId: ThreadId;
-    readonly reason: QuitResumeSkipReason;
+    readonly reason: ResumeSkipReason;
   }>;
 }
 
@@ -148,66 +166,68 @@ function buildQuitInterruptCommand(input: {
   };
 }
 
-function planQuitResumeTurns(input: {
-  readonly record: QuitResumeRecord;
-  readonly threads: ReadonlyArray<QuitResumeThread>;
-  readonly projects: ReadonlyArray<QuitResumeProject>;
-  readonly now: string;
-}): QuitResumePlan {
+export function planResume(input: {
+  readonly entries: ReadonlyArray<ResumeTurnEntry>;
+  readonly threads: ReadonlyArray<ResumeThread>;
+  readonly projects: ReadonlyArray<ResumeProject>;
+}): ResumePlan {
   const threadsById = new Map(input.threads.map((thread) => [thread.id, thread] as const));
   const liveProjectIds = new Set(
     input.projects.filter((project) => project.deletedAt === null).map((project) => project.id),
   );
-  const commands: ThreadTurnStartCommand[] = [];
-  const skipped: Array<{ threadId: ThreadId; reason: QuitResumeSkipReason }> = [];
-  const skip = (threadId: ThreadId, reason: QuitResumeSkipReason) => {
-    skipped.push({ threadId, reason });
-  };
+  const resumable: Array<ResumePlan["resumable"][number]> = [];
+  const skipped: Array<ResumePlan["skipped"][number]> = [];
 
-  for (const entry of input.record.threads) {
+  for (const entry of input.entries) {
     const thread = threadsById.get(entry.threadId);
     if (!thread) {
-      skip(entry.threadId, "thread-missing");
+      skipped.push({ threadId: entry.threadId, reason: "thread-missing" });
       continue;
     }
-    if (thread.deletedAt !== null) {
-      skip(entry.threadId, "thread-deleted");
+    const reason =
+      thread.deletedAt !== null
+        ? "thread-deleted"
+        : !liveProjectIds.has(thread.projectId)
+          ? "project-missing"
+          : threadResumePreconditionViolation(thread, resumePrecondition(entry));
+    if (reason !== null) {
+      skipped.push({ threadId: entry.threadId, reason });
       continue;
     }
-    if (!liveProjectIds.has(thread.projectId)) {
-      skip(entry.threadId, "project-missing");
-      continue;
-    }
-    const resumePrecondition = {
-      recordedTurnId: entry.turnId,
-      recordedAt: input.record.recordedAt,
-    };
-    const violation = threadResumePreconditionViolation(thread, resumePrecondition);
-    if (violation) {
-      skip(entry.threadId, violation);
-      continue;
-    }
-    const key = `quit-resume:${input.record.recordId}:${entry.threadId}`;
-    commands.push({
-      type: "thread.turn.start",
-      commandId: CommandId.makeUnsafe(key),
-      threadId: entry.threadId,
-      message: {
-        messageId: MessageId.makeUnsafe(key),
-        role: "user",
-        text: input.record.continuationPrompt,
-        attachments: [],
-      },
-      dispatchMode: "queue",
-      dispatchOrigin: "agent",
-      runtimeMode: thread.runtimeMode,
-
-      resumePrecondition,
-      createdAt: input.now,
-    });
+    resumable.push({ entry, thread });
   }
 
-  return { commands, skipped };
+  return { resumable, skipped };
+}
+
+const resumePrecondition = (entry: ResumeTurnEntry) => ({
+  recordedTurnId: entry.turnId,
+  recordedAt: entry.recordedAt,
+});
+
+export function buildResumeTurnCommand(input: {
+  readonly entry: ResumeTurnEntry;
+  readonly thread: ResumeThread;
+  readonly continuationPrompt: string;
+  readonly now: string;
+}): ThreadTurnStartCommand {
+  return {
+    type: "thread.turn.start",
+    commandId: CommandId.makeUnsafe(input.entry.key),
+    threadId: input.entry.threadId,
+    message: {
+      messageId: MessageId.makeUnsafe(input.entry.key),
+      role: "user",
+      text: input.continuationPrompt,
+      attachments: [],
+    },
+    dispatchMode: "queue",
+    dispatchOrigin: "agent",
+    runtimeMode: input.thread.runtimeMode,
+
+    resumePrecondition: resumePrecondition(input.entry),
+    createdAt: input.now,
+  };
 }
 
 const persistQuitResumeRecord = (input: {
@@ -403,12 +423,20 @@ export const resumeQuitInterruptedChats = (
     const engine = yield* OrchestrationEngineService;
 
     const readModel = yield* engine.getReadModel();
-    const plan = planQuitResumeTurns({
-      record,
+    const plan = planResume({
+      entries: record.threads.map((entry) => ({
+        threadId: entry.threadId,
+        turnId: entry.turnId,
+        recordedAt: record.recordedAt,
+        key: `quit-resume:${record.recordId}:${entry.threadId}`,
+      })),
       threads: readModel.threads,
       projects: readModel.projects,
-      now: new Date().toISOString(),
     });
+    const now = new Date().toISOString();
+    const commands = plan.resumable.map((resumable) =>
+      buildResumeTurnCommand({ ...resumable, continuationPrompt: record.continuationPrompt, now }),
+    );
 
     if (plan.skipped.length > 0) {
       yield* Effect.logInfo("skipping quit-resume for threads that moved on", {
@@ -416,18 +444,18 @@ export const resumeQuitInterruptedChats = (
         skipped: plan.skipped,
       });
     }
-    if (plan.commands.length === 0) {
+    if (commands.length === 0) {
       return;
     }
 
     yield* Effect.logInfo("resuming chats interrupted by the previous quit", {
       recordId: record.recordId,
       recordedAt: record.recordedAt,
-      threadIds: plan.commands.map((command) => command.threadId),
+      threadIds: commands.map((command) => command.threadId),
     });
 
     yield* Effect.forEach(
-      plan.commands,
+      commands,
       (command) =>
         engine.dispatch(command).pipe(
           Effect.catchTag("OrchestrationCommandInvariantError", (error) =>

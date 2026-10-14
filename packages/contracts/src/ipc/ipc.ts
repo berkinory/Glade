@@ -238,6 +238,9 @@ import type {
   OrchestrationReconcileProviderDeliveryResult,
   OrchestrationPrepareQuitResumeInput,
   OrchestrationPrepareQuitResumeResult,
+  OrchestrationCrashResumeOffer,
+  OrchestrationResolveCrashResumeInput,
+  OrchestrationResolveCrashResumeResult,
   OrchestrationGetTurnDiffInput,
   OrchestrationGetTurnDiffResult,
   OrchestrationSubscribeThreadInput,
@@ -804,6 +807,10 @@ export interface NativeApi {
     prepareQuitResume: (
       input: OrchestrationPrepareQuitResumeInput,
     ) => Promise<OrchestrationPrepareQuitResumeResult>;
+    getCrashResumeOffer: () => Promise<OrchestrationCrashResumeOffer>;
+    resolveCrashResume: (
+      input: OrchestrationResolveCrashResumeInput,
+    ) => Promise<OrchestrationResolveCrashResumeResult>;
     subscribeShell: () => Promise<void>;
     unsubscribeShell: () => Promise<void>;
     subscribeThread: (input: OrchestrationSubscribeThreadInput) => Promise<void>;

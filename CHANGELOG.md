@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+### New
+
+- After an unexpected shutdown, Glade offers to continue the chats that were running.
+
 ### Improved
 
 - Browser pages adapt continuously while resizing the sidebar.

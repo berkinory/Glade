@@ -233,6 +233,18 @@ through, and branch lookups from concurrent status refreshes share batched Graph
 Pull request reviews revalidate with conditional requests, so polling an unchanged pull request
 does not spend the rate limit.
 
+## Recovery after an unexpected shutdown
+
+When Glade stops without its normal shutdown (a crash, a force quit or a killed server),
+the next launch offers to continue the chats that were running, in one dialog listing them.
+Nothing continues on its own: **Continue** sends each chosen chat a visible message that says
+the run stopped unexpectedly and asks the agent to check what already happened before
+repeating anything, and **Dismiss** drops the offer. Chats waiting on an approval or an
+answer, subagent chats, chats an agent or automation started, and turns another agent
+delegated are not offered. A chat that has moved on since, by a new message or archiving,
+drops out of the offer. Quitting with running chats keeps its own choice to resume them
+automatically.
+
 ## Existing data
 
 Databases start from the single baseline at migration 1, released in 0.1.0. Databases

@@ -34,6 +34,8 @@ export const ORCHESTRATION_WS_METHODS = {
   listProviderDeliveryBlockers: "orchestration.listProviderDeliveryBlockers",
   reconcileProviderDelivery: "orchestration.reconcileProviderDelivery",
   prepareQuitResume: "orchestration.prepareQuitResume",
+  getCrashResumeOffer: "orchestration.getCrashResumeOffer",
+  resolveCrashResume: "orchestration.resolveCrashResume",
   subscribeShell: "orchestration.subscribeShell",
   unsubscribeShell: "orchestration.unsubscribeShell",
   subscribeThread: "orchestration.subscribeThread",
@@ -214,6 +216,37 @@ export const OrchestrationPrepareQuitResumeResult = Schema.Struct({
 
 export type OrchestrationPrepareQuitResumeResult = typeof OrchestrationPrepareQuitResumeResult.Type;
 
+export const OrchestrationGetCrashResumeOfferInput = Schema.Struct({});
+
+export type OrchestrationGetCrashResumeOfferInput =
+  typeof OrchestrationGetCrashResumeOfferInput.Type;
+
+export const OrchestrationCrashResumeOffer = Schema.Struct({
+  chats: Schema.Array(
+    Schema.Struct({
+      threadId: ThreadId,
+      title: Schema.String,
+    }),
+  ),
+});
+
+export type OrchestrationCrashResumeOffer = typeof OrchestrationCrashResumeOffer.Type;
+
+// Settles the whole offer: the listed chats continue and every other offered chat is dismissed.
+export const OrchestrationResolveCrashResumeInput = Schema.Struct({
+  continueThreadIds: Schema.Array(ThreadId).check(Schema.isMaxLength(QUIT_RESUME_MAX_THREADS)),
+  continuationPrompt: TrimmedNonEmptyString.check(Schema.isMaxLength(QUIT_RESUME_MAX_PROMPT_CHARS)),
+});
+
+export type OrchestrationResolveCrashResumeInput = typeof OrchestrationResolveCrashResumeInput.Type;
+
+export const OrchestrationResolveCrashResumeResult = Schema.Struct({
+  continuedThreadIds: Schema.Array(ThreadId),
+});
+
+export type OrchestrationResolveCrashResumeResult =
+  typeof OrchestrationResolveCrashResumeResult.Type;
+
 export const OrchestrationSubscribeShellInput = Schema.Struct({});
 
 export type OrchestrationSubscribeShellInput = typeof OrchestrationSubscribeShellInput.Type;
@@ -355,6 +388,14 @@ export const OrchestrationRpcSchemas = {
   prepareQuitResume: {
     input: OrchestrationPrepareQuitResumeInput,
     output: OrchestrationPrepareQuitResumeResult,
+  },
+  getCrashResumeOffer: {
+    input: OrchestrationGetCrashResumeOfferInput,
+    output: OrchestrationCrashResumeOffer,
+  },
+  resolveCrashResume: {
+    input: OrchestrationResolveCrashResumeInput,
+    output: OrchestrationResolveCrashResumeResult,
   },
   subscribeShell: {
     input: OrchestrationSubscribeShellInput,

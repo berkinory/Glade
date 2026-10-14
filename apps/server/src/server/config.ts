@@ -70,6 +70,7 @@ export interface ServerDerivedPaths {
   readonly serverLogPath: string;
   readonly serverRuntimeStatePath: string;
   readonly quitResumeStatePath: string;
+  readonly crashResumeStatePath: string;
   readonly providerLogsDir: string;
   readonly providerEventLogPath: string;
   readonly terminalLogsDir: string;
@@ -142,6 +143,7 @@ export const deriveServerPaths = Effect.fn(function* (
     serverLogPath: join(logsDir, "server.log"),
     serverRuntimeStatePath: join(stateDir, "server-runtime.json"),
     quitResumeStatePath: join(stateDir, "quit-resume.json"),
+    crashResumeStatePath: join(stateDir, "crash-resume.json"),
     providerLogsDir,
     providerEventLogPath: join(providerLogsDir, "events.log"),
     terminalLogsDir: join(logsDir, "terminals"),
