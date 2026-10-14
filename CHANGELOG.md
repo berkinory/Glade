@@ -1,62 +1,36 @@
 # Glade Changelog
 
-## Unreleased
+## 0.2.7 - 2026-10-14
 
 ### New
 
-- Keep the display on with a separate switch alongside Keep Mac awake.
+- Drag workspace tabs into your preferred order, remembered separately for each chat. ([e80952c30](https://github.com/berkinory/Glade/commit/e80952c301ab4bb4c79e09b2c7188ccd24a2d793))
+- Keep the display on with a separate switch alongside Keep Mac awake. ([110249297](https://github.com/berkinory/Glade/commit/110249297c6cfc848be8a8cbd7408e96bfe4e544))
 
 ### Improved
 
-- Failed tasks show a clearer Retry button with an icon.
-
-- Workspace tabs have tighter spacing and slide smoothly when dragged into a new order, remembered per chat while the main chat stays in place.
-
-- The composer has more room to write, with project, branch and SSH connection details grouped above the message field and kept visible throughout the chat.
-- SSH and paired remote projects and chat lists appear from the last connection at startup, show host availability, and refresh automatically when the host reconnects.
-
-- Git commands start fewer helper processes on Windows, and worktree creation uses parallel checkout while respecting your Git settings.
-
-- Row highlights and hover actions respond immediately, and interface animations use consistent timing throughout Glade.
-- Sidebar usage indicators sit beside Settings for up to two providers and move to their own row for more. Usage panels keep remaining percentages visible, show reset times below the bars and omit consumption forecasts.
-- Long chats, and long replies full of code, open and scroll more smoothly.
-- Glade starts faster and shows your chats sooner, especially with a long chat history.
-- Running chats use much less CPU and battery while agents work.
-- The sidebar stays quick with thousands of chats, in the Activity view too, where today's and yesterday's chats now show a page at a time.
-- Find in chat keeps up with typing in long replies, even with thousands of matches.
-- The Environment panel lists background tasks that are still running and only the latest turn's finished ones, instead of every task the chat ever started.
-- A tool call's details show exactly what it was given and what it returned, one box each, so a command reads as it ran instead of split into pieces. The result box is labelled Output and shows the exit code only when a command fails.
-- Python test runs with unittest show how many tests passed and failed.
-- The file named in a tool call's row opens with a click on its chip, which highlights on hover, and the row's icon, text and file chip line up.
-- Clicking a background task in the Environment panel shows the tool call that started it, with its command and output open.
-- Files and folders a reply names outside the project, such as `~/.zshrc` or `/tmp/run.log`, show as chips with their real icon once Glade finds them, and paths that do not exist stay plain text.
+- Glade starts faster and shows your chats sooner, even with a large chat history. ([3727b34a9](https://github.com/berkinory/Glade/commit/3727b34a95c5470e36f2539bc8dce22ad4714bd2), [2f81a651b](https://github.com/berkinory/Glade/commit/2f81a651b1c30c2b74fddb578209df7f220df125), [e5235dc72](https://github.com/berkinory/Glade/commit/e5235dc726aaab3f6ae4f890d38358dc6b6eeecd))
+- Long chats and code-heavy replies open, scroll and search more smoothly, and large chat lists stay responsive. ([90d658d13](https://github.com/berkinory/Glade/commit/90d658d13f4cbd7f30fa5c419029ea2d1359ea2f), [4328b4e23](https://github.com/berkinory/Glade/commit/4328b4e236e035ba5fb346df6ae4b172c1724c3c), [ee9583700](https://github.com/berkinory/Glade/commit/ee95837002ff34d8c5f870f95fc3df1dc12eed5f), [6e32a5b15](https://github.com/berkinory/Glade/commit/6e32a5b15ea9317ca7c85865b3b8b9db386c208c), [50f3779c2](https://github.com/berkinory/Glade/commit/50f3779c2ac41e89919b13f10002afdaee6a84c4))
+- Running chats use less CPU, and Glade stays responsive during extended use. ([5f90c4e63](https://github.com/berkinory/Glade/commit/5f90c4e632401623ac01e770c2344b1672d52b70), [8ecd3e49b](https://github.com/berkinory/Glade/commit/8ecd3e49b47b14fb3144957e8ae22e0b74d98066), [db1eb292d](https://github.com/berkinory/Glade/commit/db1eb292db5e8c71b03ba4cc61f6896c430fde31))
+- The composer gives you more room to write and keeps project, branch and connection details in view. ([cef2934e5](https://github.com/berkinory/Glade/commit/cef2934e58c49aaeed6139cef7339687aae0c894), [1b08df60d](https://github.com/berkinory/Glade/commit/1b08df60da2e2290c5a09619425cc32244454181))
+- Remote projects and chats appear from your last connection at startup and refresh when the host reconnects. ([6e04f9de7](https://github.com/berkinory/Glade/commit/6e04f9de73648449ead57fdb816b4e2354d6a356), [d9cc4dc62](https://github.com/berkinory/Glade/commit/d9cc4dc621044bc02c5329e7cc40ddfee2f2268c))
+- Background tasks open their command and output with a click. The Environment panel keeps running tasks and recent results in view. ([0858a7bd8](https://github.com/berkinory/Glade/commit/0858a7bd8936052eb444b4313c1dcd3a9767ed70), [9462e9878](https://github.com/berkinory/Glade/commit/9462e987883f808d5b7a4ceca57ab1dd8b85759d))
+- Tool details show their input and output more clearly, and file links open directly from tool rows and replies, including files outside the project. ([4c2d4e7bc](https://github.com/berkinory/Glade/commit/4c2d4e7bc8f909431be4d89ba7b7a3224a6b6be7), [d03756123](https://github.com/berkinory/Glade/commit/d03756123f98faf8394c4309e5edfec52ba9eda3), [d60ccfcad](https://github.com/berkinory/Glade/commit/d60ccfcad6fe8e55bf448cbfe7bdb2d0c26778b0))
+- Usage panels make remaining allowances and reset times easier to read. ([aa1c2e691](https://github.com/berkinory/Glade/commit/aa1c2e691123fdf3853e7379ff7d87aeceb58467))
+- Hover feedback responds immediately, with more consistent animations throughout the app. ([a379e2392](https://github.com/berkinory/Glade/commit/a379e23925164966d6aabcec094252e6ea74d8c3))
+- Git operations are quicker on Windows, and new worktrees check out faster. ([c7125a3ff](https://github.com/berkinory/Glade/commit/c7125a3ff27168a0b54273372de040b26e12de21))
 
 ### Fixed
 
-- Returning to chat from another workspace tab focuses the message field again.
-
-- Stopping a stuck agent is more reliable, and failures affect fewer other chats.
-
-- Temporary connection failures to paired machines recover automatically instead of incorrectly asking you to pair again.
-
-- Unavailable images in chat show a readable error card with more room for the message and download button.
-- Git history shows author and bot avatars more reliably and gives longer branch names more room.
-- Glade no longer gets slower and uses more memory the longer it stays open.
-- Opening the diff of a large file no longer freezes Glade for seconds.
-- Codex plugins show again in the plugin library and in @ mentions.
-- A custom Claude agent with a multi-line description no longer empties the @ agent list.
-- Every project in the sidebar now opens and closes with the same animation, not only the project of the open chat.
-- Tool activity from Grok Build and other ACP agents no longer merges into an earlier turn's rows.
-- Clicking a chat in the sidebar while a subagent is open no longer misses or jumps.
-- Scrolling over a visual in a live reply stops following the reply, like scrolling the transcript.
-- A named pipe in a project no longer freezes file previews or search.
-- A delayed Codex completion no longer makes the next running turn look finished.
-- Idle cleanup no longer stops a chat that just started working again.
-- Worktree branches get their generated name even when you send a second message right away.
-- Installing an update on macOS no longer reports a failure while the update is still being prepared.
-- A command that edits a file and then runs something else is named by what it runs, not as an edit.
-- A search the shell refused to run shows the shell's error instead of a match, and a failed command shows its error without the program's path in front.
-- Background tasks no longer show as running forever after the agent's session stopped or restarted.
+- Stopping stuck agents is more reliable, and connection failures are contained to fewer chats. ([aef252689](https://github.com/berkinory/Glade/commit/aef25268950774b60a26056379a74d2d9d358f70))
+- Temporary connection failures to paired machines recover without asking you to pair again. ([d9cc4dc62](https://github.com/berkinory/Glade/commit/d9cc4dc621044bc02c5329e7cc40ddfee2f2268c))
+- Opening large file diffs no longer freezes the app. ([451ed4828](https://github.com/berkinory/Glade/commit/451ed4828ddd1ed98d2bf72d17191f6b2fae4d77))
+- Codex plugins and custom Claude agents no longer disappear from their lists because of description formatting. ([046a6ae14](https://github.com/berkinory/Glade/commit/046a6ae14a2dae29bd3f39c52a3c165d192f45ea), [ea5a48839](https://github.com/berkinory/Glade/commit/ea5a48839c2994743221704b34edc1011ee25047))
+- Late agent events no longer mark a new turn as finished or merge tool activity into an earlier turn. ([e03a4558f](https://github.com/berkinory/Glade/commit/e03a4558fe340b7195719831a21427f4b28f1bf8), [5fbb8162a](https://github.com/berkinory/Glade/commit/5fbb8162a3961230c5d1188f71f1d14d2ab87a38))
+- Idle cleanup no longer stops chats that have resumed work, and ended sessions no longer leave background tasks marked as running. ([508d16721](https://github.com/berkinory/Glade/commit/508d16721efc76bbeefc81b9710b20a0e843f5d5), [9462e9878](https://github.com/berkinory/Glade/commit/9462e987883f808d5b7a4ceca57ab1dd8b85759d))
+- Scrolling over a visual reply stops automatic following so you can read earlier messages. ([7298113fa](https://github.com/berkinory/Glade/commit/7298113fa24f116fa492b09458b570f306fa1e7c))
+- Special files in a project no longer freeze file previews or search. ([e4b962299](https://github.com/berkinory/Glade/commit/e4b96229914b38e0ac45b1ea2134d42020ee6c72))
+- Installing a macOS update no longer reports failure while the update is still being prepared. ([492c41dc1](https://github.com/berkinory/Glade/commit/492c41dc1f87ad4620266f35189c91f2b8c5c083))
 
 ## 0.2.6 - 2026-10-14
 
