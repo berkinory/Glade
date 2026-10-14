@@ -154,3 +154,51 @@ were identical. Building the indexes took about two seconds once.
 thread from 0.6% to 1.4% main-thread time with no long tasks. Opening seven threads grew the page's
 JS heap from 27 MB to 46 MB, and no workers started at boot. Starting the installed server from
 `app.asar` took 515-522 ms against 472-516 ms from extracted files.
+
+## Edge cases: thousands of chats, huge replies, large diffs and provider catalogs (October 2026)
+
+These runs add a copy of the real database grown to 3,091 chats (1,385 archived), a chat with one
+421 KB reply holding 40 code blocks, a scratch repository with 2,001 changed files including a
+40,000-line file, and the user's real Codex plugin catalog (6,003 plugins). Pages ran in headless
+Chrome against isolated servers built from source.
+
+**Thousands of chats.** Finding working chats no longer builds the whole shell, which took startup
+from 803-824 ms to 657-701 ms. The sidebar's per-update derivations went from 85-95 ms to 38-42 ms.
+The Activity sidebar rendered every chat in Today and Yesterday: 1,526 rows, 48,963 elements and a
+995-1,285 ms task on load, then 100-215 ms on each update. Paging those sections like the others and
+resolving project roots once per store snapshot left 65 rows, 2,542 elements and a longest task of
+140-147 ms. Indexing the home folder, which is outside Git, went from 1.1-1.3 s to 131-159 ms.
+
+**Huge replies.** Opening the 421 KB reply highlighted every code block during render: 1,397-2,270
+ms of main-thread work, 706-1,491 ms of it Shiki. Highlighting blocks once they come within 1,000 px
+of the visible area took that to 605-688 ms with 91-93 ms of Shiki, removed a 117-121 ms task while
+scrolling through it, and kept the page height identical. Find in chat matched every text node
+against all of the reply's ranges; with sorted range lookups, typing a query with 6,000 matches went
+from 86-92 ms per keystroke (428-434 ms for the first) to 52-64 ms (201-206 ms).
+
+**Large diffs.** A diff binds the worker pool when it mounts, and the pool started only after the
+first diff had mounted, so that diff highlighted on the main thread. Opening the 40,000-line file
+froze the window for 8,067-8,099 ms; mounting diffs once the pool has initialized left a 257-301 ms
+task when the worker's result applies. With the Source Control panel open on 2,001 changes, idle CPU
+stayed at 0.3% for the server and 0.2% for the page.
+
+**Provider catalogs.** Codex returns its whole plugin marketplace (13.7 MB here). Untrimmed text,
+such as 15 short descriptions ending in a space, made every plugin request fail against the
+contract, so the plugin library and @ mentions were empty. Once that was fixed, each newly opened
+chat downloaded 10.3 MB and spent 175 + 110 ms parsing it for a menu that lists five installed
+plugins. The composer now asks for installed plugins only while the mention menu is open: 9,305
+bytes, no long tasks. A custom Claude agent with a folded YAML description failed the agent list the
+same way.
+
+**Startup admission.** Provider usage, voice and discovery reads shared the two expensive-read slots
+per connection with git and search. A 1.5-1.7 s usage request held one at startup, and git status,
+the usage snapshot and the agent list were rejected, retried and arrived 1.8-2.1 s after the first
+request. With their own budget they arrived at 0.8-1.0 s with one rejection. Diff stats for a chat
+folder outside Git failed and retried four times on every open; they now wait for the branch query.
+
+**Measured without changes.** With 3,091 chats and four times CPU throttling, the search palette,
+file search and content search handled keystrokes in a median of 16 ms and at most 80 ms. Typing in
+the composer of the huge reply took at most 24 ms per input event (56 ms throttled). Scrolling up a
+475-message chat used 14% of the main thread with at most one 75 ms task. The archived chats
+settings page renders all 1,385 archived chats (11,300 elements, 80-88 ms to open) and is left as
+is.
