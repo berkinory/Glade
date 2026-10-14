@@ -1,6 +1,6 @@
 import * as NodeServices from "@effect/platform-node/NodeServices";
 import { Effect } from "effect";
-import { ChildProcessSpawner } from "effect/unstable/process";
+import { ChildProcess, ChildProcessSpawner } from "effect/unstable/process";
 import { createRequire, syncBuiltinESMExports } from "node:module";
 import { EventEmitter } from "node:events";
 import * as fs from "node:fs/promises";
@@ -15,6 +15,68 @@ const nodeChildProcess = createRequire(import.meta.url)(
 ) as typeof import("node:child_process");
 
 describe("Effect process signal guards", () => {
+  it.each(["exited", "signaled", "running"] as const)(
+    "uses Windows tree cleanup only for a live child (%s)",
+    async (state) => {
+      const platform = Object.getOwnPropertyDescriptor(process, "platform")!;
+      const fake = Object.assign(new EventEmitter(), {
+        pid: 12345,
+        exitCode: null as number | null,
+        signalCode: null as NodeJS.Signals | null,
+        stdin: null,
+        stdout: null,
+        stderr: null,
+        stdio: [],
+        kill: vi.fn(() => true),
+      });
+      const exit = () => {
+        fake.exitCode = state === "signaled" ? null : 1;
+        fake.signalCode = state === "signaled" ? "SIGTERM" : null;
+        fake.emit("exit", fake.exitCode, fake.signalCode);
+      };
+      const spawn = vi.spyOn(nodeChildProcess, "spawn").mockImplementation(() => {
+        queueMicrotask(() => fake.emit("spawn"));
+        // The OS child handle is the boundary under test; no native Windows process runs here.
+        return fake as unknown as import("node:child_process").ChildProcess;
+      });
+      const exec = vi
+        .spyOn(nodeChildProcess, "execFile")
+        .mockImplementation((...args: unknown[]) => {
+          const callback = args.at(-1);
+          if (state === "running") exit();
+          if (typeof callback === "function") callback(null, "", "");
+          // Match the Node child-process API while observing the actual installed Effect spawner.
+          return fake as unknown as import("node:child_process").ChildProcess;
+        });
+      syncBuiltinESMExports();
+      Object.defineProperty(process, "platform", { value: "win32" });
+      try {
+        await Effect.runPromise(
+          Effect.gen(function* () {
+            const spawner = yield* ChildProcessSpawner.ChildProcessSpawner;
+            const child = yield* spawner.spawn(
+              ChildProcess.make("fixture.exe", [], {
+                stdin: "ignore",
+                stdout: "ignore",
+                stderr: "ignore",
+              }),
+            );
+            if (state === "running") yield* child.kill();
+            else exit();
+            const result = yield* Effect.exit(child.exitCode);
+            expect(result._tag).toBe(state === "signaled" ? "Failure" : "Success");
+          }).pipe(Effect.scoped, Effect.provide(NodeServices.layer)),
+        );
+        expect(exec).toHaveBeenCalledTimes(state === "running" ? 1 : 0);
+      } finally {
+        Object.defineProperty(process, "platform", platform);
+        spawn.mockRestore();
+        exec.mockRestore();
+        syncBuiltinESMExports();
+      }
+    },
+  );
+
   it.each([undefined, 0, 1, -1, 1.5, NaN, Infinity, 2 ** 32 + 1])(
     "never turns invalid child PID %s into a group signal",
     async (pid) => {

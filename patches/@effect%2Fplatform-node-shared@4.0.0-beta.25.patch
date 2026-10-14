@@ -1,8 +1,8 @@
 diff --git a/dist/NodeChildProcessSpawner.js b/dist/NodeChildProcessSpawner.js
-index 7e51c003213c46f43a9c3aceb15a97956d99ff19..74afb6393f45e96099b20e440ed500af9af438f4 100644
+index 7e51c003213c46f43a9c3aceb15a97956d99ff19..0c0a5af3511f27d0e474229b62a4aaf4737af798 100644
 --- a/dist/NodeChildProcessSpawner.js
 +++ b/dist/NodeChildProcessSpawner.js
-@@ -240,9 +240,15 @@ const make = /*#__PURE__*/Effect.gen(function* () {
+@@ -240,9 +240,19 @@ const make = /*#__PURE__*/Effect.gen(function* () {
      });
    });
    const killProcessGroup = (command, childProcess, signal) => {
@@ -13,13 +13,17 @@ index 7e51c003213c46f43a9c3aceb15a97956d99ff19..74afb6393f45e96099b20e440ed500af
 +      return Effect.void;
 +    }
      if (globalThis.process.platform === "win32") {
++      // A completed Windows leader has no process group to signal; its PID can be reused.
++      if (childProcess.exitCode !== null || childProcess.signalCode !== null) {
++        return Effect.void;
++      }
        return Effect.callback(resume => {
 -        NodeChildProcess.exec(`taskkill /pid ${childProcess.pid} /T /F`, error => {
 +        NodeChildProcess.execFile(`${globalThis.process.env.SystemRoot ?? "C:\\Windows"}\\System32\\taskkill.exe`, ["/pid", String(pid), "/T", "/F"], { windowsHide: true }, error => {
            if (error) {
              resume(Effect.fail(toPlatformError("kill", toError(error), command)));
            } else {
-@@ -253,7 +259,7 @@ const make = /*#__PURE__*/Effect.gen(function* () {
+@@ -253,7 +263,7 @@ const make = /*#__PURE__*/Effect.gen(function* () {
      }
      return Effect.try({
        try: () => {
@@ -28,7 +32,7 @@ index 7e51c003213c46f43a9c3aceb15a97956d99ff19..74afb6393f45e96099b20e440ed500af
        },
        catch: error => toPlatformError("kill", toError(error), command)
      });
-@@ -314,7 +320,9 @@ const make = /*#__PURE__*/Effect.gen(function* () {
+@@ -314,7 +324,9 @@ const make = /*#__PURE__*/Effect.gen(function* () {
              env,
              stdio,
              detached: cmd.options.detached ?? process.platform !== "win32",
@@ -184,10 +188,10 @@ index bd846528ef0c7145e19bffe77abb2d4a8ab11afd..f3294a7d1272d6e41f53afe45cf5a066
  //# sourceMappingURL=NodeSink.js.map
 \ No newline at end of file
 diff --git a/src/NodeChildProcessSpawner.ts b/src/NodeChildProcessSpawner.ts
-index dc53bafb7a2619368b63e9d18965a4426bb2e32f..b2146577977dd8903982b694dbdcd7cbe0de1b37 100644
+index dc53bafb7a2619368b63e9d18965a4426bb2e32f..c39e1854a51df2b3ee0b35e9d4963d6353c4a0c6 100644
 --- a/src/NodeChildProcessSpawner.ts
 +++ b/src/NodeChildProcessSpawner.ts
-@@ -324,9 +324,15 @@ const make = Effect.gen(function*() {
+@@ -324,9 +324,19 @@ const make = Effect.gen(function*() {
      childProcess: NodeChildProcess.ChildProcess,
      signal: NodeJS.Signals
    ) => {
@@ -198,13 +202,17 @@ index dc53bafb7a2619368b63e9d18965a4426bb2e32f..b2146577977dd8903982b694dbdcd7cb
 +      return Effect.void
 +    }
      if (globalThis.process.platform === "win32") {
++      // A completed Windows leader has no process group to signal; its PID can be reused.
++      if (childProcess.exitCode !== null || childProcess.signalCode !== null) {
++        return Effect.void
++      }
        return Effect.callback<void, PlatformError.PlatformError>((resume) => {
 -        NodeChildProcess.exec(`taskkill /pid ${childProcess.pid} /T /F`, (error) => {
 +        NodeChildProcess.execFile(`${globalThis.process.env.SystemRoot ?? "C:\\Windows"}\\System32\\taskkill.exe`, ["/pid", String(pid), "/T", "/F"], { windowsHide: true }, (error) => {
            if (error) {
              resume(Effect.fail(toPlatformError("kill", toError(error), command)))
            } else {
-@@ -337,7 +343,7 @@ const make = Effect.gen(function*() {
+@@ -337,7 +347,7 @@ const make = Effect.gen(function*() {
      }
      return Effect.try({
        try: () => {
@@ -213,7 +221,7 @@ index dc53bafb7a2619368b63e9d18965a4426bb2e32f..b2146577977dd8903982b694dbdcd7cb
        },
        catch: (error) => toPlatformError("kill", toError(error), command)
      })
-@@ -430,7 +436,17 @@ const make = Effect.gen(function*() {
+@@ -430,7 +440,17 @@ const make = Effect.gen(function*() {
              env,
              stdio,
              detached: cmd.options.detached ?? process.platform !== "win32",

@@ -31,6 +31,15 @@ Use `prepareProcess` from `@glade/shared/platform/platformProcess` when a launch
 - fail-fast `ExecutableNotFoundError` when `requireExecutable` is enabled (Node runtime only);
 - qualified relative commands such as `./bin/tool` resolved against the launch `cwd`, exactly as the child would see them.
 
+Git for Windows launchers in `cmd` or `bin` are replaced by the installed native
+binary in `ucrt64`, `clangarm64`, `mingw64` or `mingw32`, in that order. Launches
+with `MSYSTEM` set retain the launcher so Git Bash hooks and helpers keep their
+PATH setup. Unknown layouts and package-manager shims are unchanged. Bare-command
+resolution caches the selected binary by PATH, PATHEXT, working directory and
+whether MSYSTEM is set; removing a cached binary triggers a new lookup. Explicit
+paths are resolved each time. This adapts
+[t3code #17707](https://github.com/pingdotgg/t3code/pull/17707).
+
 Node callers should normally use `spawnProcess`, `spawnProcessSync`, or `execProcessFile` from `@glade/shared/platform/processRuntime`. Effect callers use `makeEffectProcessCommand` from `apps/server/src/platform/effectProcessRuntime.ts`; it has no `requireExecutable` because the Effect spawner is injectable and a missing executable surfaces as the spawner's own ENOENT error.
 
 Bounded one-shot helpers (`processRunner`, provider probes) stop their child with `signalOwnedChildProcess`: Node's direct `child.kill` on POSIX, `taskkill /T` through the tree boundary on Windows where a `.cmd` shim hides the real command behind cmd.exe.

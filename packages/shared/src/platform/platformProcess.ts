@@ -72,17 +72,50 @@ function explicitPowerShellScript(
 // resolved file still exists.
 const resolvedWindowsCommands = new Map<string, string>();
 
+function preferGitForWindowsBinary(
+  executable: string,
+  env: NodeJS.ProcessEnv,
+  cwd: string | undefined,
+): string {
+  // Git's real binary sets up hook/helper PATH entries only when MSYSTEM is unset.
+  if (env.MSYSTEM || win32.basename(executable).toLowerCase() !== "git.exe") return executable;
+  const directory = win32.dirname(win32.resolve(cwd ?? process.cwd(), executable));
+  const folder = win32.basename(directory).toLowerCase();
+  if (folder !== "cmd" && folder !== "bin") return executable;
+  const root = win32.dirname(directory);
+  // Git 2.56 moved x64 builds to ucrt64; portable and ARM builds use other layouts.
+  for (const build of ["ucrt64", "clangarm64", "mingw64", "mingw32"]) {
+    const candidate = win32.join(root, build, "bin", "git.exe");
+    if (isFile(candidate)) return candidate;
+  }
+  return executable;
+}
+
 function resolveNativeExecutable(
   command: string,
   platform: NodeJS.Platform,
   env: NodeJS.ProcessEnv,
   cwd: string | undefined,
 ): string | null {
-  const lookup = () =>
-    resolveExecutable(command, { platform, env, ...(cwd !== undefined ? { cwd } : {}) });
+  const lookup = () => {
+    const resolved = resolveExecutable(command, {
+      platform,
+      env,
+      ...(cwd !== undefined ? { cwd } : {}),
+    });
+    return platform === "win32" && resolved !== null
+      ? preferGitForWindowsBinary(resolved, env, cwd)
+      : resolved;
+  };
   if (platform !== "win32" || hasPathSeparator(command)) return lookup();
 
-  const key = [command, env.PATH ?? env.Path ?? env.path, env.PATHEXT].join("\0");
+  const key = [
+    command,
+    env.PATH ?? env.Path ?? env.path,
+    env.PATHEXT,
+    env.MSYSTEM ? "msystem" : "",
+    win32.resolve(cwd ?? process.cwd()),
+  ].join("\0");
   const cached = resolvedWindowsCommands.get(key);
   if (cached !== undefined && isFile(cached)) return cached;
   const resolved = lookup();

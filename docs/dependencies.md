@@ -23,7 +23,11 @@ unsafe process IDs before signaling a group and forwards `windowsHide` and
 `windowsVerbatimArguments` to Node's child-process API. Removing it would change
 process safety and Windows launch behavior. Its source and executable output
 are both patched. Windows group cleanup invokes the system `taskkill.exe` directly
-with `windowsHide: true`, without an intermediate command shell.
+with `windowsHide: true`, without an intermediate command shell. It skips cleanup
+after a Windows child exits, avoiding redundant processes and signaling a reused
+PID. POSIX group cleanup still runs when its leader exits because descendants can
+remain in that group. This carries the Windows optimization from
+[t3code #16007](https://github.com/pingdotgg/t3code/pull/16007).
 
 The same patch also fixes how the Node sink owns writable completion and errors.
 It backs child-process stdin, standard output and Node stream sinks. The

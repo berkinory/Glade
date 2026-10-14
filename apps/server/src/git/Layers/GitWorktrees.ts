@@ -24,6 +24,23 @@ const makeGitWorktrees = Effect.gen(function* () {
   const path = yield* Path.Path;
   const { worktreesDir } = yield* ServerConfig;
   const { executeGit } = yield* GitCommands;
+  const checkoutWorkerArgs = (cwd: string) =>
+    executeGit("GitCore.checkoutWorkers", cwd, ["config", "--get", "checkout.workers"], {
+      allowNonZeroExit: true,
+    }).pipe(
+      Effect.flatMap((result) =>
+        result.code === 0 || result.code === 1
+          ? Effect.succeed(["-c", `checkout.workers=${result.stdout.trim() || "0"}`])
+          : Effect.fail(
+              createGitCommandError(
+                "GitCore.checkoutWorkers",
+                cwd,
+                ["config", "--get", "checkout.workers"],
+                "Could not read checkout worker configuration.",
+              ),
+            ),
+      ),
+    );
   const buildGeneratedDetachedWorktreePath = () =>
     Effect.gen(function* () {
       for (let attempt = 0; attempt < 8; attempt += 1) {
@@ -53,9 +70,14 @@ const makeGitWorktrees = Effect.gen(function* () {
         ? ["worktree", "add", "-b", input.newBranch, worktreePath, input.branch]
         : ["worktree", "add", worktreePath, input.branch];
 
-      yield* executeGit("GitCore.createWorktree", input.cwd, args, {
-        fallbackErrorMessage: "git worktree add failed",
-      });
+      yield* executeGit(
+        "GitCore.createWorktree",
+        input.cwd,
+        [...(yield* checkoutWorkerArgs(input.cwd)), ...args],
+        {
+          fallbackErrorMessage: "git worktree add failed",
+        },
+      );
 
       return {
         worktree: {
@@ -537,6 +559,7 @@ const makeGitWorktrees = Effect.gen(function* () {
           ),
         ));
 
+      const workerArgs = yield* checkoutWorkerArgs(input.cwd);
       if (newBranch) {
         yield* onPhase("branch");
         yield* executeGit("GitCore.createDetachedWorktree.createBranch", input.cwd, [
@@ -546,13 +569,12 @@ const makeGitWorktrees = Effect.gen(function* () {
         ]);
       }
       yield* onPhase("worktree");
-      const addWorktree = executeGit(
-        "GitCore.createDetachedWorktree",
-        input.cwd,
-        newBranch
+      const addWorktree = executeGit("GitCore.createDetachedWorktree", input.cwd, [
+        ...workerArgs,
+        ...(newBranch
           ? ["worktree", "add", worktreePath, newBranch]
-          : ["worktree", "add", "--detach", worktreePath, resolvedRef],
-      );
+          : ["worktree", "add", "--detach", worktreePath, resolvedRef]),
+      ]);
       yield* newBranch
         ? addWorktree.pipe(
             Effect.onError(() =>
