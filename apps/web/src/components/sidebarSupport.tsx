@@ -4,12 +4,11 @@ import {
   HelpCircleIcon,
   GiftIcon,
   KeyboardIcon,
-  NotebookIcon,
   GitForkIcon,
   ListFilterIcon,
 } from "~/lib/icons";
 import type { IconComponent } from "~/lib/iconComponent";
-import { useEffect, lazy, useState, type ComponentType, type ReactNode } from "react";
+import { lazy, useState, type ComponentType, type ReactNode } from "react";
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { ProjectId, ThreadId } from "@glade/contracts/core/baseSchemas";
@@ -20,19 +19,18 @@ import { shortcutLabelForCommand, threadJumpCommandForIndex } from "../keybindin
 import { onNativeApiServerCapabilitiesChange, readNativeApiServerCapability } from "../nativeApi";
 import { resolveThreadEnvironmentPresentation } from "../lib/threadEnvironment";
 import { type Thread } from "../types";
-import { SidebarIconButton, sidebarIconButtonSlotClass } from "./SidebarIconButton";
+import { SidebarIconButton } from "./SidebarIconButton";
 import { SidebarGlyph, sidebarGlyphClass } from "./sidebarGlyphs";
 import { type SidebarThreadTerminalStatus } from "./SidebarThreadRowContent";
 import ReleaseHistoryDialog from "./ReleaseHistoryDialog";
 import { Menu, MenuGroup, MenuItem, MenuRadioGroup, MenuRadioItem, MenuTrigger } from "./ui/menu";
-import { Tooltip, TooltipPopup, TooltipTrigger } from "./ui/tooltip";
 import {
   DEBUG_FEATURE_FLAGS_MENU_STORAGE_KEY,
   type SidebarActionBadge,
   shouldShowDebugFeatureFlagsMenu,
 } from "./Sidebar.logic.statusTypes";
 import { cn } from "~/lib/utils";
-import { sidebarHoverRevealHideClassName, SIDEBAR_ROW_FOCUS_CLASS_NAME } from "../sidebarRowStyles";
+import { sidebarHoverRevealHideClassName } from "../sidebarRowStyles";
 import { ComposerPickerMenuPopup } from "./chat/ComposerPickerMenuPopup";
 import {
   SIDEBAR_CONTEXT_MENU_ICON_CLASS_NAME,
@@ -377,104 +375,5 @@ export function SortableProjectItem({
         setActivatorNodeRef,
       })}
     </li>
-  );
-}
-const ACTIVITY_ONBOARDING_STORAGE_KEY = "glade:activity-onboarding:v1";
-const ACTIVITY_ONBOARDING_DURATION_MS = 8_000;
-function shouldShowActivityOnboarding(): boolean {
-  if (typeof window === "undefined") return false;
-  try {
-    return window.localStorage.getItem(ACTIVITY_ONBOARDING_STORAGE_KEY) !== "seen";
-  } catch {
-    return true;
-  }
-}
-export function SidebarActivityButton({
-  active,
-  showUnreadDot,
-  shortcutLabel,
-  onClick,
-}: {
-  active: boolean;
-  showUnreadDot: boolean;
-  shortcutLabel: string | null;
-  onClick: () => void;
-}) {
-  const [onboardingVisible, setOnboardingVisible] = useState(shouldShowActivityOnboarding);
-  const [tooltipOpen, setTooltipOpen] = useState(onboardingVisible);
-  useEffect(() => {
-    if (!onboardingVisible) return;
-    try {
-      window.localStorage.setItem(ACTIVITY_ONBOARDING_STORAGE_KEY, "seen");
-    } catch {}
-    const timeout = window.setTimeout(() => {
-      setOnboardingVisible(false);
-      setTooltipOpen(false);
-    }, ACTIVITY_ONBOARDING_DURATION_MS);
-    return () => window.clearTimeout(timeout);
-  }, [onboardingVisible]);
-  const dismissOnboarding = () => {
-    setOnboardingVisible(false);
-    setTooltipOpen(false);
-  };
-  return (
-    <Tooltip
-      open={tooltipOpen}
-      onOpenChange={(open) => {
-        if (onboardingVisible && !open) return;
-        setTooltipOpen(open);
-      }}
-    >
-      <TooltipTrigger
-        render={
-          <button
-            type="button"
-            aria-label={active ? "Switch to classic view" : "Switch to activity view"}
-            aria-pressed={active}
-            onClick={() => {
-              dismissOnboarding();
-              onClick();
-            }}
-            className={cn(
-              "relative inline-flex shrink-0 cursor-pointer items-center justify-center transition-colors",
-              sidebarIconButtonSlotClass("header"),
-              SIDEBAR_ROW_FOCUS_CLASS_NAME,
-              active
-                ? "bg-[color-mix(in_srgb,var(--color-text-accent)_15%,transparent)] text-[var(--color-text-accent)]"
-                : "sidebar-icon-button text-muted-foreground/75 hover:text-foreground",
-            )}
-          />
-        }
-      >
-        <NotebookIcon className={sidebarGlyphClass("chrome")} />
-        {showUnreadDot ? (
-          <span
-            aria-hidden
-            className="absolute top-0.5 right-0.5 size-1.5 rounded-full bg-[var(--color-text-accent)] ring-2 ring-[var(--sidebar-background,var(--background))]"
-          />
-        ) : null}
-      </TooltipTrigger>
-      <TooltipPopup
-        side={onboardingVisible ? "right" : "bottom"}
-        align={onboardingVisible ? "start" : "center"}
-        sideOffset={onboardingVisible ? 8 : 4}
-        className={cn(
-          onboardingVisible &&
-            "max-w-64 border-[var(--color-text-accent)] bg-[var(--color-text-accent)] text-white shadow-lg",
-        )}
-        viewportClassName={cn(onboardingVisible && "px-3 py-2.5")}
-      >
-        {onboardingVisible ? (
-          <div className="text-left">
-            <div className="text-ui leading-snug font-semibold">Activity</div>
-            <div className="mt-0.5 text-ui-sm leading-4 text-white/85">
-              See running tasks, completed work, and anything that needs your attention.
-            </div>
-          </div>
-        ) : (
-          `Activity view${shortcutLabel ? ` (${shortcutLabel})` : ""}`
-        )}
-      </TooltipPopup>
-    </Tooltip>
   );
 }

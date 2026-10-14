@@ -18,11 +18,7 @@ const SLOT_SIZE = {
   lg: "size-7",
 } as const;
 
-export type SidebarIconButtonSize = keyof typeof SLOT_SIZE;
-
-export function sidebarIconButtonSlotClass(size: SidebarIconButtonSize): string {
-  return SLOT_SIZE[size];
-}
+type SidebarIconButtonSize = keyof typeof SLOT_SIZE;
 
 type TooltipSide = "top" | "right" | "bottom" | "left";
 

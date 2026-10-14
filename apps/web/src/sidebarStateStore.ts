@@ -26,6 +26,8 @@ const PINNED_PROJECTS_OPTIONS = { maxCount: MAX_PINNED_PROJECTS } as const;
 const EMPTY_SELECTION = new Set<ThreadId>();
 
 interface SidebarState {
+  searchPaletteOpen: boolean;
+  setSearchPaletteOpen: (update: boolean | ((current: boolean) => boolean)) => void;
   chatSectionExpanded: boolean;
   threadListExtraPagesByProjectCwd: ReadonlyMap<string, number>;
   dismissedThreadStatusKeyByThreadId: Record<string, string>;
@@ -161,6 +163,11 @@ export const useSidebarStateStore = create<SidebarState>((set, get) => ({
     }),
   setActivityScope: (activityScope) => commitSidebarUi({ activityScope }),
   setActivityViewEnabled: (activityViewEnabled) => commitSidebarUi({ activityViewEnabled }),
+  searchPaletteOpen: false,
+  setSearchPaletteOpen: (update) =>
+    set((state) => ({
+      searchPaletteOpen: typeof update === "function" ? update(state.searchPaletteOpen) : update,
+    })),
   createProjectDialogOpen: false,
   setCreateProjectDialogOpen: (createProjectDialogOpen) => set({ createProjectDialogOpen }),
   pinnedProjectIds: readPinnedIds<ProjectId>(

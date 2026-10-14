@@ -1,3 +1,6 @@
+import { SearchIcon } from "~/lib/icons";
+import { useSidebarStateStore } from "~/sidebarStateStore";
+import { SidebarIconButton } from "./SidebarIconButton";
 import { AppNavigationButtons } from "./AppNavigationButtons";
 import { SidebarTrigger, useSidebar } from "./ui/sidebar";
 import { cn } from "~/lib/utils";
@@ -7,6 +10,7 @@ import { cn } from "~/lib/utils";
 // spacing. The wrapper layout (hidden/md:flex, ml-auto, …) varies per host, so it is passed in via
 // `className`; the inner controls stay constant.
 export function SidebarLeadingControls({ className }: { className?: string }) {
+  const setSearchPaletteOpen = useSidebarStateStore((state) => state.setSearchPaletteOpen);
   return (
     <div className={cn("flex shrink-0 items-center gap-0.5", className)}>
       <SidebarTrigger
@@ -14,6 +18,14 @@ export function SidebarLeadingControls({ className }: { className?: string }) {
         aria-label="Toggle chat sidebar"
       />
       <AppNavigationButtons className="ms-0" />
+      <SidebarIconButton
+        icon={SearchIcon}
+        label="Search"
+        size="header"
+        tooltip="Search"
+        tooltipSide="bottom"
+        onClick={() => setSearchPaletteOpen(true)}
+      />
     </div>
   );
 }

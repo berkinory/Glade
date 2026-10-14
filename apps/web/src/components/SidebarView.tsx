@@ -1,7 +1,6 @@
 import {
   PlusIcon,
   SquarePenIcon,
-  SearchIcon,
   SettingsIcon,
   Home01Icon,
   TriangleAlertIcon,
@@ -9,9 +8,9 @@ import {
   CollapseIcon,
 } from "~/lib/icons";
 import { SidebarUsageIndicators } from "./SidebarUsageIndicators";
+import { SidebarArtwork } from "./SidebarArtwork";
 import { useStore } from "../store";
 import { useSidebarStateStore } from "../sidebarStateStore";
-import { SidebarTrigger } from "./ui/sidebar";
 import { normalizeSidebarProjectThreadListCwd } from "./Sidebar.uiState";
 import { SidebarLeadingControls } from "./SidebarHeaderNavigationControls";
 import { isMacNavigatorPlatform } from "../lib/utils";
@@ -68,7 +67,6 @@ import {
   ProjectSortMenu,
   SidebarHelpMenu,
   SortableProjectItem,
-  SidebarActivityButton,
 } from "./sidebarSupport";
 export function SidebarView({ context }: { context: ReturnType<typeof useSidebarPanelEffects> }) {
   const {
@@ -85,16 +83,11 @@ export function SidebarView({ context }: { context: ReturnType<typeof useSidebar
     updateSettings,
     activeSettingsSection,
     newChatShortcutLabel,
-    searchShortcutLabel,
-    activityShortcutLabel,
     focusedProjectId,
-    setSearchPaletteOpen,
     handleActivityVisibleThreadIdsChange,
-    setActivityViewEnabledSmoothly,
     visualActiveSidebarThreadId,
     projectById,
     visibleSidebarActivityThreads,
-    hasUnreadActivity,
     resolveThreadStatusForSidebar,
     pinnedThreadIdSet,
     toggleThreadPinned,
@@ -194,12 +187,14 @@ export function SidebarView({ context }: { context: ReturnType<typeof useSidebar
     setThreadListExtraPagesByProjectCwd,
   ]);
   const isMacDesktop = isMacNavigatorPlatform();
-  const titlebarControls = <SidebarLeadingControls className="hidden md:flex" />;
-  const headerControls = <SidebarLeadingControls className="ml-auto hidden md:flex" />;
-  const wordmark = (
-    <div className="flex w-full items-center gap-1.5">
-      <SidebarTrigger className="shrink-0 text-muted-foreground/75 hover:text-foreground md:hidden" />
-      {headerControls}
+  const headerControls = (
+    <div
+      className={cn(
+        "flex shrink-0 items-center gap-0.5 rounded-lg bg-background/60 backdrop-blur-sm [&_button]:size-6 [&_svg]:text-foreground",
+        !isElectron && "ml-auto",
+      )}
+    >
+      <SidebarLeadingControls />
     </div>
   );
   const sidebarHelpMenuProps = {
@@ -219,22 +214,32 @@ export function SidebarView({ context }: { context: ReturnType<typeof useSidebar
       : "threads";
   return (
     <>
+      <SidebarArtwork />
       {isElectron ? (
         <>
           <SidebarHeader
             className={cn(
-              "drag-region flex-row items-center gap-2 py-0 ps-4 pe-3 font-system-ui",
+              "drag-region flex-row items-center gap-2 py-0 ps-4 pe-3 font-system-ui [&_svg]:text-foreground/85",
               CHAT_SURFACE_HEADER_HEIGHT_CLASS,
               isMacDesktop && DESKTOP_TOP_BAR_TRAFFIC_LIGHT_GUTTER_CLASS,
             )}
           >
-            {titlebarControls}
+            {headerControls}
           </SidebarHeader>
         </>
       ) : (
-        <SidebarHeader className="gap-3 px-3 py-2.5 font-system-ui sm:gap-2.5 sm:px-4 sm:py-3 md:pe-2.5">
-          {wordmark}
+        <SidebarHeader className="h-[46px] shrink-0 flex-row items-center px-3 py-0 font-system-ui sm:px-4 md:pe-2.5 [&_svg]:text-foreground/85">
+          {headerControls}
         </SidebarHeader>
+      )}
+
+      {!isOnSettings && (
+        <div className="flex h-[82px] shrink-0 items-end px-4 pb-2">
+          <h2 className="flex h-8 min-w-0 items-center gap-1.5">
+            <span className="font-display min-w-0 truncate text-[17px] text-foreground">Glade</span>
+            <GladeLogo aria-hidden className="size-4 text-foreground" />
+          </h2>
+        </div>
       )}
 
       <SidebarContent className="gap-0 font-system-ui">
@@ -282,32 +287,6 @@ export function SidebarView({ context }: { context: ReturnType<typeof useSidebar
           </SidebarGroup>
         ) : (
           <>
-            <div className={cn("flex items-center gap-1 pt-0 pb-1 pr-2.5 pl-1.5")}>
-              <h2 className="flex h-8 min-w-0 items-center gap-1.5 px-2.5">
-                <span className="font-display min-w-0 truncate text-[17px] text-foreground">
-                  Glade
-                </span>
-                <GladeLogo aria-hidden className="size-4 text-foreground" />
-              </h2>
-              <div className="ml-auto flex items-center gap-1.5">
-                <SidebarIconButton
-                  icon={SearchIcon}
-                  label="Search"
-                  size="header"
-                  tooltip={searchShortcutLabel ? `Search (${searchShortcutLabel})` : "Search"}
-                  tooltipSide="bottom"
-                  onClick={() => {
-                    setSearchPaletteOpen(true);
-                  }}
-                />
-                <SidebarActivityButton
-                  active={activityViewEnabled}
-                  showUnreadDot={hasUnreadActivity}
-                  shortcutLabel={activityShortcutLabel}
-                  onClick={() => setActivityViewEnabledSmoothly(!activityViewEnabled)}
-                />
-              </div>
-            </div>
             {}
             <div key={sidebarSurfaceKey} className="sidebar-surface-enter">
               {}

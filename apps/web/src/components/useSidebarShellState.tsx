@@ -247,7 +247,8 @@ export function useSidebarShellState() {
 
   const [createProjectSpaceId, setCreateProjectSpaceId] = useState<SpaceId | null | undefined>();
 
-  const [searchPaletteOpen, setSearchPaletteOpen] = useState(false);
+  const searchPaletteOpen = useSidebarStateStore((state) => state.searchPaletteOpen);
+  const setSearchPaletteOpen = useSidebarStateStore((state) => state.setSearchPaletteOpen);
 
   const openFeedbackDialogWithContext = useFeedbackDialogStore((state) => state.openDialog);
   // Menu rows pass their click event; the sidebar has no thread context to add.
