@@ -176,7 +176,6 @@ export const ProjectPicker = memo(function ProjectPicker({
   const [isLoadingDirectories, setIsLoadingDirectories] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [directoryEntries, setDirectoryEntries] = useState<readonly ProjectDirectoryEntry[]>([]);
-  const [resetTriggerFocused, setResetTriggerFocused] = useState(false);
   const resetInFlightRef = useRef(false);
   const isProjectSelectionMode = selectionMode === "project";
   const activeFolderOptions = (() => {
@@ -453,8 +452,6 @@ export const ProjectPicker = memo(function ProjectPicker({
     }
   };
   const shouldShowResetToHome = showResetToHome || isProjectSelectionMode;
-  const canResetFromTrigger =
-    renderTrigger === undefined && selectedFolderOption !== null && onResetToHome !== undefined;
   const addProjectLabel =
     addActionLabel ?? (isProjectSelectionMode ? "New project" : "Add new project");
   const loadingAddProjectLabel = isProjectSelectionMode
@@ -525,68 +522,20 @@ export const ProjectPicker = memo(function ProjectPicker({
       {renderTrigger ? (
         <ComboboxTrigger render={renderTrigger} />
       ) : (
-        <div className="group/project-picker-trigger relative inline-flex min-w-0 max-w-full">
-          <ComboboxTrigger
-            render={
-              <PickerTriggerButton
-                data-testid={
-                  isProjectSelectionMode ? "project-picker-trigger" : "workspace-picker-trigger"
-                }
-                icon={
-                  <FolderIcon
-                    className={cn(
-                      "size-3.5 transition-opacity duration-(--ui-motion-default-duration) ease-out motion-reduce:transition-none",
-                      canResetFromTrigger && "group-hover/project-picker-trigger:opacity-0",
-                      resetTriggerFocused && "opacity-0",
-                    )}
-                  />
-                }
-                label={triggerLabel}
-                hideChevron
-                {...(triggerVariant
-                  ? {
-                      variant: triggerVariant,
-                    }
-                  : {})}
-                {...(triggerClassName
-                  ? {
-                      className: triggerClassName,
-                    }
-                  : {})}
-              />
-            }
-          />
-          {canResetFromTrigger ? (
-            <button
-              type="button"
-              data-testid="project-picker-reset-trigger"
-              aria-label={resetActionLabel}
-              title={resetActionLabel}
-              className={cn(
-                "group/reset-project pointer-events-none absolute top-1/2 left-1.5 z-10 inline-flex size-5 -translate-y-1/2 cursor-pointer items-center justify-center sm:left-2",
-                "opacity-0 transition-opacity duration-(--ui-motion-default-duration) ease-out",
-                "focus-visible:pointer-events-auto focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/70",
-                "group-hover/project-picker-trigger:pointer-events-auto group-hover/project-picker-trigger:opacity-100",
-                "motion-reduce:transition-none",
-              )}
-              onMouseDown={(event) => {
-                event.preventDefault();
-                event.stopPropagation();
-              }}
-              onFocus={() => setResetTriggerFocused(true)}
-              onBlur={() => setResetTriggerFocused(false)}
-              onClick={(event) => {
-                event.preventDefault();
-                event.stopPropagation();
-                handleResetToHome();
-              }}
-            >
-              <span className="inline-flex size-3.5 items-center justify-center rounded-full bg-muted-foreground/58 text-background transition-colors duration-(--ui-motion-default-duration) group-hover/reset-project:bg-muted-foreground/75 motion-reduce:transition-none">
-                <XIcon className="size-2" aria-hidden />
-              </span>
-            </button>
-          ) : null}
-        </div>
+        <ComboboxTrigger
+          render={
+            <PickerTriggerButton
+              data-testid={
+                isProjectSelectionMode ? "project-picker-trigger" : "workspace-picker-trigger"
+              }
+              icon={<FolderIcon className="size-3.5" />}
+              label={triggerLabel}
+              hideChevron
+              {...(triggerVariant ? { variant: triggerVariant } : {})}
+              {...(triggerClassName ? { className: triggerClassName } : {})}
+            />
+          }
+        />
       )}
       {}
       <ComboboxPopup align={align} side={side} surface="composer" className="min-w-60 p-0">
@@ -616,9 +565,11 @@ export const ProjectPicker = memo(function ProjectPicker({
                   onClick={() => void handleAddNewProject()}
                   disabled={isPicking}
                 >
-                  <PlusIcon className={PICKER_PANEL_ROW_ICON_CLASS_NAME} />
-                  <span className="truncate">
-                    {isPicking ? loadingAddProjectLabel : addProjectLabel}
+                  <span className="flex min-w-0 items-center gap-2 leading-snug">
+                    <PlusIcon className={PICKER_PANEL_ROW_ICON_CLASS_NAME} />
+                    <span className="truncate">
+                      {isPicking ? loadingAddProjectLabel : addProjectLabel}
+                    </span>
                   </span>
                 </button>
               ) : null}
@@ -628,8 +579,10 @@ export const ProjectPicker = memo(function ProjectPicker({
                   className={PICKER_PANEL_ACTION_ROW_CLASS_NAME}
                   onClick={handleResetToHome}
                 >
-                  <XIcon className={PICKER_PANEL_ROW_ICON_CLASS_NAME} />
-                  <span className="truncate">{resetActionLabel}</span>
+                  <span className="flex min-w-0 items-center gap-2 leading-snug">
+                    <XIcon className={PICKER_PANEL_ROW_ICON_CLASS_NAME} />
+                    <span className="truncate">{resetActionLabel}</span>
+                  </span>
                 </button>
               ) : null}
               {errorMessage ? (

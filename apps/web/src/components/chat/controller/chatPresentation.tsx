@@ -5,7 +5,7 @@ import { ComposerStackedPanel } from "~/components/chat/ComposerStackedPanel";
 import { ComposerExtrasTrigger } from "~/components/chat/ComposerExtrasTrigger";
 import { ProjectPicker } from "~/components/chat/ProjectPicker";
 import {
-  COMPOSER_FOLDER_PICKER_CAPSULE_HOVER_CLASS_NAME,
+  COMPOSER_TOOLBAR_CAPSULE_HOVER_CLASS_NAME,
   COMPOSER_TOOLBAR_TRIGGER_TEXT_CLASS_NAME,
 } from "~/components/chat/composerPickerStyles";
 import {
@@ -226,7 +226,7 @@ export function createChatPresentation(
           onSelectEnvironment={handleSelectEnvironmentForEmptyDraft}
           triggerClassName={cn(
             "h-7 px-2 py-1",
-            COMPOSER_FOLDER_PICKER_CAPSULE_HOVER_CLASS_NAME,
+            COMPOSER_TOOLBAR_CAPSULE_HOVER_CLASS_NAME,
             COMPOSER_TOOLBAR_TRIGGER_TEXT_CLASS_NAME,
           )}
         />
@@ -238,7 +238,7 @@ export function createChatPresentation(
           triggerVariant="ghost"
           triggerClassName={cn(
             "h-7 px-2 py-1",
-            COMPOSER_FOLDER_PICKER_CAPSULE_HOVER_CLASS_NAME,
+            COMPOSER_TOOLBAR_CAPSULE_HOVER_CLASS_NAME,
             COMPOSER_TOOLBAR_TRIGGER_TEXT_CLASS_NAME,
           )}
           showResetToHome={Boolean(resolvedThreadWorktreePath)}
@@ -255,7 +255,7 @@ export function createChatPresentation(
           triggerVariant="ghost"
           triggerClassName={cn(
             "h-7 px-2 py-1",
-            COMPOSER_FOLDER_PICKER_CAPSULE_HOVER_CLASS_NAME,
+            COMPOSER_TOOLBAR_CAPSULE_HOVER_CLASS_NAME,
             COMPOSER_TOOLBAR_TRIGGER_TEXT_CLASS_NAME,
           )}
           selectionMode="project"

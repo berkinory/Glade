@@ -6,10 +6,8 @@ export const COMPOSER_SURFACE_SHADOW_CLASS_NAME =
 export const COMPOSER_PICKER_TRIGGER_TEXT_CLASS_NAME =
   "text-ui-sm text-[var(--color-text-foreground-secondary)] sm:text-ui-sm font-normal hover:text-[var(--color-text-foreground)] data-pressed:text-[var(--color-text-foreground)]";
 
-const COMPOSER_TOOLBAR_CAPSULE_HOVER_CLASS_NAME =
+export const COMPOSER_TOOLBAR_CAPSULE_HOVER_CLASS_NAME =
   "rounded-full transition-colors hover:bg-[var(--color-background-button-secondary-hover)]";
-
-export const COMPOSER_FOLDER_PICKER_CAPSULE_HOVER_CLASS_NAME = `${COMPOSER_TOOLBAR_CAPSULE_HOVER_CLASS_NAME} group-hover/project-picker-trigger:bg-[var(--color-background-button-secondary-hover)]`;
 
 export const COMPOSER_TOOLBAR_TRIGGER_TEXT_CLASS_NAME =
   "text-ui-sm text-[var(--color-text-foreground)] sm:text-ui-sm font-normal";
