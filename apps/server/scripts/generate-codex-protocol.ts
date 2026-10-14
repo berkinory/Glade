@@ -46,6 +46,8 @@ const lifecycleResponses = [
   "ReviewStartResponse",
   "SkillsExtraRootsSetResponse",
   "ThreadCompactStartResponse",
+  "ThreadBackgroundTerminalsCleanResponse",
+  "ThreadBackgroundTerminalsListResponse",
   "ThreadForkResponse",
   "ThreadReadResponse",
   "ThreadResumeResponse",

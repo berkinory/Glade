@@ -1,3 +1,4 @@
+import { closeAcpSession } from "./acpSessionShutdown";
 import { randomUUID } from "node:crypto";
 import type { ChildProcessWithoutNullStreams } from "node:child_process";
 
@@ -139,9 +140,7 @@ export const makeAcpAdapter = (dependencies: AcpAdapterDependencies) =>
       ? { teardownProcessTree: dependencies.teardownProcessTree }
       : {};
 
-    // Sessions carry their own working directory, so the process key is what the spawn depends on:
-    // the executable, the runtime mode's environment and the system prompt. Chats, titles, Git
-    // writing and model discovery with the same key share one process instead of spawning their own.
+    // Auxiliary work cannot invalidate a foreground chat's process during cancellation.
     const leaseConnection = (input: {
       readonly cwd: string;
       readonly runtimeMode: RuntimeMode;
@@ -149,9 +148,11 @@ export const makeAcpAdapter = (dependencies: AcpAdapterDependencies) =>
       readonly systemPrompt?: string;
       // A chat whose MCP servers would leak into other sessions of the process gets its own.
       readonly privateTo?: ThreadId;
+      readonly purpose?: "chat" | "auxiliary";
     }) =>
       connections.lease(
         JSON.stringify([
+          input.purpose ?? "auxiliary",
           input.binaryPath ?? null,
           profile.env?.({ runtimeMode: input.runtimeMode }) ?? {},
           input.systemPrompt ?? null,
@@ -207,23 +208,22 @@ export const makeAcpAdapter = (dependencies: AcpAdapterDependencies) =>
 
     // Without a reason the chat never announced a session, so it ends silently.
     const retire = (threadId: ThreadId, thread: AcpThread, reason: string | undefined) =>
-      Effect.promise(async () => {
-        if (threads.get(threadId) === thread) threads.delete(threadId);
-        thread.unwatchExit();
-        thread.session.detach();
-        thread.gatewayLease?.release();
-        // The process may host other chats, so only this session ends unless it was the last.
-        if (thread.connection.initialize.agentCapabilities?.sessionCapabilities?.close) {
-          await thread.connection.agent
-            .closeSession({ sessionId: thread.session.sessionId })
-            .catch(() => undefined);
-        }
-        await thread.releaseConnection().catch(() => undefined);
-        if (reason === undefined) return;
-        emit(threadId, thread.lifecycleGeneration, {
-          type: "session.exited",
-          payload: { reason, exitKind: "graceful" },
-        });
+      Effect.tryPromise({
+        try: async () => {
+          thread.stopping = true;
+          thread.session.detach();
+          thread.gatewayLease?.release();
+          await closeAcpSession(thread.connection, thread.session.sessionId);
+          await thread.releaseConnection();
+          thread.unwatchExit();
+          if (threads.get(threadId) === thread) threads.delete(threadId);
+          if (reason === undefined) return;
+          emit(threadId, thread.lifecycleGeneration, {
+            type: "session.exited",
+            payload: { reason, exitKind: "graceful" },
+          });
+        },
+        catch: (cause) => requestError("session/close", cause),
       });
 
     const mcpServers = (
@@ -317,6 +317,7 @@ export const makeAcpAdapter = (dependencies: AcpAdapterDependencies) =>
         const { connection, release: releaseConnection } = yield* Effect.tryPromise({
           try: () =>
             leaseConnection({
+              purpose: "chat",
               cwd,
               runtimeMode: input.runtimeMode,
               binaryPath,
@@ -653,7 +654,15 @@ export const makeAcpAdapter = (dependencies: AcpAdapterDependencies) =>
             Effect.tryPromise({
               try: () => thread.session.cancel(),
               catch: (cause) => requestError("session/cancel", cause),
-            }),
+            }).pipe(
+              Effect.timeoutOrElse({
+                duration: "5 seconds",
+                onTimeout: () =>
+                  Effect.fail(
+                    requestError("session/cancel", new Error("Agent cancellation timed out.")),
+                  ),
+              }),
+            ),
           ),
         ),
       respondToRequest: (threadId, requestId, decision) =>

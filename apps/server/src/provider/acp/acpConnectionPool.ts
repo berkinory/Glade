@@ -7,25 +7,39 @@ export interface AcpConnectionLease {
 
 interface PoolEntry {
   readonly connection: Promise<AcpConnection>;
+  ready?: AcpConnection;
   leases: number;
 }
 
-// Chats with the same executable and spawn environment share one agent process: ACP routes every
-// update by session id, and a second session costs the agent a few megabytes instead of a process.
-// The last lease closes the process; an exited process leaves the pool so the next lease respawns.
 export function makeAcpConnectionPool() {
-  const entries = new Map<string, PoolEntry>();
+  const entries = new Map<string, Set<PoolEntry>>();
   const forget = (key: string, entry: PoolEntry) => {
-    if (entries.get(key) === entry) entries.delete(key);
+    const group = entries.get(key);
+    group?.delete(entry);
+    if (group?.size === 0) entries.delete(key);
   };
 
   const lease = async (key: string, open: () => Promise<AcpConnection>) => {
-    let entry = entries.get(key);
+    // Without native session close, stopping one chat requires process-tree teardown.
+    let entry = [...(entries.get(key) ?? [])].find(
+      (candidate) =>
+        candidate.leases < 2 &&
+        candidate.ready?.isAvailable() &&
+        candidate.ready?.initialize.agentCapabilities?.sessionCapabilities?.close,
+    );
     if (!entry) {
+      for (const previous of entries.get(key) ?? []) {
+        if (previous.ready && !previous.ready.isAvailable()) await previous.ready.close();
+      }
       const created: PoolEntry = { connection: open(), leases: 0 };
-      entries.set(key, created);
+      let group = entries.get(key);
+      if (!group) entries.set(key, (group = new Set()));
+      group.add(created);
       created.connection.then(
-        (connection) => connection.onExit(() => forget(key, created)),
+        (connection) => {
+          created.ready = connection;
+          connection.onExit(() => forget(key, created));
+        },
         () => forget(key, created),
       );
       entry = created;
@@ -43,12 +57,13 @@ export function makeAcpConnectionPool() {
     return {
       connection,
       release: async () => {
-        if (released) return;
-        released = true;
-        leased.leases -= 1;
+        if (!released) {
+          released = true;
+          leased.leases -= 1;
+        }
         if (leased.leases > 0) return;
-        forget(key, leased);
         await connection.close();
+        forget(key, leased);
       },
     } satisfies AcpConnectionLease;
   };

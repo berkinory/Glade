@@ -14,6 +14,10 @@ type SyntheticCodexRequest = {
 };
 
 export function createSyntheticCodexAppServer(options?: {
+  readonly onRequest?: (
+    request: SyntheticCodexRequest,
+    respond: (result: unknown) => void,
+  ) => boolean;
   readonly forceFullHistoryResponse?: boolean;
   readonly injectItemsError?: { readonly code: number; readonly message: string };
 }) {
@@ -114,6 +118,7 @@ export function createSyntheticCodexAppServer(options?: {
         const respond = (result: unknown) => {
           queueMicrotask(() => stdout.write(`${JSON.stringify({ id: request.id, result })}\n`));
         };
+        if (options?.onRequest?.(request, respond)) continue;
         // Real Codex resolves config against its process cwd when a thread opens.
         if (request.method.startsWith("thread/") && input?.cwd && !existsSync(input.cwd)) {
           const error = { code: -32600, message: "failed to load configuration: No such file" };
@@ -155,7 +160,15 @@ export function createSyntheticCodexAppServer(options?: {
                 : `fresh-provider-thread-${nextThread - 1}`,
             ),
           );
-        } else if (request.method === "thread/unsubscribe" || request.method === "turn/interrupt") {
+        } else if (request.method === "thread/read") {
+          respond({ thread: threadOpenResponse(request, String(request.params?.threadId)).thread });
+        } else if (request.method === "thread/backgroundTerminals/list") {
+          respond({ data: [], nextCursor: null });
+        } else if (
+          request.method === "thread/backgroundTerminals/clean" ||
+          request.method === "thread/unsubscribe" ||
+          request.method === "turn/interrupt"
+        ) {
           respond({});
         } else if (request.method === "thread/inject_items") {
           const error = options?.injectItemsError;

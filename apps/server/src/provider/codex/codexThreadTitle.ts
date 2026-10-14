@@ -105,6 +105,13 @@ export async function generateCodexThreadTitle(
   const timeout = setTimeout(() => fail(new Error("Codex title generation timed out")), 45_000);
   try {
     signal.throwIfAborted();
+    await lease.initialize(async () => {
+      await request("initialize", {
+        clientInfo: { name: "glade_desktop", version: "0.1.0" },
+        capabilities: { experimentalApi: true },
+      });
+      await lease.writer.write({ method: "initialized" });
+    });
     await lease.openThread(async () => {
       const response = asObjectRecord(
         await request("thread/start", {

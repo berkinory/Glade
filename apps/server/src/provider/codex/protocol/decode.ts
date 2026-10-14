@@ -1,3 +1,5 @@
+import backgroundTerminalsCleanSchema from "./generated/schemas/v2/ThreadBackgroundTerminalsCleanResponse.json";
+import backgroundTerminalsListSchema from "./generated/schemas/v2/ThreadBackgroundTerminalsListResponse.json";
 import guardianReviewSchema from "./generated/schemas/v2/ItemGuardianApprovalReviewCompletedNotification.json";
 import type { ItemGuardianApprovalReviewCompletedNotification } from "./generated/types/v2/ItemGuardianApprovalReviewCompletedNotification";
 import guardianOverrideSchema from "./generated/schemas/v2/ThreadApproveGuardianDeniedActionResponse.json";
@@ -89,6 +91,8 @@ const responseDocuments: Readonly<Record<string, object>> = {
   "review/start": reviewStartSchema,
   "skills/extraRoots/set": skillsExtraRootsSetSchema,
   "thread/compact/start": threadCompactStartSchema,
+  "thread/backgroundTerminals/clean": backgroundTerminalsCleanSchema,
+  "thread/backgroundTerminals/list": backgroundTerminalsListSchema,
   "thread/fork": threadForkSchema,
   "thread/read": threadReadSchema,
   "thread/resume": threadResumeSchema,

@@ -12,7 +12,7 @@ interface ProcessInput {
   readonly skillsRoots?: readonly string[];
 }
 export class CodexProcessPool {
-  private readonly processes = new Map<string, CodexPooledProcess>();
+  private readonly processes = new Map<string, Set<CodexPooledProcess>>();
   private readonly failures = new Map<string, { count: number; retryAt: number }>();
   constructor(
     private readonly options: {
@@ -25,14 +25,22 @@ export class CodexProcessPool {
     },
   ) {}
 
+  assertThreadAvailable(threadId: string): void {
+    for (const entries of this.processes.values()) {
+      if ([...entries].some((entry) => entry.ownsThread(threadId)))
+        throw new Error("Native Codex thread is already attached to another session");
+    }
+  }
+
   async acquire(
     input: ProcessInput,
-    discovery = false,
+    role: "chat" | "discovery" | "auxiliary" = "chat",
     signal?: AbortSignal,
   ): Promise<CodexProcessLease> {
     const key = createHash("sha256")
       .update(
         JSON.stringify([
+          role,
           input.binaryPath,
           resolveBaseCodexHomePath(input.env),
           input.argv,
@@ -43,12 +51,14 @@ export class CodexProcessPool {
       .digest("hex");
     for (;;) {
       signal?.throwIfAborted();
-      const existing = this.processes.get(key);
-      if (existing) {
-        await existing.available();
-        signal?.throwIfAborted();
-        if (existing.isClosing) continue;
-        return existing.acquire(discovery);
+      const existing = [...(this.processes.get(key) ?? [])].find((entry) => entry.accepting);
+      if (existing) return existing.acquire(role !== "chat");
+      const closing = [...(this.processes.get(key) ?? [])].find(
+        (entry) => entry.isClosing || entry.isFailed,
+      );
+      if (closing) {
+        await closing.available();
+        continue;
       }
       const remaining = (this.failures.get(key)?.retryAt ?? 0) - Date.now();
       if (remaining <= 0) break;
@@ -70,10 +80,16 @@ export class CodexProcessPool {
         });
       },
       () => {
-        if (this.processes.get(key) === process) this.processes.delete(key);
+        const entries = this.processes.get(key);
+        entries?.delete(process);
+        if (entries?.size === 0) this.processes.delete(key);
       },
+      () => this.acquire(input, "auxiliary"),
+      (threadId) => this.assertThreadAvailable(threadId),
     );
-    this.processes.set(key, process);
-    return process.acquire(discovery);
+    let entries = this.processes.get(key);
+    if (!entries) this.processes.set(key, (entries = new Set()));
+    entries.add(process);
+    return process.acquire(role !== "chat");
   }
 }

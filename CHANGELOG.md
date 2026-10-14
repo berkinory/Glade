@@ -8,6 +8,8 @@
 
 ### Improved
 
+- Failed tasks show a clearer Retry button with an icon.
+
 - Workspace tabs have tighter spacing and slide smoothly when dragged into a new order, remembered per chat while the main chat stays in place.
 
 - The composer has more room to write, with project, branch and SSH connection details grouped above the message field and kept visible throughout the chat.
@@ -31,6 +33,8 @@
 ### Fixed
 
 - Returning to chat from another workspace tab focuses the message field again.
+
+- Stopping a stuck agent is more reliable, and failures affect fewer other chats.
 
 - Temporary connection failures to paired machines recover automatically instead of incorrectly asking you to pair again.
 

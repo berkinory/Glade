@@ -3,7 +3,11 @@ import { ProviderService } from "../Services/ProviderService.ts";
 import { ProviderSessionDirectory } from "../Services/ProviderSessionDirectory.ts";
 import { assert } from "@effect/vitest";
 import { AGENT_GATEWAY_TURN_AUTHORITY_RETIRED } from "../../agentGateway/sessionLease.ts";
-import { ProviderAdapterSessionNotFoundError, ProviderValidationError } from "../core/Errors.ts";
+import {
+  ProviderAdapterRequestError,
+  ProviderAdapterSessionNotFoundError,
+  ProviderValidationError,
+} from "../core/Errors.ts";
 import {
   routing,
   asThreadId,
@@ -235,6 +239,34 @@ routing.layer("Provider service interruptionFences", (it) => {
       assert.equal(routing.codex.startSession.mock.calls.length, startsAfterRotation);
       assert.equal(routing.codex.stopSession.mock.calls.length, stopsAfterRotation);
 
+      yield* provider.stopSession({ threadId });
+    }),
+  );
+
+  it.effect("retires the runtime when native interrupt fails", () =>
+    Effect.gen(function* () {
+      const provider = yield* ProviderService;
+      const threadId = asThreadId("failed-native-interrupt");
+      yield* provider.startSession(threadId, {
+        provider: "codex",
+        threadId,
+        cwd: "/tmp/project",
+        runtimeMode: "full-access",
+      });
+      yield* provider.sendTurn({ threadId, input: "turn A", attachments: [] });
+      const stopsBefore = routing.codex.stopSession.mock.calls.length;
+      routing.codex.interruptTurn.mockImplementationOnce(() =>
+        Effect.fail(
+          new ProviderAdapterRequestError({
+            provider: "codex",
+            method: "turn/interrupt",
+            detail: "Timed out waiting for turn/interrupt.",
+          }),
+        ),
+      );
+      yield* provider.interruptTurn({ threadId });
+      assert.equal(routing.codex.stopSession.mock.calls.length, stopsBefore + 1);
+      yield* provider.sendTurn({ threadId, input: "turn B", attachments: [] });
       yield* provider.stopSession({ threadId });
     }),
   );

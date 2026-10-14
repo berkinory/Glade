@@ -305,14 +305,13 @@ describe("shared Codex process", () => {
               },
             },
           ])
-            fake.children[0]!.stdout.emit("data", Buffer.from(JSON.stringify(notification) + "\n"));
+            fake.children[1]!.stdout.emit("data", Buffer.from(JSON.stringify(notification) + "\n"));
         }
         const result = await settled;
         if (outcome === "complete") expect(result).toEqual({ value: '{"title":"Fix sidebar"}' });
         else expect(result).toMatchObject({ error: expect.any(Error) });
-        expect(fake.children).toHaveLength(1);
-        if (outcome === "stop") expect(teardownProcessTree).toHaveBeenCalledOnce();
-        else expect(teardownProcessTree).not.toHaveBeenCalled();
+        expect(fake.children).toHaveLength(2);
+        expect(teardownProcessTree).toHaveBeenCalledTimes(outcome === "stop" ? 2 : 1);
         expect(
           events.some(
             (event) => event.method === "item/completed" || event.method === "turn/completed",
@@ -333,12 +332,12 @@ describe("shared Codex process", () => {
           ).toBe(true);
         if (outcome !== "stop") await manager.sendTurn({ threadId, input: "Continue foreground" });
         expect(manager.hasSession(threadId)).toBe(outcome !== "stop");
-        expect(fake.children).toHaveLength(1);
+        expect(fake.children).toHaveLength(2);
       } finally {
         await manager.stopAll();
         rmSync(cwd, { recursive: true, force: true });
       }
-      expect(teardownProcessTree).toHaveBeenCalledOnce();
+      expect(teardownProcessTree).toHaveBeenCalledTimes(2);
     },
   );
 });

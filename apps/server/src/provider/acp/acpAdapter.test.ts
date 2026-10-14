@@ -30,7 +30,7 @@ let model = "m1";
 let sessions = 0;
 let cancelTurn;
 new AgentSideConnection((client) => ({
-  initialize: () => ({ protocolVersion: 1, agentCapabilities: { loadSession: true }, authMethods: [] }),
+  initialize: () => ({ protocolVersion: 1, agentCapabilities: { loadSession: true, sessionCapabilities: process.env.GLADE_ACP_TEST_SCENARIO === "no-close" ? {} : { close: {} } }, authMethods: [] }),
   authenticate: () => ({}),
   newSession: async () => {
     const sessionId = "native-" + ++sessions;
@@ -43,6 +43,7 @@ new AgentSideConnection((client) => ({
     return { configOptions: configOptions(model) };
   },
   setSessionConfigOption: ({ value }) => { model = value; return { configOptions: configOptions(model) }; },
+  closeSession: () => { if (process.env.GLADE_ACP_TEST_SCENARIO === "fail-close") throw new Error("cannot close"); return {}; },
   cancel: () => cancelTurn?.(),
   prompt: async ({ sessionId, prompt }) => {
     const text = prompt.at(-1)?.text ?? "";
@@ -82,10 +83,11 @@ const adapterDependencies: AcpAdapterDependencies = {
   defaultCwd: process.cwd(),
   attachmentsDir: process.cwd(),
   gatewayCredentials: undefined,
-  spawn: () => {
+  spawn: ({ binaryPath }) => {
     const child = spawn(process.execPath, ["--input-type=module", "-e", FAKE_AGENT], {
       cwd: path.resolve(import.meta.dirname, "../../.."),
       stdio: ["pipe", "pipe", "pipe"],
+      env: { ...process.env, GLADE_ACP_TEST_SCENARIO: binaryPath ?? "" },
     });
     spawned.push(child);
     return child;
@@ -249,6 +251,45 @@ describe("ACP adapter over stdio", () => {
 
       yield* adapter.stopSession(OTHER_THREAD);
       assert.isNotNull(agent.exitCode ?? agent.signalCode);
+    }),
+  );
+
+  it.effect("uses private processes when the agent cannot close individual sessions", () =>
+    Effect.gen(function* () {
+      const adapter = yield* makeAdapter;
+      const before = spawned.length;
+      for (const threadId of [THREAD, OTHER_THREAD])
+        yield* adapter.startSession({
+          threadId,
+          runtimeMode: "full-access",
+          providerOptions: { codex: { binaryPath: "no-close" } },
+        });
+      assert.equal(spawned.length - before, 2);
+      yield* adapter.stopSession(THREAD);
+      assert.isNotNull(spawned[before]!.exitCode ?? spawned[before]!.signalCode);
+      assert.isNull(spawned[before + 1]!.exitCode ?? spawned[before + 1]!.signalCode);
+      yield* adapter.stopAll();
+    }),
+  );
+
+  it.effect("contains a failed session close to its process group", () =>
+    Effect.gen(function* () {
+      const adapter = yield* makeAdapter;
+      const before = spawned.length;
+      const third = ThreadId.makeUnsafe("third-acp");
+      for (const threadId of [THREAD, OTHER_THREAD, third])
+        yield* adapter.startSession({
+          threadId,
+          runtimeMode: "full-access",
+          providerOptions: { codex: { binaryPath: "fail-close" } },
+        });
+      assert.equal(spawned.length - before, 2);
+      yield* adapter.stopSession(THREAD);
+      assert.isNotNull(spawned[before]!.exitCode ?? spawned[before]!.signalCode);
+      assert.isNull(spawned[before + 1]!.exitCode ?? spawned[before + 1]!.signalCode);
+      assert.equal(yield* adapter.hasSession(OTHER_THREAD), false);
+      assert.equal(yield* adapter.hasSession(third), true);
+      yield* adapter.stopAll();
     }),
   );
 

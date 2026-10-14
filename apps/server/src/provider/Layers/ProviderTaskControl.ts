@@ -163,13 +163,23 @@ export const ProviderTaskControlLive = Layer.effect(
             const fence = yield* interruptions.acquire(input.threadId);
             const rotationExit = yield* Effect.exit(
               input.providerThreadId === undefined
-                ? interruptActiveTurn.pipe(
-                    Effect.andThen(
-                      stopRuntimeSessionInternal({ threadId: input.threadId }, undefined, {
-                        requireAgentGatewayCredentialRotation: true,
-                      }),
-                    ),
-                  )
+                ? Effect.gen(function* () {
+                    const interrupted = yield* Effect.exit(interruptActiveTurn);
+                    if (Exit.isFailure(interrupted)) {
+                      if (!rotationStarted) return yield* Effect.failCause(interrupted.cause);
+                      yield* Effect.logWarning(
+                        "Native interrupt failed; retiring the owning runtime",
+                        {
+                          threadId: input.threadId,
+                          cause: Cause.pretty(interrupted.cause),
+                        },
+                      );
+                    }
+                    // A stop is successful only after teardown proves the old runtime cannot act.
+                    yield* stopRuntimeSessionInternal({ threadId: input.threadId }, undefined, {
+                      requireAgentGatewayCredentialRotation: true,
+                    });
+                  })
                 : interruptActiveTurn,
             );
             if (Exit.isFailure(rotationExit)) {

@@ -32,7 +32,8 @@ export interface AcpConnection {
   // Routes updates and permission requests for one ACP session to its owner.
   readonly attachSession: (sessionId: string, handlers: AcpSessionHandlers) => () => void;
   readonly onExit: (listener: (error: Error) => void) => () => void;
-  readonly close: () => Promise<void>;
+  readonly isAvailable: () => boolean;
+  readonly close: (cause?: Error) => Promise<void>;
 }
 
 function errorFrom(cause: unknown): Error {
@@ -55,6 +56,7 @@ export async function openAcpConnection(input: {
   const exitListeners = new Set<(error: Error) => void>();
   let exited: Error | undefined;
   let closing: Promise<void> | undefined;
+  let retiring = false;
 
   // Agents log freely on stderr. It is never session output; the last lines explain an exit.
   const stderrTail: string[] = [];
@@ -102,14 +104,19 @@ export async function openAcpConnection(input: {
         stderr: stderrTail,
       });
     }
-    exit(new Error(`${profile.displayName} exited (code=${code}, signal=${signal}).`));
+    if (!retiring)
+      exit(new Error(`${profile.displayName} exited (code=${code}, signal=${signal}).`));
   });
 
-  const close = () => {
+  const close = (cause?: Error) => {
+    retiring = true;
     closing ??= (async () => {
-      exit(new Error(`${profile.displayName} connection closed.`));
       await teardownChildProcessTree(child, input.teardownProcessTree);
-    })();
+      exit(cause ?? new Error(`${profile.displayName} connection closed.`));
+    })().catch((error: unknown) => {
+      closing = undefined;
+      throw error;
+    });
     return closing;
   };
 
@@ -147,6 +154,7 @@ export async function openAcpConnection(input: {
         exitListeners.add(listener);
         return () => exitListeners.delete(listener);
       },
+      isAvailable: () => !retiring && !exited,
       close,
     };
   } catch (cause) {

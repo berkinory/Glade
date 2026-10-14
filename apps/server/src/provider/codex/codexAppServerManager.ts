@@ -1,3 +1,4 @@
+import { CodexThreadShutdown } from "./codexThreadShutdown";
 import { CodexChildSnapshots } from "./childSnapshots";
 import { generateCodexThreadTitle, type CodexThreadTitleInput } from "./codexThreadTitle";
 import {
@@ -253,6 +254,7 @@ interface CodexSessionContext {
         readonly timeout: ReturnType<typeof setTimeout>;
       }
     | undefined;
+  shutdown?: CodexThreadShutdown;
   stopping: boolean;
   readonly sessionAttemptId: string;
   terminalFailure?: SessionTerminalCause;
@@ -953,6 +955,7 @@ export class CodexAppServerManager extends EventEmitter<CodexAppServerManagerEve
       };
 
       const resumeThreadId = readResumeThreadId(input);
+      if (resumeThreadId) this.processPool.assertThreadAvailable(resumeThreadId);
       const forkSourceThreadId = readResumeCursorThreadId(input.forkSourceResumeCursor);
       const codexOptions = readCodexProviderOptions(input);
       const codexBinaryPath = codexOptions.binaryPath ?? "codex";
@@ -983,7 +986,7 @@ export class CodexAppServerManager extends EventEmitter<CodexAppServerManagerEve
             gladeSkillsDir: this.gladeSkillsDir,
           }),
         },
-        false,
+        "chat",
         signal,
       );
       const child = processLease.child;
@@ -1900,7 +1903,7 @@ export class CodexAppServerManager extends EventEmitter<CodexAppServerManagerEve
             gladeSkillsDir: this.gladeSkillsDir,
           }),
         },
-        false,
+        "chat",
         signal,
       );
       const child = processLease.child;
@@ -2402,22 +2405,42 @@ export class CodexAppServerManager extends EventEmitter<CodexAppServerManagerEve
   private async stopNativeThread(context: CodexSessionContext): Promise<void> {
     const threadId = readResumeCursorThreadId(context.session.resumeCursor);
     if (!threadId || context.child.exitCode !== null || context.transportError) return;
+    const shutdown = new CodexThreadShutdown({
+      request: (method, params, timeoutMs) => this.sendRequest(context, method, params, timeoutMs),
+    });
+    context.shutdown = shutdown;
     try {
-      if (context.session.activeTurnId) {
-        await this.sendRequest(
-          context,
-          "turn/interrupt",
-          { threadId, turnId: context.session.activeTurnId },
-          5_000,
-        ).catch((cause: unknown) => {
-          if (!this.isTurnAlreadyIdleError(cause)) throw cause;
-        });
+      await shutdown.stop(threadId, context.session.activeTurnId);
+      const stopped = new Set([threadId]);
+      for (;;) {
+        const children = context.processLease.ownedThreadIds().filter((id) => !stopped.has(id));
+        if (children.length === 0) break;
+        if (stopped.size + children.length > 256)
+          throw new Error("Codex shutdown exceeded its child thread limit.");
+        for (const id of children) {
+          await shutdown.stop(id);
+          stopped.add(id);
+        }
       }
-      await this.sendRequest(context, "thread/unsubscribe", { threadId }, 5_000);
+      for (const id of stopped) {
+        await this.sendRequest(context, "thread/unsubscribe", { threadId: id }, 5_000).catch(
+          (cause: unknown) => {
+            // Work is confirmed stopped, but an unacknowledged unsubscribe can retain native state.
+            context.processLease.retire();
+            log.warn("codex thread unsubscribe failed after verified shutdown; draining process", {
+              threadId: id,
+              cause,
+            });
+          },
+        );
+      }
     } catch (cause) {
-      // An unconfirmed cancellation must not leave background commands running in the shared process.
+      const detail = cause instanceof Error ? cause.message : String(cause);
       context.processLease.invalidate(
-        cause instanceof Error ? cause : new Error("Codex thread shutdown failed", { cause }),
+        new Error(
+          `Could not confirm that a chat stopped safely; its shared Codex process must restart. ${detail}`,
+          { cause },
+        ),
       );
     }
   }
@@ -2669,7 +2692,7 @@ export class CodexAppServerManager extends EventEmitter<CodexAppServerManagerEve
       const mcpServers = this.readObject(config, "mcp_servers");
       titleSignal.throwIfAborted();
       return generateCodexThreadTitle(
-        context.processLease.acquireAuxiliary(),
+        await context.processLease.acquireAuxiliary(),
         {
           ...input,
           disabledCapabilities: {
@@ -3220,7 +3243,7 @@ export class CodexAppServerManager extends EventEmitter<CodexAppServerManagerEve
           gladeSkillsDir: this.gladeSkillsDir,
         }),
       },
-      true,
+      "discovery",
     );
     const child = processLease.child;
 
@@ -3451,7 +3474,11 @@ export class CodexAppServerManager extends EventEmitter<CodexAppServerManagerEve
       return;
     }
 
-    if (context.stopping && !this.isResponse(parsed)) return;
+    if (context.stopping && !this.isResponse(parsed)) {
+      if (this.isServerNotification(parsed))
+        context.shutdown?.observe(parsed.method, parsed.params);
+      return;
+    }
 
     if (this.isServerRequest(parsed)) {
       if (decodeCodexServerRequest(parsed) === "unknown") {
@@ -4063,7 +4090,7 @@ export class CodexAppServerManager extends EventEmitter<CodexAppServerManagerEve
     context: CodexSessionContext,
     method: string,
     params: unknown,
-    timeoutMs = 20_000,
+    timeoutMs = method === "turn/interrupt" ? 5_000 : 20_000,
   ): Promise<TResponse> {
     const opensThread =
       method === "thread/start" || method === "thread/resume" || method === "thread/fork";

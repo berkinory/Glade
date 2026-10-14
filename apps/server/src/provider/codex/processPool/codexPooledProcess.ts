@@ -23,7 +23,9 @@ interface ExitProof {
 }
 export interface CodexProcessLease {
   readonly child: ChildProcessWithoutNullStreams;
-  readonly acquireAuxiliary: () => CodexProcessLease;
+  readonly acquireAuxiliary: () => Promise<CodexProcessLease>;
+  readonly ownedThreadIds: () => readonly string[];
+  readonly retire: () => void;
   readonly writer: { write: (message: unknown) => Promise<void>; close: (error?: Error) => void };
   readonly initialize: (run: () => Promise<void>) => Promise<void>;
   readonly openThread: <T>(run: () => Promise<T>) => Promise<T>;
@@ -54,6 +56,7 @@ export class CodexPooledProcess {
   private threadOpens: Promise<unknown> = Promise.resolve();
   private opening: symbol | undefined;
   private failure?: Error;
+  private draining = false;
   private closing: Promise<ExitProof> | undefined;
   private readonly startedAt = Date.now();
 
@@ -62,6 +65,8 @@ export class CodexPooledProcess {
     private readonly teardown: (child: ChildProcessWithoutNullStreams) => Promise<ExitProof>,
     private readonly onFailure: (lifetimeMs: number) => void,
     private readonly onClosed: () => void,
+    private readonly auxiliary: () => Promise<CodexProcessLease>,
+    private readonly assertThreadAvailable: (threadId: string) => void,
   ) {
     this.writer = new CodexJsonlWriter(child.stdin);
     child.stdout.on("data", this.read);
@@ -142,9 +147,13 @@ export class CodexPooledProcess {
       if (!owner && route.parentThreadId) owner = this.threads.get(route.parentThreadId);
       if (!owner && route.threadStarted && !route.parentThreadId) owner = this.opening;
       if (!owner) return;
+      if (!this.threads.has(route.threadId)) this.assertThreadAvailable(route.threadId);
       this.threads.set(route.threadId, owner);
       for (const child of route.childThreadIds) {
-        if (!this.threads.has(child)) this.threads.set(child, owner);
+        if (!this.threads.has(child)) {
+          this.assertThreadAvailable(child);
+          this.threads.set(child, owner);
+        }
       }
       this.leases.get(owner)?.listener?.line(line, message);
       return;
@@ -168,6 +177,45 @@ export class CodexPooledProcess {
     return this.closing !== undefined;
   }
 
+  get isFailed(): boolean {
+    return this.failure !== undefined;
+  }
+
+  get accepting(): boolean {
+    return !this.failure && !this.closing && !this.draining && this.leases.size < 2;
+  }
+
+  ownsThread(threadId: string): boolean {
+    return this.threads.has(threadId);
+  }
+
+  private close(): Promise<ExitProof> {
+    if (!this.closing) {
+      this.writer.close(new Error("Last Codex session stopped"));
+      this.closing = this.teardown(this.child)
+        .then((proof) => {
+          this.child.stdout.off("data", this.read);
+          this.child.stdout.off("end", this.end);
+          this.child.stderr.off("data", this.stderr);
+          this.child.off("error", this.fail);
+          this.child.off("exit", this.exit);
+          this.framer.close();
+          this.stderrFramer.close();
+          this.onClosed();
+          return proof;
+        })
+        .catch((error: unknown) => {
+          this.closing = undefined;
+          this.failure =
+            error instanceof Error
+              ? error
+              : new Error("Codex process teardown failed", { cause: error });
+          throw error;
+        });
+    }
+    return this.closing!;
+  }
+
   acquire(discovery: boolean): CodexProcessLease {
     if (this.failure || this.closing) throw this.failure ?? new Error("Codex process is closing");
     const id = Symbol();
@@ -179,41 +227,25 @@ export class CodexPooledProcess {
         released = true;
         state.writesClosed = true;
         this.leases.delete(id);
-        for (const [thread, owner] of this.threads) if (owner === id) this.threads.delete(thread);
+        // Failed processes retain native ownership until exit is proven, even after lease release.
+        if (!this.failure)
+          for (const [thread, owner] of this.threads) if (owner === id) this.threads.delete(thread);
         for (const [request, owner] of this.requests)
           if (owner === id) this.requests.delete(request);
       }
-      if (this.leases.size > 0) return { retained: true };
-      if (!this.closing) {
-        this.writer.close(new Error("Last Codex session stopped"));
-        this.closing = this.teardown(this.child)
-          .then((proof) => {
-            this.child.stdout.off("data", this.read);
-            this.child.stdout.off("end", this.end);
-            this.child.stderr.off("data", this.stderr);
-            this.child.off("error", this.fail);
-            this.child.off("exit", this.exit);
-            this.framer.close();
-            this.stderrFramer.close();
-            this.onClosed();
-            return proof;
-          })
-          .catch((error: unknown) => {
-            this.closing = undefined;
-            this.failure =
-              error instanceof Error
-                ? error
-                : new Error("Codex process teardown failed", { cause: error });
-            throw error;
-          });
-      }
-      return { ...(await this.closing), retained: false };
+      if (this.leases.size > 0 && !this.failure) return { retained: true };
+      return { ...(await this.close()), retained: false };
     };
     return {
       child: this.child,
       acquireAuxiliary: () => {
         if (released) throw new Error("Codex session is closed");
-        return this.acquire(true);
+        return this.auxiliary();
+      },
+      ownedThreadIds: () =>
+        [...this.threads].flatMap(([thread, owner]) => (owner === id ? [thread] : [])),
+      retire: () => {
+        this.draining = true;
       },
       writer: {
         write: (message) => {
@@ -252,6 +284,7 @@ export class CodexPooledProcess {
         const owner = this.threads.get(threadId);
         if (owner && owner !== id)
           throw new Error("Native Codex thread is already attached to another session");
+        if (!owner) this.assertThreadAvailable(threadId);
         this.threads.set(threadId, id);
       },
       allocateRequest: () => {

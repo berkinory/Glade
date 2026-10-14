@@ -1,3 +1,4 @@
+import { RefreshCwIcon } from "~/lib/icons";
 import type { TurnId } from "@glade/contracts/core/baseSchemas";
 
 import { Button } from "~/components/ui/button";
@@ -28,7 +29,8 @@ export function TurnFailureNotice({
                 disabled={recovery.disabled}
                 onClick={() => recovery.onContinue(turnId)}
               >
-                Continue in this chat
+                <RefreshCwIcon aria-hidden className="size-3.5" />
+                Retry
               </Button>
               <Button
                 size="xs"
