@@ -204,6 +204,8 @@ export const ProviderListPluginsInput = Schema.Struct({
   threadId: Schema.optional(TrimmedNonEmptyString),
   forceRemoteSync: Schema.optional(Schema.Boolean),
   forceReload: Schema.optional(Schema.Boolean),
+  // Leaves out catalog entries that are neither installed, enabled nor installed by default.
+  installedOnly: Schema.optional(Schema.Boolean),
 });
 export type ProviderListPluginsInput = typeof ProviderListPluginsInput.Type;
 

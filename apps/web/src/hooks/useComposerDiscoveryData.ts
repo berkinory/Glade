@@ -84,12 +84,18 @@ export function useComposerDiscoveryData(input: {
         input.providerCwd !== null,
     }),
   );
+  // A provider's plugin catalog can run to thousands of entries and megabytes. The mention menu
+  // lists only installed plugins, and only while it is open.
   const pluginsQuery = useQuery(
     providerPluginsQueryOptions({
       provider: input.provider,
       cwd: input.providerCwd,
       threadId: input.threadId,
-      enabled: supportsPluginDiscovery(capabilitiesQuery.data) && input.providerCwd !== null,
+      installedOnly: true,
+      enabled:
+        isMentionTrigger &&
+        supportsPluginDiscovery(capabilitiesQuery.data) &&
+        input.providerCwd !== null,
     }),
   );
   const entriesQuery = useQuery(

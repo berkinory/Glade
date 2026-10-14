@@ -228,8 +228,12 @@ export const providerDiscoveryQueryKeys = {
   skills: (provider: ProviderKind, cwd: string | null) =>
     ["provider-discovery", "skills", provider, cwd] as const,
   skillsCatalog: (cwd: string | null) => ["provider-discovery", "skills-catalog", cwd] as const,
-  plugins: (provider: ProviderKind, cwd: string | null, threadId: string | null) =>
-    ["provider-discovery", "plugins", provider, cwd, threadId] as const,
+  plugins: (
+    provider: ProviderKind,
+    cwd: string | null,
+    threadId: string | null,
+    installedOnly: boolean,
+  ) => ["provider-discovery", "plugins", provider, cwd, threadId, installedOnly] as const,
   plugin: (
     provider: ProviderKind,
     marketplacePath: string,
@@ -465,16 +469,24 @@ export function providerPluginsQueryOptions(input: {
   provider: ProviderKind;
   cwd: string | null;
   threadId?: string | null;
+  installedOnly?: boolean;
   enabled?: boolean;
 }) {
+  const installedOnly = input.installedOnly ?? false;
   return queryOptions({
-    queryKey: providerDiscoveryQueryKeys.plugins(input.provider, input.cwd, input.threadId ?? null),
+    queryKey: providerDiscoveryQueryKeys.plugins(
+      input.provider,
+      input.cwd,
+      input.threadId ?? null,
+      installedOnly,
+    ),
     queryFn: async () => {
       const api = ensureNativeApi();
       return api.provider.listPlugins({
         provider: input.provider,
         ...(input.cwd ? { cwd: input.cwd } : {}),
         ...(input.threadId ? { threadId: input.threadId } : {}),
+        ...(installedOnly ? { installedOnly } : {}),
       });
     },
     enabled: input.enabled ?? true,

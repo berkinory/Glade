@@ -22,11 +22,11 @@ import { useAppSettings } from "~/appSettings";
 import {
   buildPluginSearchFields,
   buildSkillSearchFields,
-  isInstalledProviderPlugin,
   normalizeProviderDiscoveryText,
   rankProviderDiscoveryItems,
   resolveProviderDiscoveryCwd,
 } from "~/lib/providerDiscovery";
+import { isInstalledProviderPlugin } from "@glade/shared/provider/providerPlugins";
 import { createFirstProjectSelector } from "~/storeSelectors";
 import {
   providerComposerCapabilitiesQueryOptions,

@@ -6,6 +6,7 @@ import {
   ProviderListModelsInput,
   type ProviderListModelsResult,
   ProviderListPluginsInput,
+  type ProviderListPluginsResult,
   ProviderModelDescriptor,
   ProviderListSkillsInput,
   ProviderReadPluginInput,
@@ -35,6 +36,7 @@ import {
 } from "../core/providerModelCatalogCache.ts";
 import { filterDisabledSkills } from "../core/skillsCatalog.ts";
 import { expandHomePath } from "../../workspace/homePath";
+import { isInstalledProviderPlugin } from "@glade/shared/provider/providerPlugins";
 
 // A project typed as "~/…" (often on an SSH host) reaches discovery before the server canonicalizes
 // it; the provider would otherwise look for a folder literally named "~".
@@ -74,6 +76,16 @@ const disabledCapabilitiesForProvider = (
 });
 
 const decodeProviderModelDescriptorOption = Schema.decodeUnknownOption(ProviderModelDescriptor);
+
+function keepInstalledPlugins(result: ProviderListPluginsResult): ProviderListPluginsResult {
+  return {
+    ...result,
+    marketplaces: result.marketplaces.flatMap((marketplace) => {
+      const plugins = marketplace.plugins.filter(isInstalledProviderPlugin);
+      return plugins.length > 0 ? [{ ...marketplace, plugins }] : [];
+    }),
+  };
+}
 
 function isolateMalformedModelDescriptors(input: {
   readonly provider: ProviderListModelsInput["provider"];
@@ -316,7 +328,8 @@ const make = Effect.gen(function* () {
           cached: false,
         };
       }
-      return yield* adapter.listPlugins(parsed);
+      const result = yield* adapter.listPlugins(parsed);
+      return parsed.installedOnly ? keepInstalledPlugins(result) : result;
     });
 
   const readPlugin: ProviderDiscoveryServiceShape["readPlugin"] = (input) =>

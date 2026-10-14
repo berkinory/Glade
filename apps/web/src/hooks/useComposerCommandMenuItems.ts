@@ -13,10 +13,10 @@ import {
   buildCommandSearchFields,
   buildPluginSearchFields,
   buildSkillSearchFields,
-  isInstalledProviderPlugin,
   normalizeProviderDiscoveryText,
   rankProviderDiscoveryItems,
 } from "~/lib/providerDiscovery";
+import { isInstalledProviderPlugin } from "@glade/shared/provider/providerPlugins";
 import {
   LOCAL_FOLDER_MENTION_NAME,
   matchesLocalFolderMentionShortcut,
