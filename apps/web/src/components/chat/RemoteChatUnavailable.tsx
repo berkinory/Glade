@@ -1,6 +1,6 @@
 import { remoteHostAvailability } from "~/environments/remoteEnvironmentStatus";
 import type { RemoteEnvironment } from "~/environments/remoteEnvironments";
-import { ServerStack01Icon } from "~/lib/icons";
+import { CloudServerIcon, ServerIcon } from "~/lib/icons";
 import { PanelEmptyState } from "./PanelEmptyState";
 import { RemoteEnvironmentStatus } from "./RemoteEnvironmentStatus";
 
@@ -10,7 +10,13 @@ export function RemoteChatUnavailable({ environment }: { environment: RemoteEnvi
   return (
     <PanelEmptyState
       fill="flex"
-      icon={<ServerStack01Icon className="size-8" />}
+      icon={
+        environment.kind === "ssh" ? (
+          <ServerIcon className="size-8" />
+        ) : (
+          <CloudServerIcon className="size-8" />
+        )
+      }
       title={
         waiting
           ? `Loading chat from ${environment.host.label}`

@@ -1,4 +1,4 @@
-import { CheckIcon, Copy01Icon } from "~/lib/icons";
+import { CheckIcon, Copy01Icon, FolderIcon } from "~/lib/icons";
 import { IconButton } from "~/components/ui/icon-button";
 import { useCopyToClipboard } from "~/lib/clipboard";
 
@@ -13,11 +13,9 @@ export function EnvironmentDirectoryPath({
 
   return (
     <div className="flex min-w-0 items-center gap-1">
-      <div className="min-w-0 flex-1 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-        <code
-          className="block w-max min-w-full whitespace-nowrap text-ui-sm"
-          title={path ?? undefined}
-        >
+      <FolderIcon aria-hidden className="size-4 shrink-0" />
+      <div className="min-w-0 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+        <code className="block w-max whitespace-nowrap text-ui-sm" title={path ?? undefined}>
           {displayPath}
         </code>
       </div>

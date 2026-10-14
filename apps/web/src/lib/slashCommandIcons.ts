@@ -8,11 +8,11 @@ import {
   WorkflowCircle04Icon,
   ListTodoIcon,
   MessageCircleIcon,
-  FilterIcon,
+  FilterMailSquareIcon,
 } from "~/lib/icons";
 const SLASH_COMMAND_ICONS: Record<string, IconComponent> = {
   clear: EraserIcon,
-  compact: FilterIcon,
+  compact: FilterMailSquareIcon,
   model: Brain03Icon,
   fast: EnergyFilledIcon,
   plan: ListTodoIcon,

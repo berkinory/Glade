@@ -1,4 +1,4 @@
-import { Globe02Icon, RefreshCwIcon, SquareFilledIcon } from "~/lib/icons";
+import { CpuChargeIcon, RefreshCwIcon, SquareFilledIcon } from "~/lib/icons";
 import { Spinner } from "~/components/ui/spinner";
 import type { ReactNode } from "react";
 import type { ServerLocalServerProcess } from "@glade/contracts/server/server";
@@ -185,7 +185,7 @@ export function EnvironmentLocalServersSection({
     <Menu>
       <MenuTrigger render={<button type="button" className={ENVIRONMENT_ROW_CLASS_NAME} />}>
         <EnvironmentRowBody
-          icon={<Globe02Icon className={ENVIRONMENT_ROW_ICON_CLASS_NAME} aria-hidden />}
+          icon={<CpuChargeIcon className={ENVIRONMENT_ROW_ICON_CLASS_NAME} aria-hidden />}
           label="Local Servers"
           trailing={trailing}
         />
@@ -208,7 +208,7 @@ export function EnvironmentLocalServersSection({
           />
         ) : localServersQuery.isError ? (
           <LocalServersPlaceholder
-            icon={<Globe02Icon className="size-4" />}
+            icon={<CpuChargeIcon className="size-4" />}
             title="Couldn't scan local ports"
             subtitle={
               localServersQuery.error instanceof Error
@@ -218,7 +218,7 @@ export function EnvironmentLocalServersSection({
           />
         ) : serverCount === 0 ? (
           <LocalServersPlaceholder
-            icon={<Globe02Icon className="size-4" />}
+            icon={<CpuChargeIcon className="size-4" />}
             title="No servers running"
             subtitle="Local dev servers will appear here."
           />

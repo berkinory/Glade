@@ -4,7 +4,8 @@ import {
   FolderIcon,
   FolderPlusIcon,
   PlusIcon,
-  ServerStack01Icon,
+  CloudServerIcon,
+  ServerIcon,
 } from "~/lib/icons";
 import { type GitHubProjectProvisionProgressEvent } from "@glade/contracts/git/githubProjectProvisioning";
 import { type SpaceId } from "@glade/contracts/core/baseSchemas";
@@ -363,7 +364,11 @@ export function CreateProjectDialog(props: {
                 >
                   <span className="flex min-w-0 items-center gap-2">
                     {host ? (
-                      <ServerStack01Icon aria-hidden className="size-3.5 shrink-0 opacity-70" />
+                      host.kind === "ssh" ? (
+                        <ServerIcon aria-hidden className="size-3.5 shrink-0 opacity-70" />
+                      ) : (
+                        <CloudServerIcon aria-hidden className="size-3.5 shrink-0 opacity-70" />
+                      )
                     ) : (
                       <ComputerTerminal01Icon
                         aria-hidden

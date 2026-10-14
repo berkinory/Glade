@@ -168,11 +168,13 @@ export function EnvironmentPanel({
         />
       ) : null}
 
-      <EnvironmentLabeledSection
-        label={
-          worktree.pending ? "Worktree pending" : worktree.path ? "Worktree" : "Working directory"
-        }
-      >
+      <EnvironmentSectionDivider />
+      <div className="flex flex-col gap-0.5">
+        {worktree.pending || worktree.path ? (
+          <p className="px-2 text-ui-sm text-muted-foreground">
+            {worktree.pending ? "Worktree pending" : "Worktree"}
+          </p>
+        ) : null}
         <div className="px-2 pb-1 text-ui-sm text-muted-foreground">
           {worktree.pending ? (
             <p className="mb-1">Created when you send the first message. Base directory:</p>
@@ -195,7 +197,7 @@ export function EnvironmentPanel({
             </div>
           ) : null}
         </div>
-      </EnvironmentLabeledSection>
+      </div>
 
       {isLocalEnvironment ? (
         <EnvironmentLocalServersSection enabled={open} threadId={activeThreadId} />

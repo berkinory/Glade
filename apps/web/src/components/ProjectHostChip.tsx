@@ -1,7 +1,7 @@
 import { useRemoteEnvironments } from "~/environments/remoteEnvironments";
 import { remoteHostAvailability } from "~/environments/remoteEnvironmentStatus";
 import { HostStatusDot } from "./HostStatusDot";
-import { ServerStack01Icon } from "~/lib/icons";
+import { CloudServerIcon, ServerIcon } from "~/lib/icons";
 import { cn } from "~/lib/utils";
 import { sidebarHoverRevealHideClassName } from "../sidebarRowStyles";
 import type { Project } from "../types";
@@ -29,7 +29,7 @@ export function ProjectHostChip(props: { readonly project: Project }) {
             icon: (
               <span className="relative inline-flex">
                 <SidebarGlyph
-                  icon={ServerStack01Icon}
+                  icon={environment.kind === "ssh" ? ServerIcon : CloudServerIcon}
                   variant="meta"
                   className="text-muted-foreground/55"
                 />

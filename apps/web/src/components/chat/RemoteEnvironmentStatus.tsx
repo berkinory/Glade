@@ -12,7 +12,7 @@ import {
   remoteMachineSettingsSection,
   type RemoteEnvironmentStatus,
 } from "~/environments/remoteEnvironmentStatus";
-import { ServerStack01Icon } from "~/lib/icons";
+import { CloudServerIcon, ServerIcon } from "~/lib/icons";
 import { cn } from "~/lib/utils";
 import type { WsTransportState } from "~/wsTransportEvents";
 import { HostStatusDot } from "../HostStatusDot";
@@ -99,7 +99,11 @@ export function RemoteEnvironmentStatus({ variant }: { variant: "composer" | "pa
             )}
           >
             <span className="relative inline-flex size-3.5 shrink-0 items-center justify-center">
-              <ServerStack01Icon aria-hidden className="size-3.5" />
+              {environment.kind === "ssh" ? (
+                <ServerIcon aria-hidden className="size-3.5" />
+              ) : (
+                <CloudServerIcon aria-hidden className="size-3.5" />
+              )}
               <HostStatusDot
                 tone={tone}
                 className="absolute -right-0.5 -bottom-0.5 ring-2 ring-background"

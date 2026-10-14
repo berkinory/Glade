@@ -6,14 +6,14 @@ import {
   remoteMachineSettingsSection,
 } from "~/environments/remoteEnvironmentStatus";
 import type { IconComponent } from "~/lib/iconComponent";
-import { ComputerTerminal01Icon, LaptopIcon, PlusIcon, ServerStack01Icon } from "~/lib/icons";
+import { ComputerTerminal01Icon, CloudServerIcon, PlusIcon, ServerIcon } from "~/lib/icons";
 import { HostStatusDot } from "../HostStatusDot";
 import { MenuItem, MenuSeparator, MenuSub, MenuSubTrigger } from "../ui/menu";
 import { ComposerPickerMenuSubPopup } from "./ComposerPickerMenuPopup";
 
 const GROUPS = [
-  { kind: "ssh", label: "SSH", icon: ServerStack01Icon, addLabel: "Add SSH host…" },
-  { kind: "paired", label: "Remote", icon: LaptopIcon, addLabel: "Pair with a machine…" },
+  { kind: "ssh", label: "SSH", icon: ServerIcon, addLabel: "Add SSH host…" },
+  { kind: "paired", label: "Remote", icon: CloudServerIcon, addLabel: "Pair with a machine…" },
 ] as const satisfies ReadonlyArray<{
   kind: RemoteEnvironment["kind"];
   label: string;

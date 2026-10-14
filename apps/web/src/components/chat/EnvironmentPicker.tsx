@@ -7,7 +7,7 @@ import {
   type RemoteEnvironment,
 } from "~/environments/remoteEnvironments";
 import { describeRemoteEnvironment } from "~/environments/remoteEnvironmentStatus";
-import { ComputerTerminal01Icon, ServerStack01Icon } from "~/lib/icons";
+import { CloudServerIcon, ComputerTerminal01Icon, ServerIcon } from "~/lib/icons";
 import { toastManager } from "../ui/toast";
 import { Menu, MenuTrigger } from "../ui/menu";
 import { ComposerPickerMenuPopup } from "./ComposerPickerMenuPopup";
@@ -65,7 +65,11 @@ export function EnvironmentPicker(props: {
             className={props.triggerClassName}
             icon={
               activeRemote || pendingRemote ? (
-                <ServerStack01Icon aria-hidden className="size-3.5" />
+                (pendingRemote ?? activeRemote)?.kind === "ssh" ? (
+                  <ServerIcon aria-hidden className="size-3.5" />
+                ) : (
+                  <CloudServerIcon aria-hidden className="size-3.5" />
+                )
               ) : (
                 <ComputerTerminal01Icon aria-hidden className="size-3.5" />
               )

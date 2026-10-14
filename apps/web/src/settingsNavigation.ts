@@ -13,8 +13,8 @@ import {
   Book02Icon,
   LimitationIcon,
   CursorInWindowIcon,
-  ServerStack01Icon,
-  ComputerPhoneSyncIcon,
+  ServerIcon,
+  CloudServerIcon,
 } from "~/lib/icons";
 import type { IconComponent } from "~/lib/iconComponent";
 const SETTINGS_SECTION_IDS = [
@@ -110,7 +110,7 @@ export const SETTINGS_NAV_ITEMS: readonly SettingsNavItem[] = [
     label: "SSH hosts",
     description:
       "Run chats on other machines over SSH. Their projects sit in the sidebar with yours.",
-    icon: ServerStack01Icon,
+    icon: ServerIcon,
     desktopOnly: true,
   },
   {
@@ -119,7 +119,7 @@ export const SETTINGS_NAV_ITEMS: readonly SettingsNavItem[] = [
     label: "Remote access",
     description:
       "Use Glade from your phone or another computer, or use another computer's Glade from here.",
-    icon: ComputerPhoneSyncIcon,
+    icon: CloudServerIcon,
     desktopOnly: true,
   },
   {

@@ -21,7 +21,7 @@ import {
   File02Icon,
   AlertCircleIcon,
   HelpCircleIcon,
-  FilterIcon,
+  FilterMailSquareIcon,
   ViewIcon,
   Globe02Icon,
   CursorInWindowIcon,
@@ -205,7 +205,7 @@ function commandWorkEntryIcon(workEntry: TimelineWorkEntry): IconComponent {
 function workEntryIcon(workEntry: TimelineWorkEntry): IconComponent {
   if (workEntry.activityKind === "user-input.requested") return HelpCircleIcon;
   if (workEntry.activityKind === "user-input.resolved") return CheckmarkCircle02Icon;
-  if (workEntry.activityKind === "context-compaction") return FilterIcon;
+  if (workEntry.activityKind === "context-compaction") return FilterMailSquareIcon;
   if (workEntry.monitorNotification) {
     return workEntry.monitorNotification.outcome === "failed" ? AlertCircleIcon : ViewIcon;
   }
