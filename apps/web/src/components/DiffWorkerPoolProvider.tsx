@@ -10,11 +10,15 @@ import { resolveDiffThemeName, type DiffThemeName } from "../lib/diffRendering";
 const DIFF_WORKER_POOL_SIZE = 2;
 const DIFF_WORKER_IDLE_TERMINATE_MS = 3 * 60_000;
 
-const AcquireDiffWorkers = createContext<(() => () => void) | null>(null);
+const DiffWorkers = createContext<{ acquire: () => () => void; settled: boolean } | null>(null);
 
-export function useActivateDiffWorkers() {
-  const acquire = useContext(AcquireDiffWorkers);
+// A diff binds the pool once, when it mounts, and highlights on the main thread without one; a
+// large file then freezes the window for seconds. Diffs mount once the pool is ready or has failed.
+export function useActivateDiffWorkers(): boolean {
+  const workers = useContext(DiffWorkers);
+  const acquire = workers?.acquire;
   useEffect(() => acquire?.(), [acquire]);
+  return workers?.settled ?? true;
 }
 
 function DiffWorkerThemeSync({ themeName }: { themeName: DiffThemeName }) {
@@ -41,6 +45,7 @@ export function DiffWorkerPoolProvider({ children }: { children?: ReactNode }) {
   }, [diffThemeName]);
   const [active, setActive] = useState(false);
   const [workerPool, setWorkerPool] = useState<WorkerPoolManager>();
+  const [failed, setFailed] = useState(false);
   const leaseCountRef = useRef(0);
   const idleTimerRef = useRef<number | null>(null);
   const [acquire] = useState(() => () => {
@@ -73,7 +78,7 @@ export function DiffWorkerPoolProvider({ children }: { children?: ReactNode }) {
     void import("@pierre/diffs/worker")
       .then(({ WorkerPoolManager }) => {
         if (disposed) return;
-        pool = new WorkerPoolManager(
+        const created = new WorkerPoolManager(
           {
             workerFactory: () => new DiffsWorker(),
             poolSize: DIFF_WORKER_POOL_SIZE,
@@ -81,24 +86,30 @@ export function DiffWorkerPoolProvider({ children }: { children?: ReactNode }) {
           },
           { theme: themeRef.current, tokenizeMaxLineLength: 1_000 },
         );
-        setWorkerPool(pool);
+        pool = created;
+        // A diff that mounts while the pool is still starting scrolls itself to its end.
+        return created.initialize().then(() => {
+          if (!disposed) setWorkerPool(created);
+        });
       })
       .catch((error: unknown) => {
         console.warn("Diff worker pool initialization failed", error);
+        if (!disposed) setFailed(true);
       });
     return () => {
       disposed = true;
       pool?.terminate();
       setWorkerPool(undefined);
+      setFailed(false);
     };
   }, [active]);
 
   return (
-    <AcquireDiffWorkers.Provider value={acquire}>
+    <DiffWorkers.Provider value={{ acquire, settled: workerPool !== undefined || failed }}>
       <WorkerPoolContext.Provider value={workerPool}>
         <DiffWorkerThemeSync themeName={diffThemeName} />
         {children}
       </WorkerPoolContext.Provider>
-    </AcquireDiffWorkers.Provider>
+    </DiffWorkers.Provider>
   );
 }

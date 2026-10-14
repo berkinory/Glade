@@ -21,12 +21,14 @@ const DIFF_VIRTUALIZER_CONFIG = {
 // lists. Callers own the inner per-file wrapper markup because it differs (collapse click capture,
 // data-diff-file-path scroll anchors, etc.).
 export function FileDiffSurface(props: { className?: string; children: ReactNode }) {
-  useActivateDiffWorkers();
+  const workersSettled = useActivateDiffWorkers();
+  const className = cn("diff-render-surface", props.className);
+  // The virtualizer must mount together with its diffs: set up empty, it scrolls a long diff to its end.
+  if (!workersSettled) {
+    return <div className={className} />;
+  }
   return (
-    <Virtualizer
-      className={cn("diff-render-surface", props.className)}
-      config={DIFF_VIRTUALIZER_CONFIG}
-    >
+    <Virtualizer className={className} config={DIFF_VIRTUALIZER_CONFIG}>
       {props.children}
     </Virtualizer>
   );

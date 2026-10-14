@@ -14,9 +14,12 @@ const TOOL_DIFF_SURFACE_CLASS_NAME =
   "diff-render-surface max-h-[min(24lh,48vh)] overflow-auto rounded-lg border border-border/45";
 
 function ToolDiffFiles(props: { files: ReadonlyArray<FileDiffMetadata>; snippets?: boolean }) {
-  useActivateDiffWorkers();
+  const workersSettled = useActivateDiffWorkers();
   const { resolvedTheme } = useTheme();
   const pagedFiles = usePagedFiles(props.files);
+  if (!workersSettled) {
+    return <div className={TOOL_DIFF_SURFACE_CLASS_NAME} />;
+  }
   // Tool diffs are short and live in an auto-height disclosure, which the virtualized diff surface
   // cannot measure; they render unvirtualized inside a capped scroll box instead.
   return (
