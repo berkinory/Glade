@@ -8,11 +8,14 @@ import { useStore } from "~/store";
 import type { WorkLogBackgroundTask } from "~/workLog.types";
 import { stopWorkflowTask } from "../chatTaskActions";
 import { SubagentStatusIndicator } from "../SubagentStatusIndicator";
+import { ComputerTerminal01Icon } from "~/lib/icons";
+import { useEnvironmentListOpen } from "./environmentListOpen";
+import { EnvironmentListSummary } from "./EnvironmentListSummary";
 import {
+  ENVIRONMENT_LIST_CLASS_NAME,
   ENVIRONMENT_ROW_CLASS_NAME,
   EnvironmentCollapsibleSection,
   EnvironmentSectionDivider,
-  HIDDEN_SCROLLBAR_CLASS_NAME,
 } from "./EnvironmentRow";
 import { useThreadBackgroundTasks } from "./useThreadBackgroundTasks";
 
@@ -22,6 +25,18 @@ const STATUS_LABELS: Record<WorkLogBackgroundTask["status"], string> = {
   failed: "Failed",
   stopped: "Stopped",
 };
+
+// Sized like a subagent's avatar, so both lists start their text at the same place.
+function BackgroundTaskTile() {
+  return (
+    <span
+      aria-hidden="true"
+      className="inline-flex size-[1.429em] shrink-0 items-center justify-center rounded-[30%] bg-[var(--color-background-button-secondary)] text-muted-foreground"
+    >
+      <ComputerTerminal01Icon className="size-[68%]" />
+    </span>
+  );
+}
 
 function BackgroundTaskRow({
   task,
@@ -46,17 +61,19 @@ function BackgroundTaskRow({
     >
       <button
         type="button"
-        className="min-w-0 truncate text-left disabled:cursor-default"
-        title={description}
+        className="grid min-w-0 grid-cols-[auto_minmax(0,1fr)] items-center gap-x-2 text-left disabled:cursor-default"
         disabled={!onOpen}
         onClick={onOpen}
       >
-        {description}
-        {Number.isFinite(elapsedMs) && elapsedMs >= 0 ? (
-          <span className="ml-1.5 text-ui-xs tabular-nums text-muted-foreground">
-            {formatClockDuration(elapsedMs)}
-          </span>
-        ) : null}
+        <BackgroundTaskTile />
+        <span className="min-w-0 truncate" title={description}>
+          {description}
+          {Number.isFinite(elapsedMs) && elapsedMs >= 0 ? (
+            <span className="ml-1.5 text-ui-xs tabular-nums text-muted-foreground">
+              {formatClockDuration(elapsedMs)}
+            </span>
+          ) : null}
+        </span>
       </button>
       <SubagentStatusIndicator
         statusKind={task.status}
@@ -81,6 +98,7 @@ export function EnvironmentBackgroundTasksSection({
   onOpenToolCall: (toolCallId: string) => void;
 }) {
   const setError = useStore((store) => store.setError);
+  const [expanded, setExpanded] = useEnvironmentListOpen("background-tasks", threadId);
   const servers = useQuery(serverLocalServersQueryOptions(localServersEnabled)).data?.servers;
   const serverTaskIds = new Set(
     (servers ?? []).flatMap((server) =>
@@ -103,23 +121,19 @@ export function EnvironmentBackgroundTasksSection({
       <EnvironmentSectionDivider />
       <EnvironmentCollapsibleSection
         label={`Background tasks (${tasks.length})`}
+        open={expanded}
+        onOpenChange={setExpanded}
         collapsedContent={
-          <p className="px-2 py-1 text-ui-xs text-muted-foreground">
-            {[
-              runningCount > 0 ? `${runningCount} running` : null,
-              doneCount > 0 ? `${doneCount} done` : null,
-            ]
-              .filter(Boolean)
-              .join(" · ")}
-          </p>
+          <EnvironmentListSummary
+            leading={<BackgroundTaskTile />}
+            runningCount={runningCount}
+            doneCount={doneCount}
+            expandLabel="Show background tasks"
+            onExpand={() => setExpanded(true)}
+          />
         }
       >
-        <div
-          className={cn(
-            "scroll-fade-y max-h-[min(15rem,40vh)] overflow-y-auto overscroll-contain",
-            HIDDEN_SCROLLBAR_CLASS_NAME,
-          )}
-        >
+        <div className={ENVIRONMENT_LIST_CLASS_NAME}>
           {tasks.map((task) => (
             <BackgroundTaskRow
               key={task.taskId}

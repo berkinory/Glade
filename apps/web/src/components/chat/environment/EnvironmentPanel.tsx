@@ -259,6 +259,7 @@ export function EnvironmentPanel({
           />
         </>
       ) : null}
+      <EnvironmentSubagentsSection threadId={activeThreadId} onClose={onClose} />
       <EnvironmentBackgroundTasksSection
         threadId={activeThreadId}
         localServersEnabled={open && isLocalEnvironment}
@@ -267,7 +268,6 @@ export function EnvironmentPanel({
           onClose();
         }}
       />
-      <EnvironmentSubagentsSection threadId={activeThreadId} onClose={onClose} />
     </div>
   );
   return (

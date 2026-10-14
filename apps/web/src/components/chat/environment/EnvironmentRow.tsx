@@ -56,6 +56,12 @@ export function EnvironmentLabeledSection({
 export const HIDDEN_SCROLLBAR_CLASS_NAME =
   "[-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden";
 
+// An open list (subagents, background tasks) shows about six rows and scrolls the rest.
+export const ENVIRONMENT_LIST_CLASS_NAME = cn(
+  "scroll-fade-y max-h-[min(10.5rem,30vh)] overflow-y-auto overscroll-contain",
+  HIDDEN_SCROLLBAR_CLASS_NAME,
+);
+
 export function EnvironmentCollapsibleSection({
   label,
   defaultOpen: defaultOpenProp,

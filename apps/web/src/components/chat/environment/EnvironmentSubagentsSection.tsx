@@ -18,14 +18,16 @@ import { deriveWorkLogEntries } from "~/workLog.entries";
 import { type SubagentRosterItem, deriveSubagentRosterItems } from "../subagentRoster.logic";
 import { SubagentAvatar } from "../SubagentAvatar";
 import { SubagentStatusIndicator } from "../SubagentStatusIndicator";
-import { SubagentRosterSummary } from "../SubagentRosterSummary";
-import { useSubagentListExpanded } from "../subagentListExpanded";
+import { useEnvironmentListOpen } from "./environmentListOpen";
+import { EnvironmentListSummary } from "./EnvironmentListSummary";
 import {
   EnvironmentCollapsibleSection,
-  HIDDEN_SCROLLBAR_CLASS_NAME,
   EnvironmentSectionDivider,
+  ENVIRONMENT_LIST_CLASS_NAME,
   ENVIRONMENT_ROW_CLASS_NAME,
 } from "./EnvironmentRow";
+
+const MAX_SUMMARY_AVATARS = 5;
 
 const NO_BACKGROUND_IDS: ReadonlySet<string> = new Set();
 const NO_ACTIVITIES: Thread["activities"] = [];
@@ -123,7 +125,6 @@ export function EnvironmentSubagentsSection({
 }) {
   const shells = useStore((state) => state.threadShellById);
   const navigate = useNavigate();
-  const [expanded, setExpanded] = useSubagentListExpanded();
   let root = threadId ? shells?.[threadId] : undefined;
   const visited = new Set<ThreadId>();
   while (
@@ -137,6 +138,8 @@ export function EnvironmentSubagentsSection({
     root = parent;
   }
   const rootId = root?.id ?? null;
+  // A subagent's chat shows its root chat's roster, so the root chat holds the choice.
+  const [expanded, setExpanded] = useEnvironmentListOpen("subagents", rootId);
   const rootActivities = useStore((state) =>
     rootId ? selectThreadActivities(state, rootId) : NO_ACTIVITIES,
   );
@@ -199,24 +202,30 @@ export function EnvironmentSubagentsSection({
         open={expanded}
         onOpenChange={setExpanded}
         collapsedContent={
-          <SubagentRosterSummary
-            threadIds={visibleChildren.map((thread) => thread.id)}
+          <EnvironmentListSummary
+            leading={
+              <>
+                {visibleChildren.slice(0, MAX_SUMMARY_AVATARS).map((thread) => (
+                  <SubagentAvatar key={thread.id} threadId={thread.id} />
+                ))}
+                {visibleChildren.length > MAX_SUMMARY_AVATARS ? (
+                  <span className="text-ui-sm text-muted-foreground">
+                    +{visibleChildren.length - MAX_SUMMARY_AVATARS}
+                  </span>
+                ) : null}
+              </>
+            }
             runningCount={runningCount}
             doneCount={visibleChildren.length - runningCount}
+            expandLabel="Show subagent list"
             onExpand={() => setExpanded(true)}
-            className="px-2 py-1"
           />
         }
       >
         {omission ? (
           <p className="px-2 py-1 text-ui-xs text-muted-foreground">{omission.summary}</p>
         ) : null}
-        <div
-          className={cn(
-            "scroll-fade-y max-h-[min(15rem,40vh)] overflow-y-auto overscroll-contain",
-            HIDDEN_SCROLLBAR_CLASS_NAME,
-          )}
-        >
+        <div className={ENVIRONMENT_LIST_CLASS_NAME}>
           {visibleChildren.map((thread) => (
             <NativeSubagentRow
               key={thread.id}

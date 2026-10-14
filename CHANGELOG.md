@@ -1,5 +1,11 @@
 # Glade Changelog
 
+## Unreleased
+
+### Improved
+
+- The Environment panel lists subagents above background tasks in the same style. Both lists start collapsed, remember being opened for each chat, and show fewer rows before scrolling.
+
 ## 0.2.7 - 2026-10-14
 
 ### New
