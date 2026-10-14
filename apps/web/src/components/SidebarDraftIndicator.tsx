@@ -28,7 +28,7 @@ export function SidebarDraftIndicator({
         sidebarHoverRevealHideClassName(activity ? "activity-row" : "thread-row"),
       )}
     >
-      <Pen01Icon className="size-3" />
+      <Pen01Icon className="size-[11px]" />
     </span>
   );
 }

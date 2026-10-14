@@ -4,7 +4,7 @@ import { cn } from "~/lib/utils";
 const SIDEBAR_GLYPH = {
   leading: "size-[1em] shrink-0",
 
-  chrome: "size-3.5 shrink-0",
+  chrome: "size-3 shrink-0",
 
   chromeLu: "size-3 shrink-0",
 
@@ -19,9 +19,9 @@ const SIDEBAR_GLYPH = {
 
 export type SidebarGlyphVariant = keyof typeof SIDEBAR_GLYPH;
 
-export const SIDEBAR_TRAILING_ICON_CLASS = "size-[15px] shrink-0";
+export const SIDEBAR_TRAILING_ICON_CLASS = "size-[13px] shrink-0";
 export const SIDEBAR_TRAILING_ICON_FORCE_CLASS =
-  "[&_svg]:size-[15px] [&_[data-slot=central-icon]]:size-[15px]";
+  "[&_svg]:size-[13px] [&_[data-slot=central-icon]]:size-[13px]";
 
 export function sidebarGlyphClass(variant: SidebarGlyphVariant, className?: string) {
   return cn(SIDEBAR_GLYPH[variant], className);

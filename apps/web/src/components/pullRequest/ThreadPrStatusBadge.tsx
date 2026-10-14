@@ -50,7 +50,7 @@ export function ThreadPrStatusBadge({
               onOpen(event, pr.url);
             }}
           >
-            <SidebarGlyph icon={PrIcon} variant="meta" className="size-3.5" />
+            <SidebarGlyph icon={PrIcon} variant="meta" />
           </button>
         }
       />

@@ -2,12 +2,15 @@ import { useRemoteEnvironments } from "~/environments/remoteEnvironments";
 import { remoteHostAvailability } from "~/environments/remoteEnvironmentStatus";
 import { CloudServerIcon, ServerIcon } from "~/lib/icons";
 import { cn } from "~/lib/utils";
-import { sidebarHoverRevealHideClassName } from "../sidebarRowStyles";
+import { sidebarHoverRevealHideClassName, type SidebarHoverRevealGroup } from "../sidebarRowStyles";
 import type { Project } from "../types";
 import { SidebarMetaChipStack } from "./SidebarMetaChip";
 import { SidebarGlyph } from "./sidebarGlyphs";
 
-export function ProjectHostChip(props: { readonly project: Project }) {
+export function ProjectHostChip(props: {
+  readonly project: Project;
+  readonly group?: SidebarHoverRevealGroup;
+}) {
   const environment = useRemoteEnvironments().find(
     (candidate) => candidate.key === props.project.environmentKey,
   );
@@ -17,7 +20,7 @@ export function ProjectHostChip(props: { readonly project: Project }) {
     <div
       className={cn(
         "ml-auto flex shrink-0 items-center",
-        sidebarHoverRevealHideClassName("project-header"),
+        sidebarHoverRevealHideClassName(props.group ?? "project-header"),
       )}
     >
       <SidebarMetaChipStack

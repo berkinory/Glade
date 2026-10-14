@@ -8,6 +8,8 @@
 
 ### Improved
 
+- Chat sidebar icons are more discreet, standalone remote chats show their host, and pinned project chats no longer repeat the project name.
+
 - Browser pages adapt continuously while resizing the sidebar.
 - Sidebar and Settings update buttons now share one action, restarting without a confirmation and automatically resuming running chats. Inline usage indicators make room while an update is preparing.
 
@@ -17,6 +19,8 @@
 - Scrolling back through long chats no longer jumps as older messages load.
 
 ### Fixed
+
+- Hovering over chat rows gives titles the available space instead of reserving extra room for hidden metadata.
 
 - The right sidebar starts closed in each chat and remembers that chat’s open state, width, and selected workspace view.
 - Closing the last browser or terminal tab collapses the sidebar.
