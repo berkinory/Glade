@@ -585,7 +585,7 @@ export function gitCommitAuthorAvatarsQueryOptions(
     .toSorted(([a], [b]) => a.localeCompare(b))
     .slice(0, 200);
   return queryOptions({
-    queryKey: ["git", "commit-author-avatars", cwd, entries.map(([email]) => email)] as const,
+    queryKey: ["git", "commit-author-avatars", cwd, entries] as const,
     queryFn: () => {
       if (!cwd) throw new Error("Commit authors are unavailable.");
       return ensureNativeApi().git.commitAuthorAvatars({

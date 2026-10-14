@@ -140,7 +140,7 @@ function CommitRow(props: {
           ) : null}
           {commit.branches.length > 0 ? (
             <span
-              className="inline-flex min-w-0 max-w-24 items-center gap-0.5 rounded border border-border/70 px-1 text-ui-xs text-muted-foreground"
+              className="inline-flex min-w-0 max-w-[50%] shrink-0 items-center gap-0.5 rounded border border-border/70 px-1 text-ui-xs text-muted-foreground"
               title={`Branches at this commit: ${commit.branches.join(", ")}`}
             >
               <WorkflowCircle04Icon className="size-3 shrink-0" aria-hidden />
