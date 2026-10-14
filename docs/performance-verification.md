@@ -125,3 +125,32 @@ through that thread kept at least 85% of the viewport covered by rendered rows o
 fresh server's first page load was the same with and without Claude usage scanning. The installed
 app's log shows about 230 ms between bootstrap and backend spawn that the source build does not
 reproduce (6 ms); packaged startup was not profiled.
+
+## First chat list, usage scan and long-thread opens (October 2026)
+
+These runs use a newer copy of the same real database (400 MB, 38,982 activities) and the same
+isolated setup.
+
+**Connecting to a starting server.** The desktop window loads before its backend listens, and the
+transport retried a failed first connection on its outage schedule (500 ms, then 1, 2 and 4
+seconds). With the page loaded first and the server started 0-1.5 seconds later, the chat list
+appeared 135-1,752 ms after the server reported ready. Retrying every 100 ms until the first open
+brought that to 66-147 ms.
+
+**Claude usage scan.** The first usage refresh after startup parsed 30 days of Claude transcripts
+(255 MB here) on the server's event loop, and a chat opened during it took 628-775 ms instead of
+about 340 ms. Skipping lines without a usage key, finding newlines natively, continuing grown
+transcripts from the previous scan and parsing two files at a time took the cold scan from 613-622
+ms to 302 ms of CPU, and a chat opened during it took 335-357 ms. Results matched the previous
+reader on real transcripts and on synthetic appends, duplicates, a partial last line and a rewrite.
+
+**Opening a long thread.** The first open after a restart of a thread with 10,967 activities spent
+372-463 ms ranking and reading every activity row and 103-145 ms reading message-sent payloads.
+With the covering rank and message-reference indexes and the windowed query, the same queries took
+158-162 ms and 41 ms, the end-to-end open went from 875-893 ms to 510-541 ms, and the returned rows
+were identical. Building the indexes took about two seconds once.
+
+**Measured without changes.** Another chat streaming in the background raised a tab showing the long
+thread from 0.6% to 1.4% main-thread time with no long tasks. Opening seven threads grew the page's
+JS heap from 27 MB to 46 MB, and no workers started at boot. Starting the installed server from
+`app.asar` took 515-522 ms against 472-516 ms from extracted files.
