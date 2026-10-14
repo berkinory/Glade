@@ -22,6 +22,7 @@
 - Git history shows author and bot avatars more reliably and gives longer branch names more room.
 - Glade no longer gets slower and uses more memory the longer it stays open.
 - Opening the diff of a large file no longer freezes Glade for seconds.
+- Codex plugins show again in the plugin library and in @ mentions.
 - Every project in the sidebar now opens and closes with the same animation, not only the project of the open chat.
 - Tool activity from Grok Build and other ACP agents no longer merges into an earlier turn's rows.
 - Clicking a chat in the sidebar while a subagent is open no longer misses or jumps.

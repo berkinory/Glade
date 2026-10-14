@@ -18,22 +18,33 @@ function present(value: string | null | undefined): string | undefined {
   return value?.trim() || undefined;
 }
 
+// Catalog text is the provider's data and the contracts reject untrimmed strings, so one plugin
+// description ending in a space failed the whole list of thousands. Fields carry the trimmed text.
+function optionalText<K extends string>(
+  key: K,
+  value: string | null | undefined,
+): { [P in K]?: string } {
+  const text = present(value);
+  // A computed generic key widens to a string index signature.
+  return text === undefined ? {} : ({ [key]: text } as { [P in K]: string });
+}
+
+function presentList(values: ReadonlyArray<string> | null | undefined): string[] {
+  return (values ?? []).flatMap((value) => present(value) ?? []);
+}
+
 function skillDescriptor(skill: SkillMetadata): ProviderSkillDescriptor {
   return {
     name: skill.name,
     path: skill.path,
     enabled: skill.enabled,
-    ...(present(skill.description) ? { description: skill.description } : {}),
-    ...(present(skill.scope) ? { scope: skill.scope } : {}),
+    ...optionalText("description", skill.description),
+    ...optionalText("scope", skill.scope),
     ...(skill.interface
       ? {
           interface: {
-            ...(present(skill.interface.displayName)
-              ? { displayName: skill.interface.displayName }
-              : {}),
-            ...(present(skill.interface.shortDescription)
-              ? { shortDescription: skill.interface.shortDescription }
-              : {}),
+            ...optionalText("displayName", skill.interface.displayName),
+            ...optionalText("shortDescription", skill.interface.shortDescription),
           },
         }
       : {}),
@@ -52,29 +63,29 @@ export function parseCodexSkillsListResponse(
 
 function pluginInterface(value: PluginInterface | null): ProviderPluginDescriptor["interface"] {
   if (!value) return undefined;
+  const capabilities = presentList(value.capabilities);
+  const defaultPrompt = presentList(value.defaultPrompt);
+  const screenshots = presentList([...(value.screenshots ?? []), ...(value.screenshotUrls ?? [])]);
   return {
-    ...(present(value.displayName) ? { displayName: value.displayName! } : {}),
-    ...(present(value.shortDescription) ? { shortDescription: value.shortDescription! } : {}),
-    ...(present(value.longDescription) ? { longDescription: value.longDescription! } : {}),
-    ...(present(value.developerName) ? { developerName: value.developerName! } : {}),
-    ...(present(value.category) ? { category: value.category! } : {}),
-    ...(value.capabilities?.length ? { capabilities: value.capabilities } : {}),
-    ...(present(value.websiteUrl) ? { websiteUrl: value.websiteUrl! } : {}),
-    ...(present(value.privacyPolicyUrl) ? { privacyPolicyUrl: value.privacyPolicyUrl! } : {}),
-    ...(present(value.termsOfServiceUrl) ? { termsOfServiceUrl: value.termsOfServiceUrl! } : {}),
-    ...(value.defaultPrompt?.length ? { defaultPrompt: value.defaultPrompt } : {}),
-    ...(present(value.brandColor) ? { brandColor: value.brandColor! } : {}),
-    ...(present(value.composerIcon ?? value.composerIconUrl)
-      ? { composerIcon: (value.composerIcon ?? value.composerIconUrl)! }
-      : {}),
-    ...(present(value.logo ?? value.logoUrl) ? { logo: (value.logo ?? value.logoUrl)! } : {}),
-    ...(value.screenshots?.length || value.screenshotUrls?.length
-      ? { screenshots: [...(value.screenshots ?? []), ...(value.screenshotUrls ?? [])] }
-      : {}),
+    ...optionalText("displayName", value.displayName),
+    ...optionalText("shortDescription", value.shortDescription),
+    ...optionalText("longDescription", value.longDescription),
+    ...optionalText("developerName", value.developerName),
+    ...optionalText("category", value.category),
+    ...(capabilities.length ? { capabilities } : {}),
+    ...optionalText("websiteUrl", value.websiteUrl),
+    ...optionalText("privacyPolicyUrl", value.privacyPolicyUrl),
+    ...optionalText("termsOfServiceUrl", value.termsOfServiceUrl),
+    ...(defaultPrompt.length ? { defaultPrompt } : {}),
+    ...optionalText("brandColor", value.brandColor),
+    ...optionalText("composerIcon", value.composerIcon ?? value.composerIconUrl),
+    ...optionalText("logo", value.logo ?? value.logoUrl),
+    ...(screenshots.length ? { screenshots } : {}),
   };
 }
 
 function pluginDescriptor(plugin: PluginSummary): ProviderPluginDescriptor {
+  const pluginInterfaceFields = pluginInterface(plugin.interface);
   return {
     id: plugin.id,
     name: plugin.name,
@@ -83,7 +94,7 @@ function pluginDescriptor(plugin: PluginSummary): ProviderPluginDescriptor {
     enabled: plugin.enabled,
     installPolicy: plugin.installPolicy,
     authPolicy: plugin.authPolicy,
-    ...(pluginInterface(plugin.interface) ? { interface: pluginInterface(plugin.interface) } : {}),
+    ...(pluginInterfaceFields ? { interface: pluginInterfaceFields } : {}),
   };
 }
 
@@ -91,17 +102,18 @@ export function parseCodexPluginListResponse(
   response: PluginListResponse,
 ): Omit<ProviderListPluginsResult, "source" | "cached"> {
   return {
-    marketplaces: response.marketplaces.map((entry) => ({
-      name: entry.name,
-      path: entry.path ?? null,
-      ...(present(entry.interface?.displayName)
-        ? { interface: { displayName: entry.interface!.displayName! } }
-        : {}),
-      plugins: entry.plugins.map(pluginDescriptor),
-    })),
+    marketplaces: response.marketplaces.map((entry) => {
+      const displayName = present(entry.interface?.displayName);
+      return {
+        name: entry.name,
+        path: entry.path ?? null,
+        ...(displayName ? { interface: { displayName } } : {}),
+        plugins: entry.plugins.map(pluginDescriptor),
+      };
+    }),
     marketplaceLoadErrors: (response.marketplaceLoadErrors ?? []).map((error) => ({
       marketplacePath: error.marketplacePath,
-      message: error.message,
+      message: error.message.trim(),
     })),
     remoteSyncError: null,
     featuredPluginIds: response.featuredPluginIds ?? [],
@@ -114,7 +126,7 @@ export function parseCodexPluginReadResponse(response: PluginReadResponse): Prov
     marketplaceName: plugin.marketplaceName,
     marketplacePath: plugin.marketplacePath ?? null,
     summary: pluginDescriptor(plugin.summary),
-    ...(present(plugin.description) ? { description: plugin.description! } : {}),
+    ...optionalText("description", plugin.description),
     skills: plugin.skills.flatMap((skill) =>
       skill.path
         ? [
@@ -122,16 +134,12 @@ export function parseCodexPluginReadResponse(response: PluginReadResponse): Prov
               name: skill.name,
               path: skill.path,
               enabled: skill.enabled,
-              ...(present(skill.description) ? { description: skill.description } : {}),
+              ...optionalText("description", skill.description),
               ...(skill.interface
                 ? {
                     interface: {
-                      ...(present(skill.interface.displayName)
-                        ? { displayName: skill.interface.displayName! }
-                        : {}),
-                      ...(present(skill.interface.shortDescription)
-                        ? { shortDescription: skill.interface.shortDescription! }
-                        : {}),
+                      ...optionalText("displayName", skill.interface.displayName),
+                      ...optionalText("shortDescription", skill.interface.shortDescription),
                     },
                   }
                 : {}),
@@ -142,8 +150,8 @@ export function parseCodexPluginReadResponse(response: PluginReadResponse): Prov
     apps: plugin.apps.map((app) => ({
       id: app.id,
       name: app.name,
-      ...(present(app.description) ? { description: app.description! } : {}),
-      ...(present(app.installUrl) ? { installUrl: app.installUrl! } : {}),
+      ...optionalText("description", app.description),
+      ...optionalText("installUrl", app.installUrl),
       needsAuth: false,
     })),
     mcpServers: plugin.mcpServers,
@@ -170,7 +178,7 @@ export function parseCodexModelListResponse(
     const serviceTiers = (model.serviceTiers ?? []).map((tier) => ({
       id: tier.id,
       label: tier.name,
-      ...(present(tier.description) ? { description: tier.description } : {}),
+      ...optionalText("description", tier.description),
       ...(tier.id === model.defaultServiceTier ? { isDefault: true as const } : {}),
     }));
     return {
@@ -182,10 +190,8 @@ export function parseCodexModelListResponse(
       supportedReasoningEfforts,
       ...(defaultReasoningEffort ? { defaultReasoningEffort } : {}),
       ...(serviceTiers.length ? { serviceTiers } : {}),
-      ...(present(model.defaultServiceTier)
-        ? { defaultServiceTier: model.defaultServiceTier! }
-        : {}),
-      ...(present(model.upgrade) ? { upgrade: model.upgrade! } : {}),
+      ...optionalText("defaultServiceTier", model.defaultServiceTier),
+      ...optionalText("upgrade", model.upgrade),
       optionDescriptors: [
         {
           id: "reasoningEffort",
@@ -198,7 +204,7 @@ export function parseCodexModelListResponse(
           options: supportedReasoningEfforts.map((effort) => ({
             id: effort.value,
             label: effort.label ?? formatEffortLabel(effort.value),
-            ...(present(effort.description) ? { description: effort.description } : {}),
+            ...optionalText("description", effort.description),
             ...(effort.value === defaultReasoningEffort ? { isDefault: true as const } : {}),
           })),
         },
