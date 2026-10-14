@@ -28,7 +28,7 @@ export function sortThreadsForSidebar<T extends { id: Thread["id"] } & SidebarTh
   // tens of milliseconds per update with a few thousand chats.
   return threads
     .map((thread) => ({ thread, timestamp: getLatestUserMessageTimestamp(thread) }))
-    .sort((left, right) => {
+    .toSorted((left, right) => {
       if (right.timestamp !== left.timestamp) return right.timestamp > left.timestamp ? 1 : -1;
       return right.thread.id.localeCompare(left.thread.id);
     })

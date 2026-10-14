@@ -10,15 +10,15 @@ import { resolveDiffThemeName, type DiffThemeName } from "../lib/diffRendering";
 const DIFF_WORKER_POOL_SIZE = 2;
 const DIFF_WORKER_IDLE_TERMINATE_MS = 3 * 60_000;
 
-const DiffWorkers = createContext<{ acquire: () => () => void; settled: boolean } | null>(null);
+const AcquireDiffWorkers = createContext<(() => () => void) | null>(null);
+const DiffWorkersSettled = createContext(true);
 
 // A diff binds the pool once, when it mounts, and highlights on the main thread without one; a
 // large file then freezes the window for seconds. Diffs mount once the pool is ready or has failed.
 export function useActivateDiffWorkers(): boolean {
-  const workers = useContext(DiffWorkers);
-  const acquire = workers?.acquire;
+  const acquire = useContext(AcquireDiffWorkers);
   useEffect(() => acquire?.(), [acquire]);
-  return workers?.settled ?? true;
+  return useContext(DiffWorkersSettled);
 }
 
 function DiffWorkerThemeSync({ themeName }: { themeName: DiffThemeName }) {
@@ -105,11 +105,13 @@ export function DiffWorkerPoolProvider({ children }: { children?: ReactNode }) {
   }, [active]);
 
   return (
-    <DiffWorkers.Provider value={{ acquire, settled: workerPool !== undefined || failed }}>
-      <WorkerPoolContext.Provider value={workerPool}>
-        <DiffWorkerThemeSync themeName={diffThemeName} />
-        {children}
-      </WorkerPoolContext.Provider>
-    </DiffWorkers.Provider>
+    <AcquireDiffWorkers.Provider value={acquire}>
+      <DiffWorkersSettled.Provider value={workerPool !== undefined || failed}>
+        <WorkerPoolContext.Provider value={workerPool}>
+          <DiffWorkerThemeSync themeName={diffThemeName} />
+          {children}
+        </WorkerPoolContext.Provider>
+      </DiffWorkersSettled.Provider>
+    </AcquireDiffWorkers.Provider>
   );
 }
