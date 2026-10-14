@@ -84,6 +84,7 @@ import {
   commandPrimaryTool,
   commandReadFilePaths,
   deriveFriendlyCommandTarget,
+  deriveReadableCommandDisplay,
   resolveCommandVisualKind,
 } from "../../lib/toolCallLabel.commands";
 import {
@@ -302,7 +303,12 @@ function singleCommandFile(command: string | undefined): string | null {
     const written = resolveCommandPaths(command, effects.written);
     return written.length === 1 ? written[0]! : null;
   }
-  if (classifyInspectCommand(command) === null) return null;
+  if (classifyInspectCommand(command) === null) {
+    // A script that only reads is labelled "Read <file>" from the files its code opens.
+    if (deriveReadableCommandDisplay(command).verb !== "Read") return null;
+    const read = resolveCommandPaths(command, effects.read);
+    return read.length === 1 ? read[0]! : null;
+  }
   const files = commandReadFilePaths(command);
   return files.length === 1 ? files[0]! : null;
 }
