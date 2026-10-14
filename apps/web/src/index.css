@@ -1729,10 +1729,18 @@ input {
   background: color-mix(in srgb, var(--muted) 35%, transparent);
 }
 
-/* Sits in chat prose: keep paragraph rhythm and match the image card width. */
+/* Error text needs more room than an image thumbnail, especially at larger font sizes. */
 .local-image-error--prose {
+  display: inline-grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: start;
+  width: min(28rem, 100%);
   margin: 0.55rem 0;
-  max-width: min(255px, 100%);
+}
+
+.local-image-error--prose .local-image-error__action {
+  grid-column: 2;
+  justify-self: start;
 }
 
 .local-image-error__icon {

@@ -28,6 +28,7 @@
 
 ### Fixed
 
+- Unavailable images in chat show a readable error card with more room for the message and download button.
 - Git history shows author and bot avatars more reliably and gives longer branch names more room.
 - Glade no longer gets slower and uses more memory the longer it stays open.
 - Opening the diff of a large file no longer freezes Glade for seconds.
