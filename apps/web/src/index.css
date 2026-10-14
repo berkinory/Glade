@@ -2465,7 +2465,8 @@ input {
 .workspace-content-tab[data-separator]::before {
   content: "";
   position: absolute;
-  inset-inline-start: -2px;
+  /* Center between visible content, excluding the preceding tab's hidden close slot. */
+  inset-inline-start: calc(var(--spacing) * -3);
   top: 50%;
   width: 1px;
   height: 12px;
