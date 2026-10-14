@@ -179,6 +179,18 @@ export function getReconnectRetryDelayMs(attempt: number): number {
   return Math.min(INITIAL_RECONNECT_RETRY_MS * 2 ** exponent, MAX_RECONNECT_RETRY_MS);
 }
 
+// Until the first open, a refused connection usually means a local server that is still starting:
+// the desktop window loads before its backend listens. On the outage schedule the chat list waited up
+// to a whole backoff step after the server was ready, so the first 15 seconds retry every 100 ms.
+const STARTUP_CONNECT_RETRY_MS = 100;
+const STARTUP_CONNECT_RETRY_ATTEMPTS = 150;
+
+export function getStartupConnectRetryDelayMs(attempt: number): number {
+  return attempt < STARTUP_CONNECT_RETRY_ATTEMPTS
+    ? STARTUP_CONNECT_RETRY_MS
+    : getReconnectRetryDelayMs(attempt - STARTUP_CONNECT_RETRY_ATTEMPTS);
+}
+
 export function delayWithAbort(ms: number, signal: AbortSignal): Promise<void> {
   if (signal.aborted) return Promise.reject(signal.reason);
   return new Promise<void>((resolve, reject) => {

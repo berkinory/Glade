@@ -52,6 +52,7 @@ import {
   delayMs,
   delayWithAbort,
   getReconnectRetryDelayMs,
+  getStartupConnectRetryDelayMs,
   getTerminalCompatibilityError,
   getUnexpectedStreamCompletionRetryDelayMs,
   isRuntimeInterruptFailure,
@@ -183,6 +184,7 @@ export abstract class WsTransportBase {
   protected clientPromise: Promise<RpcClientInstance>;
   protected reconnectPromise: Promise<RpcClientInstance> | null = null;
   protected reconnectFailures = 0;
+  protected opened = false;
   protected readonly streamCleanups = new Map<string, () => void>();
   protected readonly streamSettled = new Map<string, Promise<void>>();
   protected readonly streamCapacityRetries = new Map<string, number>();
@@ -832,6 +834,7 @@ export abstract class WsTransportBase {
   protected setState(state: WsTransportState): void {
     if (this.state === state) return;
     this.state = state;
+    if (state === "open") this.opened = true;
     if (state !== "open") this.connectionStatus.resetLiveness();
     for (const listener of this.stateListeners) {
       try {
@@ -951,7 +954,9 @@ export abstract class WsTransportBase {
     for (;;) {
       if (this.disposed) throw new Error("Transport disposed");
       this.setState("connecting");
-      const delayMs = getReconnectRetryDelayMs(this.reconnectFailures);
+      const delayMs = this.opened
+        ? getReconnectRetryDelayMs(this.reconnectFailures)
+        : getStartupConnectRetryDelayMs(this.reconnectFailures);
       this.reconnectFailures += 1;
       await delayWithAbort(delayMs, this.lifetime.signal);
 

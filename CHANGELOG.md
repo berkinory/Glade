@@ -5,7 +5,7 @@
 ### Improved
 
 - Long chats open and scroll more smoothly.
-- Glade starts faster, especially with a long chat history.
+- Glade starts faster and shows your chats sooner, especially with a long chat history.
 - Running chats use much less CPU and battery while agents work.
 
 ### Fixed
