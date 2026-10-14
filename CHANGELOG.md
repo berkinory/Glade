@@ -8,6 +8,7 @@
 - Glade starts faster and shows your chats sooner, especially with a long chat history.
 - Running chats use much less CPU and battery while agents work.
 - The sidebar stays quick with thousands of chats.
+- Find in chat keeps up with typing in long replies, even with thousands of matches.
 - A tool call's details show exactly what it was given and what it returned, one box each, so a command reads as it ran instead of split into pieces.
 
 ### Fixed

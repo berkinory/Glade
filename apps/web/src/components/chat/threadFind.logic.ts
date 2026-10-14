@@ -274,6 +274,20 @@ export function splitTextWithFindMatches(
   return splitTextWithFindRanges(text, ranges, activeRange, sourceOffset);
 }
 
+function firstRangeEndingAfter(ranges: readonly ThreadFindRange[], offset: number): number {
+  let low = 0;
+  let high = ranges.length;
+  while (low < high) {
+    const middle = (low + high) >>> 1;
+    if (ranges[middle]!.endOffset <= offset) {
+      low = middle + 1;
+    } else {
+      high = middle;
+    }
+  }
+  return low;
+}
+
 export function splitTextWithFindRanges(
   text: string,
   ranges: readonly ThreadFindRange[],
@@ -286,7 +300,13 @@ export function splitTextWithFindRanges(
   const parts: FindTextPart[] = [];
   let cursor = 0;
   const sourceEnd = sourceOffset + text.length;
-  for (const range of ranges) {
+  // Ranges are sorted and disjoint, and every text node of a message shares the message's ranges,
+  // so a full scan per node grows with nodes times matches.
+  for (let index = firstRangeEndingAfter(ranges, sourceOffset); index < ranges.length; index += 1) {
+    const range = ranges[index]!;
+    if (range.startOffset >= sourceEnd) {
+      break;
+    }
     const overlapStart = Math.max(range.startOffset, sourceOffset);
     const overlapEnd = Math.min(range.endOffset, sourceEnd);
     if (overlapStart >= overlapEnd) {
@@ -521,12 +541,19 @@ export function applyActiveChatFindMatch(
   if (!root) {
     return;
   }
-  const activeStart = activeRange?.startOffset;
-  const elements = root.querySelectorAll(`[${CHAT_FIND_MATCH_ATTRIBUTE}]`);
-  for (const element of elements) {
-    const start = Number(element.getAttribute(CHAT_FIND_MATCH_START_ATTRIBUTE));
-    const isActive = activeStart !== undefined && start === activeStart;
-    element.setAttribute(CHAT_FIND_MATCH_ATTRIBUTE, isActive ? "active" : "true");
-    element.classList.toggle(CHAT_FIND_MATCH_ACTIVE_CLASS, isActive);
+  const activeStart = activeRange === null ? null : String(activeRange.startOffset);
+  // A long reply can hold thousands of matches; only the old and new active parts change.
+  for (const element of root.querySelectorAll(`[${CHAT_FIND_MATCH_ATTRIBUTE}="active"]`)) {
+    if (element.getAttribute(CHAT_FIND_MATCH_START_ATTRIBUTE) === activeStart) continue;
+    element.setAttribute(CHAT_FIND_MATCH_ATTRIBUTE, "true");
+    element.classList.remove(CHAT_FIND_MATCH_ACTIVE_CLASS);
+  }
+  if (activeStart === null) {
+    return;
+  }
+  const activeSelector = `[${CHAT_FIND_MATCH_ATTRIBUTE}][${CHAT_FIND_MATCH_START_ATTRIBUTE}="${activeStart}"]`;
+  for (const element of root.querySelectorAll(activeSelector)) {
+    element.setAttribute(CHAT_FIND_MATCH_ATTRIBUTE, "active");
+    element.classList.add(CHAT_FIND_MATCH_ACTIVE_CLASS);
   }
 }
