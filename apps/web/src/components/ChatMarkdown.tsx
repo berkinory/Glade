@@ -37,6 +37,7 @@ import React, {
   useRef,
   useState,
   type ReactNode,
+  type RefObject,
 } from "react";
 import type { Components, Options as MarkdownOptions } from "react-markdown";
 import remarkBreaks from "remark-breaks";
@@ -52,6 +53,7 @@ import { repairMarkdownTableDelimiters } from "../lib/markdownTableRepair";
 import { useTheme } from "../hooks/useTheme";
 import { useSmoothStreamedText } from "../hooks/useSmoothStreamedText";
 import { useThrottledStreamingValue } from "../hooks/useThrottledStreamingValue";
+import { useHasBeenNearViewport } from "../hooks/useHasBeenNearViewport";
 import {
   extractAbsoluteFilesystemPaths,
   resolveChatFileChipTarget,
@@ -308,10 +310,12 @@ function CodeBlockHeaderTitle({ fence }: { fence: CodeFenceInfo }) {
 function MarkdownCodeBlock({
   code,
   fence,
+  bodyRef,
   children,
 }: {
   code: string;
   fence: CodeFenceInfo;
+  bodyRef: RefObject<HTMLDivElement | null>;
   children: ReactNode;
 }) {
   const { codeBlockMeta } = useContext(MarkdownRenderContext)!;
@@ -376,7 +380,9 @@ function MarkdownCodeBlock({
           </IconButton>
         </div>
       </div>
-      <div className="chat-markdown-codeblock__body">{children}</div>
+      <div ref={bodyRef} className="chat-markdown-codeblock__body">
+        {children}
+      </div>
     </div>
   );
 }
@@ -387,12 +393,17 @@ interface SuspenseShikiCodeBlockProps {
   isStreaming: boolean;
   sourceOffset: number;
 }
+interface DeferredHighlightProps {
+  nearViewport: boolean;
+  plainFallback: ReactNode;
+}
 type SyntaxHighlightingModule = typeof import("../lib/syntaxHighlighting");
 let syntaxHighlightingModulePromise: Promise<SyntaxHighlightingModule> | null = null;
 function getSyntaxHighlightingModulePromise(): Promise<SyntaxHighlightingModule> {
   syntaxHighlightingModulePromise ??= import("../lib/syntaxHighlighting");
   return syntaxHighlightingModulePromise;
 }
+const CODE_HIGHLIGHT_VIEWPORT_MARGIN_PX = 1_000;
 const STREAMING_CODE_HIGHLIGHT_INTERVAL_MS = 160;
 const STREAMING_CODE_HIGHLIGHT_MAX_INTERVAL_MS = 1_000;
 const STREAMING_CODE_HIGHLIGHT_BASE_CHARS = 8_000;
@@ -417,10 +428,9 @@ function SuspenseShikiCodeBlock({
   themeName,
   isStreaming,
   sourceOffset,
-  oversizedFallback,
-}: SuspenseShikiCodeBlockProps & {
-  oversizedFallback: ReactNode;
-}) {
+  nearViewport,
+  plainFallback,
+}: SuspenseShikiCodeBlockProps & DeferredHighlightProps) {
   const code = useThrottledStreamingValue(
     liveCode,
     isStreaming,
@@ -429,7 +439,7 @@ function SuspenseShikiCodeBlock({
   const syntaxHighlighting = use(getSyntaxHighlightingModulePromise());
   // Shiki runs synchronously during render; past this size it freezes the window.
   if (code.length > syntaxHighlighting.MAX_SYNTAX_HIGHLIGHT_INPUT_CHARS) {
-    return oversizedFallback;
+    return plainFallback;
   }
   return (
     <LoadedShikiCodeBlock
@@ -439,6 +449,8 @@ function SuspenseShikiCodeBlock({
       themeName={themeName}
       isStreaming={isStreaming}
       sourceOffset={sourceOffset}
+      nearViewport={nearViewport}
+      plainFallback={plainFallback}
     />
   );
 }
@@ -449,9 +461,12 @@ function LoadedShikiCodeBlock({
   themeName,
   isStreaming,
   sourceOffset,
-}: SuspenseShikiCodeBlockProps & {
-  syntaxHighlighting: SyntaxHighlightingModule;
-}) {
+  nearViewport,
+  plainFallback,
+}: SuspenseShikiCodeBlockProps &
+  DeferredHighlightProps & {
+    syntaxHighlighting: SyntaxHighlightingModule;
+  }) {
   const [startedStreaming] = useState(isStreaming);
   if (startedStreaming) {
     return (
@@ -471,6 +486,10 @@ function LoadedShikiCodeBlock({
     : null;
   if (cachedHighlightedHtml != null) {
     return <FindAwareShikiHtml html={cachedHighlightedHtml} sourceOffset={sourceOffset} />;
+  }
+  // Highlighting is synchronous, so a long reply would otherwise highlight every block on open.
+  if (!isStreaming && !nearViewport) {
+    return plainFallback;
   }
 
   // The uncached path lives in its own component: an early return above must not change this
@@ -634,6 +653,8 @@ const MARKDOWN_COMPONENTS: Components = {
   pre: function MarkdownPre({ node, children, ...props }) {
     const { diffThemeName, isStreaming } = useContext(MarkdownRenderContext)!;
     const locateInSource = useMarkdownSourceLocator();
+    const bodyRef = useRef<HTMLDivElement>(null);
+    const nearViewport = useHasBeenNearViewport(bodyRef, CODE_HIGHLIGHT_VIEWPORT_MARGIN_PX);
     const codeBlock = extractCodeBlock(children);
     if (!codeBlock) {
       return <pre {...props}>{children}</pre>;
@@ -649,7 +670,7 @@ const MARKDOWN_COMPONENTS: Components = {
       </pre>
     );
     return (
-      <MarkdownCodeBlock code={code} fence={fence}>
+      <MarkdownCodeBlock code={code} fence={fence} bodyRef={bodyRef}>
         <CodeHighlightErrorBoundary fallback={highlightedFallback}>
           <Suspense fallback={highlightedFallback}>
             <SuspenseShikiCodeBlock
@@ -658,7 +679,8 @@ const MARKDOWN_COMPONENTS: Components = {
               themeName={diffThemeName}
               isStreaming={isStreaming}
               sourceOffset={sourceOffset}
-              oversizedFallback={highlightedFallback}
+              nearViewport={nearViewport}
+              plainFallback={highlightedFallback}
             />
           </Suspense>
         </CodeHighlightErrorBoundary>

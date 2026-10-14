@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { useLayoutEffect, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import {
   type VisualReply,
@@ -15,6 +15,7 @@ import { Tooltip, TooltipPopup, TooltipTrigger } from "~/components/ui/tooltip";
 import { ExpandIcon, CollapseIcon, DownloadIcon } from "~/lib/icons";
 import { downloadBlob } from "~/lib/browserDownload";
 import { resolveWsHttpUrl } from "~/lib/wsHttpUrl";
+import { useHasBeenNearViewport } from "~/hooks/useHasBeenNearViewport";
 import { VisualReplyFrame } from "./VisualReplyFrame";
 
 export function VisualReplyCard({
@@ -27,7 +28,8 @@ export function VisualReplyCard({
   readonly onScrollGesture?: ((upward: boolean) => void) | undefined;
 }) {
   const container = useRef<HTMLDivElement>(null);
-  const [visible, setVisible] = useState(false);
+  // Leaving the viewport must not discard edits held inside the sandbox, so visibility latches.
+  const visible = useHasBeenNearViewport(container, 0);
   const [expanded, setExpanded] = useState(false);
   const [contentHeight, setContentHeight] = useState<number>();
   const [width, setWidth] = useState(VISUAL_REPLY_COLUMN_WIDTH);
@@ -38,18 +40,6 @@ export function VisualReplyCard({
     const measure = () => setWidth(element.getBoundingClientRect().width);
     measure();
     const observer = new ResizeObserver(measure);
-    observer.observe(element);
-    return () => observer.disconnect();
-  }, []);
-  useEffect(() => {
-    const element = container.current;
-    if (!element) return;
-    const observer = new IntersectionObserver((entries) => {
-      if (!entries.some((entry) => entry.isIntersecting)) return;
-      // Leaving the viewport must not discard edits held inside the sandbox.
-      setVisible(true);
-      observer.disconnect();
-    });
     observer.observe(element);
     return () => observer.disconnect();
   }, []);
