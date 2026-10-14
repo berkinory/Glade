@@ -23,6 +23,9 @@ const USAGE_CACHE_TTL_MS = 30_000;
 
 const MAX_RECENT_USAGE_FILES = 2_000;
 const PROVIDER_USAGE_FILE_READ_CONCURRENCY = 16;
+// Parsing transcripts is CPU work on the server's event loop; reading many at once delayed every
+// other request behind a queue of chunk callbacks while the first usage refresh ran.
+const CLAUDE_TRANSCRIPT_READ_CONCURRENCY = 2;
 const CODEX_SESSION_READ_CHUNK_BYTES = 64 * 1024;
 const MAX_CODEX_SESSION_LINE_BYTES = 1024 * 1024;
 const MAX_CLAUDE_TRANSCRIPT_LINE_BYTES = 1024 * 1024;
@@ -461,34 +464,64 @@ async function listRecentClaudeTranscriptFiles(
   return listRecentFiles(candidates, maxFiles);
 }
 
+// Both sample kinds read a `usage` key and JSON never escapes its letters, so lines without these
+// bytes are skipped before decoding. Most transcript bytes are tool output and file contents.
+const CLAUDE_USAGE_KEY = Buffer.from('"usage"');
+// Bytes just before the resume offset that must still match for a transcript to count as appended.
+const CLAUDE_TRANSCRIPT_FINGERPRINT_BYTES = 64;
+
+interface ClaudeTranscriptScan {
+  readonly mtimeMs: number;
+  readonly size: number;
+  // End of the last complete line; a grown transcript is read again from here.
+  readonly offset: number;
+  readonly lineIndex: number;
+  readonly fingerprint: Buffer;
+  readonly samples: ReadonlyArray<ClaudeUsageSample>;
+  readonly seenKeys: ReadonlySet<string>;
+}
+
+async function readClaudeTranscriptFingerprint(path: string, offset: number): Promise<Buffer> {
+  const length = Math.min(offset, CLAUDE_TRANSCRIPT_FINGERPRINT_BYTES);
+  const buffer = Buffer.alloc(length);
+  if (length === 0) return buffer;
+  const handle = await fs.open(path, "r");
+  try {
+    const { bytesRead } = await handle.read(buffer, 0, length, offset - length);
+    return buffer.subarray(0, bytesRead);
+  } finally {
+    await handle.close().catch(() => undefined);
+  }
+}
+
 // Reading one into a string costs its full size in the heap plus a second copy for the line split,
 // so a few large transcripts are enough to exhaust old space and abort the backend. Stream chunks
 // and cap individual records so malformed or tool-heavy lines cannot recreate the same problem
-// inside a line reader.
+// inside a line reader. Active transcripts only grow, so a later read continues from the previous
+// scan; the trailing unterminated line is read each time and deduplicated.
 async function readClaudeUsageSamples(
-  path: string,
-): Promise<{ readonly samples: ReadonlyArray<ClaudeUsageSample>; readonly complete: boolean }> {
-  const samples: ClaudeUsageSample[] = [];
+  file: RecentFile,
+  previous: ClaudeTranscriptScan | null,
+): Promise<{ readonly scan: ClaudeTranscriptScan; readonly complete: boolean }> {
+  const samples = previous ? [...previous.samples] : [];
+  const seenKeys = new Set(previous?.seenKeys);
+  let offset = previous?.offset ?? 0;
+  let lineIndex = previous?.lineIndex ?? 0;
   let complete = true;
-  const seenKeys = new Set<string>();
-  const stream = createReadStream(path);
+  const stream = createReadStream(file.path, { start: offset });
+  let chunkStart = offset;
   let lineChunks: Buffer[] = [];
   let lineBytes = 0;
-  let lineIndex = 0;
   let skippingOversizedLine = false;
 
   const collectLine = (line: Buffer, index: number): void => {
-    if (line.length === 0) {
-      return;
-    }
-    const contents = line.toString("utf8");
-    if (!contents.trim()) {
+    if (line.indexOf(CLAUDE_USAGE_KEY) === -1) {
       return;
     }
 
     let parsed: unknown;
     try {
-      parsed = JSON.parse(contents);
+      parsed = JSON.parse(line.toString("utf8"));
     } catch {
       return;
     }
@@ -498,7 +531,7 @@ async function readClaudeUsageSamples(
       return;
     }
 
-    const fallbackKey = `${path}:${index}`;
+    const fallbackKey = `${file.path}:${index}`;
     const assistantSample = readClaudeAssistantSample({ record, fallbackKey });
     if (assistantSample && !seenKeys.has(assistantSample.dedupeKey)) {
       seenKeys.add(assistantSample.dedupeKey);
@@ -526,32 +559,34 @@ async function readClaudeUsageSamples(
     lineBytes += chunk.length;
   };
 
-  const finishLine = (): void => {
-    if (!skippingOversizedLine) {
-      collectLine(Buffer.concat(lineChunks, lineBytes), lineIndex);
-    }
-    lineChunks = [];
-    lineBytes = 0;
-    lineIndex += 1;
-    skippingOversizedLine = false;
-  };
+  const pendingLine = (): Buffer =>
+    lineChunks.length === 1 ? lineChunks[0]! : Buffer.concat(lineChunks, lineBytes);
 
   try {
-    for await (const chunk of stream) {
+    for await (const chunk of stream as AsyncIterable<Buffer>) {
       let lineStart = 0;
-      for (let index = 0; index < chunk.length; index += 1) {
-        if (chunk[index] !== 0x0a) {
-          continue;
+      for (
+        let newline = chunk.indexOf(0x0a);
+        newline !== -1;
+        newline = chunk.indexOf(0x0a, lineStart)
+      ) {
+        appendLineChunk(chunk.subarray(lineStart, newline));
+        if (!skippingOversizedLine && lineBytes > 0) {
+          collectLine(pendingLine(), lineIndex);
         }
-        appendLineChunk(chunk.subarray(lineStart, index));
-        finishLine();
-        lineStart = index + 1;
+        lineChunks = [];
+        lineBytes = 0;
+        lineIndex += 1;
+        skippingOversizedLine = false;
+        lineStart = newline + 1;
+        offset = chunkStart + lineStart;
       }
       appendLineChunk(chunk.subarray(lineStart));
+      chunkStart += chunk.length;
     }
 
     if (lineBytes > 0 && !skippingOversizedLine) {
-      collectLine(Buffer.concat(lineChunks, lineBytes), lineIndex);
+      collectLine(pendingLine(), lineIndex);
     }
   } catch {
     complete = false;
@@ -559,31 +594,46 @@ async function readClaudeUsageSamples(
     stream.destroy();
   }
 
-  return { samples, complete };
+  const fingerprint = complete
+    ? await readClaudeTranscriptFingerprint(file.path, offset).catch(() => {
+        complete = false;
+        return Buffer.alloc(0);
+      })
+    : Buffer.alloc(0);
+  return {
+    scan: {
+      mtimeMs: file.mtimeMs,
+      size: file.size,
+      offset,
+      lineIndex,
+      fingerprint,
+      samples,
+      seenKeys,
+    },
+    complete,
+  };
 }
 
-interface CachedClaudeTranscript {
-  readonly mtimeMs: number;
-  readonly size: number;
-  readonly samples: ReadonlyArray<ClaudeUsageSample>;
-}
-
-// Samples are deduplicated per transcript, so a file's samples depend only on its own bytes and
-// can be reused until its size or mtime changes.
-const claudeTranscriptSamples = new Map<string, CachedClaudeTranscript>();
+const claudeTranscriptScans = new Map<string, ClaudeTranscriptScan>();
 
 async function readCachedClaudeUsageSamples(
   file: RecentFile,
 ): Promise<ReadonlyArray<ClaudeUsageSample>> {
-  const cached = claudeTranscriptSamples.get(file.path);
+  const cached = claudeTranscriptScans.get(file.path);
   if (cached && cached.mtimeMs === file.mtimeMs && cached.size === file.size) {
     return cached.samples;
   }
-  const { samples, complete } = await readClaudeUsageSamples(file.path);
+  const appended =
+    cached !== undefined &&
+    file.size >= cached.offset &&
+    (await readClaudeTranscriptFingerprint(file.path, cached.offset)
+      .then((bytes) => bytes.equals(cached.fingerprint))
+      .catch(() => false));
+  const { scan, complete } = await readClaudeUsageSamples(file, appended ? cached : null);
   if (complete) {
-    claudeTranscriptSamples.set(file.path, { mtimeMs: file.mtimeMs, size: file.size, samples });
+    claudeTranscriptScans.set(file.path, scan);
   }
-  return samples;
+  return scan.samples;
 }
 
 async function loadCodexUsageSnapshot(input: {
@@ -650,13 +700,13 @@ async function loadClaudeUsageSnapshot(input: { homeDir: string }): Promise<Usag
     await mapWithConcurrency(
       // Every sample in a file predates its last write, so older files cannot reach the window.
       transcriptFiles.filter((file) => file.mtimeMs >= lookbackStartMs),
-      PROVIDER_USAGE_FILE_READ_CONCURRENCY,
+      CLAUDE_TRANSCRIPT_READ_CONCURRENCY,
       readCachedClaudeUsageSamples,
     )
   ).flat();
   const listedPaths = new Set(transcriptFiles.map((file) => file.path));
-  for (const path of claudeTranscriptSamples.keys()) {
-    if (!listedPaths.has(path)) claudeTranscriptSamples.delete(path);
+  for (const path of claudeTranscriptScans.keys()) {
+    if (!listedPaths.has(path)) claudeTranscriptScans.delete(path);
   }
 
   if (usageSamples.length === 0) {
