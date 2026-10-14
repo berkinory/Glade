@@ -135,6 +135,9 @@ export function createBackendSupervisor({
       GLADE_HOME: BASE_DIR,
       GLADE_AUTH_TOKEN: backendAuthToken,
       GLADE_DESKTOP_SHUTDOWN_TOKEN: DESKTOP_BACKEND_SHUTDOWN_TOKEN,
+      // Node reads this before loading any module, so later launches compile the server from cached
+      // bytecode. The temporary directory lets entries of replaced app versions expire.
+      NODE_COMPILE_CACHE: Path.join(OS.tmpdir(), "glade-backend-compile-cache"),
     };
     // The backend runs the same login-shell probe at startup and does not begin listening until it
     // returns, so an unmarked child serializes a second ~1s hydration behind ours. Written explicitly

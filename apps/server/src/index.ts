@@ -16,6 +16,8 @@ import {
   withDesktopParentLifetime,
 } from "./server/lifecycle/desktopParentLifetime";
 
+// The desktop enables Node's compile cache for this process alone; providers must not inherit it.
+delete process.env.NODE_COMPILE_CACHE;
 const desktopParentInput = consumeDesktopParentInput(process.env, () => process.stdin);
 
 const RuntimeLayer = Layer.empty.pipe(
