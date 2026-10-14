@@ -32,7 +32,7 @@ export function FileNameChip({
       className={cn(
         CHIP_CLASS_NAME,
         onOpen &&
-          "cursor-pointer transition-colors hover:bg-[var(--color-background-button-secondary-hover)] hover:text-foreground",
+          "cursor-pointer hover:bg-[var(--color-background-button-secondary-hover)] hover:text-foreground",
         className,
       )}
       onClick={open}

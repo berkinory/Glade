@@ -76,7 +76,7 @@ export function SidebarPrimaryAction({
             {badge.text}
           </span>
         ) : shortcutLabel ? (
-          <span className="ml-auto opacity-0 transition-opacity group-hover/sidebar-primary-action:opacity-100 group-focus-visible/sidebar-primary-action:opacity-100">
+          <span className="ml-auto opacity-0 group-hover/sidebar-primary-action:opacity-100 group-focus-visible/sidebar-primary-action:opacity-100">
             <ShortcutKbd shortcutLabel={shortcutLabel} />
           </span>
         ) : null}

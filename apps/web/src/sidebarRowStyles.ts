@@ -10,7 +10,7 @@ const SIDEBAR_ROW_GAP_CLASS_NAME = "gap-[var(--app-density-row-gap,0.5rem)]";
 const SIDEBAR_ROW_TEXT_CLASS_NAME = "text-ui font-normal";
 
 export const SIDEBAR_ROW_FOCUS_CLASS_NAME =
-  "outline-hidden transition-colors focus-visible:ring-1 focus-visible:ring-inset focus-visible:ring-ring";
+  "outline-hidden focus-visible:ring-1 focus-visible:ring-inset focus-visible:ring-ring";
 
 export const SIDEBAR_ROW_HOVER_CLASS_NAME =
   "hover:bg-[var(--sidebar-accent)] hover:text-[var(--sidebar-accent-foreground)]";
@@ -56,10 +56,10 @@ export const SIDEBAR_NESTED_LIST_OFFSET_CLASS_NAME = "pt-0.5";
 
 export type SidebarHoverRevealGroup = "activity-row" | "project-header" | "thread-row";
 
-// The single rule for "fade a resting glyph out the moment its row reveals the hover action
-// toolbar, so the actions replace it instead of stacking on top." A project header (folder icon +
+// Hide the resting glyph immediately when its row reveals the hover action
+// toolbar so the actions replace it instead of stacking on top. A project header (folder icon +
 // run-status dot) and a thread row (meta chips, timestamp/status slot, jump hint) both follow it —
-// the faded element also drops pointer events so it never intercepts clicks meant for the revealed
+// the hidden element also drops pointer events so it never intercepts clicks meant for the revealed
 // toolbar. Tailwind only emits utilities it can read as complete literals, so each group's classes
 // are spelled out in full rather than interpolating the `group/<row>` token. If the element you
 // want to hide animates its own `opacity` (e.g. `animate-pulse`), the running animation overrides
@@ -67,11 +67,11 @@ export type SidebarHoverRevealGroup = "activity-row" | "project-header" | "threa
 // subtree.
 const SIDEBAR_HOVER_REVEAL_HIDE_CLASS_NAME: Record<SidebarHoverRevealGroup, string> = {
   "activity-row":
-    "transition-opacity group-hover/activity-row:pointer-events-none group-hover/activity-row:opacity-0 group-focus-within/activity-row:pointer-events-none group-focus-within/activity-row:opacity-0",
+    "group-hover/activity-row:pointer-events-none group-hover/activity-row:opacity-0 group-focus-within/activity-row:pointer-events-none group-focus-within/activity-row:opacity-0",
   "project-header":
-    "transition-opacity group-hover/project-header:pointer-events-none group-hover/project-header:opacity-0 group-data-[focus-visible]/project-header:pointer-events-none group-data-[focus-visible]/project-header:opacity-0",
+    "group-hover/project-header:pointer-events-none group-hover/project-header:opacity-0 group-data-[focus-visible]/project-header:pointer-events-none group-data-[focus-visible]/project-header:opacity-0",
   "thread-row":
-    "transition-opacity group-hover/thread-row:pointer-events-none group-hover/thread-row:opacity-0 group-focus-within/thread-row:pointer-events-none group-focus-within/thread-row:opacity-0",
+    "group-hover/thread-row:pointer-events-none group-hover/thread-row:opacity-0 group-focus-within/thread-row:pointer-events-none group-focus-within/thread-row:opacity-0",
 };
 
 export function sidebarHoverRevealHideClassName(group: SidebarHoverRevealGroup): string {

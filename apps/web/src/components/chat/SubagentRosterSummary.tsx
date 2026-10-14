@@ -23,7 +23,7 @@ export function SubagentRosterSummary({
       type="button"
       aria-label="Show subagent list"
       className={cn(
-        "flex w-full min-w-0 items-center gap-2 rounded-md text-left text-ui transition-colors hover:bg-[var(--color-background-button-secondary-hover)]",
+        "flex w-full min-w-0 items-center gap-2 rounded-md text-left text-ui hover:bg-[var(--color-background-button-secondary-hover)]",
         className,
       )}
       onClick={onExpand}

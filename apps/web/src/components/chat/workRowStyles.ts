@@ -15,8 +15,8 @@ export const WORK_ROW_LINE_CLASS_NAME = "leading-5";
 
 // Muted rows light up while their own row is hovered or focused.
 export const WORK_ROW_MUTED_HOVER_TONE: Record<"tool-row" | "file-row", string> = {
-  "tool-row": `${MUTED_LABEL_TEXT_CLASS_NAME} transition-colors group-hover/tool-row:text-foreground group-focus-visible/tool-row:text-foreground`,
-  "file-row": `${MUTED_LABEL_TEXT_CLASS_NAME} transition-colors group-hover/file-row:text-foreground group-focus-visible/file-row:text-foreground`,
+  "tool-row": `${MUTED_LABEL_TEXT_CLASS_NAME} group-hover/tool-row:text-foreground group-focus-visible/tool-row:text-foreground`,
+  "file-row": `${MUTED_LABEL_TEXT_CLASS_NAME} group-hover/file-row:text-foreground group-focus-visible/file-row:text-foreground`,
 };
 
 // Details open under a row's text rather than under its icon: the icon slot plus the gap.

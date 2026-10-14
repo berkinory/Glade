@@ -28,7 +28,7 @@ export function UsageProgressTrack({
     >
       <div
         className={cn(
-          "h-full rounded-full transition-[width] duration-120 ease-out motion-reduce:transition-none",
+          "h-full rounded-full transition-[width] duration-(--ui-motion-long-duration) ease-out motion-reduce:transition-none",
           fillClassName,
         )}
         style={{ width: `${clamped}%` }}

@@ -216,7 +216,7 @@ export function createChatPresentation(
   const emptyLandingControls = showEmptyLandingControls ? (
     <div
       data-empty-landing-controls="true"
-      className="chat-composer-shell mx-auto flex min-h-8 w-full min-w-0 flex-nowrap items-center gap-x-1.5 overflow-hidden !rounded-b-none !rounded-t-[var(--composer-radius)] px-1.5 py-1 transition-colors duration-100 ease-out motion-reduce:transition-none sm:min-h-7"
+      className="chat-composer-shell mx-auto flex min-h-8 w-full min-w-0 flex-nowrap items-center gap-x-1.5 overflow-hidden !rounded-b-none !rounded-t-[var(--composer-radius)] px-1.5 py-1 transition-colors duration-(--ui-motion-default-duration) ease-out motion-reduce:transition-none sm:min-h-7"
     >
       {showEnvironmentPicker ? (
         <EnvironmentPicker
@@ -270,7 +270,7 @@ export function createChatPresentation(
       <div
         aria-hidden={showEmptyLandingBranchToolbar ? undefined : true}
         className={cn(
-          "flex min-w-0 flex-1 items-center transition-[opacity,transform] duration-100 ease-out motion-reduce:transition-none",
+          "flex min-w-0 flex-1 items-center transition-[opacity,transform] duration-(--ui-motion-default-duration) ease-out motion-reduce:transition-none",
           showEmptyLandingBranchToolbar
             ? "translate-y-0 opacity-100"
             : "pointer-events-none opacity-0",

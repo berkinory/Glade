@@ -107,7 +107,7 @@ export function SubagentRunCard({
           type="button"
           aria-expanded={open}
           className={cn(
-            "inline-flex min-w-0 items-center text-left transition-colors duration-100 hover:text-foreground",
+            "inline-flex min-w-0 items-center text-left hover:text-foreground",
             WORK_ROW_BLOCK_CLASS_NAME,
             WORK_ROW_LINE_CLASS_NAME,
             WORK_ROW_GAP_CLASS_NAME,
@@ -278,7 +278,7 @@ function SubagentStopButton({
       type="button"
       aria-label="Stop subagent"
       title="Stop subagent"
-      className="absolute top-1 right-1 flex size-5 items-center justify-center rounded-md bg-background opacity-0 transition-opacity hover:bg-[var(--color-background-button-secondary-hover)] group-hover/subagent-row:opacity-100 focus-visible:opacity-100"
+      className="absolute top-1 right-1 flex size-5 items-center justify-center rounded-md bg-background opacity-0 hover:bg-[var(--color-background-button-secondary-hover)] group-hover/subagent-row:opacity-100 focus-visible:opacity-100"
       onClick={() => {
         void interruptThreadTurn(threadId).catch((error: unknown) => {
           setError(threadId, error instanceof Error ? error.message : "Could not stop subagent.");
@@ -313,7 +313,7 @@ function SubagentStopAllControl({
       type="button"
       aria-label="Stop all subagents"
       title="Stop all running subagents"
-      className="flex size-5 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-[var(--color-background-button-secondary-hover)] hover:text-foreground"
+      className="flex size-5 shrink-0 items-center justify-center rounded-md text-muted-foreground hover:bg-[var(--color-background-button-secondary-hover)] hover:text-foreground"
       onClick={() => {
         for (const threadId of threadIds) {
           void interruptThreadTurn(threadId).catch((error: unknown) => {

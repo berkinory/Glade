@@ -375,7 +375,7 @@ export function useSidebarRows(context: ReturnType<typeof useSidebarPanelEffects
             data-sidebar-thread-id={thread.id}
             className={cn(
               SIDEBAR_HEADER_ROW_CLASS_NAME,
-              "relative gap-1.5 transition-colors",
+              "relative gap-1.5",
               "pr-2",
               isActive
                 ? SIDEBAR_ROW_ACTIVE_CLASS_NAME
@@ -732,7 +732,7 @@ export function useSidebarRows(context: ReturnType<typeof useSidebarPanelEffects
               </SidebarLeadingIcon>
               <div
                 className={cn(
-                  "flex min-w-0 flex-1 items-center gap-2 overflow-hidden transition-[padding] duration-100 ease-out",
+                  "flex min-w-0 flex-1 items-center gap-2 overflow-hidden",
                   projectToolbarReserveClassName,
                 )}
               >
@@ -758,7 +758,7 @@ export function useSidebarRows(context: ReturnType<typeof useSidebarPanelEffects
               aria-pressed={isProjectPinned}
               title={pinActionLabel(project.name, isProjectPinned)}
               className={cn(
-                "sidebar-icon-button absolute left-2 top-1/2 z-20 inline-flex size-4 -translate-y-1/2 cursor-pointer items-center justify-center rounded-sm transition-opacity hover:text-foreground focus-visible:outline-hidden focus-visible:ring-1 focus-visible:ring-ring",
+                "sidebar-icon-button absolute left-2 top-1/2 z-20 inline-flex size-4 -translate-y-1/2 cursor-pointer items-center justify-center rounded-sm hover:text-foreground focus-visible:outline-hidden focus-visible:ring-1 focus-visible:ring-ring",
                 SIDEBAR_ROW_LABEL_TEXT_CLASS_NAME,
                 "pointer-events-none opacity-0 md:group-hover/project-header:pointer-events-auto md:group-hover/project-header:opacity-100 md:group-data-[focus-visible]/project-header:pointer-events-auto md:group-data-[focus-visible]/project-header:opacity-100 focus-visible:pointer-events-auto focus-visible:opacity-100",
               )}

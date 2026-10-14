@@ -1,3 +1,4 @@
+import { UI_MOTION } from "@glade/shared/uiMotion";
 import type { BrowserPickTheme } from "@glade/contracts/browser/browserView";
 import type { CdpSession } from "./cdpSession";
 
@@ -17,13 +18,9 @@ type OverlayCall =
 // Runs inside the page in an isolated world, so page scripts cannot reach these functions, and the
 // closed shadow root keeps page CSS out. Styles go through CSSOM and motion through
 // element.animate, which a page CSP does not block the way it blocks an inline <style>.
-function installPickOverlay(theme: BrowserPickTheme): void {
-  // A short glide between hovered elements: long enough to read as motion, short enough that the
-  // highlight never trails the pointer. The box is one fixed element, so resizing it stays cheap.
-  const ease = "cubic-bezier(0.2, 0, 0, 1)";
-  const moving = theme.reducedMotion
-    ? "opacity 80ms linear"
-    : `transform 70ms ${ease}, width 70ms ${ease}, height 70ms ${ease}, opacity 80ms linear`;
+function installPickOverlay(theme: BrowserPickTheme, motion: typeof UI_MOTION): void {
+  // Hover targets change instantly; only showing and hiding the overlay fades.
+  const moving = theme.reducedMotion ? "none" : `opacity ${motion.popupMs}ms ${motion.easing}`;
   const host = document.createElement("div");
   host.style.cssText =
     "all: initial !important; position: fixed !important; inset: 0 !important; pointer-events: none !important; z-index: 2147483647 !important;";
@@ -85,7 +82,7 @@ function installPickOverlay(theme: BrowserPickTheme): void {
       else if (call.op === "hide") hideNow();
       else if (call.op === "confirm") {
         if (!call.box || theme.reducedMotion) {
-          fadeOutAndRemove(80);
+          fadeOutAndRemove(theme.reducedMotion ? 0 : motion.popupMs);
           return;
         }
         place(call.box, "Added to chat", "");
@@ -94,15 +91,15 @@ function installPickOverlay(theme: BrowserPickTheme): void {
             { boxShadow: `0 0 0 0 color-mix(in srgb, ${theme.accent} 45%, transparent)` },
             { boxShadow: "0 0 0 8px transparent" },
           ],
-          { duration: 240, easing: "ease-out" },
+          { duration: motion.longMs, easing: motion.easing },
         );
         addEventListener("scroll", () => host.remove(), {
           capture: true,
           passive: true,
           once: true,
         });
-        setTimeout(() => fadeOutAndRemove(80), 300);
-      } else fadeOutAndRemove(theme.reducedMotion ? 0 : 80);
+        setTimeout(() => fadeOutAndRemove(motion.popupMs), motion.longMs);
+      } else fadeOutAndRemove(theme.reducedMotion ? 0 : motion.popupMs);
     },
   });
 }
@@ -126,7 +123,7 @@ export class PickOverlay {
       );
       await cdp.send("Runtime.evaluate", {
         contextId: executionContextId,
-        expression: `(${installPickOverlay.toString()})(${JSON.stringify(theme)})`,
+        expression: `(${installPickOverlay.toString()})(${JSON.stringify(theme)}, ${JSON.stringify(UI_MOTION)})`,
       });
       overlay.contextId = executionContextId;
     } catch {

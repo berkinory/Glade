@@ -13,9 +13,9 @@ export function EnvironmentDirectoryPath({
 
   return (
     <div className="flex min-w-0 items-center gap-1">
-      <div className="environment-directory-viewport min-w-0 flex-1 overflow-hidden">
+      <div className="min-w-0 flex-1 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
         <code
-          className="environment-directory-path block w-max min-w-full whitespace-nowrap text-ui-sm"
+          className="block w-max min-w-full whitespace-nowrap text-ui-sm"
           title={path ?? undefined}
         >
           {displayPath}

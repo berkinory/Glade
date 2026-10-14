@@ -1,3 +1,5 @@
+import { UI_MOTION } from "@glade/shared/uiMotion";
+import { UI_MOTION_BACKDROP_CLASS, UI_MOTION_DIALOG_CLASS } from "./lib/uiMotion";
 import { ELEVATED_HOVER_SURFACE_CLASS_NAME } from "./surfaceStyles";
 
 export function showConfirmDialogFallback(message: string): Promise<boolean> {
@@ -7,10 +9,10 @@ export function showConfirmDialogFallback(message: string): Promise<boolean> {
     const description = lines.slice(1).join("\n").trim();
 
     const backdrop = document.createElement("div");
-    backdrop.className = "fixed inset-0 z-50 bg-black/50";
+    backdrop.className = `fixed inset-0 z-50 bg-black/50 ${UI_MOTION_BACKDROP_CLASS}`;
+    backdrop.dataset.startingStyle = "";
 
     backdrop.dataset.slot = "alert-dialog-backdrop";
-    backdrop.style.cssText = "animation:fadeIn .15s ease-out";
 
     const viewport = document.createElement("div");
     viewport.className = "fixed inset-0 z-50 flex items-center justify-center p-4";
@@ -20,9 +22,8 @@ export function showConfirmDialogFallback(message: string): Promise<boolean> {
     popup.dataset.slot = "alert-dialog-popup";
     popup.setAttribute("role", "alertdialog");
     popup.setAttribute("aria-modal", "true");
-    popup.className =
-      "flex w-full max-w-[22rem] flex-col rounded-xl border border-[color:var(--color-border-light)] bg-[var(--composer-surface)] text-[var(--color-text-foreground)] shadow-xl";
-    popup.style.cssText = "animation:scaleIn .15s ease-out";
+    popup.className = `flex w-full max-w-[22rem] flex-col rounded-xl border border-[color:var(--color-border-light)] bg-[var(--composer-surface)] text-[var(--color-text-foreground)] shadow-xl ${UI_MOTION_DIALOG_CLASS}`;
+    popup.dataset.startingStyle = "";
 
     const header = document.createElement("div");
     header.className = "flex flex-col gap-1.5 px-4 py-3.5 text-center sm:text-left";
@@ -44,10 +45,24 @@ export function showConfirmDialogFallback(message: string): Promise<boolean> {
     const footer = document.createElement("div");
     footer.className = "flex flex-col-reverse gap-2 px-4 py-3 sm:flex-row sm:justify-end";
 
+    let settled = false;
+    let openingFrame = 0;
     function cleanup(result: boolean) {
+      if (settled) return;
+      settled = true;
+      cancelAnimationFrame(openingFrame);
       document.removeEventListener("keydown", onKeyDown);
-      backdrop.remove();
-      viewport.remove();
+      backdrop.dataset.endingStyle = "";
+      popup.dataset.endingStyle = "";
+      backdrop.style.pointerEvents = "none";
+      viewport.style.pointerEvents = "none";
+      const duration = matchMedia("(prefers-reduced-motion: reduce)").matches
+        ? 0
+        : UI_MOTION.defaultMs;
+      setTimeout(() => {
+        backdrop.remove();
+        viewport.remove();
+      }, duration);
       resolve(result);
     }
 
@@ -76,7 +91,7 @@ export function showConfirmDialogFallback(message: string): Promise<boolean> {
     confirmBtn.type = "button";
     confirmBtn.textContent = "Confirm";
     confirmBtn.className =
-      "inline-flex h-8 min-w-20 cursor-pointer items-center justify-center whitespace-nowrap rounded-md border border-foreground bg-foreground px-3 text-ui-lg font-medium text-background outline-none transition-all duration-100 hover:scale-[1.02] hover:bg-foreground/92 focus-visible:ring-1 focus-visible:ring-ring/60";
+      "inline-flex h-8 min-w-20 cursor-pointer items-center justify-center whitespace-nowrap rounded-md border border-foreground bg-foreground px-3 text-ui-lg font-medium text-background outline-none transition-[scale,background-color] duration-(--ui-motion-default-duration) hover:scale-[1.02] hover:bg-foreground/92 focus-visible:ring-1 focus-visible:ring-ring/60";
 
     confirmBtn.addEventListener("click", () => cleanup(true));
 
@@ -87,7 +102,14 @@ export function showConfirmDialogFallback(message: string): Promise<boolean> {
 
     document.body.appendChild(backdrop);
     document.body.appendChild(viewport);
+    void popup.offsetWidth;
+    openingFrame = requestAnimationFrame(() => {
+      delete backdrop.dataset.startingStyle;
+      delete popup.dataset.startingStyle;
+    });
 
-    requestAnimationFrame(() => confirmBtn.focus());
+    requestAnimationFrame(() => {
+      if (!settled) confirmBtn.focus();
+    });
   });
 }

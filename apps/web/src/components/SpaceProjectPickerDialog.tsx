@@ -155,7 +155,7 @@ export function SpaceProjectPickerDialog(props: {
                             })
                           }
                           className={cn(
-                            "flex w-full cursor-pointer items-center gap-2.5 rounded-xl px-2.5 py-2 text-left outline-hidden transition-colors hover:bg-foreground/5 focus-visible:ring-2 focus-visible:ring-ring/45",
+                            "flex w-full cursor-pointer items-center gap-2.5 rounded-xl px-2.5 py-2 text-left outline-hidden hover:bg-foreground/5 focus-visible:ring-2 focus-visible:ring-ring/45",
                             selected && "bg-foreground/7",
                           )}
                         >

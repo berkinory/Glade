@@ -203,7 +203,7 @@ function WorkflowAgentRowView({
       <button
         type="button"
         data-testid="workflow-agent-row"
-        className="group -mx-1 flex w-[calc(100%+0.5rem)] min-w-0 items-center gap-2 rounded-md px-1 py-1 text-left transition-colors hover:bg-[var(--color-background-button-secondary-hover)]"
+        className="group -mx-1 flex w-[calc(100%+0.5rem)] min-w-0 items-center gap-2 rounded-md px-1 py-1 text-left hover:bg-[var(--color-background-button-secondary-hover)]"
         title={agent.description}
         aria-expanded={expanded}
         onClick={onToggle}
@@ -243,7 +243,7 @@ function WorkflowAgentRowView({
         <DisclosureChevron
           open={expanded}
           className={cn(
-            "shrink-0 text-muted-foreground/40 transition-opacity",
+            "shrink-0 text-muted-foreground/40",
             !expanded && "opacity-0 group-focus-visible:opacity-100 group-hover:opacity-100",
           )}
         />

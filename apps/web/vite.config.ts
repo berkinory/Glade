@@ -1,3 +1,4 @@
+import { UI_MOTION } from "@glade/shared/uiMotion";
 import fs from "node:fs/promises";
 import path from "node:path";
 import zlib from "node:zlib";
@@ -93,6 +94,24 @@ function precompressPlugin(): Plugin {
 
 export default defineConfig(({ mode }) => ({
   plugins: [
+    {
+      name: "glade-ui-motion",
+      transformIndexHtml() {
+        return [
+          {
+            tag: "style",
+            attrs: { "data-ui-motion": "" },
+            children: `:root {
+            --ui-motion-default-duration: ${UI_MOTION.defaultMs}ms;
+            --ui-motion-long-duration: ${UI_MOTION.longMs}ms;
+            --ui-motion-popup-duration: ${UI_MOTION.popupMs}ms;
+            --ui-motion-easing: ${UI_MOTION.easing};
+          }`,
+            injectTo: "head-prepend",
+          },
+        ];
+      },
+    },
     tanstackRouter({
       target: "react",
       autoCodeSplitting: true,

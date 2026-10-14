@@ -278,7 +278,7 @@ function ChangedFileRow({
   onOpen: () => void;
 }) {
   return (
-    <div className="flex w-full items-center gap-2 rounded-md px-2 py-1 font-mono text-ui leading-snug transition-colors hover:bg-[var(--color-background-button-secondary-hover)]">
+    <div className="flex w-full items-center gap-2 rounded-md px-2 py-1 font-mono text-ui leading-snug hover:bg-[var(--color-background-button-secondary-hover)]">
       {selectable ? <Checkbox checked={!excluded} onCheckedChange={onToggle} /> : null}
       <button
         type="button"

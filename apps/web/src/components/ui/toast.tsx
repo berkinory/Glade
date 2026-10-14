@@ -374,7 +374,7 @@ function ArchiveUndoToastSurface({
       />
       <Toast.Content
         className={cn(
-          "pointer-events-auto relative flex items-center gap-2 overflow-hidden px-3.5 py-2 text-ui-sm leading-normal transition-opacity duration-120 ease-out motion-reduce:transition-none data-expanded:opacity-100",
+          "pointer-events-auto relative flex items-center gap-2 overflow-hidden px-3.5 py-2 text-ui-sm leading-normal transition-opacity duration-(--ui-motion-long-duration) ease-out motion-reduce:transition-none data-expanded:opacity-100",
           hideCollapsedContent &&
             "not-data-expanded:pointer-events-none not-data-expanded:opacity-0",
         )}
@@ -423,7 +423,7 @@ function ToastSurface({
   return (
     <Toast.Content
       className={cn(
-        "pointer-events-auto relative flex overflow-hidden transition-opacity duration-120 ease-out motion-reduce:transition-none data-expanded:opacity-100",
+        "pointer-events-auto relative flex overflow-hidden transition-opacity duration-(--ui-motion-long-duration) ease-out motion-reduce:transition-none data-expanded:opacity-100",
         compact
           ? cn(
               "gap-2 px-3 py-1.5 pr-1.5 text-ui-sm leading-normal",
@@ -567,7 +567,7 @@ function Toasts({ position: positionProp }: { position: ToastPosition }) {
           return (
             <Toast.Root
               className={cn(
-                "absolute z-[calc(9999-var(--toast-index))] h-(--toast-calc-height) select-none [transition:transform_.18s_ease-out,opacity_.16s_ease-out,height_.18s_ease-out] motion-reduce:transition-none",
+                "absolute z-[calc(9999-var(--toast-index))] h-(--toast-calc-height) select-none transition-[transform,opacity,height] duration-(--ui-motion-long-duration) ease-out motion-reduce:transition-none",
                 archiveUndoToast
                   ? cn(
                       ARCHIVE_UNDO_TOAST_SURFACE_CLASS_NAME,

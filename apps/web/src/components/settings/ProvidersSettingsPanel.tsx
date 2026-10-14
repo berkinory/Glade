@@ -1,3 +1,4 @@
+import { UI_MOTION } from "@glade/shared/uiMotion";
 import { DownloadIcon, ExternalLinkIcon, GripVerticalIcon } from "~/lib/icons";
 import { Spinner } from "~/components/ui/spinner";
 import { ProviderSignIn } from "./ProviderSignIn";
@@ -239,6 +240,7 @@ function ProviderToolRow(props: {
 }) {
   const { attributes, listeners, setActivatorNodeRef, setNodeRef, transform, transition } =
     useSortable({
+      transition: { duration: UI_MOTION.defaultMs, easing: UI_MOTION.easing },
       id: props.config.provider,
     });
   const enabled = !props.settings.disabledProviders.includes(props.config.provider);

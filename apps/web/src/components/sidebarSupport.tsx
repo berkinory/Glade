@@ -1,3 +1,4 @@
+import { UI_MOTION } from "@glade/shared/uiMotion";
 import {
   BubbleChatIcon,
   HelpCircleIcon,
@@ -355,6 +356,7 @@ export function SortableProjectItem({
     isDragging,
     isOver,
   } = useSortable({
+    transition: { duration: UI_MOTION.defaultMs, easing: UI_MOTION.easing },
     id: projectId,
     disabled,
   });

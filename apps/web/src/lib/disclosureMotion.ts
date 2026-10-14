@@ -1,7 +1,8 @@
 import { cn } from "~/lib/utils";
-import { UI_MOTION_DEFAULT_CLASS, UI_MOTION_DEFAULT_MS } from "~/lib/uiMotion";
+import { UI_MOTION } from "@glade/shared/uiMotion";
+import { UI_MOTION_DEFAULT_CLASS } from "~/lib/uiMotion";
 
-export const DISCLOSURE_TRANSITION_MS = UI_MOTION_DEFAULT_MS;
+export const DISCLOSURE_TRANSITION_MS = UI_MOTION.defaultMs;
 export const DISCLOSURE_CLEANUP_BUFFER_MS = 40;
 
 const DISCLOSURE_SHELL_MOTION_CLASS = `grid transition-[grid-template-rows,opacity] ${UI_MOTION_DEFAULT_CLASS}`;

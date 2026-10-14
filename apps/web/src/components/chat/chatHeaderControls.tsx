@@ -61,11 +61,11 @@ const DOCK_TAB_CHIP_CLASS_NAME = cn(
   "inline-flex min-w-0 items-center pr-2.5",
 );
 const DOCK_TAB_ICON_SLOT_CLASS_NAME =
-  "relative flex size-[calc(var(--app-font-size-ui-sm,13px)*16/13)] shrink-0 [&_svg]:size-[calc(var(--app-font-size-ui-sm,13px)*14/13)] cursor-pointer items-center justify-center rounded-full bg-transparent text-[var(--color-text-foreground-secondary)] transition-colors group-hover/dock-tab:bg-[var(--color-background-button-secondary-hover)] group-focus-within/dock-tab:bg-[var(--color-background-button-secondary-hover)] hover:bg-[var(--color-background-button-secondary)] hover:text-[var(--color-text-foreground)]";
+  "relative flex size-[calc(var(--app-font-size-ui-sm,13px)*16/13)] shrink-0 [&_svg]:size-[calc(var(--app-font-size-ui-sm,13px)*14/13)] cursor-pointer items-center justify-center rounded-full bg-transparent text-[var(--color-text-foreground-secondary)] group-hover/dock-tab:bg-[var(--color-background-button-secondary-hover)] group-focus-within/dock-tab:bg-[var(--color-background-button-secondary-hover)] hover:bg-[var(--color-background-button-secondary)] hover:text-[var(--color-text-foreground)]";
 const DOCK_TAB_ICON_HOVER_HIDE_CLASS_NAME =
-  "transition-opacity group-hover/dock-tab:opacity-0 group-focus-within/dock-tab:opacity-0";
+  "group-hover/dock-tab:opacity-0 group-focus-within/dock-tab:opacity-0";
 const DOCK_TAB_CLOSE_GLYPH_CLASS_NAME =
-  "absolute size-[calc(var(--app-font-size-ui-sm,13px)*14/13)] shrink-0 opacity-0 transition-opacity group-hover/dock-tab:opacity-100 group-focus-within/dock-tab:opacity-100";
+  "absolute size-[calc(var(--app-font-size-ui-sm,13px)*14/13)] shrink-0 opacity-0 group-hover/dock-tab:opacity-100 group-focus-within/dock-tab:opacity-100";
 
 // Keep the chip's hover group and close affordance together so callers cannot mismatch their group
 // names.
@@ -180,7 +180,7 @@ export function SurfaceTabChip({
         <button
           type="button"
           className={cn(
-            "absolute right-1 top-1/2 flex size-5 -translate-y-1/2 items-center justify-center rounded-md text-muted-foreground transition-[opacity,background-color,color] hover:bg-foreground/10 hover:text-foreground focus-visible:ring-1 focus-visible:ring-ring/60",
+            "absolute right-1 top-1/2 flex size-5 -translate-y-1/2 items-center justify-center rounded-md text-muted-foreground hover:bg-foreground/10 hover:text-foreground focus-visible:ring-1 focus-visible:ring-ring/60",
             !active &&
               "opacity-0 group-hover/dock-tab:opacity-100 group-focus-within/dock-tab:opacity-100 pointer-coarse:pointer-events-none",
           )}

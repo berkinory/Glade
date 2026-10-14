@@ -41,7 +41,7 @@ export function ProjectSourceSegmentedPicker(props: {
       >
         <div
           aria-hidden
-          className="sidebar-segmented-thumb pointer-events-none absolute -inset-y-[1.5px] z-0 rounded-md transition-[left,width] duration-120 ease-out motion-reduce:transition-none"
+          className="sidebar-segmented-thumb pointer-events-none absolute -inset-y-[1.5px] z-0 rounded-md transition-[left,width] duration-(--ui-motion-long-duration) ease-out motion-reduce:transition-none"
           style={{
             left: chipLeft,
             width: chipWidth,
@@ -64,7 +64,7 @@ export function ProjectSourceSegmentedPicker(props: {
                 sourceUnavailable ? "Update the Glade server to add GitHub projects." : undefined
               }
               className={cn(
-                "relative z-10 flex flex-1 items-center justify-center gap-1.5 rounded-md px-2.5 py-1 text-ui-sm font-medium transition-colors duration-100 disabled:opacity-50",
+                "relative z-10 flex flex-1 items-center justify-center gap-1.5 rounded-md px-2.5 py-1 text-ui-sm font-medium transition-colors duration-(--ui-motion-default-duration) disabled:opacity-50",
                 active
                   ? "text-[var(--color-text-foreground)]"
                   : "text-[var(--color-text-foreground-secondary)] hover:text-[var(--color-text-foreground)]",
@@ -72,7 +72,7 @@ export function ProjectSourceSegmentedPicker(props: {
               onClick={() => props.onValueChange(source.value)}
             >
               <span
-                className="flex items-center gap-1.5 transition-transform duration-120 ease-out motion-reduce:transition-none"
+                className="flex items-center gap-1.5 transition-transform duration-(--ui-motion-long-duration) ease-out motion-reduce:transition-none"
                 style={{
                   transform: `translateX(${labelShift})`,
                 }}

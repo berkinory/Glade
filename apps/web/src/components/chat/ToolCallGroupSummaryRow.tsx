@@ -74,7 +74,7 @@ export function ToolCallGroupSummaryRow(props: {
         type="button"
         aria-expanded={open}
         className={cn(
-          "inline-flex max-w-full items-center text-left transition-colors duration-100 hover:text-foreground",
+          "inline-flex max-w-full items-center text-left hover:text-foreground",
           WORK_ROW_BLOCK_CLASS_NAME,
           WORK_ROW_LINE_CLASS_NAME,
           WORK_ROW_GAP_CLASS_NAME,

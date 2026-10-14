@@ -77,7 +77,7 @@ function ActivityTextSection({
   const [open, setOpen] = useState(initiallyOpen);
   return (
     <Collapsible open={open} onOpenChange={setOpen}>
-      <CollapsibleTrigger className="group flex w-full items-center gap-1.5 rounded-sm text-left text-ui-sm font-medium text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--color-border-focus)]/60">
+      <CollapsibleTrigger className="group flex w-full items-center gap-1.5 rounded-sm text-left text-ui-sm font-medium text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--color-border-focus)]/60">
         <DisclosureChevron open={open} className="group-hover:text-foreground" />
         {title}
       </CollapsibleTrigger>

@@ -1,3 +1,4 @@
+import { UI_MOTION } from "@glade/shared/uiMotion";
 import { PencilEdit02Icon, PlusIcon, UndoIcon, Delete02Icon } from "~/lib/icons";
 import { DndContext, PointerSensor, closestCenter, useSensor, useSensors } from "@dnd-kit/core";
 import {
@@ -190,6 +191,7 @@ function SortableSpaceTab(props: {
   onProjectDrop: (projectId: ProjectId) => void;
 }) {
   const sortable = useSortable({
+    transition: { duration: UI_MOTION.defaultMs, easing: UI_MOTION.easing },
     id: props.space.id,
   });
   return (

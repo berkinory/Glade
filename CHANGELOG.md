@@ -8,6 +8,7 @@
 
 ### Improved
 
+- Row highlights and hover actions respond immediately, and interface animations use consistent timing throughout Glade.
 - Sidebar usage indicators sit beside Settings for up to two providers and move to their own row for more. Usage panels keep remaining percentages visible, show reset times below the bars and omit consumption forecasts.
 - Long chats, and long replies full of code, open and scroll more smoothly.
 - Glade starts faster and shows your chats sooner, especially with a long chat history.

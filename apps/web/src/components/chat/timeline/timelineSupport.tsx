@@ -35,7 +35,7 @@ import {
 } from "~/types";
 import { deriveTimelineEntries } from "~/workLog.timeline";
 import type { BackgroundWaitItem } from "../BackgroundWaitRow.logic";
-import { UI_MOTION_LONG_MS } from "~/lib/uiMotion";
+import { UI_MOTION } from "@glade/shared/uiMotion";
 export const EMPTY_EDITOR_KEYBINDINGS: ResolvedKeybindingsConfig = [];
 export const EMPTY_AVAILABLE_EDITORS: ReadonlyArray<EditorId> = [];
 export const BOTTOM_CONTENT_INSET_PX = 64;
@@ -44,7 +44,7 @@ export const MESSAGE_HOVER_REVEAL_CLASS_NAME =
 export const JUMP_HIGHLIGHT_DURATION_MS = 1200;
 export const FIND_FINE_SCROLL_RETRY_TIMEOUT_MS = 900;
 export const FIND_FINE_SCROLL_MAX_RETRY_FRAMES = 90;
-export const MESSAGE_SEND_ENTER_ANIMATION_MS = UI_MOTION_LONG_MS;
+export const MESSAGE_SEND_ENTER_ANIMATION_MS = UI_MOTION.longMs;
 export const MESSAGE_SEND_ENTER_CLEANUP_BUFFER_MS = 60;
 export const TRAIL_VIEWABILITY_CONFIG = {
   itemVisiblePercentThreshold: 0,

@@ -141,7 +141,7 @@ export function EnvironmentEditableMessageRow({
           aria-label={labelAriaLabel}
           title={labelTitle}
           className={cn(
-            "min-w-0 flex-1 truncate text-left text-ui outline-none transition-colors",
+            "min-w-0 flex-1 truncate text-left text-ui outline-none",
             "text-[var(--color-text-foreground)] hover:text-foreground",
             available
               ? "cursor-pointer hover:underline"
@@ -155,10 +155,7 @@ export function EnvironmentEditableMessageRow({
         label={removeLabel}
         tooltip={removeTooltip}
         size="icon-xs"
-        className={cn(
-          "shrink-0 opacity-0 transition-opacity focus-visible:opacity-100",
-          removeButtonClassName,
-        )}
+        className={cn("shrink-0 opacity-0 focus-visible:opacity-100", removeButtonClassName)}
         onClick={onRemove}
       >
         <XIcon className="size-3" />

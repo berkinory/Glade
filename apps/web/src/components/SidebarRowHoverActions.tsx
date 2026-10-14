@@ -13,7 +13,7 @@ export function SidebarRowHoverActions({
       data-testid={`thread-hover-actions-${threadId}`}
       className={cn(
         "pointer-events-none absolute top-1/2 right-0 inline-flex -translate-y-1/2 items-center justify-end",
-        "opacity-0 transition-opacity group-hover/thread-row:pointer-events-auto group-hover/thread-row:opacity-100 group-focus-within/thread-row:pointer-events-auto group-focus-within/thread-row:opacity-100",
+        "opacity-0 group-hover/thread-row:pointer-events-auto group-hover/thread-row:opacity-100 group-focus-within/thread-row:pointer-events-auto group-focus-within/thread-row:opacity-100",
       )}
     >
       {children}

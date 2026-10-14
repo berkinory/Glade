@@ -90,7 +90,7 @@ export function TimelineControllerSurface({ controller }: { controller: Timeline
       ref={observeTimelineRow}
       className={cn(
         CHAT_COLUMN_FRAME_CLASS_NAME,
-        "px-1 transition-colors duration-100",
+        "px-1 transition-colors duration-(--ui-motion-default-duration)",
         row.kind === "working" ||
           row.kind === "background-wait" ||
           (row.kind === "message" &&

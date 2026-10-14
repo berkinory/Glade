@@ -4,8 +4,9 @@
 
 @theme inline {
   /* Default hover/focus feedback. Larger movements use the shared motion tiers. */
-  --default-transition-duration: 100ms;
-  --default-transition-timing-function: ease-out;
+  --default-transition-duration: var(--ui-motion-default-duration);
+  --default-transition-timing-function: var(--ui-motion-easing);
+  --ease-out: var(--ui-motion-easing);
   --animate-skeleton: skeleton 2s -1s infinite linear;
   --font-sans: var(--font-ui-family);
   /* Font sizes that follow the size chosen in Settings (useAppTypography). */
@@ -105,26 +106,8 @@
 }
 
 @layer components {
-  .environment-directory-viewport {
-    container-type: inline-size;
-  }
-
-  .environment-directory-viewport:hover .environment-directory-path {
-    animation: environment-directory-marquee 7s ease-in-out infinite alternate;
-  }
-
-  @media (prefers-reduced-motion: reduce) {
-    .environment-directory-viewport:hover {
-      overflow-x: auto;
-    }
-
-    .environment-directory-viewport:hover .environment-directory-path {
-      animation: none;
-    }
-  }
-
   .sidebar-icon-button {
-    @apply items-center justify-center rounded-sm p-0.5 text-muted-foreground/60 transition-colors hover:text-foreground/82 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring;
+    @apply items-center justify-center rounded-sm p-0.5 text-muted-foreground/60 hover:text-foreground/82 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring;
     background: transparent;
   }
 
@@ -181,7 +164,7 @@
     border-radius: 0;
     /* Fade the seam divider with the slide (collapsed rule sets opacity:0) — `display`
        can't transition, so opacity is what keeps this in step with the animation. */
-    transition: opacity 120ms ease-out;
+    transition: opacity var(--ui-motion-long-duration) var(--ui-motion-easing);
   }
 
   /* A single inset stroke produces the straight content edge without adding
@@ -229,18 +212,6 @@
   }
 }
 
-@keyframes environment-directory-marquee {
-  0%,
-  15% {
-    transform: translateX(0);
-  }
-
-  85%,
-  100% {
-    transform: translateX(min(0px, calc(100cqw - 100%)));
-  }
-}
-
 /* Fast opacity-only entry for chat pane swaps. Avoid vertical motion because the
    empty landing can re-render in place when switching Home -> project. */
 @keyframes chat-pane-enter {
@@ -254,7 +225,7 @@
 }
 
 .chat-pane-enter {
-  animation: chat-pane-enter 120ms ease-out;
+  animation: chat-pane-enter var(--ui-motion-long-duration) var(--ui-motion-easing);
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -579,7 +550,7 @@
   /* Fill `backwards` and no `will-change`, here and on the other entry animations: a retained
      transform or standing hint keeps the element on its own layer, which Chromium does not
      re-rasterize after a display-scale or zoom change, so its text stays blurry. */
-  animation: sidebar-surface-enter 120ms ease-out backwards;
+  animation: sidebar-surface-enter var(--ui-motion-long-duration) var(--ui-motion-easing) backwards;
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -603,7 +574,8 @@
 }
 
 .chat-message-send-enter {
-  animation: chat-message-send-enter 120ms ease-out backwards;
+  animation: chat-message-send-enter var(--ui-motion-long-duration) var(--ui-motion-easing)
+    backwards;
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -1714,9 +1686,9 @@ input {
   -webkit-backdrop-filter: blur(8px);
   backdrop-filter: blur(8px);
   transition:
-    background-color 100ms ease,
-    color 100ms ease,
-    border-color 100ms ease;
+    background-color var(--ui-motion-default-duration) var(--ui-motion-easing),
+    color var(--ui-motion-default-duration) var(--ui-motion-easing),
+    border-color var(--ui-motion-default-duration) var(--ui-motion-easing);
 }
 
 .local-image-preview__download:hover,
@@ -1887,7 +1859,7 @@ input {
   background: transparent;
   border-radius: 2px;
   cursor: pointer;
-  transition: background-color 100ms ease;
+  transition: background-color var(--ui-motion-default-duration) var(--ui-motion-easing);
 }
 
 .pdf-viewer-page__link:hover,
@@ -1945,8 +1917,8 @@ input {
   cursor: zoom-in;
   outline: none;
   transition:
-    box-shadow 120ms ease,
-    transform 120ms ease;
+    box-shadow var(--ui-motion-long-duration) var(--ui-motion-easing),
+    transform var(--ui-motion-long-duration) var(--ui-motion-easing);
 }
 
 .chat-generated-image__frame:focus-visible {
@@ -2001,10 +1973,11 @@ input {
   }
 }
 
-/* scroll-fade utility — vendored verbatim from shadcn 4.12.0
+/* scroll-fade utility — adapted from shadcn 4.12.0
    (dist/tailwind.css `@utility scroll-fade`). Same rationale as the shimmer
    block below — importing the full `shadcn` stylesheet would clash with this
    project's custom theme, so the self-contained scroll-fade block lives here.
+   Scroll timelines map distance to progress instead of using timed UI motion.
    Applied to the transcript scroll container via `scroll-fade-b` so streamed
    content dissolves toward the composer and the fade clears at the live edge.
    Scroll-aware through `animation-timeline: scroll()`; the `@property`
@@ -2111,8 +2084,8 @@ input {
 
   @supports (animation-timeline: scroll()) {
     animation:
-      scroll-fade-reveal-t 1ms ease-in-out,
-      scroll-fade-reveal-b 1ms ease-in-out;
+      scroll-fade-reveal-t auto linear,
+      scroll-fade-reveal-b auto linear;
     animation-timeline: scroll(self y), scroll(self y);
     animation-range:
       0 var(--scroll-fade-reveal, calc(var(--spacing) * 24)),
@@ -2151,8 +2124,8 @@ input {
 
   @supports (animation-timeline: scroll()) {
     animation:
-      scroll-fade-reveal-t 1ms ease-in-out,
-      scroll-fade-reveal-b 1ms ease-in-out;
+      scroll-fade-reveal-t auto linear,
+      scroll-fade-reveal-b auto linear;
     animation-timeline: scroll(self y), scroll(self y);
     animation-range:
       0 var(--scroll-fade-reveal, calc(var(--spacing) * 24)),
@@ -2200,8 +2173,8 @@ input {
 
   @supports (animation-timeline: scroll()) {
     animation:
-      scroll-fade-reveal-s 1ms ease-in-out,
-      scroll-fade-reveal-e 1ms ease-in-out;
+      scroll-fade-reveal-s auto linear,
+      scroll-fade-reveal-e auto linear;
     animation-timeline: scroll(self inline), scroll(self inline);
     animation-range:
       0 var(--scroll-fade-reveal, calc(var(--spacing) * 24)),
@@ -2234,7 +2207,7 @@ input {
   mask-repeat: no-repeat;
 
   @supports (animation-timeline: scroll()) {
-    animation: scroll-fade-reveal-t 1ms ease-in-out;
+    animation: scroll-fade-reveal-t auto linear;
     animation-timeline: scroll(self y);
     animation-range: 0 var(--scroll-fade-reveal, calc(var(--spacing) * 24));
     animation-fill-mode: both;
@@ -2264,7 +2237,7 @@ input {
   mask-repeat: no-repeat;
 
   @supports (animation-timeline: scroll()) {
-    animation: scroll-fade-reveal-b 1ms ease-in-out;
+    animation: scroll-fade-reveal-b auto linear;
     animation-timeline: scroll(self y);
     animation-range: calc(100% - var(--scroll-fade-reveal, calc(var(--spacing) * 24))) 100%;
     animation-fill-mode: both;
@@ -2294,7 +2267,7 @@ input {
   mask-repeat: no-repeat;
 
   @supports (animation-timeline: scroll()) {
-    animation: scroll-fade-reveal-s 1ms ease-in-out;
+    animation: scroll-fade-reveal-s auto linear;
     animation-timeline: scroll(self x);
     animation-range: 0 var(--scroll-fade-reveal, calc(var(--spacing) * 24));
     animation-fill-mode: both;
@@ -2324,7 +2297,7 @@ input {
   mask-repeat: no-repeat;
 
   @supports (animation-timeline: scroll()) {
-    animation: scroll-fade-reveal-e 1ms ease-in-out;
+    animation: scroll-fade-reveal-e auto linear;
     animation-timeline: scroll(self x);
     animation-range: calc(100% - var(--scroll-fade-reveal, calc(var(--spacing) * 24))) 100%;
     animation-fill-mode: both;
@@ -2362,7 +2335,7 @@ input {
   mask-repeat: no-repeat;
 
   @supports (animation-timeline: scroll()) {
-    animation: scroll-fade-reveal-s 1ms ease-in-out;
+    animation: scroll-fade-reveal-s auto linear;
     animation-timeline: scroll(self inline);
     animation-range: 0 var(--scroll-fade-reveal, calc(var(--spacing) * 24));
     animation-fill-mode: both;
@@ -2400,7 +2373,7 @@ input {
   mask-repeat: no-repeat;
 
   @supports (animation-timeline: scroll()) {
-    animation: scroll-fade-reveal-e 1ms ease-in-out;
+    animation: scroll-fade-reveal-e auto linear;
     animation-timeline: scroll(self inline);
     animation-range: calc(100% - var(--scroll-fade-reveal, calc(var(--spacing) * 24))) 100%;
     animation-fill-mode: both;
@@ -2516,7 +2489,7 @@ input {
   );
   opacity: 0;
   pointer-events: none;
-  transition: opacity 120ms ease;
+  transition: opacity var(--ui-motion-long-duration) var(--ui-motion-easing);
 }
 
 .chat-generated-image[data-status="ready"]:hover .chat-generated-image__overlay,
@@ -2552,10 +2525,10 @@ input {
   opacity: 0;
   transform: translateY(-2px);
   transition:
-    opacity 120ms ease,
-    transform 120ms ease,
-    background-color 120ms ease,
-    color 120ms ease;
+    opacity var(--ui-motion-long-duration) var(--ui-motion-easing),
+    transform var(--ui-motion-long-duration) var(--ui-motion-easing),
+    background-color var(--ui-motion-long-duration) var(--ui-motion-easing),
+    color var(--ui-motion-long-duration) var(--ui-motion-easing);
 }
 
 .chat-generated-image[data-status="ready"]:hover .chat-generated-image__overlay-pill--download,

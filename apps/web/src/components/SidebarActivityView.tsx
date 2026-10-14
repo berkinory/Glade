@@ -187,12 +187,12 @@ function ActivityThreadRow({
             "flex w-full min-w-0 cursor-pointer flex-col gap-1 rounded-lg px-2.5 py-2 text-left select-none",
             SIDEBAR_ROW_FOCUS_CLASS_NAME,
             isActive ? SIDEBAR_ROW_ACTIVE_CLASS_NAME : SIDEBAR_ROW_HOVER_CLASS_NAME,
-            isSettled && "opacity-55 transition-opacity hover:opacity-85",
+            isSettled && "opacity-55 hover:opacity-85",
           )}
         >
           <span
             className={cn(
-              "flex min-w-0 items-center gap-1.5 overflow-hidden pr-5 transition-[padding] duration-100 ease-out",
+              "flex min-w-0 items-center gap-1.5 overflow-hidden pr-5",
               "group-hover/activity-row:pr-[4.25rem] group-focus-within/activity-row:pr-[4.25rem]",
             )}
           >
@@ -268,7 +268,7 @@ function ActivityThreadRow({
         ) : null}
         {!isLocalDraft ? (
           <span
-            className="absolute top-1 right-1 inline-flex items-center gap-1 opacity-0 transition-opacity group-hover/activity-row:opacity-100 group-focus-within/activity-row:opacity-100"
+            className="absolute top-1 right-1 inline-flex items-center gap-1 opacity-0 group-hover/activity-row:opacity-100 group-focus-within/activity-row:opacity-100"
             // Double-clicking an action button toggles it twice; it must not also open the row's rename dialog.
             // Pointer-up is the touch/pen double-tap signal, so keep action taps out of that detector too.
             onDoubleClick={stopRowActivation}

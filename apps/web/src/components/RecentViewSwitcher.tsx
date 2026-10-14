@@ -99,7 +99,7 @@ export function RecentViewSwitcher(props: {
                 role="option"
                 aria-selected={selected}
                 className={cn(
-                  "palette-row flex min-h-[30px] items-center gap-3 rounded-[20px] px-2.5 transition-colors",
+                  "palette-row flex min-h-[30px] items-center gap-3 rounded-[20px] px-2.5",
                   selected
                     ? "bg-zinc-500/8 text-foreground dark:bg-zinc-400/10"
                     : "text-foreground",

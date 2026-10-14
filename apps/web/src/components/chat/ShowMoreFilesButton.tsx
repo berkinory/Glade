@@ -27,7 +27,7 @@ export function ShowMoreFilesButton(props: {
     <button
       type="button"
       className={cn(
-        "font-system-ui text-left text-muted-foreground transition-colors hover:text-foreground",
+        "font-system-ui text-left text-muted-foreground hover:text-foreground",
         props.fontSizePx === undefined && "text-ui-sm",
         props.className,
       )}

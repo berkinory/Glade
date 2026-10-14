@@ -535,7 +535,7 @@ export const ProjectPicker = memo(function ProjectPicker({
                 icon={
                   <FolderIcon
                     className={cn(
-                      "size-3.5 transition-opacity duration-100 ease-out motion-reduce:transition-none",
+                      "size-3.5 transition-opacity duration-(--ui-motion-default-duration) ease-out motion-reduce:transition-none",
                       canResetFromTrigger && "group-hover/project-picker-trigger:opacity-0",
                       resetTriggerFocused && "opacity-0",
                     )}
@@ -564,7 +564,7 @@ export const ProjectPicker = memo(function ProjectPicker({
               title={resetActionLabel}
               className={cn(
                 "group/reset-project pointer-events-none absolute top-1/2 left-1.5 z-10 inline-flex size-5 -translate-y-1/2 cursor-pointer items-center justify-center sm:left-2",
-                "opacity-0 transition-opacity duration-100 ease-out",
+                "opacity-0 transition-opacity duration-(--ui-motion-default-duration) ease-out",
                 "focus-visible:pointer-events-auto focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/70",
                 "group-hover/project-picker-trigger:pointer-events-auto group-hover/project-picker-trigger:opacity-100",
                 "motion-reduce:transition-none",
@@ -581,7 +581,7 @@ export const ProjectPicker = memo(function ProjectPicker({
                 handleResetToHome();
               }}
             >
-              <span className="inline-flex size-3.5 items-center justify-center rounded-full bg-muted-foreground/58 text-background transition-colors duration-100 group-hover/reset-project:bg-muted-foreground/75 motion-reduce:transition-none">
+              <span className="inline-flex size-3.5 items-center justify-center rounded-full bg-muted-foreground/58 text-background transition-colors duration-(--ui-motion-default-duration) group-hover/reset-project:bg-muted-foreground/75 motion-reduce:transition-none">
                 <XIcon className="size-2" aria-hidden />
               </span>
             </button>

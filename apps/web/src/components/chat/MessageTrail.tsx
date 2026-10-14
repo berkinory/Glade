@@ -489,7 +489,7 @@ export function MessageTrail({
         DISCLOSURE_CONTENT_MOTION_CLASS,
         // The inset animates with the transcript's padding so the measured gap
         // never runs ahead of the text column while a side panel slides.
-        "transition-[opacity,transform,--message-trail-content-inset] duration-120",
+        "transition-[opacity,transform,--message-trail-content-inset] duration-(--ui-motion-long-duration)",
         visible ? "opacity-100" : "pointer-events-none opacity-0",
       )}
       style={
@@ -529,7 +529,7 @@ export function MessageTrail({
               aria-describedby={tooltipId}
               aria-current={index === anchorIndex ? "location" : undefined}
               onFocus={() => handleTickFocus(index)}
-              className="absolute rounded-full transition-[width,opacity] duration-80 ease-out outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--color-border)] motion-reduce:transition-none"
+              className="absolute rounded-full transition-[width,opacity] duration-(--ui-motion-popup-duration) ease-out outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--color-border)] motion-reduce:transition-none"
               style={{
                 left: TICK_LEFT_PAD_PX,
                 height: TICK_HEIGHT_PX,

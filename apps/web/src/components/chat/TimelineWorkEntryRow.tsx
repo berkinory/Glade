@@ -596,7 +596,7 @@ function ToolWorkEntryRow(props: TimelineWorkEntryRowProps) {
             const canOpenEditedDiff = Boolean(turnId && onOpenTurnDiff);
             const canOpenEditedRow = canOpenToolDetails || canOpenEditedDiff;
             const editedRowClassName = cn(
-              "group/file-row flex w-full max-w-full items-center text-left transition-colors duration-100",
+              "group/file-row flex w-full max-w-full items-center text-left",
               WORK_ROW_GAP_CLASS_NAME,
               canOpenEditedRow ? "cursor-pointer focus-visible:outline-none" : "cursor-default",
             );

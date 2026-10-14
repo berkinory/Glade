@@ -387,7 +387,7 @@ export function TimelineAssistantMessage({
           >
             <CollapsibleTrigger
               className={cn(
-                "-ml-0.5 inline-flex items-center gap-1 pb-2 text-left transition-colors duration-100 hover:text-foreground",
+                "-ml-0.5 inline-flex items-center gap-1 pb-2 text-left hover:text-foreground",
                 MUTED_LABEL_TEXT_CLASS_NAME,
               )}
               style={{
@@ -448,7 +448,7 @@ export function TimelineAssistantMessage({
               <button
                 key={`inline-summary-edit:${row.message.id}:${file.path}`}
                 type="button"
-                className="group/file-row flex w-full max-w-full items-center gap-2 px-0 py-1.5 text-left transition-colors duration-100 focus-visible:outline-none"
+                className="group/file-row flex w-full max-w-full items-center gap-2 px-0 py-1.5 text-left focus-visible:outline-none"
                 title={file.path}
                 onClick={() => onOpenTurnDiff(turnSummary!.turnId, file.path)}
               >

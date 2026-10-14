@@ -56,7 +56,7 @@ export function EditedFileRow(props: EditedFileRowProps) {
     <div
       data-edited-file-row="true"
       className={cn(
-        "font-system-ui flex w-full min-w-0 items-center gap-1.5 overflow-hidden border-t border-[color:var(--color-border-light)] bg-transparent pr-2 transition-colors hover:bg-[var(--color-background-button-secondary-hover)] dark:bg-transparent dark:hover:bg-transparent",
+        "font-system-ui flex w-full min-w-0 items-center gap-1.5 overflow-hidden border-t border-[color:var(--color-border-light)] bg-transparent pr-2 hover:bg-[var(--color-background-button-secondary-hover)] dark:bg-transparent dark:hover:bg-transparent",
         props.appearance.isFirst && "border-t-0",
       )}
       style={{
