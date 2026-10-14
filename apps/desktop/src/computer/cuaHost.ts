@@ -5,6 +5,7 @@ import type {
 import type { CuaBinary } from "./cuaBinary";
 import type { ComputerPermissions } from "./cuaPermissions";
 import { loadCuaSdk } from "./cuaSdk";
+import { createEmbeddedCuaDaemon } from "./cuaEmbeddedDaemon";
 import { createWindowsCuaDaemon, type CuaDaemon } from "./cuaWindowsDaemon";
 
 export interface CuaHost {
@@ -81,15 +82,17 @@ export function createCuaHost(input: {
       return host;
     }
     const sdk = await loadCuaSdk();
-    host = sdk.EmbeddedCuaDriverHost.withOptions(
-      sdk.EmbeddedDriverHostOptions.create({
-        binaryPath,
-        hostBundleId: input.hostBundleId,
-        approveSessionPolicy: false,
-        dangerouslyBypassApprovals: false,
-        inheritStderr: false,
-        environment: DAEMON_TELEMETRY_OFF,
-      }),
+    host = createEmbeddedCuaDaemon(
+      sdk.EmbeddedCuaDriverHost.withOptions(
+        sdk.EmbeddedDriverHostOptions.create({
+          binaryPath,
+          hostBundleId: input.hostBundleId,
+          approveSessionPolicy: false,
+          dangerouslyBypassApprovals: false,
+          inheritStderr: false,
+          environment: DAEMON_TELEMETRY_OFF,
+        }),
+      ),
     );
     return host;
   };

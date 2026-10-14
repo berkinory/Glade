@@ -15,7 +15,7 @@ interface CuaDaemonConnection {
   readonly mcp: McpLaunch;
 }
 
-// The lifecycle `createCuaHost` drives; Cua's embedded SDK host satisfies it structurally.
+// The lifecycle `createCuaHost` drives; `createEmbeddedCuaDaemon` adapts Cua's embedded SDK host.
 export interface CuaDaemon {
   readonly start: () => Promise<CuaDaemonConnection>;
   readonly restart: () => Promise<CuaDaemonConnection>;
