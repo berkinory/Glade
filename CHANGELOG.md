@@ -4,6 +4,8 @@
 
 ### Improved
 
+- Sidebar and Settings update buttons now share one action, restarting without a confirmation and automatically resuming running chats. Inline usage indicators make room while an update is preparing.
+
 - Chat work durations use milliseconds for subsecond work and whole seconds for longer work.
 - The composer shows project and environment selectors only before a chat starts. SSH chats show their host and connection status in the Environment panel.
 

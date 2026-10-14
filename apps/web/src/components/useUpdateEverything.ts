@@ -8,27 +8,21 @@ import { LOCAL_ENVIRONMENT, type EnvironmentKey } from "../environments/environm
 import { useRemoteEnvironments } from "../environments/remoteEnvironments";
 import { isRemoteClient } from "../lib/remoteClient";
 import {
-  listRunningChatsFromDesktopStore,
-  type RunningChatQuitSummary,
-} from "../lib/runningChatsQuitConfirmation";
-import {
   environmentServerConfigQueryOptions,
   serverSettingsQueryOptions,
 } from "../lib/serverReactQuery";
-import { stopLocalRunningChats } from "../lib/stopRunningChats";
 import { ensureEnvironmentNativeApi } from "../nativeApi";
 import {
   isProviderUpdateActive,
   shouldShowProviderUpdateStatus,
   updateProviders,
 } from "../providerUpdates";
-import { useStore } from "../store";
-import type { RunningChatsQuitDecision } from "./RunningChatsQuitDialog";
 import { toastManager } from "./ui/toast";
+import { useDesktopUpdate, type DesktopUpdateControls } from "./useDesktopUpdate";
 
 // Installing the app update restarts Glade; every SSH host then receives the matching server when
 // it reconnects, so the app update also covers the hosts.
-export interface DesktopUpdateControl {
+interface DesktopUpdateControl {
   readonly installReady: boolean;
   readonly version: string | null;
   readonly install: () => void;
@@ -79,23 +73,34 @@ async function updateHostProviders(
   return results.flat();
 }
 
-function listLocalRunningChats(): ReadonlyArray<RunningChatQuitSummary> {
-  const state = useStore.getState();
-  return state.threadsHydrated ? listRunningChatsFromDesktopStore(state) : [];
+export interface UpdateControls {
+  desktopUpdate: DesktopUpdateControls;
+  updateButton: {
+    label: string;
+    secondaryLabel: string | null;
+    downloadPercent: number | null;
+    tooltip: string;
+    disabled: boolean;
+    onClick: () => void;
+  };
+  showUpdateButton: boolean;
 }
 
-// One action for every pending update: provider CLIs on this computer and every connected host,
-// then the app itself, stopping running chats first and resuming them after the restart if asked.
-export function useUpdateEverything(desktop: DesktopUpdateControl) {
+export function useUpdateEverything(): UpdateControls {
+  const desktopUpdate = useDesktopUpdate();
+  const desktop: DesktopUpdateControl = {
+    installReady:
+      desktopUpdate.showDesktopUpdateButton &&
+      desktopUpdate.desktopUpdateButtonAction === "install" &&
+      !desktopUpdate.desktopUpdateButtonDisabled,
+    version: desktopUpdate.desktopUpdateReadyVersion,
+    install: desktopUpdate.handleDesktopUpdateButtonClick,
+  };
   const queryClient = useQueryClient();
   const { settings } = useAppSettings();
   const serverSettings = useQuery(serverSettingsQueryOptions()).data;
   const remoteEnvironments = useRemoteEnvironments();
   const [updating, setUpdating] = useState(false);
-  const [runningChats, setRunningChats] = useState<ReadonlyArray<RunningChatQuitSummary> | null>(
-    null,
-  );
-
   // Provider CLIs belong to whoever sits at the machine; a paired client leaves them alone.
   const environments = isRemoteClient
     ? []
@@ -130,13 +135,7 @@ export function useUpdateEverything(desktop: DesktopUpdateControl) {
   });
   const providerCount = hosts.reduce((count, host) => count + host.providers.length, 0);
 
-  const restart = async (resume: boolean) => {
-    const chats = listLocalRunningChats();
-    if (chats.length > 0) await stopLocalRunningChats(chats, resume);
-    desktop.install();
-  };
-
-  const updateAll = async (resume: boolean) => {
+  const updateAll = async () => {
     const restartAfter = desktop.installReady;
     setUpdating(true);
     const failures = await updateHostProviders(hosts);
@@ -172,13 +171,13 @@ export function useUpdateEverything(desktop: DesktopUpdateControl) {
         timeout: 0,
         ...(manualCommands.length > 0 ? { data: { copyText: manualCommands.join("\n") } } : {}),
         ...(restartAfter
-          ? { actionProps: { children: "Restart anyway", onClick: () => void restart(resume) } }
+          ? { actionProps: { children: "Restart anyway", onClick: desktop.install } }
           : {}),
       });
       return;
     }
     if (restartAfter) {
-      await restart(resume);
+      desktop.install();
       return;
     }
     toastManager.add({
@@ -191,31 +190,32 @@ export function useUpdateEverything(desktop: DesktopUpdateControl) {
 
   const onClick = () => {
     if (updating) return;
-    // Ask before the provider updates run, so the restart that follows them needs no attention.
-    const chats = desktop.installReady ? listLocalRunningChats() : [];
-    if (chats.length > 0) {
-      setRunningChats(chats);
-      return;
-    }
-    void updateAll(settings.resumeChatsAfterQuit);
+    void updateAll();
   };
 
   const pending = providerCount + (desktop.installReady ? 1 : 0);
+  const showEverything =
+    !desktopUpdate.installing && (updating || providerCount > 0 || desktop.installReady);
   return {
-    button:
-      updating || providerCount > 0 || desktop.installReady
-        ? {
-            label: updating ? "Updating..." : pending > 1 ? "Update all" : "Update",
-            tooltip: updating ? "Updating providers..." : describeUpdates(hosts, desktop),
-            disabled: updating,
-            onClick,
-          }
-        : null,
-    runningChats,
-    cancelRestart: () => setRunningChats(null),
-    confirmRestart: (decision: RunningChatsQuitDecision) => {
-      setRunningChats(null);
-      void updateAll(decision.resume);
-    },
+    desktopUpdate,
+    showUpdateButton: showEverything || desktopUpdate.showDesktopUpdateButton,
+    updateButton: showEverything
+      ? {
+          label: updating ? "Updating..." : pending > 1 ? "Update all" : "Update",
+          secondaryLabel: null,
+          downloadPercent: null,
+          tooltip: updating ? "Updating providers..." : describeUpdates(hosts, desktop),
+          disabled: updating,
+          onClick,
+        }
+      : {
+          ...desktopUpdate.desktopUpdateButtonPresentation,
+          downloadPercent: desktopUpdate.desktopUpdateDownloadPercent,
+          tooltip: desktopUpdate.desktopUpdateTooltip,
+          disabled:
+            desktopUpdate.desktopUpdateButtonDisabled ||
+            desktopUpdate.desktopUpdateButtonAction === "none",
+          onClick: desktopUpdate.handleDesktopUpdateButtonClick,
+        },
   };
 }

@@ -58,7 +58,6 @@ import {
   SIDEBAR_ROW_LABEL_TEXT_CLASS_NAME,
 } from "../sidebarRowStyles";
 import { SettingsSidebarNav } from "./SettingsSidebarNav";
-import { RunningChatsQuitDialog } from "./RunningChatsQuitDialog";
 import { SidebarVirtualChatList } from "./SidebarVirtualChatList";
 import { SpaceEmptyState } from "./SpaceEmptyState";
 import { SpaceSwitcher } from "./SpaceSwitcher";
@@ -78,7 +77,8 @@ export function SidebarView({ context }: { context: ReturnType<typeof useSidebar
     activeSpaceId,
     threadsHydrated,
     desktopUpdate,
-    updateEverything,
+    updateButton,
+    showUpdateButton,
     navigate,
     isOnSettings,
     appSettings,
@@ -148,29 +148,12 @@ export function SidebarView({ context }: { context: ReturnType<typeof useSidebar
   const usageInSeparateRow = sidebarUsageProviders.length > 2;
 
   const {
-    showDesktopUpdateButton,
-    desktopUpdateTooltip,
     desktopUpdateButtonDisabled,
     desktopUpdateButtonAction,
-    desktopUpdateButtonPresentation,
     showArm64IntelBuildWarning,
     arm64IntelBuildWarningDescription,
-    desktopUpdateDownloadPercent,
     handleDesktopUpdateButtonClick,
   } = desktopUpdate;
-  // Pending provider updates or a ready app update take the pill over; otherwise it reports the
-  // app update's download progress.
-  const everything = updateEverything.button;
-  const updateButton = everything
-    ? { ...everything, secondaryLabel: null, downloadPercent: null }
-    : {
-        label: desktopUpdateButtonPresentation.label,
-        secondaryLabel: desktopUpdateButtonPresentation.secondaryLabel,
-        downloadPercent: desktopUpdateDownloadPercent,
-        tooltip: desktopUpdateTooltip,
-        disabled: desktopUpdateButtonDisabled,
-        onClick: handleDesktopUpdateButtonClick,
-      };
   const {
     renderListSectionHeader,
     renderPinnedThreadsSection,
@@ -628,10 +611,10 @@ export function SidebarView({ context }: { context: ReturnType<typeof useSidebar
                   </SidebarLeadingIcon>
                   <span>{isOnSettings ? "Home" : "Settings"}</span>
                 </SidebarMenuButton>
-                {!usageInSeparateRow ? (
+                {!usageInSeparateRow && !desktopUpdate.preparing ? (
                   <SidebarUsageIndicators providers={sidebarUsageProviders} />
                 ) : null}
-                {everything || showDesktopUpdateButton ? (
+                {showUpdateButton ? (
                   <Tooltip>
                     <TooltipTrigger
                       render={
@@ -679,12 +662,6 @@ export function SidebarView({ context }: { context: ReturnType<typeof useSidebar
       </SidebarFooter>
 
       <SidebarDialogs context={context} />
-      <RunningChatsQuitDialog
-        reason="update"
-        chats={updateEverything.runningChats}
-        onStay={updateEverything.cancelRestart}
-        onQuit={updateEverything.confirmRestart}
-      />
     </>
   );
 }

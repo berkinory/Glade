@@ -7,6 +7,7 @@ import { DiffWorkerPoolProvider } from "../components/DiffWorkerPoolProvider";
 import { APP_DISPLAY_NAME, APP_VERSION } from "../branding";
 import { DesktopWindowControls } from "../components/DesktopWindowControls";
 import { QueuedComposerDrainCoordinator } from "../components/QueuedComposerDrainCoordinator";
+import { UpdateProvider } from "../components/UpdateProvider";
 import { RunningChatsQuitCoordinator } from "../components/RunningChatsQuitCoordinator";
 import { Button, dialogActionButtonClassName } from "../components/ui/button";
 import { AnchoredToastProvider, ToastProvider } from "../components/ui/toast";
@@ -120,7 +121,9 @@ export function RootRouteView() {
 
             <DesktopProjectBootstrap />
             <ContextMenuHost />
-            <Outlet />
+            <UpdateProvider>
+              <Outlet />
+            </UpdateProvider>
           </DiffWorkerPoolProvider>
         </AnchoredToastProvider>
       </ToastProvider>

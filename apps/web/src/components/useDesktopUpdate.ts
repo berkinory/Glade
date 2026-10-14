@@ -1,9 +1,13 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { DesktopUpdateState } from "@glade/contracts/ipc/ipc";
 import { isElectron } from "../env";
-import { persistAppStateNow } from "../store";
+import { persistAppStateNow, useStore } from "../store";
+import { listRunningChatsFromDesktopStore } from "../lib/runningChatsQuitConfirmation";
+import { stopLocalRunningChats } from "../lib/stopRunningChats";
 import { toastManager } from "./ui/toast";
 import {
+  type DesktopUpdateButtonAction,
+  type DesktopUpdateButtonPresentation,
   getArm64IntelBuildWarningDescription,
   getDesktopUpdateActionError,
   getDesktopUpdateAlreadyCurrentNotice,
@@ -20,7 +24,22 @@ import {
   shouldToastDesktopUpdateActionResult,
 } from "./desktopUpdate.logic";
 
-export function useSidebarDesktopUpdate() {
+export interface DesktopUpdateControls {
+  showDesktopUpdateButton: boolean;
+  desktopUpdateTooltip: string;
+  desktopUpdateButtonDisabled: boolean;
+  desktopUpdateButtonAction: DesktopUpdateButtonAction;
+  desktopUpdateButtonPresentation: DesktopUpdateButtonPresentation;
+  showArm64IntelBuildWarning: boolean;
+  arm64IntelBuildWarningDescription: string | null;
+  desktopUpdateDownloadPercent: number | null;
+  desktopUpdateReadyVersion: string | null;
+  preparing: boolean;
+  installing: boolean;
+  handleDesktopUpdateButtonClick: () => void;
+}
+
+export function useDesktopUpdate(): DesktopUpdateControls {
   const [desktopUpdateState, setDesktopUpdateState] = useState<DesktopUpdateState | null>(null);
   const [installingDesktopUpdate, setInstallingDesktopUpdate] = useState(false);
   const lastDesktopUpdateErrorToastSignatureRef = useRef<string | null>(null);
@@ -120,14 +139,18 @@ export function useSidebarDesktopUpdate() {
 
   const showDesktopUpdateButton = isElectron && shouldShowDesktopUpdateButton(desktopUpdateState);
 
-  const desktopUpdateTooltip = desktopUpdateState
-    ? getDesktopUpdateButtonTooltip(desktopUpdateState, {
-        installing: installingDesktopUpdate,
-      })
-    : "Update available";
+  const desktopUpdateTooltip = !desktopUpdateState
+    ? "Loading update status…"
+    : !desktopUpdateState.enabled
+      ? "Automatic updates are unavailable for this build."
+      : getDesktopUpdateButtonTooltip(desktopUpdateState, {
+          installing: installingDesktopUpdate,
+        });
 
   const desktopUpdateButtonDisabled =
-    isDesktopUpdateButtonDisabled(desktopUpdateState) || installingDesktopUpdate;
+    !desktopUpdateState?.enabled ||
+    isDesktopUpdateButtonDisabled(desktopUpdateState) ||
+    installingDesktopUpdate;
 
   const desktopUpdateButtonAction = desktopUpdateState
     ? resolveDesktopUpdateButtonAction(desktopUpdateState)
@@ -258,9 +281,17 @@ export function useSidebarDesktopUpdate() {
 
     if (desktopUpdateButtonAction === "install") {
       setInstallingDesktopUpdate(true);
-      persistAppStateNow();
-      void bridge
-        .installUpdate()
+      const install = async () => {
+        const state = useStore.getState();
+        if (!state.threadsHydrated) {
+          throw new Error("Chats are still loading. Try updating again in a moment.");
+        }
+        const chats = listRunningChatsFromDesktopStore(state);
+        if (chats.length > 0) await stopLocalRunningChats(chats, true);
+        persistAppStateNow();
+        return bridge.installUpdate();
+      };
+      void install()
         .then((result) => {
           setDesktopUpdateState(result.state);
           if (!isDesktopUpdateInstallInFlight(result)) {
@@ -303,6 +334,10 @@ export function useSidebarDesktopUpdate() {
   ]);
 
   return {
+    installing: installingDesktopUpdate,
+    preparing:
+      desktopUpdateState?.status === "downloading" ||
+      (desktopUpdateState?.status === "available" && desktopUpdateState.errorContext === null),
     showDesktopUpdateButton,
     desktopUpdateTooltip,
     desktopUpdateButtonDisabled,
