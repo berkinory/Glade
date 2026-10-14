@@ -11,6 +11,35 @@ export interface BackgroundWork {
   settledAt: string | null;
 }
 
+const ENDED_SESSION_STATUSES = new Set(["closed", "stopped", "error", "interrupted"]);
+
+/** Whether a session in this status can still be running background work it started. */
+export function sessionKeepsBackgroundWork(status: string | undefined): boolean {
+  return !ENDED_SESSION_STATUSES.has(status ?? "");
+}
+
+/**
+ * The turn and the earlier turns it continues: a turn that wakes the agent with a background task's
+ * result names the turn that started the task.
+ */
+export function backgroundWorkTurnIds(
+  activities: readonly Pick<OrchestrationThreadActivity, "kind" | "turnId" | "payload">[],
+  turnId: TurnId | undefined,
+): Set<string> {
+  const turns = new Set<string>(turnId ? [turnId] : []);
+  for (const activity of activities.toReversed()) {
+    const payload = asRecord(activity.payload);
+    if (
+      activity.kind === "response.started" &&
+      activity.turnId &&
+      turns.has(activity.turnId) &&
+      typeof payload?.backgroundParentTurnId === "string"
+    )
+      turns.add(payload.backgroundParentTurnId);
+  }
+  return turns;
+}
+
 export function deriveBackgroundWork(input: {
   activities: readonly Pick<
     OrchestrationThreadActivity,
@@ -19,17 +48,7 @@ export function deriveBackgroundWork(input: {
   turnId: TurnId | undefined;
   sessionStatus?: string | undefined;
 }): BackgroundWork {
-  const ownedTurns = new Set<string>(input.turnId ? [input.turnId] : []);
-  for (const activity of input.activities.toReversed()) {
-    const payload = asRecord(activity.payload);
-    if (
-      activity.kind === "response.started" &&
-      activity.turnId &&
-      ownedTurns.has(activity.turnId) &&
-      typeof payload?.backgroundParentTurnId === "string"
-    )
-      ownedTurns.add(payload.backgroundParentTurnId);
-  }
+  const ownedTurns = backgroundWorkTurnIds(input.activities, input.turnId);
   const tasks = new Map<string, { background: boolean; terminal: boolean }>();
   const awaitingReply = new Set<string>();
   let failed = false;
@@ -77,7 +96,7 @@ export function deriveBackgroundWork(input: {
       settledAt = activity.createdAt;
     }
   }
-  const active = !["closed", "stopped", "error", "interrupted"].includes(input.sessionStatus ?? "");
+  const active = sessionKeepsBackgroundWork(input.sessionStatus);
   return {
     taskIds: active
       ? [...tasks].filter(([, value]) => value.background && !value.terminal).map(([id]) => id)

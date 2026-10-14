@@ -26,6 +26,16 @@ export function deriveBackgroundTasks(
     (a, b) => a.createdAt.localeCompare(b.createdAt) || (a.sequence ?? 0) - (b.sequence ?? 0),
   );
   for (const activity of ordered) {
+    // A new or ended provider session ends the work the old one left running, even when it never
+    // reported the end.
+    if (activity.kind === "background-work.reset") {
+      for (const task of tasks.values()) {
+        if (task.settledAt !== null) continue;
+        task.status = "stopped";
+        task.settledAt = activity.createdAt;
+      }
+      continue;
+    }
     if (!activity.kind.startsWith("task.")) continue;
     const payload = asObjectRecord(activity.payload);
     const taskId = nonEmptyTrimmed(payload?.taskId);
@@ -35,6 +45,7 @@ export function deriveBackgroundTasks(
       toolUseId: null,
       description: "",
       status: "running",
+      turnId: activity.turnId,
       startedAt: activity.createdAt,
       settledAt: null,
       taskType: null,
@@ -42,6 +53,7 @@ export function deriveBackgroundTasks(
     };
     task.taskType ??= nonEmptyTrimmed(payload.taskType) ?? null;
     task.toolUseId ??= nonEmptyTrimmed(payload.toolUseId) ?? null;
+    task.turnId ??= activity.turnId;
     task.description ||= nonEmptyTrimmed(payload.detail) ?? "";
     task.background ||= payload.isBackgrounded === true;
     const terminal =

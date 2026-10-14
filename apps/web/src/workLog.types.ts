@@ -124,6 +124,8 @@ export interface WorkLogBackgroundTask {
   toolUseId: string | null;
   description: string;
   status: "running" | "completed" | "failed" | "stopped";
+  // The turn that started it, when the provider reports one.
+  turnId: TurnId | null;
   startedAt: string;
   settledAt: string | null;
 }
