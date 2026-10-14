@@ -4,6 +4,7 @@
 
 ### Improved
 
+- Browser pages adapt continuously while resizing the sidebar.
 - Sidebar and Settings update buttons now share one action, restarting without a confirmation and automatically resuming running chats. Inline usage indicators make room while an update is preparing.
 
 - Chat work durations use milliseconds for subsecond work and whole seconds for longer work.
@@ -12,7 +13,7 @@
 
 ### Fixed
 
-- Browser pages adapt continuously while resizing the sidebar, and closing the last browser or terminal tab collapses the sidebar.
+- Closing the last browser or terminal tab collapses the sidebar.
 - Visual replies show creation progress while the agent prepares their content.
 
 - SSH chats send their first message on the selected host without switching machines or requiring a retry.
