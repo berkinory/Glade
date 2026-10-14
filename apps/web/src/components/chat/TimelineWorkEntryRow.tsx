@@ -83,6 +83,7 @@ import {
   classifyInspectCommand,
   commandPrimaryTool,
   commandReadFilePaths,
+  commandReadRange,
   deriveFriendlyCommandTarget,
   deriveReadableCommandDisplay,
   resolveCommandVisualKind,
@@ -503,6 +504,15 @@ function ToolWorkEntryRow(props: TimelineWorkEntryRowProps) {
       ? (toolInputFilePath(workEntry.toolDetails?.input) ??
         (workEntry.detail ? extractFilePathFromDetail(workEntry.detail) : null))
       : null;
+  // A command that read part of one file opens it where the read started.
+  const rowReadRange =
+    rowFilePath && isCommandRow
+      ? commandReadRange(workEntry.command ?? workEntry.rawCommand ?? "")
+      : null;
+  const rowFileTarget =
+    rowFilePath && rowReadRange && "start" in rowReadRange
+      ? `${rowFilePath}:${rowReadRange.start}`
+      : null;
   const changedFiles = workEntry.changedFiles ?? [];
   const pagedChangedFiles = usePagedFiles(changedFiles);
   const showEditedRows = isFileChangeWorkEntry(workEntry) && changedFiles.length > 0;
@@ -666,7 +676,9 @@ function ToolWorkEntryRow(props: TimelineWorkEntryRowProps) {
               <div className="min-w-0 overflow-hidden">
                 <p
                   className={cn(
-                    "truncate",
+                    // A file chip is taller than text set inline; as flex items the icon, the
+                    // words and the chip share one center line.
+                    rowFilePath ? "flex min-w-0 items-center gap-1 whitespace-nowrap" : "truncate",
                     WORK_ROW_LINE_CLASS_NAME,
                     WORK_ROW_MUTED_HOVER_TONE["tool-row"],
                     isPlainRuntimeNoticeRow && "italic",
@@ -679,15 +691,21 @@ function ToolWorkEntryRow(props: TimelineWorkEntryRowProps) {
                   <WorkTextShimmer
                     active={workEntry.toolStatus === "running"}
                     data-work-entry-display-text="true"
+                    className={rowFilePath ? "shrink-0" : undefined}
                   >
-                    {rowFilePath ? (
-                      <>
-                        {heading} <FileNameChip path={rowFilePath} />
-                      </>
-                    ) : (
-                      displayText
-                    )}
+                    {rowFilePath ? heading : displayText}
                   </WorkTextShimmer>
+                  {rowFilePath ? (
+                    <FileNameChip
+                      path={rowFilePath}
+                      className="leading-5"
+                      onOpen={
+                        opener
+                          ? () => openWorkspaceFileReference(opener, rowFileTarget ?? rowFilePath)
+                          : undefined
+                      }
+                    />
+                  ) : null}
                   {liveActivityMetaText ? (
                     <span data-live-activity-meta="true"> · {liveActivityMetaText}</span>
                   ) : null}

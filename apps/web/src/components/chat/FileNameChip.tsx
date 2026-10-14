@@ -1,3 +1,4 @@
+import type { MouseEvent } from "react";
 import { basenameOfPath } from "~/file-icons";
 import { cn } from "~/lib/utils";
 import { FileEntryIcon } from "./FileEntryIcon";
@@ -6,8 +7,9 @@ const CHIP_CLASS_NAME =
   "inline-flex min-w-0 max-w-full items-center gap-1 rounded-md bg-[var(--color-background-button-secondary)] px-1.5 align-middle leading-[1.6]";
 
 // A file a tool read or changed: its type icon and base name. The tool says it is a file, so an
-// extensionless name such as `.hushlogin` is not guessed to be a folder. With `onOpen` it opens;
-// inside a row's own button it stays plain so the row is the only control.
+// extensionless name such as `.hushlogin` is not guessed to be a folder. With `onOpen` the chip opens
+// the file on its own click. It sits inside the row's toggle button, so it is a span that stops
+// the click from also toggling the row rather than a nested button.
 export function FileNameChip({
   path,
   onOpen,
@@ -17,28 +19,26 @@ export function FileNameChip({
   onOpen?: (() => void) | undefined;
   className?: string;
 }) {
-  const content = (
-    <>
-      <FileEntryIcon pathValue={path} kind="file" className="size-[1.1em]" />
-      <span className="truncate">{basenameOfPath(path)}</span>
-    </>
-  );
-  return onOpen ? (
-    <button
-      type="button"
-      title={`Open ${path}`}
+  const open = onOpen
+    ? (event: MouseEvent) => {
+        event.preventDefault();
+        event.stopPropagation();
+        onOpen();
+      }
+    : undefined;
+  return (
+    <span
+      title={onOpen ? `Open ${path}` : path}
       className={cn(
         CHIP_CLASS_NAME,
-        "hover:bg-[var(--color-background-button-secondary-hover)]",
+        onOpen &&
+          "cursor-pointer transition-colors hover:bg-[var(--color-background-button-secondary-hover)] hover:text-foreground",
         className,
       )}
-      onClick={onOpen}
+      onClick={open}
     >
-      {content}
-    </button>
-  ) : (
-    <span title={path} className={cn(CHIP_CLASS_NAME, className)}>
-      {content}
+      <FileEntryIcon pathValue={path} kind="file" className="size-[1.1em]" />
+      <span className="truncate">{basenameOfPath(path)}</span>
     </span>
   );
 }
