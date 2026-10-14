@@ -417,7 +417,7 @@ export default function BranchToolbar({
           />
         ) : null}
 
-        {showEnvironment ? (
+        {showEnvironment && (!isPanel || hasServerThread) ? (
           !hasServerThread ? (
             <>
               <label
