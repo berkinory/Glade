@@ -26,6 +26,11 @@ const configOptions = (model = "m1") => [
       currentValue: "false", options: [{ value: "false", name: "Off" }, { value: "true", name: "On" }] },
   ] : []),
 ];
+// Per-turn usage as OpenCode reports it: each turn's own sum, not a session total.
+const TURN_USAGE = {
+  "usage-1": { inputTokens: 6074, outputTokens: 3, totalTokens: 8086, thoughtTokens: 25, cachedReadTokens: 1984 },
+  "usage-2": { inputTokens: 97, outputTokens: 2, totalTokens: 8126, thoughtTokens: 27, cachedReadTokens: 8000 },
+};
 let model = "m1";
 let sessions = 0;
 let cancelTurn;
@@ -57,6 +62,12 @@ new AgentSideConnection((client) => ({
       if (outcome === "cancelled" || outcome.outcome === "cancelled") return { stopReason: "cancelled" };
       await say("chose " + outcome.optionId + " on " + model);
       return { stopReason: "end_turn" };
+    }
+    const usage = TURN_USAGE[text];
+    if (usage) {
+      await client.sessionUpdate({ sessionId, update: { sessionUpdate: "usage_update", used: usage.totalTokens, size: 262144 } });
+      await say("ok");
+      return { stopReason: "end_turn", usage };
     }
     if (text === "echo-context") {
       await say(prompt.slice(0, -1).map((block) => block.text).join(" | "));
@@ -344,6 +355,45 @@ describe("ACP adapter over stdio", () => {
       assert.include(
         assistantText([...(yield* Fiber.join(next))]),
         "Summary of the earlier conversation:\n\nhello from m1",
+      );
+      yield* adapter.stopAll();
+    }),
+  );
+
+  it.effect("counts each turn's reported usage into one counter per native session", () =>
+    Effect.gen(function* () {
+      const adapter = yield* makeAdapter;
+      const session = yield* adapter.startSession({ threadId: THREAD, runtimeMode: "full-access" });
+      const runTurn = (input: string) =>
+        Effect.gen(function* () {
+          const turn = yield* adapter.streamEvents.pipe(
+            Stream.takeUntil((event) => event.type === "turn.completed"),
+            Stream.runCollect,
+            Effect.forkChild,
+          );
+          yield* adapter.sendTurn({ threadId: THREAD, input });
+          return [...(yield* Fiber.join(turn))];
+        });
+      const events = [...(yield* runTurn("usage-1")), ...(yield* runTurn("usage-2"))];
+      const nativeSessionId = (session.resumeCursor as { sessionId: string }).sessionId;
+      assert.deepEqual(
+        events.flatMap((event) =>
+          event.type === "thread.token-usage.updated"
+            ? [
+                [
+                  event.payload.usage.usedTokens,
+                  event.payload.usage.totalProcessedTokens,
+                  event.providerRefs?.providerThreadId,
+                ],
+              ]
+            : [],
+        ),
+        [
+          [8086, undefined, nativeSessionId],
+          [8086, 8086, nativeSessionId],
+          [8126, undefined, nativeSessionId],
+          [8126, 16212, nativeSessionId],
+        ],
       );
       yield* adapter.stopAll();
     }),

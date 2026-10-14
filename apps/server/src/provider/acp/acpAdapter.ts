@@ -274,6 +274,7 @@ export const makeAcpAdapter = (dependencies: AcpAdapterDependencies) =>
         configOptions: created.configOptions ?? [],
         runtimeMode: thread.record.runtimeMode,
         ...(profile.innerToolCall ? { innerToolCall: profile.innerToolCall } : {}),
+        ...(profile.promptUsage ? { promptUsage: profile.promptUsage } : {}),
         sink: {
           emit: (draft, turnId) => emit(threadId, thread.lifecycleGeneration, draft, turnId),
         },
@@ -375,6 +376,7 @@ export const makeAcpAdapter = (dependencies: AcpAdapterDependencies) =>
           configOptions: opened.configOptions ?? [],
           runtimeMode: input.runtimeMode,
           ...(profile.innerToolCall ? { innerToolCall: profile.innerToolCall } : {}),
+          ...(profile.promptUsage ? { promptUsage: profile.promptUsage } : {}),
           sink: {
             emit: (draft, turnId) => emit(input.threadId, lifecycleGeneration, draft, turnId),
           },

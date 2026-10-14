@@ -109,9 +109,9 @@ it.layer(layer)("historical profile attribution", (it) => {
 });
 
 const deleteOrders = [
-  ["subagents before parent", ["child-stopped", "child-covered", "parent", "codex"]],
-  ["parent before subagents", ["parent", "child-covered", "child-stopped", "codex"]],
-  ["parent between subagents", ["child-covered", "parent", "child-stopped", "codex"]],
+  ["subagents before parent", ["child-stopped", "child-covered", "parent", "codex", "acp"]],
+  ["parent before subagents", ["parent", "child-covered", "child-stopped", "acp", "codex"]],
+  ["parent between subagents", ["child-covered", "parent", "child-stopped", "codex", "acp"]],
 ] as const;
 
 for (const [orderName, deleteOrder] of deleteOrders) {
@@ -126,6 +126,7 @@ for (const [orderName, deleteOrder] of deleteOrders) {
           VALUES ('project', 'Token fixture', '/nonexistent-token-fixture', '[]', ${date}, ${date})`;
         const threads = [
           { id: "codex", provider: "codex", parent: null, sourceTurn: null },
+          { id: "acp", provider: "opencode", parent: null, sourceTurn: null },
           { id: "parent", provider: "claudeAgent", parent: null, sourceTurn: null },
           { id: "child-covered", provider: "claudeAgent", parent: "parent", sourceTurn: "covered" },
           { id: "child-stopped", provider: "claudeAgent", parent: "parent", sourceTurn: "stopped" },
@@ -165,6 +166,19 @@ for (const [orderName, deleteOrder] of deleteOrders) {
             "context-window.updated",
             { totalProcessedTokens: 900, usageSessionId: "b:2" },
           ],
+          // An ACP counter is Glade's own per-runtime sum, so a resumed session starts over.
+          [
+            "acp",
+            null,
+            "context-window.updated",
+            { provider: "opencode", totalProcessedTokens: 300, usageSessionId: "s:1" },
+          ],
+          [
+            "acp",
+            null,
+            "context-window.updated",
+            { provider: "opencode", totalProcessedTokens: 400, usageSessionId: "s:2" },
+          ],
           ["parent", "covered", "turn.completed", claudeResult(300)],
           ["parent", "stopped", "turn.completed", claudeResult()],
           ["child-covered", "child-covered-turn", "turn.completed", claudeResult(200)],
@@ -178,15 +192,17 @@ for (const [orderName, deleteOrder] of deleteOrders) {
         }
         const tokensByProvider = Effect.map(
           stats.getProfileTokenStats({ utcOffsetMinutes: 0 }),
-          ({ models }) =>
-            Object.fromEntries(
+          ({ models, lifetimeTotalTokens }) => ({
+            ...Object.fromEntries(
               ["codex", "claudeAgent"].map((provider) => [
                 provider,
                 models.reduce((sum, row) => sum + (row.provider === provider ? row.tokens : 0), 0),
               ]),
             ),
+            total: lifetimeTotalTokens,
+          }),
         );
-        const expected = { codex: 1_700, claudeAgent: 600 };
+        const expected = { codex: 1_700, claudeAgent: 600, total: 3_000 };
         expect(yield* tokensByProvider).toEqual(expected);
         for (const threadId of deleteOrder) {
           yield* archive.purgeThreadWithStatsSnapshot({ threadId });

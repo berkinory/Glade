@@ -22,6 +22,7 @@
 - Chats with long inline scripts or many tool calls stay responsive when opening and updating the conversation.
 - Codex chats renew their connection after a stopped turn instead of blocking the next message.
 - Edits in a finished turn can be opened again, and a tool that was stopped before it ran says so instead of looking finished.
+- Profile counts tokens used by Grok Build and OpenCode chats accurately and lists them under their own provider.
 
 ## 0.2.7 - 2026-10-14
 

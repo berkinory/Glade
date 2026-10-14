@@ -159,7 +159,8 @@ and the fork's first turn starts a fresh native session with the copied conversa
 run their own native `/compact`. Cursor has none, so the agent writes a continuation summary, the
 chat moves into a fresh native session, and the summary opens it; if that fails the chat keeps its
 session and says why. Grok Build and Cursor report no context usage, so they show no context meter;
-type `/compact` there.
+type `/compact` there. OpenCode and Grok Build report the tokens each turn processed, and Profile
+counts them per native session; Cursor reports no token usage over ACP, so its chats add none.
 
 ### Native subagents
 

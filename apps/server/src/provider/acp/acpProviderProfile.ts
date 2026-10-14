@@ -1,6 +1,13 @@
-import type { ClientSideConnection, SessionConfigOption } from "@agentclientprotocol/sdk";
+import type {
+  ClientSideConnection,
+  PromptResponse,
+  SessionConfigOption,
+  Usage,
+} from "@agentclientprotocol/sdk";
 import type { ProviderKind } from "@glade/contracts/core/baseSchemas";
 import type { RuntimeMode } from "@glade/contracts/provider/sessionPolicy";
+
+export type AcpPromptUsage = (response: PromptResponse) => Usage | undefined;
 
 export type AcpInnerToolCall = (
   rawOutput: unknown,
@@ -53,6 +60,8 @@ export interface AcpProviderProfile {
   // The tool a wrapper call actually ran, read from the call's output, for agents that run tools
   // from inside a code tool. A call that ran exactly one tool is shown as that tool.
   readonly innerToolCall?: AcpInnerToolCall;
+  // A turn's token usage for agents that report it outside the prompt response's `usage` field.
+  readonly promptUsage?: AcpPromptUsage;
   // The agent's native command that compacts its context, run as a turn when Glade compacts.
   readonly compactCommand?: string;
   // Native slash commands for features outside Glade's scope, hidden from the composer.

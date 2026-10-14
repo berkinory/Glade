@@ -1,7 +1,6 @@
 {
   "apps/server/src/agentGateway/nativeToolCalls.ts": 2,
   "apps/server/src/agentGateway/toolInput.ts": 2,
-  "apps/server/src/diagnostics/profileActivity.ts": 2,
   "apps/server/src/diagnostics/profileStatsArchive.ts": 2,
   "apps/server/src/git/Layers/CodexTextGeneration.ts": 4,
   "apps/server/src/git/Layers/ProviderTextGeneration.ts": 3,

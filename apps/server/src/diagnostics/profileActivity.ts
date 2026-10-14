@@ -1,12 +1,11 @@
+import { Schema } from "effect";
 import { normalizeModelSlug } from "@glade/shared/provider/model";
-import type { ProviderKind } from "@glade/contracts/core/baseSchemas";
+import { ProviderKind } from "@glade/contracts/core/baseSchemas";
 import type { ProfileStats } from "@glade/contracts/server/stats";
 import { nonEmptyTrimmed } from "@glade/shared/text/text";
 import { TokenDayRow, num, MostWorkedProjectRow } from "./profileQueryValues";
 
 const HEATMAP_WINDOW_DAYS = 274;
-
-const PROVIDER_KINDS = new Set<ProviderKind>(["codex", "claudeAgent"]);
 
 type HeatmapCell = ProfileStats["activity"]["heatmap"][number];
 
@@ -90,9 +89,7 @@ export function arcName(startHour: number): string {
 
 export function normalizeProviderKind(value: unknown): ProviderKind | "unknown" {
   const provider = nonEmptyTrimmed(value) ?? null;
-  return provider && PROVIDER_KINDS.has(provider as ProviderKind)
-    ? (provider as ProviderKind)
-    : "unknown";
+  return provider && Schema.is(ProviderKind)(provider) ? provider : "unknown";
 }
 
 export function normalizeUsageModel(

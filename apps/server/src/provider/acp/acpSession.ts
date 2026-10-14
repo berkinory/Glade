@@ -5,11 +5,11 @@ import type {
   ContentBlock,
   PermissionOption,
   PermissionOptionKind,
-  PromptResponse,
   RequestPermissionOutcome,
   RequestPermissionRequest,
   SessionConfigOption,
   SessionNotification,
+  Usage,
 } from "@agentclientprotocol/sdk";
 import { RuntimeRequestId } from "@glade/contracts/core/baseSchemas";
 import type { ProviderFailure } from "@glade/contracts/provider/providerFailure";
@@ -20,7 +20,7 @@ import type {
 } from "@glade/contracts/provider/sessionPolicy";
 
 import type { AcpConnection } from "./acpConnection.ts";
-import type { AcpInnerToolCall } from "./acpProviderProfile.ts";
+import type { AcpInnerToolCall, AcpPromptUsage } from "./acpProviderProfile.ts";
 import { acpSetConfigRequest } from "./acpModelCatalog.ts";
 import {
   acpToolItemType,
@@ -141,32 +141,36 @@ interface AcpContextUsage {
   readonly size: number;
 }
 
-// `usage_update` reports how full the context window is; a turn's own usage counts what the turn
-// consumed, which equals the fill only for a single model call, so it stands in only when the
-// agent never reported the window.
+// `usage_update` reports how full the context window is. A turn's own usage counts what the turn
+// processed, summed over its model calls, so it is spend and never stands in for the fill.
+// The ACP session id names the spend counter: a fork, rewind or compaction into a fresh native
+// session starts its own, and Profile diffs each counter separately.
 function usageDraft(
+  sessionId: string,
   context: AcpContextUsage | undefined,
-  response?: PromptResponse,
+  // The turn's usage and the tokens every turn of the session processed so far, this one included.
+  turn?: { readonly usage: Usage; readonly processedTokens: number },
 ): AcpRuntimeEventDraft | undefined {
-  const turn = response?.usage ?? undefined;
-  const usedTokens = context?.used ?? turn?.totalTokens;
-  if (usedTokens === undefined) return undefined;
+  if (!context && !turn) return undefined;
+  const usage = turn?.usage;
   return {
     type: "thread.token-usage.updated",
+    providerRefs: { providerThreadId: sessionId },
     payload: {
       usage: {
-        usedTokens,
+        usedTokens: context?.used ?? 0,
         ...(context && context.size > 0 ? { maxTokens: context.size } : {}),
-        ...(turn
+        ...(turn && usage
           ? {
-              lastUsedTokens: turn.totalTokens,
-              lastInputTokens: turn.inputTokens,
-              lastOutputTokens: turn.outputTokens,
-              ...(turn.cachedReadTokens != null
-                ? { lastCachedInputTokens: turn.cachedReadTokens }
+              totalProcessedTokens: turn.processedTokens,
+              lastUsedTokens: usage.totalTokens,
+              lastInputTokens: usage.inputTokens,
+              lastOutputTokens: usage.outputTokens,
+              ...(usage.cachedReadTokens != null
+                ? { lastCachedInputTokens: usage.cachedReadTokens }
                 : {}),
-              ...(turn.thoughtTokens != null
-                ? { lastReasoningOutputTokens: turn.thoughtTokens }
+              ...(usage.thoughtTokens != null
+                ? { lastReasoningOutputTokens: usage.thoughtTokens }
                 : {}),
             }
           : {}),
@@ -182,6 +186,7 @@ export function openAcpSession(input: {
   readonly runtimeMode: RuntimeMode;
   readonly sink: AcpSessionSink;
   readonly innerToolCall?: AcpInnerToolCall;
+  readonly promptUsage?: AcpPromptUsage;
 }): AcpSession {
   const { connection, sessionId, sink } = input;
   let configOptions = input.configOptions;
@@ -189,6 +194,10 @@ export function openAcpSession(input: {
   let runtimeMode = input.runtimeMode;
   let active: ActiveTurn | undefined;
   let context: AcpContextUsage | undefined;
+  // Agents report each turn's usage, not a session total, whatever the schema says. A loaded
+  // session restarts from zero; its events carry a new runtime generation, which Profile keeps as
+  // a separate counter.
+  let processedTokens = 0;
   const pending = new Map<string, PendingPermission>();
 
   const onUpdate = (notification: SessionNotification) => {
@@ -202,7 +211,7 @@ export function openAcpSession(input: {
         return;
       case "usage_update": {
         context = { used: update.used, size: update.size };
-        const draft = usageDraft(context);
+        const draft = usageDraft(sessionId, context);
         if (draft) sink.emit(draft, active?.turnId);
         return;
       }
@@ -306,7 +315,15 @@ export function openAcpSession(input: {
       };
       try {
         const response = await connection.agent.prompt({ sessionId, prompt: [...blocks] });
-        const usage = usageDraft(context, response);
+        const turnUsage = response.usage ?? input.promptUsage?.(response);
+        if (turnUsage && Number.isSafeInteger(turnUsage.totalTokens) && turnUsage.totalTokens > 0) {
+          processedTokens += turnUsage.totalTokens;
+        }
+        const usage = usageDraft(
+          sessionId,
+          context,
+          turnUsage ? { usage: turnUsage, processedTokens } : undefined,
+        );
         const state =
           response.stopReason === "cancelled"
             ? "interrupted"
