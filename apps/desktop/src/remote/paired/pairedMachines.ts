@@ -80,6 +80,7 @@ export function createPairedMachines(input: {
   readonly publish: (states: ReadonlyArray<DesktopSshConnectionState>) => void;
   readonly log: (message: string) => void;
 }): PairedMachines {
+  let stopped = false;
   const proxies = new Map<string, MachineProxy>();
   const stateById = new Map<string, DesktopSshConnectionState>();
   const retryTimers = new Map<string, NodeJS.Timeout>();
@@ -97,7 +98,7 @@ export function createPairedMachines(input: {
   };
 
   const scheduleRetry = (id: string) => {
-    if (retryTimers.has(id)) return;
+    if (stopped || !input.store.get(id) || retryTimers.has(id)) return;
     const attempt = retryAttempts.get(id) ?? 0;
     retryAttempts.set(id, attempt + 1);
     retryTimers.set(
@@ -127,7 +128,7 @@ export function createPairedMachines(input: {
   // The route stopped answering as this machine: look for it again, keeping the window's address.
   const lose = (id: string) => {
     const state = stateById.get(id);
-    if (state?.phase !== "connected") return;
+    if (stopped || state?.phase !== "connected") return;
     stopHealth(id);
     upstreamUrlById.delete(id);
     setState(id, { phase: "reconnecting", detail: null, issue: null, wsUrl: state.wsUrl });
@@ -166,6 +167,14 @@ export function createPairedMachines(input: {
   const establish = async (id: string): Promise<void> => {
     const record = input.store.get(id);
     if (!record) throw new Error("This machine is no longer paired.");
+    const isCurrent = () => {
+      const current = input.store.get(id);
+      return (
+        !stopped &&
+        current?.sessionToken === record.sessionToken &&
+        current.environmentId === record.environmentId
+      );
+    };
     stopHealth(id);
     const previous = stateById.get(id);
     // A background retry of an unreachable machine stays quiet; flipping between "Connecting" and
@@ -183,6 +192,7 @@ export function createPairedMachines(input: {
       });
     }
     const signedOut = (): never => {
+      resetRetry(id);
       setState(id, {
         phase: "failed",
         detail: `${record.label} no longer accepts this app. Pair it again from its Remote access settings.`,
@@ -194,6 +204,7 @@ export function createPairedMachines(input: {
     const { sessionToken } = record;
     if (sessionToken === null) return signedOut();
     const route = await findRoute(record.routes, record.environmentId);
+    if (!isCurrent()) return;
     if (route.kind !== "found") {
       setState(id, {
         phase: "failed",
@@ -207,17 +218,34 @@ export function createPairedMachines(input: {
       scheduleRetry(id);
       throw new Error(`${record.label} is not reachable.`);
     }
-    const session = await fetch(new URL("/api/auth/session", route.url), {
+    const response = await fetch(new URL("/api/auth/session", route.url), {
       headers: { authorization: `Bearer ${sessionToken}` },
       signal: AbortSignal.timeout(PROBE_TIMEOUT_MS),
-    })
-      .then((response) => response.json() as Promise<{ authenticated?: boolean }>)
-      .catch(() => null);
-    if (session?.authenticated !== true) return signedOut();
+    }).catch(() => null);
+    const session: unknown = response?.ok ? await response.json().catch(() => null) : null;
+    if (!isCurrent()) return;
+    const authenticated =
+      typeof session === "object" && session !== null && "authenticated" in session
+        ? session.authenticated
+        : null;
+    if (response?.status === 401 || response?.status === 403 || authenticated === false)
+      return signedOut();
+    // A failed request is not evidence that the saved credential was revoked.
+    if (authenticated !== true) {
+      const detail = `Could not verify the session on ${record.label}. Glade will retry automatically.`;
+      setState(id, { phase: "failed", detail, issue: null, wsUrl: null });
+      scheduleRetry(id);
+      throw new Error(detail);
+    }
     if (route.url !== record.address || route.label !== record.label) {
       input.store.put({ ...record, sessionToken, address: route.url, label: route.label });
     }
     const proxy = await proxyFor(id);
+    if (!isCurrent()) {
+      proxies.delete(id);
+      await proxy.close();
+      return;
+    }
     if (upstreamUrlById.get(id) !== route.url) {
       proxy.setUpstream({ baseUrl: new URL(route.url), sessionToken });
       upstreamUrlById.set(id, route.url);
@@ -228,6 +256,7 @@ export function createPairedMachines(input: {
   };
 
   const connect = (id: string): Promise<void> => {
+    if (stopped) return Promise.reject(new Error("Remote connections have stopped."));
     const pending = inFlight.get(id);
     if (pending) return pending;
     const attempt = establish(id).finally(() => inFlight.delete(id));
@@ -356,6 +385,7 @@ export function createPairedMachines(input: {
       }
     },
     stop: async () => {
+      stopped = true;
       for (const timer of retryTimers.values()) clearTimeout(timer);
       for (const timer of healthTimers.values()) clearInterval(timer);
       retryTimers.clear();

@@ -31,7 +31,7 @@ export type RemoteEnvironment = RemoteMachine & {
 };
 
 interface Entry {
-  readonly cache: RemoteShellCache | null;
+  readonly cache: RemoteShellCache;
   readonly key: EnvironmentKey;
   machine: RemoteMachine;
   connection: DesktopSshConnectionState | null;
@@ -48,6 +48,7 @@ const listeners = new Set<() => void>();
 let snapshot: ReadonlyArray<RemoteEnvironment> = [];
 let started = false;
 let hostsLoaded = false;
+let pairedMachinesLoaded = false;
 
 function publish(): void {
   snapshot = [...entries.values()].map((entry) => ({
@@ -118,8 +119,8 @@ function applyMachines(kind: RemoteMachine["kind"], machines: ReadonlyArray<Remo
   for (const [key, entry] of entries) {
     if (entry.machine.kind !== kind || savedKeys.has(key)) continue;
     closeApi(entry);
-    entry.cache?.clear();
-    entry.cache?.dispose();
+    entry.cache.clear();
+    entry.cache.dispose();
     entries.delete(key);
     unregisterEnvironmentStore(key);
   }
@@ -134,7 +135,13 @@ function applyMachines(kind: RemoteMachine["kind"], machines: ReadonlyArray<Remo
           existing.machine.host.port !== machine.host.port ||
           existing.machine.host.identityFile !== machine.host.identityFile)
       )
-        existing.cache?.clear();
+        existing.cache.clear();
+      if (
+        existing.machine.kind === "paired" &&
+        machine.kind === "paired" &&
+        existing.machine.host.environmentId !== machine.host.environmentId
+      )
+        existing.cache.clear();
       existing.machine = machine;
       continue;
     }
@@ -144,7 +151,7 @@ function applyMachines(kind: RemoteMachine["kind"], machines: ReadonlyArray<Remo
       effects: REMOTE_STORE_SIDE_EFFECTS,
       onProjectUiStateChanged: () => undefined,
     });
-    const cache = machine.kind === "ssh" ? attachRemoteShellCache(key, store) : null;
+    const cache = attachRemoteShellCache(key, store);
     entries.set(key, {
       cache,
       key,
@@ -192,44 +199,50 @@ async function refreshPairedMachines(): Promise<void> {
     "paired",
     (await api.list()).map((host) => ({ kind: "paired", host })),
   );
-  applyStates("paired", await api.getStates());
+  const states = await api.getStates();
+  pairedMachinesLoaded = true;
+  applyStates("paired", states);
 }
 
 // Loads saved hosts and paired machines and connects them, so their projects appear without a visit
 // to settings. The desktop connects paired machines on its own.
 export function startRemoteEnvironments(): void {
   const api = window.desktopBridge?.sshHosts;
-  if (started || !api) return;
-  started = true;
-  api.onStates((states) => applyStates("ssh", states));
-  void refreshHosts()
-    .then(() => {
-      // Nobody asked for these connections, so they never open a password or host key prompt.
-      for (const entry of entries.values()) {
-        if (entry.machine.kind !== "ssh") continue;
-        void api.connect(entry.machine.host.id, { interactive: false }).catch(() => undefined);
-      }
-    })
-    .catch((error: unknown) => {
-      hostsLoaded = true;
-      publish();
-      toastManager.add({
-        type: "error",
-        title: "Could not load SSH hosts",
-        description: ipcErrorMessage(error, "Try restarting Glade."),
-      });
-    });
   const paired = window.desktopBridge?.pairedMachines;
+  if (started || (!api && !paired)) return;
+  started = true;
+  if (api) {
+    api.onStates((states) => applyStates("ssh", states));
+    void refreshHosts()
+      .then(() => {
+        // Nobody asked for these connections, so they never open a password or host key prompt.
+        for (const entry of entries.values()) {
+          if (entry.machine.kind !== "ssh") continue;
+          void api.connect(entry.machine.host.id, { interactive: false }).catch(() => undefined);
+        }
+      })
+      .catch((error: unknown) => {
+        hostsLoaded = true;
+        publish();
+        toastManager.add({
+          type: "error",
+          title: "Could not load SSH hosts",
+          description: ipcErrorMessage(error, "Try restarting Glade."),
+        });
+      });
+  }
   if (!paired) return;
   // Machines can be added or removed from another window, so every update rereads the list.
   paired.onStates(() => void refreshPairedMachines().catch(() => undefined));
-  void refreshPairedMachines().catch((error: unknown) =>
+  void refreshPairedMachines().catch((error: unknown) => {
+    pairedMachinesLoaded = true;
+    publish();
     toastManager.add({
       type: "error",
       title: "Could not load paired machines",
       description: ipcErrorMessage(error, "Try restarting Glade."),
-    }),
-  );
+    });
+  });
 }
 
 export async function saveRemoteHost(
@@ -279,7 +292,7 @@ export async function connectRemoteEnvironment(environment: RemoteMachine): Prom
 // The user's reconnect from settings: starts the connection over, accepts the machine the host
 // reaches now and reinstalls Glade there when it is missing.
 export async function repairRemoteHost(hostId: string): Promise<void> {
-  entries.get(sshEnvironmentKey(hostId))?.cache?.clear();
+  entries.get(sshEnvironmentKey(hostId))?.cache.clear();
   await window.desktopBridge?.sshHosts?.connect(hostId, { interactive: true, repair: true });
 }
 
@@ -304,6 +317,7 @@ export function useRemoteEnvironments(): ReadonlyArray<RemoteEnvironment> {
 // Routes that cannot find their thread wait for this before giving up on it.
 export function remoteEnvironmentsSettled(): boolean {
   if (window.desktopBridge?.sshHosts && !hostsLoaded) return false;
+  if (window.desktopBridge?.pairedMachines && !pairedMachinesLoaded) return false;
   return snapshot.every((environment) => {
     const phase = environment.connection?.phase;
     if (phase === undefined || phase === "failed") return true;

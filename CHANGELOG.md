@@ -9,7 +9,7 @@
 ### Improved
 
 - The composer has more room to write, with project, branch and SSH connection details grouped above the message field and kept visible throughout the chat.
-- SSH projects and chat lists appear from the last connection at startup, show host availability, and refresh automatically when the host reconnects.
+- SSH and paired remote projects and chat lists appear from the last connection at startup, show host availability, and refresh automatically when the host reconnects.
 
 - Git commands start fewer helper processes on Windows, and worktree creation uses parallel checkout while respecting your Git settings.
 
@@ -27,6 +27,8 @@
 - Files and folders a reply names outside the project, such as `~/.zshrc` or `/tmp/run.log`, show as chips with their real icon once Glade finds them, and paths that do not exist stay plain text.
 
 ### Fixed
+
+- Temporary connection failures to paired machines recover automatically instead of incorrectly asking you to pair again.
 
 - Unavailable images in chat show a readable error card with more room for the message and download button.
 - Git history shows author and bot avatars more reliably and gives longer branch names more room.

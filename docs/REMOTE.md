@@ -97,12 +97,18 @@ The desktop app can also be the paired device. On the other machine, turn on rem
 machine** under **Other machines** and paste it. The machine's projects and chats appear in the
 sidebar, and new chats can run there from **Remote** in the composer's machine menu.
 
+Previously loaded projects and chat titles appear from a local navigation cache at startup, even
+while the machine is unreachable. Selecting a cached chat shows its connection state until the
+machine is ready; messages and live session state load from the machine. Its current list replaces
+the cache after reconnecting, including removals. Removing a paired machine clears its cache.
+
 The desktop keeps the machine's session encrypted with the system keychain and connects through a
 small proxy on loopback, so the session never appears in an address the window can see. It tries the
 machine's addresses in order and confirms each answers as the paired machine before using it. A
 connected machine is checked every 10 seconds, so one that stops answering is noticed even when
 nothing is happening. An unreachable machine is retried with growing pauses, up to 30 seconds, and
-right away when the computer wakes. A machine that removes
+right away when the computer wakes. Session-check timeouts, server errors and invalid responses
+are retried without discarding the saved pairing. A machine that removes
 this app shows that it has to be paired again; pairing with a new link replaces the old entry.
 
 A machine already added under **SSH hosts** cannot also be paired, because its projects would
