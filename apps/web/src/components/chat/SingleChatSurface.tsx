@@ -360,6 +360,7 @@ export function SingleChatSurface(props: {
           </RouteInsetSurface>
         </div>
         <WorkspaceSidebar
+          key={props.threadId}
           threadId={props.threadId}
           projectId={props.projectId}
           workspaceRoot={workspaceRoot}

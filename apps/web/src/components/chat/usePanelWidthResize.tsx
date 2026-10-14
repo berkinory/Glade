@@ -1,7 +1,5 @@
-import { Schema } from "effect";
-import { type PointerEvent as ReactPointerEvent, useRef, useState } from "react";
+import { type PointerEvent as ReactPointerEvent, useEffect, useRef } from "react";
 
-import { getLocalStorageItem, setLocalStorageItem } from "../../hooks/useLocalStorage";
 import {
   attachPanelPointerOverlaySession,
   canComposerHandlePanelWidth,
@@ -9,23 +7,16 @@ import {
   removePanelResizeOverlay,
 } from "../../lib/panelResize";
 
-// Width of a panel docked to the right of a chat pane, dragged from its left edge and remembered
-// under `storageKey`. Growing stops where the pane's composer would no longer fit.
+// Growing stops where the pane's composer would no longer fit; the caller owns the saved width.
 export function usePanelWidthResize(input: {
-  readonly storageKey: string;
-  readonly defaultWidth: number;
+  readonly onWidthChange: (width: number) => void;
   readonly minWidth: number;
   readonly chatMinWidth: number;
 }) {
-  const { storageKey, defaultWidth, minWidth, chatMinWidth } = input;
+  const { onWidthChange, minWidth, chatMinWidth } = input;
   const wrapperRef = useRef<HTMLDivElement>(null);
-  const [width, setWidthState] = useState(
-    () => getLocalStorageItem(storageKey, Schema.Finite) ?? defaultWidth,
-  );
-  const setWidth = (next: number) => {
-    setWidthState(next);
-    setLocalStorageItem(storageKey, next, Schema.Finite);
-  };
+  const finishResizeRef = useRef<(() => void) | null>(null);
+  useEffect(() => () => finishResizeRef.current?.(), []);
 
   const startResize = (event: ReactPointerEvent<HTMLDivElement>) => {
     if (event.button !== 0) return;
@@ -33,6 +24,7 @@ export function usePanelWidthResize(input: {
     const parent = wrapper?.parentElement;
     if (!wrapper || !parent) return;
 
+    finishResizeRef.current?.();
     event.preventDefault();
     event.stopPropagation();
     const startX = event.clientX;
@@ -83,9 +75,11 @@ export function usePanelWidthResize(input: {
       document.body.style.removeProperty("cursor");
       document.body.style.removeProperty("user-select");
       wrapper.style.removeProperty("transition");
-      if (currentWidth !== startWidth) setWidth(currentWidth);
+      finishResizeRef.current = null;
+      if (currentWidth !== startWidth) onWidthChange(currentWidth);
     };
 
+    finishResizeRef.current = finish;
     document.body.style.cursor = "col-resize";
     document.body.style.userSelect = "none";
     // A panel that animates its width for open and close must follow the pointer without easing.
@@ -97,7 +91,7 @@ export function usePanelWidthResize(input: {
     });
   };
 
-  return { wrapperRef, width, startResize };
+  return { wrapperRef, startResize };
 }
 
 export function PanelWidthResizeHandle(props: {

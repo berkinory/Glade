@@ -26,7 +26,6 @@ const CHAT_MIN_WIDTH_PX = 20 * 16;
 // Every view shares one width. The minimum is the narrowest the browser stays usable at (pages
 // switch to their small-screen layout), so switching views never changes the width.
 const SIDEBAR_WIDTH = {
-  storageKey: "workspace_sidebar_width",
   defaultWidth: 36 * 16,
   minWidth: 24 * 16,
 };
@@ -106,8 +105,13 @@ export function WorkspaceSidebar(props: {
   const view = useWorkspaceSidebarStore(
     (store) => selectWorkspaceSidebar(props.threadId)(store).view,
   );
-  const { wrapperRef, width, startResize } = usePanelWidthResize({
-    ...SIDEBAR_WIDTH,
+  const width =
+    useWorkspaceSidebarStore((store) => selectWorkspaceSidebar(props.threadId)(store).width) ??
+    SIDEBAR_WIDTH.defaultWidth;
+  const setWidth = useWorkspaceSidebarStore((store) => store.setWidth);
+  const { wrapperRef, startResize } = usePanelWidthResize({
+    onWidthChange: (nextWidth) => setWidth(props.threadId, nextWidth),
+    minWidth: SIDEBAR_WIDTH.minWidth,
     chatMinWidth: CHAT_MIN_WIDTH_PX,
   });
   const gutterClassName = useDesktopTopBarWindowControlsGutterClassName();
