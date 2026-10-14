@@ -219,7 +219,9 @@ function ActivityThreadRow({
               {thread.title}
             </span>
           </span>
-          <SidebarDraftIndicator threadId={thread.id} isActive={isActive} activity />
+          {!trailingStatus?.pulse ? (
+            <SidebarDraftIndicator threadId={thread.id} isActive={isActive} activity />
+          ) : null}
           <span className="flex min-w-0 items-center gap-1.5 text-ui-sm">
             {isWorktree ? (
               <GitForkIcon className="size-[1em] shrink-0 text-muted-foreground/70" aria-hidden />
