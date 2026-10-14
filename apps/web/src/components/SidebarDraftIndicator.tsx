@@ -1,4 +1,4 @@
-import { PencilEdit02Icon } from "~/lib/icons";
+import { Pen01Icon } from "~/lib/icons";
 import type { ThreadId } from "@glade/contracts/core/baseSchemas";
 import { useComposerDraftStore } from "~/composerDraftStore";
 import { hasUnsentComposerDraft } from "~/composerDraftDomain";
@@ -28,7 +28,7 @@ export function SidebarDraftIndicator({
         sidebarHoverRevealHideClassName(activity ? "activity-row" : "thread-row"),
       )}
     >
-      <PencilEdit02Icon className="size-3" />
+      <Pen01Icon className="size-3" />
     </span>
   );
 }
