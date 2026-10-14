@@ -83,11 +83,7 @@ export function useTerminalSurfaceController(threadId: ThreadId) {
       closeTerminalSession({ api, threadId, terminalId });
       closeTerminalStore(threadId, terminalId);
     }
-    const remaining = selectThreadTerminalState(
-      useTerminalStateStore.getState().terminalStateByThreadId,
-      threadId,
-    ).terminalIds;
-    if (closing.length > 0 && remaining.length === 0) onLastClosed();
+    if (closing.length > 0 && closing.length === openIds.length) onLastClosed();
     bumpFocusRequest();
   };
 

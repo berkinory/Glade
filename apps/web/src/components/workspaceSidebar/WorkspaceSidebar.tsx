@@ -110,7 +110,17 @@ export function WorkspaceSidebar(props: {
   useTerminalViewSync(props.threadId, open && view === "terminal");
   const renderView = (shown: WorkspaceSidebarView, visible: boolean) => {
     if (shown === "browser")
-      return <BrowserPanel threadId={props.threadId} tabs={browserTabs} visible={visible} />;
+      return (
+        <BrowserPanel
+          threadId={props.threadId}
+          tabs={browserTabs}
+          visible={visible}
+          onLastClosed={() => {
+            const state = useWorkspaceSidebarStore.getState();
+            if (state.view === "browser") state.setOpen(false);
+          }}
+        />
+      );
     if (shown === "terminal")
       return (
         <TerminalView

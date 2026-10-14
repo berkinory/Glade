@@ -1,6 +1,6 @@
 import type { ThreadId } from "@glade/contracts/core/baseSchemas";
 import type { BrowserPanelCommand } from "@glade/contracts/transport/ws/browserRpc";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useEffectEvent, useRef, useState } from "react";
 import { readNativeApi } from "~/nativeApi";
 import { PanelStateMessage } from "../chat/PanelStateMessage";
 import { toastManager } from "../ui/toast";
@@ -34,6 +34,7 @@ export function BrowserPanel(props: {
   threadId: ThreadId;
   tabs: readonly BrowserTab[] | null;
   visible: boolean;
+  onLastClosed: () => void;
 }) {
   const { threadId, tabs } = props;
   const activeTab = tabs?.find((tab) => tab.active) ?? null;
@@ -43,13 +44,21 @@ export function BrowserPanel(props: {
     activeTab?.tabId ?? null,
     props.visible ? contentElement : null,
   );
-  // Only the first tab list after opening decides; closing the last tab later leaves it empty.
   const checkedFirstList = useRef(false);
+  const previousTabs = useRef(tabs);
+  const onLastClosed = useEffectEvent(props.onLastClosed);
   useEffect(() => {
-    if (tabs === null || checkedFirstList.current) return;
+    const hadTabs = (previousTabs.current?.length ?? 0) > 0;
+    previousTabs.current = tabs;
+    if (!props.visible) checkedFirstList.current = false;
+    if (hadTabs && tabs?.length === 0) {
+      onLastClosed();
+      return;
+    }
+    if (!props.visible || tabs === null || checkedFirstList.current) return;
     checkedFirstList.current = true;
     if (tabs.length === 0) runCommand({ threadId, action: "open" });
-  }, [tabs, threadId]);
+  }, [props.visible, tabs, threadId]);
 
   return (
     <div className="flex h-full min-h-0 w-full min-w-0 flex-col">
