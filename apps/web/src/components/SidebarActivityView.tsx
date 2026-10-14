@@ -219,7 +219,7 @@ function ActivityThreadRow({
               {thread.title}
             </span>
           </span>
-          {!trailingStatus?.pulse ? (
+          {!trailingStatus ? (
             <SidebarDraftIndicator threadId={thread.id} isActive={isActive} activity />
           ) : null}
           <span className="flex min-w-0 items-center gap-1.5 text-ui-sm">

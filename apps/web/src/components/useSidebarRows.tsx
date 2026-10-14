@@ -218,7 +218,7 @@ export function useSidebarRows(context: ReturnType<typeof useSidebarPanelEffects
               <SidebarStatusTrailingGlyph status={trailingStatus} />
             </span>
           ) : null}
-          {!trailingStatus?.pulse && input.draftIndicator}
+          {!trailingStatus && input.draftIndicator}
           {input.metadata.projectLabel ? (
             <span
               aria-label={input.metadata.projectLabel}
