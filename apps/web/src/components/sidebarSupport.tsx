@@ -295,6 +295,7 @@ export function SidebarHelpMenu({
         <SidebarIconButton
           render={<MenuTrigger />}
           icon={HelpCircleIcon}
+          iconClassName="size-[calc(var(--app-font-size-ui,14px)*8/7)] shrink-0"
           label="Help"
           tooltip="Help"
         />
