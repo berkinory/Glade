@@ -25,10 +25,10 @@ import { EMPTY_KEYBINDINGS } from "../sidebarSupport";
 import { SIDEBAR_STATUS_DOT_CLASS_NAME } from "../SidebarStatusTrailingGlyph";
 import { Tooltip, TooltipPopup, TooltipTrigger } from "../ui/tooltip";
 import { WORKSPACE_SIDEBAR_VIEW_META } from "./workspaceSidebarViews";
-import { CHAT_SURFACE_HEADER_HEIGHT_PX } from "@glade/shared/platform/desktopChrome";
-
-const BUTTON_SIZE_PX = 32;
-const SEPARATOR_GAP_PX = 10;
+import {
+  WORKSPACE_ACTIVITY_SEPARATOR_GAP_PX,
+  workspaceActivitySeparatorOffset,
+} from "./workspaceActivityBarGeometry";
 
 function ActivityBarButton(props: {
   label: string;
@@ -190,8 +190,8 @@ export function WorkspaceActivityBar(props: {
         // the header's bottom edge.
         style={{
           marginTop: captionButtonsOverlap
-            ? SEPARATOR_GAP_PX
-            : SEPARATOR_GAP_PX - (CHAT_SURFACE_HEADER_HEIGHT_PX - BUTTON_SIZE_PX) / 2,
+            ? WORKSPACE_ACTIVITY_SEPARATOR_GAP_PX
+            : workspaceActivitySeparatorOffset(false),
         }}
       />
       <div className="flex flex-col items-center gap-2 pt-2.5">{viewButtons}</div>

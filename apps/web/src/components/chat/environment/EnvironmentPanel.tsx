@@ -9,6 +9,9 @@ import type { PinnedMessage } from "@glade/contracts/orchestration/threadEntitie
 import type { ResolvedKeybindingsConfig } from "@glade/contracts/settings/keybindings";
 import { useNavigate } from "@tanstack/react-router";
 import { useAppSettings } from "~/appSettings";
+import { useDesktopTopBarWindowControlsGutterClassName } from "~/hooks/useDesktopTopBarGutter";
+import { useIsMobile } from "~/hooks/useMediaQuery";
+import { workspaceActivitySeparatorOffset } from "~/components/workspaceSidebar/workspaceActivityBarGeometry";
 import { SETTINGS_TARGETS } from "~/settingsNavigation";
 import {
   ENVIRONMENT_PANEL_MOTION_CLASS,
@@ -113,6 +116,8 @@ export function EnvironmentPanel({
   const diffDisabledReason = diffDisabledReasonProp ?? null;
   const navigate = useNavigate();
   const { settings } = useAppSettings();
+  const isMobile = useIsMobile();
+  const captionButtonsOverlap = useDesktopTopBarWindowControlsGutterClassName() !== null;
   const homeDir = useWorkspacePathsStore((state) => state.homeDir);
   const isLocalEnvironment = useActiveEnvironment() === LOCAL_ENVIRONMENT;
   const workingDirectory = worktree.pending ? worktree.baseDirectory : (openInTarget ?? gitCwd);
@@ -278,6 +283,11 @@ export function EnvironmentPanel({
   return (
     <div
       className={ENVIRONMENT_PANEL_OVERLAY_WRAPPER_CLASS_NAME}
+      style={
+        isMobile
+          ? undefined
+          : { paddingTop: workspaceActivitySeparatorOffset(captionButtonsOverlap) }
+      }
       data-environment-panel
       data-environment-panel-variant={variant}
       inert={!open}
