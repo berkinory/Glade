@@ -378,12 +378,15 @@ rotates its refresh tokens, so Glade never renews them; after the stored token e
 asks you to use Grok Build or sign in again. OpenCode shows the five-hour, weekly and monthly
 OpenCode Go windows when you are signed in to OpenCode Go; free models have no limits to show.
 
-Usage settings can show any provider that reports usage in the sidebar, with five-hour, weekly or
-both windows. With both selected, the outer track is five-hour and the inner track
-is weekly. Hover or click opens the shared usage panel, including banked reset
+Usage settings can show any provider that reports usage in the sidebar footer, with
+five-hour, weekly or both windows. Up to two enabled indicators sit beside Settings; three or more
+move to a separate row above it. With both selected, the outer track is five-hour and the inner track
+is weekly. Providers with other quota windows, such as Cursor’s billing cycle, show their most
+constrained reported quota. Hover or click opens the shared usage panel, including banked reset
 details and actions when available. Keyboard users can open it with Enter.
 Missing or failed windows remain unavailable rather than appearing as full quota.
-Disabled providers are hidden. These controls reuse the shared usage query.
+Disabled providers are hidden. Usage panels show remaining quota with a single bar and reset
+countdowns below it, without consumption forecasts. These controls reuse the shared usage query.
 
 When Codex reports banked resets, usage panels keep the available count visible in a
 compact **Banked resets** section. Expand it to inspect expiry information and use a

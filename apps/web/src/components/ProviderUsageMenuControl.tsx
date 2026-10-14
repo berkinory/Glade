@@ -156,15 +156,22 @@ export function ProviderUsageMenuControl({
       settings.sidebarUsageWindow === "both"
         ? [300, 10080]
         : [settings.sidebarUsageWindow === "five-hour" ? 300 : 10080];
-    const rows = windows.flatMap((duration) => {
-      const row = model.rows.find((candidate) => candidate.windowDurationMins === duration);
-      return row ? [{ duration, row }] : [];
-    });
+    const hasStandardWindows = model.rows.some(
+      (row) => row.windowDurationMins === 300 || row.windowDurationMins === 10080,
+    );
+    const rows = hasStandardWindows
+      ? windows.flatMap((duration) => {
+          const row = model.rows.find((candidate) => candidate.windowDurationMins === duration);
+          return row ? [row] : [];
+        })
+      : model.primaryRow
+        ? [model.primaryRow]
+        : [];
     const description =
       rows.length > 0
         ? rows
             .map(
-              ({ row }) =>
+              (row) =>
                 `${row.label}: ${row.remainingLabel} remaining${row.resetText ? `, ${row.resetText}` : ""}`,
             )
             .join("; ")
@@ -185,8 +192,8 @@ export function ProviderUsageMenuControl({
           }
         >
           <svg viewBox="0 0 36 36" className="absolute inset-0 size-6 -rotate-90" aria-hidden>
-            {rows.map(({ duration, row }, index) => (
-              <g key={duration}>
+            {rows.map((row, index) => (
+              <g key={row.id}>
                 <circle
                   cx="18"
                   cy="18"
@@ -208,7 +215,7 @@ export function ProviderUsageMenuControl({
                   className={
                     row.remainingPercent <= 10
                       ? "text-red-500"
-                      : duration === 300
+                      : row.windowDurationMins !== 10080
                         ? "text-emerald-500"
                         : "text-blue-500"
                   }

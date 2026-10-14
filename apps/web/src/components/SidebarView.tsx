@@ -142,6 +142,11 @@ export function SidebarView({ context }: { context: ReturnType<typeof useSidebar
     isManualProjectSorting,
     openFeedbackDialog,
   } = context;
+  const sidebarUsageProviders = appSettings.sidebarUsageProviders.filter(
+    (provider) => !appSettings.disabledProviders.includes(provider),
+  );
+  const usageInSeparateRow = sidebarUsageProviders.length > 2;
+
   const {
     showDesktopUpdateButton,
     desktopUpdateTooltip,
@@ -597,6 +602,9 @@ export function SidebarView({ context }: { context: ReturnType<typeof useSidebar
                   <DebugFeatureFlagsMenu />
                 </Suspense>
               ) : null}
+              {usageInSeparateRow ? (
+                <SidebarUsageIndicators providers={sidebarUsageProviders} />
+              ) : null}
               <div className="flex items-center gap-2">
                 <SidebarMenuButton
                   size="sm"
@@ -620,7 +628,9 @@ export function SidebarView({ context }: { context: ReturnType<typeof useSidebar
                   </SidebarLeadingIcon>
                   <span>{isOnSettings ? "Home" : "Settings"}</span>
                 </SidebarMenuButton>
-                <SidebarUsageIndicators />
+                {!usageInSeparateRow ? (
+                  <SidebarUsageIndicators providers={sidebarUsageProviders} />
+                ) : null}
                 {everything || showDesktopUpdateButton ? (
                   <Tooltip>
                     <TooltipTrigger

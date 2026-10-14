@@ -7,25 +7,15 @@ function clampPercent(value: number): number {
 export function UsageProgressTrack({
   label,
   remainingPercent,
-  markerPercent,
   className,
   fillClassName,
-  markerClassName,
-  markerGapClassName: markerGapClassNameProp,
 }: {
   label: string;
   remainingPercent: number;
-  markerPercent?: number | null | undefined;
   className?: string | undefined;
   fillClassName: string;
-  markerClassName: string;
-  markerGapClassName?: string | undefined;
 }) {
-  const markerGapClassName = markerGapClassNameProp ?? "bg-background";
   const clamped = clampPercent(remainingPercent);
-  const marker =
-    markerPercent === null || markerPercent === undefined ? null : clampPercent(markerPercent);
-  const showMarker = marker !== null && clamped > 0 && clamped < 100;
 
   return (
     <div
@@ -43,18 +33,6 @@ export function UsageProgressTrack({
         )}
         style={{ width: `${clamped}%` }}
       />
-      {showMarker ? (
-        <div
-          className={cn(
-            "absolute inset-y-0 z-10 flex w-2 -translate-x-1/2 items-center justify-center",
-            markerGapClassName,
-          )}
-          style={{ left: `${marker}%` }}
-          aria-hidden
-        >
-          <span className={cn("h-full w-0.5 rounded-full shadow-sm", markerClassName)} />
-        </div>
-      ) : null}
     </div>
   );
 }

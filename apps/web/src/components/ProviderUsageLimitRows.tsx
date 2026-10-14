@@ -2,30 +2,10 @@ import {
   providerUsageProgressTrackProps,
   type ProviderUsageDisplayRow,
 } from "~/lib/providerUsageDisplay";
-import { cn } from "~/lib/utils";
 
 import { UsageProgressTrack } from "./UsageProgressTrack";
 
 export type ProviderUsageLimitRowsSurface = "settings" | "popover";
-
-function ProviderUsagePaceLine({
-  row,
-  surface,
-}: {
-  row: ProviderUsageDisplayRow;
-  surface: ProviderUsageLimitRowsSurface;
-}) {
-  const etaText = row.pace?.etaText;
-  if (!etaText) return null;
-
-  if (surface === "popover") {
-    return (
-      <div className="truncate text-right tabular-nums text-muted-foreground/80">{etaText}</div>
-    );
-  }
-
-  return <div className="text-right text-ui-sm tabular-nums text-muted-foreground">{etaText}</div>;
-}
 
 function ProviderUsageTrack({
   row,
@@ -40,30 +20,19 @@ function ProviderUsageTrack({
     <UsageProgressTrack
       {...trackProps}
       className={surface === "popover" ? "h-1.5 bg-muted/80" : undefined}
-      markerGapClassName={surface === "popover" ? "bg-popover" : undefined}
     />
   );
 }
 
 function SettingsUsageLimitRow({ row }: { row: ProviderUsageDisplayRow }) {
-  const trackProps = providerUsageProgressTrackProps(row);
-
   return (
     <div className="space-y-1.5">
-      <div className="flex items-center gap-1.5">
-        <span className="text-ui leading-snug font-medium text-foreground">{row.label}</span>
-        <span
-          className={cn("size-1.5 shrink-0 rounded-full", trackProps.markerClassName)}
-          title={row.pace ? `Usage pace: ${row.pace.status}` : undefined}
-          aria-hidden
-        />
-      </div>
+      <div className="text-ui leading-snug font-medium text-foreground">{row.label}</div>
       <ProviderUsageTrack row={row} surface="settings" />
-      <div className="flex items-center justify-between text-ui-sm tabular-nums text-muted-foreground">
-        <span>{row.leftText}</span>
+      <div className="flex flex-wrap items-center justify-between gap-x-3 text-ui-sm tabular-nums text-muted-foreground">
+        <span className="shrink-0 whitespace-nowrap">{row.leftText}</span>
         {row.resetText ? <span>{row.resetText}</span> : null}
       </div>
-      <ProviderUsagePaceLine row={row} surface="settings" />
     </div>
   );
 }
@@ -71,17 +40,16 @@ function SettingsUsageLimitRow({ row }: { row: ProviderUsageDisplayRow }) {
 function PopoverUsageLimitRow({ row }: { row: ProviderUsageDisplayRow }) {
   return (
     <div className="space-y-1 text-chat-meta leading-tight">
-      <div className="grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)] items-baseline gap-x-3">
-        <div className="flex min-w-0 items-baseline gap-1.5">
-          <span className="shrink-0 text-ui-sm font-medium text-foreground">{row.label}</span>
-          <span className="min-w-0 truncate tabular-nums text-foreground">{row.leftText}</span>
-        </div>
-        <div className="min-w-0 text-right text-muted-foreground">
-          {row.resetText ? <div className="truncate tabular-nums">{row.resetText}</div> : null}
-        </div>
+      <div className="flex items-baseline justify-between gap-3">
+        <span className="min-w-0 text-ui-sm font-medium text-foreground">{row.label}</span>
+        <span className="shrink-0 whitespace-nowrap tabular-nums text-foreground">
+          {row.leftText}
+        </span>
       </div>
       <ProviderUsageTrack row={row} surface="popover" />
-      <ProviderUsagePaceLine row={row} surface="popover" />
+      {row.resetText ? (
+        <div className="text-right tabular-nums text-muted-foreground">{row.resetText}</div>
+      ) : null}
     </div>
   );
 }
@@ -96,7 +64,7 @@ export function ProviderUsageLimitRows({
   if (rows.length === 0) return null;
 
   return (
-    <div className={surface === "settings" ? "space-y-3" : "space-y-1.5"}>
+    <div className="space-y-3">
       {rows.map((row) =>
         surface === "settings" ? (
           <SettingsUsageLimitRow key={row.id} row={row} />
