@@ -1,3 +1,4 @@
+import { cachedByCommand } from "./commandParseCache";
 import { basenameOfPath } from "../file-icons";
 
 export function compactPath(path: string): string {
@@ -218,16 +219,18 @@ const SHELL_INVOCATION_PREFIXES = ["/usr/bin/", "/bin/", ""].flatMap((directory)
   ),
 );
 
-// The commands a shell script runs, in order. `&&`, `||`, `;` and newlines separate commands, a
-// pipe keeps only the command that produces its input, and setup (cd, exports, assignments) and
-// control-flow keywords are dropped. A heredoc's body is text rather than commands, so parsing
-// skips it and resumes after its terminator.
-export function commandSegments(rawCommand: string): string[] {
+function parseCommandSegments(rawCommand: string): string[] {
   return splitShellCommands(unwrapShellInvocation(rawCommand)).flatMap(({ producer }) => {
     const normalized = normalizeCommandSegment(producer);
     return normalized ? [normalized] : [];
   });
 }
+
+// The commands a shell script runs, in order. `&&`, `||`, `;` and newlines separate commands, a
+// pipe keeps only the command that produces its input, and setup (cd, exports, assignments) and
+// control-flow keywords are dropped. A heredoc's body is text rather than commands, so parsing
+// skips it and resumes after its terminator.
+export const commandSegments = cachedByCommand(parseCommandSegments);
 
 /**
  * The folder a script's file paths are relative to: its last `cd <absolute path>`, such as the one in

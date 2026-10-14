@@ -1,3 +1,4 @@
+import { cachedByCommand } from "./commandParseCache";
 import {
   commandDirectory,
   commandSegments,
@@ -43,8 +44,7 @@ export interface InlineScript {
   file: string | null;
 }
 
-/** The script a command hands to an interpreter, from the first step that runs one. */
-export function inlineScriptOf(rawCommand: string): InlineScript | null {
+function parseInlineScript(rawCommand: string): InlineScript | null {
   const primary = commandSegments(rawCommand).find(
     (segment) => INTERPRETER_LANGUAGES[splitToolAndArgs(segment)[0]] !== undefined,
   );
@@ -63,6 +63,9 @@ export function inlineScriptOf(rawCommand: string): InlineScript | null {
   if (code === null && file === null) return null;
   return { interpreter: tool, language, code, file };
 }
+
+/** The script a command hands to an interpreter, from the first step that runs one. */
+export const inlineScriptOf = cachedByCommand(parseInlineScript);
 
 export interface CommandFileEffects {
   written: string[];
@@ -84,8 +87,7 @@ export function resolveCommandPaths(rawCommand: string, paths: readonly string[]
   );
 }
 
-/** Files a command writes or reads, as written in the command with its own variables filled in. */
-export function commandFileEffects(rawCommand: string): CommandFileEffects {
+function parseCommandFileEffects(rawCommand: string): CommandFileEffects {
   const assignments = shellAssignments(rawCommand);
   const expand = (path: string) =>
     path.replace(/\$\{?([A-Za-z_]\w*)\}?/g, (text, name: string) => assignments.get(name) ?? text);
@@ -111,6 +113,9 @@ export function commandFileEffects(rawCommand: string): CommandFileEffects {
     writeKind,
   };
 }
+
+/** Files a command writes or reads, as written in the command with its own variables filled in. */
+export const commandFileEffects = cachedByCommand(parseCommandFileEffects);
 
 // Steps that print, prepare a folder or feed a heredoc to a file, which a write still sums up.
 const WRITE_COMPANIONS = new Set([

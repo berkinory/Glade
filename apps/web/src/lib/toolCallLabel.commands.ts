@@ -1,3 +1,4 @@
+import { cachedByCommand } from "./commandParseCache";
 import { normalizeCompactToolLabel } from "./toolCallLabel.presentations";
 import type { ReadableToolTitleInput } from "./toolCallLabel.presentations";
 import {
@@ -67,9 +68,23 @@ export function deriveReadableToolTitle(input: ReadableToolTitleInput): string |
   return null;
 }
 
+const settledCommandDisplay = cachedByCommand((rawCommand) =>
+  parseReadableCommandDisplay(rawCommand, false),
+);
+const runningCommandDisplay = cachedByCommand((rawCommand) =>
+  parseReadableCommandDisplay(rawCommand, true),
+);
+
 export function deriveReadableCommandDisplay(
   rawCommand: string,
   isRunning = false,
+): ReadableCommandDisplay {
+  return (isRunning ? runningCommandDisplay : settledCommandDisplay)(rawCommand);
+}
+
+function parseReadableCommandDisplay(
+  rawCommand: string,
+  isRunning: boolean,
 ): ReadableCommandDisplay {
   const effects = commandFileEffects(rawCommand);
   if (effects.writeKind) {
@@ -97,11 +112,7 @@ export function deriveReadableCommandDisplay(
   return segmentDisplay(primary, rawCommand, isRunning);
 }
 
-/**
- * How to read a command's output as search results, when every step is a grep, rg or find: whether
- * it lists files (`-l`), and the one file it searched, whose matches carry no file name.
- */
-export function commandSearchShape(
+function parseCommandSearchShape(
   rawCommand: string,
 ): { listsFiles: boolean; singleFile: string | null } | null {
   const segments = meaningfulSegments(rawCommand);
@@ -120,10 +131,15 @@ export function commandSearchShape(
   };
 }
 
+/**
+ * How to read a command's output as search results, when every step is a grep, rg or find: whether
+ * it lists files (`-l`), and the one file it searched, whose matches carry no file name.
+ */
+export const commandSearchShape = cachedByCommand(parseCommandSearchShape);
+
 export type ReadRange = { start: number; end: number | null } | { lastLines: number };
 
-/** The lines a single-file read shows: `sed -n 40,80p`, `head -n 20` or `tail -n 30`. */
-export function commandReadRange(rawCommand: string): ReadRange | null {
+function parseCommandReadRange(rawCommand: string): ReadRange | null {
   const segments = meaningfulSegments(rawCommand).filter(
     (segment) => inspectPresentation(segment)?.[2] === "file",
   );
@@ -150,12 +166,17 @@ export function commandReadRange(rawCommand: string): ReadRange | null {
   return null;
 }
 
-/** The program a command is named after: its first step that does more than look around. */
-export function commandPrimaryTool(rawCommand: string): string | null {
+/** The lines a single-file read shows: `sed -n 40,80p`, `head -n 20` or `tail -n 30`. */
+export const commandReadRange = cachedByCommand(parseCommandReadRange);
+
+function parseCommandPrimaryTool(rawCommand: string): string | null {
   const segments = meaningfulSegments(rawCommand);
   const primary = segments.find((segment) => !inspectPresentation(segment)) ?? segments[0];
   return primary ? splitToolAndArgs(primary)[0] : null;
 }
+
+/** The program a command is named after: its first step that does more than look around. */
+export const commandPrimaryTool = cachedByCommand(parseCommandPrimaryTool);
 
 function segmentDisplay(
   segment: string,
@@ -385,13 +406,15 @@ function readFilesOf(segments: readonly string[]): string[] {
   ];
 }
 
+function parseCommandReadFilePaths(rawCommand: string): string[] {
+  return resolveCommandPaths(rawCommand, readFilesOf(meaningfulSegments(rawCommand)));
+}
+
 /**
  * Every file a shell command reads with cat, sed, head and the like. Paths relative to a leading
  * `cd <absolute folder>` are resolved against it; others stay as written.
  */
-export function commandReadFilePaths(rawCommand: string): string[] {
-  return resolveCommandPaths(rawCommand, readFilesOf(meaningfulSegments(rawCommand)));
-}
+export const commandReadFilePaths = cachedByCommand(parseCommandReadFilePaths);
 
 // Output plumbing that only shapes what another command printed.
 const PASSTHROUGH_TOOLS: ReadonlySet<string> = new Set([
@@ -406,7 +429,9 @@ const PASSTHROUGH_TOOLS: ReadonlySet<string> = new Set([
   "sleep",
 ]);
 
-function meaningfulSegments(rawCommand: string): string[] {
+const meaningfulSegments = cachedByCommand(parseMeaningfulSegments);
+
+function parseMeaningfulSegments(rawCommand: string): string[] {
   const segments = commandSegments(rawCommand);
   const meaningful = segments.filter(
     (segment) => !PASSTHROUGH_TOOLS.has(splitToolAndArgs(segment)[0]),
@@ -469,7 +494,7 @@ function firstCommandExecutable(rawCommand: string): string {
   return executable.split(/[\\/]/u).at(-1)?.toLowerCase() ?? "";
 }
 
-export function deriveFriendlyCommandTarget(rawCommand: string): string {
+function parseFriendlyCommandTarget(rawCommand: string): string {
   const executable = firstCommandExecutable(rawCommand);
   if (
     executable === "pwsh" ||
@@ -487,7 +512,9 @@ export function deriveFriendlyCommandTarget(rawCommand: string): string {
   return target.length <= 72 ? target : `${target.slice(0, 69).trimEnd()}…`;
 }
 
-export function classifyInspectCommand(rawCommand: string): "read" | "search" | "list" | null {
+export const deriveFriendlyCommandTarget = cachedByCommand(parseFriendlyCommandTarget);
+
+function parseInspectKind(rawCommand: string): "read" | "search" | "list" | null {
   const kinds = new Set<InspectPresentation[2]>();
   for (const segment of meaningfulSegments(rawCommand)) {
     const inspect = inspectPresentation(segment);
@@ -501,7 +528,9 @@ export function classifyInspectCommand(rawCommand: string): "read" | "search" | 
   return "search";
 }
 
-export function resolveCommandVisualKind(rawCommand: string): CommandVisualKind {
+export const classifyInspectCommand = cachedByCommand(parseInspectKind);
+
+function parseCommandVisualKind(rawCommand: string): CommandVisualKind {
   const segments = meaningfulSegments(rawCommand);
   const primary = segments.find((segment) => !inspectPresentation(segment));
   if (!primary) {
@@ -516,6 +545,8 @@ export function resolveCommandVisualKind(rawCommand: string): CommandVisualKind 
   }
   return "terminal";
 }
+
+export const resolveCommandVisualKind = cachedByCommand(parseCommandVisualKind);
 
 function humanizeGitCommand(
   args: string,

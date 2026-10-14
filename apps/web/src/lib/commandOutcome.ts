@@ -215,6 +215,23 @@ export function describeCommandOutcome(input: {
   output: WorkLogToolOutputDetails | undefined;
   failed: boolean;
 }): CommandOutcome | null {
+  // Rows re-render with the same output object, and reading a long output is the costly part, so
+  // the outcome is kept for as long as the output object lives.
+  if (!input.output) return readCommandOutcome(input);
+  const key = `${input.failed ? 1 : 0}\0${input.command}`;
+  const byCommand = outcomeByOutput.get(input.output) ?? new Map<string, CommandOutcome | null>();
+  outcomeByOutput.set(input.output, byCommand);
+  if (!byCommand.has(key)) byCommand.set(key, readCommandOutcome(input));
+  return byCommand.get(key)!;
+}
+
+const outcomeByOutput = new WeakMap<WorkLogToolOutputDetails, Map<string, CommandOutcome | null>>();
+
+function readCommandOutcome(input: {
+  command: string;
+  output: WorkLogToolOutputDetails | undefined;
+  failed: boolean;
+}): CommandOutcome | null {
   const { command, output } = input;
   const text = output?.output ?? [output?.stdout, output?.stderr].filter(Boolean).join("\n");
   const lines = commandOutputLines(text ?? "");

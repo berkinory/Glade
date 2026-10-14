@@ -9,7 +9,7 @@
 
 ### Fixed
 
-- Chats containing long inline scripts stay responsive when opening and updating the conversation.
+- Chats with long inline scripts or many tool calls stay responsive when opening and updating the conversation.
 - Codex chats renew their connection after a stopped turn instead of blocking the next message.
 
 ## 0.2.7 - 2026-10-14
