@@ -1,4 +1,6 @@
-import type { ReactNode } from "react";
+import { useEffect, useRef, type ReactNode } from "react";
+import type { WorkLogEntry } from "~/workLog.types";
+import { useToolCallRevealSignal } from "./toolCallReveal";
 
 import { DisclosureChevron } from "../ui/DisclosureChevron";
 import { DisclosureRegion } from "../ui/DisclosureRegion";
@@ -60,13 +62,24 @@ function renderGroupIcon(summary: ToolCallGroupSummary) {
 
 export function ToolCallGroupSummaryRow(props: {
   summary: ToolCallGroupSummary;
+  entries: readonly WorkLogEntry[];
   live?: boolean;
   open: boolean;
   onToggle: (open: boolean) => void;
   fontSizePx: number;
   renderChildren: () => ReactNode;
 }) {
-  const { summary, live = false, open, onToggle, fontSizePx, renderChildren } = props;
+  const { summary, entries, live = false, open, onToggle, fontSizePx, renderChildren } = props;
+  const revealSignal = useToolCallRevealSignal((toolCallId) =>
+    entries.some((entry) => entry.toolCallId === toolCallId),
+  );
+  // Opens once per reveal request, so a later toggle by the reader stands.
+  const handledReveal = useRef<number | undefined>(undefined);
+  useEffect(() => {
+    if (revealSignal === undefined || handledReveal.current === revealSignal) return;
+    handledReveal.current = revealSignal;
+    onToggle(true);
+  }, [revealSignal, onToggle]);
 
   return (
     <div>

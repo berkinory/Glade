@@ -71,6 +71,7 @@ export interface EnvironmentPanelProps {
   onToggleDiff: () => void;
   onOpenGithubRepository?: (url: string) => void;
   onJumpToPinnedMessage: (messageId: MessageId) => void;
+  onJumpToToolCall: (toolCallId: string) => void;
   onUnpinMessage: (messageId: MessageId) => void;
   onRenamePinnedMessage: (messageId: MessageId, label: string | null) => void;
   onNotesChange: (threadId: ThreadId, notes: string) => Promise<void>;
@@ -100,6 +101,7 @@ export function EnvironmentPanel({
   onToggleDiff,
   onOpenGithubRepository,
   onJumpToPinnedMessage,
+  onJumpToToolCall,
   onUnpinMessage,
   onRenamePinnedMessage,
   onNotesChange,
@@ -181,10 +183,13 @@ export function EnvironmentPanel({
             }
           />
           {worktree.path && worktree.path !== openInTarget ? (
-            <p className="mt-1">
-              Worktree root:{" "}
-              <code className="select-text break-all text-ui-sm">{worktree.path}</code>
-            </p>
+            <div className="mt-1">
+              <p>Worktree root:</p>
+              <EnvironmentDirectoryPath
+                path={worktree.path}
+                displayPath={formatEnvironmentDirectory(worktree.path, homeDir)}
+              />
+            </div>
           ) : null}
         </div>
       </EnvironmentLabeledSection>
@@ -257,6 +262,10 @@ export function EnvironmentPanel({
       <EnvironmentBackgroundTasksSection
         threadId={activeThreadId}
         localServersEnabled={open && isLocalEnvironment}
+        onOpenToolCall={(toolCallId) => {
+          onJumpToToolCall(toolCallId);
+          onClose();
+        }}
       />
       <EnvironmentSubagentsSection threadId={activeThreadId} onClose={onClose} />
     </div>

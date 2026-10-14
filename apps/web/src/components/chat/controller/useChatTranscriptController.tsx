@@ -228,6 +228,10 @@ export function useChatTranscriptController({
     timelineControllerRef.current?.scrollToMessage(messageId);
   };
 
+  const handleJumpToToolCall = (toolCallId: string) => {
+    timelineControllerRef.current?.revealToolCall(toolCallId);
+  };
+
   // Turn/session updates can arrive before the first transcript row. An empty synced snapshot during
   // startup must not restore the unstarted landing. Terminal turns can lack start timestamps after
   // restore/import; their state wins.
@@ -399,6 +403,7 @@ export function useChatTranscriptController({
     handleNotesChange,
     handleTogglePinMessage,
     handleJumpToPinnedMessage,
+    handleJumpToToolCall,
     threadDetailHydration,
     transcriptEmptyStateContent,
     isCenteredEmptyLanding,

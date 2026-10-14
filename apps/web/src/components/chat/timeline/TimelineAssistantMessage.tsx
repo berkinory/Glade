@@ -239,6 +239,7 @@ export function TimelineAssistantMessage({
                   <ToolCallGroupSummaryRow
                     key={`inline-tool-summary:${summaryRowKey}`}
                     summary={summary}
+                    entries={chunk.entries}
                     live={chunk.live}
                     open={toolGroupSummaryOverrides[summaryRowKey] ?? chunk.live}
                     onToggle={(open) => setToolGroupSummaryOpen(summaryRowKey, open)}
@@ -337,6 +338,7 @@ export function TimelineAssistantMessage({
       <ToolCallGroupSummaryRow
         key={`${keyPrefix}:tool-group:${row.message.id}:${chunk.id}`}
         summary={summary}
+        entries={chunk.entries}
         open={toolGroupSummaryOverrides[summaryOverrideKey] ?? false}
         onToggle={(open) => setToolGroupSummaryOpen(summaryOverrideKey, open)}
         fontSizePx={normalizedChatFontSizePx}

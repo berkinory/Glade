@@ -271,6 +271,29 @@ export function resolveThreadFindJumpTarget(
   return null;
 }
 
+/**
+ * The row that shows a tool call, and the settled turn to open first when the call sits in that
+ * turn's collapsed work.
+ */
+export function resolveToolCallJumpTarget(
+  rows: readonly MessagesTimelineRow[],
+  toolCallId: string,
+): { rowIndex: number; expandCollapsedWorkMessageId?: MessageId } | null {
+  const isCall = (entry: WorkLogEntry) => entry.toolCallId === toolCallId;
+  for (let rowIndex = 0; rowIndex < rows.length; rowIndex += 1) {
+    const row = rows[rowIndex]!;
+    if (row.kind === "work" && row.groupedEntries.some(isCall)) return { rowIndex };
+    if (row.kind !== "message") continue;
+    if (row.collapsedTurnItems?.some((item) => item.kind === "work" && isCall(item.entry))) {
+      return { rowIndex, expandCollapsedWorkMessageId: row.message.id };
+    }
+    if (row.leadingWorkEntries?.some(isCall) || row.inlineWorkEntries?.some(isCall)) {
+      return { rowIndex };
+    }
+  }
+  return null;
+}
+
 export function computeMessageDurationStart(
   messages: ReadonlyArray<TimelineDurationMessage>,
 ): Map<string, string> {

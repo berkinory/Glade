@@ -27,10 +27,12 @@ function BackgroundTaskRow({
   task,
   nowMs,
   onStop,
+  onOpen,
 }: {
   task: WorkLogBackgroundTask;
   nowMs: number;
   onStop: (() => void) | undefined;
+  onOpen: (() => void) | undefined;
 }) {
   const endMs = task.settledAt === null ? nowMs : Date.parse(task.settledAt);
   const elapsedMs = endMs - Date.parse(task.startedAt);
@@ -42,14 +44,20 @@ function BackgroundTaskRow({
         "group/subagent-row grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-2",
       )}
     >
-      <span className="min-w-0 truncate" title={description}>
+      <button
+        type="button"
+        className="min-w-0 truncate text-left disabled:cursor-default"
+        title={description}
+        disabled={!onOpen}
+        onClick={onOpen}
+      >
         {description}
         {Number.isFinite(elapsedMs) && elapsedMs >= 0 ? (
           <span className="ml-1.5 text-ui-xs tabular-nums text-muted-foreground">
             {formatClockDuration(elapsedMs)}
           </span>
         ) : null}
-      </span>
+      </button>
       <SubagentStatusIndicator
         statusKind={task.status}
         statusLabel={STATUS_LABELS[task.status]}
@@ -65,9 +73,12 @@ function BackgroundTaskRow({
 export function EnvironmentBackgroundTasksSection({
   threadId,
   localServersEnabled,
+  onOpenToolCall,
 }: {
   threadId: ThreadId | null;
   localServersEnabled: boolean;
+  // Shows the tool call that started a task in the transcript, its command and output open.
+  onOpenToolCall: (toolCallId: string) => void;
 }) {
   const setError = useStore((store) => store.setError);
   const servers = useQuery(serverLocalServersQueryOptions(localServersEnabled)).data?.servers;
@@ -114,6 +125,7 @@ export function EnvironmentBackgroundTasksSection({
               key={task.taskId}
               task={task}
               nowMs={nowMs}
+              onOpen={task.toolUseId ? () => onOpenToolCall(task.toolUseId!) : undefined}
               onStop={
                 task.status === "running"
                   ? () => {

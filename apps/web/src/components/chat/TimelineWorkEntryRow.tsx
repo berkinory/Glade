@@ -47,6 +47,7 @@ import { AgentActivityDetails } from "./AgentActivityDetails";
 import { hasToolCallDetailsContent } from "./ToolCallDetailsDialog.logic";
 import type { TurnId } from "@glade/contracts/core/baseSchemas";
 import { createElement, memo, useMemo, type ReactElement } from "react";
+import { useToolCallRevealSignal } from "./toolCallReveal";
 import { basenameOfPath } from "~/file-icons";
 import {
   AgentActivityOpenSurface,
@@ -524,6 +525,7 @@ function ToolWorkEntryRow(props: TimelineWorkEntryRowProps) {
       onImageExpand={onImageExpand}
     />
   ) : undefined;
+  const revealSignal = useToolCallRevealSignal((toolCallId) => workEntry.toolCallId === toolCallId);
   const hasToolDetails = hasToolCallDetailsContent(
     workEntry.toolDetails,
     workEntry.liveActivity,
@@ -574,7 +576,13 @@ function ToolWorkEntryRow(props: TimelineWorkEntryRowProps) {
   if (workEntry.activityKind === "provider.transition")
     return <ProviderTransitionDivider entry={workEntry} />;
   return (
-    <div className={WORK_ROW_BLOCK_CLASS_NAME}>
+    <div
+      data-tool-call-id={workEntry.toolCallId}
+      className={cn(
+        WORK_ROW_BLOCK_CLASS_NAME,
+        revealSignal !== undefined && "rounded-md bg-[var(--color-background-elevated-secondary)]",
+      )}
+    >
       {showEditedRows ? (
         <div
           className={
@@ -719,6 +727,7 @@ function ToolWorkEntryRow(props: TimelineWorkEntryRowProps) {
                 details={workEntry.toolDetails}
                 activity={workEntry.liveActivity}
                 toolKind={workEntry.toolKind}
+                revealSignal={revealSignal}
                 detailContent={
                   activityContent ??
                   (monitorNotification ? (

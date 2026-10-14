@@ -8,7 +8,10 @@ import {
   useRef,
   type ComponentProps,
 } from "react";
-import { resolveThreadFindJumpTarget } from "~/components/chat/MessagesTimeline.logic.rowTypes";
+import {
+  resolveThreadFindJumpTarget,
+  resolveToolCallJumpTarget,
+} from "~/components/chat/MessagesTimeline.logic.rowTypes";
 import {
   resolveActiveTrailSnapshot,
   type MessageTrailAnchor,
@@ -25,6 +28,7 @@ import {
   readLegendListState,
   scrollLegendListToEnd,
   scrollLegendListToIndex,
+  TOOL_CALL_REVEAL_SETTLE_MS,
 } from "./timelineSupport";
 import type { useTimelineStateController } from "./useTimelineStateController";
 export function useTimelineNavigationController({
@@ -40,6 +44,7 @@ export function useTimelineNavigationController({
     setExpandedUserMessagesById,
     resolvedListRef,
     setHighlightedMessageId,
+    setRevealedToolCall,
     timelineRootRef,
     activeFindMatchRef,
   } = state;
@@ -67,6 +72,8 @@ export function useTimelineNavigationController({
 
   const jumpHighlightTimeoutRef = useRef<number | null>(null);
 
+  const revealClearTimeoutRef = useRef<number | null>(null);
+
   const findFineScrollFrameRef = useRef<number | null>(null);
 
   useEffect(
@@ -74,11 +81,14 @@ export function useTimelineNavigationController({
       if (jumpHighlightTimeoutRef.current !== null) {
         window.clearTimeout(jumpHighlightTimeoutRef.current);
       }
+      if (revealClearTimeoutRef.current !== null) {
+        window.clearTimeout(revealClearTimeoutRef.current);
+      }
       if (findFineScrollFrameRef.current !== null) {
         window.cancelAnimationFrame(findFineScrollFrameRef.current);
       }
     },
-    [jumpHighlightTimeoutRef, findFineScrollFrameRef],
+    [jumpHighlightTimeoutRef, revealClearTimeoutRef, findFineScrollFrameRef],
   );
 
   useEffect(() => {
@@ -191,6 +201,43 @@ export function useTimelineNavigationController({
       };
       findFineScrollFrameRef.current = window.requestAnimationFrame(tick);
     };
+    // The tool row mounts only after its turn and group open, and keeps moving while they animate
+    // open around it, so it is re-centered every frame until it holds still or the motion is over.
+    const scheduleToolCallFineScroll = (toolCallId: string) => {
+      cancelPendingFindFineScroll();
+      const deadlineMs = getMonotonicTimeMs() + TOOL_CALL_REVEAL_SETTLE_MS;
+      let lastTop: number | null = null;
+      let stillFrames = 0;
+      const tick = () => {
+        findFineScrollFrameRef.current = null;
+        const row = timelineRootRef.current?.querySelector(
+          `[data-tool-call-id="${cssAttributeSelectorValue(toolCallId)}"]`,
+        );
+        const list = resolvedListRef.current;
+        const scrollNode: HTMLElement | null | undefined = list?.getScrollableNode();
+        if (list && scrollNode && row instanceof HTMLElement) {
+          // Scrolls the list itself: scrollIntoView would also scroll the clipped, overflow-hidden
+          // regions of the disclosures opening around the row.
+          const rowRect = row.getBoundingClientRect();
+          const nodeRect = scrollNode.getBoundingClientRect();
+          const visibleHeight = Math.min(rowRect.height, scrollNode.clientHeight);
+          const offset =
+            scrollNode.scrollTop +
+            rowRect.top -
+            nodeRect.top -
+            (scrollNode.clientHeight - visibleHeight) / 2;
+          void list.scrollToOffset({ offset: Math.max(0, offset), animated: false });
+          const top = row.getBoundingClientRect().top;
+          stillFrames = lastTop !== null && Math.abs(top - lastTop) < 1 ? stillFrames + 1 : 0;
+          lastTop = top;
+          if (stillFrames >= 3) return;
+        }
+        if (getMonotonicTimeMs() <= deadlineMs) {
+          findFineScrollFrameRef.current = window.requestAnimationFrame(tick);
+        }
+      };
+      findFineScrollFrameRef.current = window.requestAnimationFrame(tick);
+    };
     const controller: MessagesTimelineController = {
       scrollToMessage: (messageId, options) => {
         cancelPendingFindFineScroll();
@@ -208,6 +255,33 @@ export function useTimelineNavigationController({
         activeFindMatchRef.current = match;
         applyActiveFindMatch();
       },
+      revealToolCall: (toolCallId) => {
+        const target = resolveToolCallJumpTarget(rowsRef.current, toolCallId);
+        if (!target) {
+          return false;
+        }
+        onNavigate?.();
+        if (target.expandCollapsedWorkMessageId) {
+          setCollapsedWorkExpanded(target.expandCollapsedWorkMessageId, true);
+        }
+        // An instant jump brings the turn into the list's rendered window. An animated one would
+        // still be running when the tool row centers itself, and inside a long turn it wins.
+        scrollLegendListToIndex(resolvedListRef, {
+          index: target.rowIndex,
+          animated: false,
+          viewPosition: 0.2,
+        });
+        setRevealedToolCall({ toolCallId, nonce: getMonotonicTimeMs() });
+        scheduleToolCallFineScroll(toolCallId);
+        if (revealClearTimeoutRef.current !== null) {
+          window.clearTimeout(revealClearTimeoutRef.current);
+        }
+        revealClearTimeoutRef.current = window.setTimeout(() => {
+          setRevealedToolCall(null);
+          revealClearTimeoutRef.current = null;
+        }, TOOL_CALL_REVEAL_SETTLE_MS + JUMP_HIGHLIGHT_DURATION_MS);
+        return true;
+      },
     };
     controllerRef.current = controller;
     return () => {
@@ -223,7 +297,9 @@ export function useTimelineNavigationController({
     rowsRef,
     setExpandedUserMessagesById,
     jumpHighlightTimeoutRef,
+    revealClearTimeoutRef,
     setHighlightedMessageId,
+    setRevealedToolCall,
     findFineScrollFrameRef,
     timelineRootRef,
     activeFindMatchRef,
@@ -392,14 +468,23 @@ export function useTimelineNavigationController({
     [clearTailExpansionScrollTimers, onMessagesPointerCancel],
   );
 
+  // A scroll gesture is the reader taking over: a jump still settling into place stops following.
+  const stopSettlingJump = useCallback(() => {
+    if (findFineScrollFrameRef.current !== null) {
+      window.cancelAnimationFrame(findFineScrollFrameRef.current);
+      findFineScrollFrameRef.current = null;
+    }
+  }, [findFineScrollFrameRef]);
+
   const handleMessagesPointerDown = useCallback<
     NonNullable<MessagesTimelineProps["onMessagesPointerDown"]>
   >(
     (event) => {
       clearTailExpansionScrollTimers();
+      stopSettlingJump();
       onMessagesPointerDown?.(event);
     },
-    [clearTailExpansionScrollTimers, onMessagesPointerDown],
+    [clearTailExpansionScrollTimers, onMessagesPointerDown, stopSettlingJump],
   );
 
   const handleMessagesTouchMove = useCallback<
@@ -407,9 +492,10 @@ export function useTimelineNavigationController({
   >(
     (event) => {
       suppressTailExpansionScroll();
+      stopSettlingJump();
       onMessagesTouchMove?.(event);
     },
-    [onMessagesTouchMove, suppressTailExpansionScroll],
+    [onMessagesTouchMove, suppressTailExpansionScroll, stopSettlingJump],
   );
 
   const handleMessagesTouchStart = useCallback<
@@ -425,9 +511,10 @@ export function useTimelineNavigationController({
   const handleMessagesWheel = useCallback<NonNullable<MessagesTimelineProps["onMessagesWheel"]>>(
     (event) => {
       suppressTailExpansionScroll();
+      stopSettlingJump();
       onMessagesWheel?.(event);
     },
-    [onMessagesWheel, suppressTailExpansionScroll],
+    [onMessagesWheel, suppressTailExpansionScroll, stopSettlingJump],
   );
 
   const handleViewableItemsChanged = useCallback<

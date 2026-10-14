@@ -1,4 +1,5 @@
 import { type MessageId } from "@glade/contracts/core/baseSchemas";
+import type { ToolCallReveal } from "~/components/chat/toolCallReveal";
 
 import { type LegendListRef } from "@legendapp/list/react";
 import {
@@ -212,6 +213,8 @@ export function useTimelineStateController(props: MessagesTimelineProps) {
     useState<MessageId | null>(null);
 
   const [highlightedMessageId, setHighlightedMessageId] = useState<MessageId | null>(null);
+
+  const [revealedToolCall, setRevealedToolCall] = useState<ToolCallReveal | null>(null);
 
   const fallbackListRef = useRef<LegendListRef | null>(null);
 
@@ -457,6 +460,8 @@ export function useTimelineStateController(props: MessagesTimelineProps) {
     setSubmittingEditedUserMessageId,
     highlightedMessageId,
     setHighlightedMessageId,
+    revealedToolCall,
+    setRevealedToolCall,
 
     resolvedListRef,
     timelineRootRef,

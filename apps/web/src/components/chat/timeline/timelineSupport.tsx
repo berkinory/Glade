@@ -44,6 +44,8 @@ export const MESSAGE_HOVER_REVEAL_CLASS_NAME =
 export const JUMP_HIGHLIGHT_DURATION_MS = 1200;
 export const FIND_FINE_SCROLL_RETRY_TIMEOUT_MS = 900;
 export const FIND_FINE_SCROLL_MAX_RETRY_FRAMES = 90;
+// Long enough for a settled turn and a tool group to finish opening around a revealed tool row.
+export const TOOL_CALL_REVEAL_SETTLE_MS = 1500;
 export const MESSAGE_SEND_ENTER_ANIMATION_MS = UI_MOTION.longMs;
 export const MESSAGE_SEND_ENTER_CLEANUP_BUFFER_MS = 60;
 export const TRAIL_VIEWABILITY_CONFIG = {
@@ -75,6 +77,8 @@ export interface MessagesTimelineController {
     },
   ) => void;
   setActiveFindMatch: (match: ThreadFindMatch | null) => void;
+  /** Opens and scrolls to a tool call's row; false when the transcript does not show that call. */
+  revealToolCall: (toolCallId: string) => boolean;
 }
 const USER_TURN_MARKER_PRESENTATION: Record<
   UserTurnMarkerKind,

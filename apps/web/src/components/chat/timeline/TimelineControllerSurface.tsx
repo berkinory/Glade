@@ -13,6 +13,7 @@ import {
 
 import { threadFindMarkdownProps } from "~/components/chat/threadFind.logic";
 import { TimelineWorkEntryRow } from "~/components/chat/TimelineWorkEntryRow";
+import { ToolCallRevealContext } from "~/components/chat/toolCallReveal";
 import { ToolCallGroupSummaryRow } from "~/components/chat/ToolCallGroupSummaryRow";
 import { AnsweredQuestionList } from "~/components/chat/AnsweredQuestionList";
 import ChatMarkdown from "~/components/ChatMarkdown";
@@ -31,6 +32,7 @@ export function TimelineControllerSurface({ controller }: { controller: Timeline
   const {
     observeTimelineRow,
     highlightedMessageId,
+    revealedToolCall,
     enteringMessageRowIds,
     forkDividerBeforeRowId,
     forkSourceDivider,
@@ -189,6 +191,7 @@ export function TimelineControllerSurface({ controller }: { controller: Timeline
                       <ToolCallGroupSummaryRow
                         key={`tool-summary:${groupId}:${chunk.id}`}
                         summary={summary}
+                        entries={chunk.entries}
                         live={chunk.live}
                         open={toolGroupSummaryOverrides[summaryKey] ?? chunk.live}
                         onToggle={(open) => setToolGroupSummaryOpen(summaryKey, open)}
@@ -288,51 +291,53 @@ export function TimelineControllerSurface({ controller }: { controller: Timeline
   }
 
   return (
-    <div ref={timelineRootRef} className="contents" data-messages-timeline-root="true">
-      <LegendList<MessagesTimelineRow>
-        ref={resolvedListRef}
-        data={rows}
-        keyExtractor={(row) => row.id}
-        renderItem={({ item }) => renderRowContent(item)}
-        estimatedItemSize={90}
-        extraData={timelineExtraData}
-        initialScrollAtEnd={tailAnchorMessageId === null || hasInheritedTailAnchor}
-        {...(anchoredEndSpace ? { anchoredEndSpace } : {})}
-        maintainScrollAtEnd={followLiveOutput && !tailAnchorSlideInFlight}
-        maintainScrollAtEndThreshold={0.1}
-        {...(!followLiveOutput
-          ? { maintainVisibleContentPosition: true }
-          : tailAnchorMessageId !== null
-            ? { maintainVisibleContentPosition: false }
+    <ToolCallRevealContext value={revealedToolCall}>
+      <div ref={timelineRootRef} className="contents" data-messages-timeline-root="true">
+        <LegendList<MessagesTimelineRow>
+          ref={resolvedListRef}
+          data={rows}
+          keyExtractor={(row) => row.id}
+          renderItem={({ item }) => renderRowContent(item)}
+          estimatedItemSize={90}
+          extraData={timelineExtraData}
+          initialScrollAtEnd={tailAnchorMessageId === null || hasInheritedTailAnchor}
+          {...(anchoredEndSpace ? { anchoredEndSpace } : {})}
+          maintainScrollAtEnd={followLiveOutput && !tailAnchorSlideInFlight}
+          maintainScrollAtEndThreshold={0.1}
+          {...(!followLiveOutput
+            ? { maintainVisibleContentPosition: true }
+            : tailAnchorMessageId !== null
+              ? { maintainVisibleContentPosition: false }
+              : {})}
+          onClickCapture={onMessagesClickCapture}
+          onMouseUp={onMessagesMouseUp}
+          onPointerCancel={handleMessagesPointerCancel}
+          onPointerDown={handleMessagesPointerDown}
+          onPointerUp={onMessagesPointerUp}
+          onScroll={handleListScroll}
+          {...(onTrailHighlightsChange
+            ? {
+                onViewableItemsChanged: handleViewableItemsChanged,
+                viewabilityConfig: TRAIL_VIEWABILITY_CONFIG,
+              }
             : {})}
-        onClickCapture={onMessagesClickCapture}
-        onMouseUp={onMessagesMouseUp}
-        onPointerCancel={handleMessagesPointerCancel}
-        onPointerDown={handleMessagesPointerDown}
-        onPointerUp={onMessagesPointerUp}
-        onScroll={handleListScroll}
-        {...(onTrailHighlightsChange
-          ? {
-              onViewableItemsChanged: handleViewableItemsChanged,
-              viewabilityConfig: TRAIL_VIEWABILITY_CONFIG,
-            }
-          : {})}
-        onTouchEnd={onMessagesTouchEnd}
-        onTouchMove={handleMessagesTouchMove}
-        onTouchStart={handleMessagesTouchStart}
-        onWheel={handleMessagesWheel}
-        data-chat-scroll-container="true"
-        // LegendList sets overflow inline, overriding the transcript CSS.
-        showsHorizontalScrollIndicator={false}
-        ListFooterComponent={listFooter}
-        className={cn(
-          "h-full overscroll-y-contain py-3 [scrollbar-gutter:stable] sm:py-4",
-          "scroll-fade-y transcript-scroll-fade",
-          ENVIRONMENT_CONTENT_INSET_MOTION_CLASS,
-          CHAT_COLUMN_GUTTER_CLASS_NAME,
-        )}
-        {...(listScrollStyle ? { style: listScrollStyle } : {})}
-      />
-    </div>
+          onTouchEnd={onMessagesTouchEnd}
+          onTouchMove={handleMessagesTouchMove}
+          onTouchStart={handleMessagesTouchStart}
+          onWheel={handleMessagesWheel}
+          data-chat-scroll-container="true"
+          // LegendList sets overflow inline, overriding the transcript CSS.
+          showsHorizontalScrollIndicator={false}
+          ListFooterComponent={listFooter}
+          className={cn(
+            "h-full overscroll-y-contain py-3 [scrollbar-gutter:stable] sm:py-4",
+            "scroll-fade-y transcript-scroll-fade",
+            ENVIRONMENT_CONTENT_INSET_MOTION_CLASS,
+            CHAT_COLUMN_GUTTER_CLASS_NAME,
+          )}
+          {...(listScrollStyle ? { style: listScrollStyle } : {})}
+        />
+      </div>
+    </ToolCallRevealContext>
   );
 }

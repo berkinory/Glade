@@ -136,6 +136,8 @@ export function ToolDetailsDisclosure(props: {
   toolKind?: TimelineWorkEntry["toolKind"] | undefined;
   detailContent?: ReactNode;
   summaryClassName?: string | undefined;
+  // Opens the details when it changes to a new value, such as for a reveal of this tool call.
+  revealSignal?: number | undefined;
 }) {
   const summaryClassName =
     props.summaryClassName ??
@@ -145,6 +147,12 @@ export function ToolDetailsDisclosure(props: {
       "cursor-pointer focus-visible:outline-none",
     );
   const [open, setOpen] = useState(false);
+  // Starts unhandled, so a row that mounts during a reveal (its group just opened) opens too.
+  const [handledReveal, setHandledReveal] = useState<number | undefined>(undefined);
+  if (props.revealSignal !== handledReveal) {
+    setHandledReveal(props.revealSignal);
+    if (props.revealSignal !== undefined) setOpen(true);
+  }
 
   const summaryButton = (
     <button

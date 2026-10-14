@@ -28,6 +28,7 @@
 - A tool call's details show exactly what it was given and what it returned, one box each, so a command reads as it ran instead of split into pieces. The result box is labelled Output and shows the exit code only when a command fails.
 - Python test runs with unittest show how many tests passed and failed.
 - The file named in a tool call's row opens with a click on its chip, which highlights on hover, and the row's icon, text and file chip line up.
+- Clicking a background task in the Environment panel shows the tool call that started it, with its command and output open.
 - Files and folders a reply names outside the project, such as `~/.zshrc` or `/tmp/run.log`, show as chips with their real icon once Glade finds them, and paths that do not exist stay plain text.
 
 ### Fixed
