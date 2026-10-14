@@ -17,13 +17,11 @@ export type WorkspaceSidebarView = (typeof WORKSPACE_SIDEBAR_VIEWS)[number];
 interface WorkspaceSidebarState {
   readonly open: boolean;
   readonly view: WorkspaceSidebarView;
-  readonly leftOpen: boolean;
 }
 
 const EMPTY_SIDEBAR: WorkspaceSidebarState = {
   open: false,
   view: "explorer",
-  leftOpen: false,
 };
 
 interface WorkspaceSidebarStore {
@@ -31,7 +29,6 @@ interface WorkspaceSidebarStore {
   readonly show: (threadId: ThreadId, view: WorkspaceSidebarView) => void;
   readonly toggle: (threadId: ThreadId, view: WorkspaceSidebarView) => void;
   readonly setOpen: (threadId: ThreadId, open: boolean) => void;
-  readonly setLeftOpen: (threadId: ThreadId, open: boolean) => void;
 }
 
 // The browser hosts native views, so it exists only in the desktop app.
@@ -70,7 +67,6 @@ export const useWorkspaceSidebarStore = create<WorkspaceSidebarStore>()(
             }));
         },
         setOpen: (threadId, open) => update(threadId, (state) => ({ ...state, open })),
-        setLeftOpen: (threadId, leftOpen) => update(threadId, (state) => ({ ...state, leftOpen })),
       };
     },
     {
@@ -84,7 +80,6 @@ export const useWorkspaceSidebarStore = create<WorkspaceSidebarStore>()(
           return {
             open: isAvailable(raw.view) && raw.open === true,
             view: isAvailable(raw.view) ? raw.view : "explorer",
-            leftOpen: raw.leftOpen === true,
           };
         }),
       }),
