@@ -90,7 +90,7 @@ export function usePanelWidthResize(input: {
     document.body.style.userSelect = "none";
     // A panel that animates its width for open and close must follow the pointer without easing.
     wrapper.style.transition = "none";
-    detachPointerSession = attachPanelPointerOverlaySession(resizeOverlay, {
+    detachPointerSession = attachPanelPointerOverlaySession(resizeOverlay, event.pointerId, {
       onMove: onPointerMove,
       onRelease: finish,
       onAbort: finish,

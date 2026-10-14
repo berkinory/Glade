@@ -17,9 +17,8 @@ const intersects = (a: DOMRect, b: DOMRect) =>
 
 // Native views paint above every HTML layer, so any Glade UI that has to show over the panel takes
 // the view off: a modal anywhere, a menu, popover or tooltip crossing it (the activity bar's
-// tooltips open over the page), or a resize drag in progress.
+// tooltips open over the page). Resize drags capture the pointer and keep the view live.
 function isCovered(rect: DOMRect): boolean {
-  if (document.querySelector("[data-panel-resize-overlay]")) return true;
   // A closing tooltip (the one a click on the Browser button dismisses) no longer counts.
   const tooltips = document.querySelectorAll(
     '[data-slot="tooltip-popup"]:not([data-ending-style]):not([data-closed])',

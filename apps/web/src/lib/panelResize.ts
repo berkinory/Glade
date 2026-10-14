@@ -62,6 +62,7 @@ export function removePanelResizeOverlay(overlay: HTMLDivElement): void {
 
 export function attachPanelPointerOverlaySession(
   overlay: HTMLElement,
+  pointerId: number,
   handlers: {
     onMove: (event: PointerEvent) => void;
     onRelease: () => void;
@@ -81,15 +82,18 @@ export function attachPanelPointerOverlaySession(
   overlay.addEventListener("pointermove", onMove);
   overlay.addEventListener("pointerup", onRelease);
   overlay.addEventListener("pointercancel", onAbort);
+  overlay.addEventListener("lostpointercapture", onAbort);
   window.addEventListener("blur", onAbort);
-  document.addEventListener("mouseleave", onAbort);
+  // Keep the drag in Glade when the pointer crosses a native browser view.
+  overlay.setPointerCapture(pointerId);
 
   return () => {
     overlay.removeEventListener("pointermove", onMove);
     overlay.removeEventListener("pointerup", onRelease);
     overlay.removeEventListener("pointercancel", onAbort);
+    overlay.removeEventListener("lostpointercapture", onAbort);
     window.removeEventListener("blur", onAbort);
-    document.removeEventListener("mouseleave", onAbort);
+    if (overlay.hasPointerCapture(pointerId)) overlay.releasePointerCapture(pointerId);
   };
 }
 
