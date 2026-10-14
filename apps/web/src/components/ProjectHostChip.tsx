@@ -1,6 +1,5 @@
 import { useRemoteEnvironments } from "~/environments/remoteEnvironments";
 import { remoteHostAvailability } from "~/environments/remoteEnvironmentStatus";
-import { HostStatusDot } from "./HostStatusDot";
 import { CloudServerIcon, ServerIcon } from "~/lib/icons";
 import { cn } from "~/lib/utils";
 import { sidebarHoverRevealHideClassName } from "../sidebarRowStyles";
@@ -27,17 +26,11 @@ export function ProjectHostChip(props: { readonly project: Project }) {
             id: "ssh-host",
             tooltip: `On ${environment.host.label}${environment.kind === "ssh" ? " over SSH" : ""}\n${availability.reason}`,
             icon: (
-              <span className="relative inline-flex">
-                <SidebarGlyph
-                  icon={environment.kind === "ssh" ? ServerIcon : CloudServerIcon}
-                  variant="meta"
-                  className="text-muted-foreground/55"
-                />
-                <HostStatusDot
-                  tone={availability.tone}
-                  className="absolute -right-0.5 -bottom-0.5 ring-2 ring-sidebar"
-                />
-              </span>
+              <SidebarGlyph
+                icon={environment.kind === "ssh" ? ServerIcon : CloudServerIcon}
+                variant="meta"
+                className="text-muted-foreground/55"
+              />
             ),
           },
         ]}
