@@ -59,6 +59,24 @@ function isWithin(path: string, root: string): boolean {
   return path === root || path.startsWith(root.endsWith("/") ? root : `${root}/`);
 }
 
+// Sidebar rows resolve paths while rendering, so the roots are collected once per store snapshot
+// instead of walking every thread for each row.
+const rootsBySnapshot = new WeakMap<AppStore, readonly string[]>();
+
+function workspaceRoots(state: AppStore): readonly string[] {
+  let roots = rootsBySnapshot.get(state);
+  if (roots === undefined) {
+    roots = [
+      ...state.projects.map((project) => project.cwd),
+      ...Object.values(state.threadShellById ?? {}).flatMap((thread) =>
+        thread.worktreePath ? [thread.worktreePath] : [],
+      ),
+    ];
+    rootsBySnapshot.set(state, roots);
+  }
+  return roots;
+}
+
 // A path belongs to the environment whose project or worktree root contains it most specifically.
 // Two hosts can share a path such as ~/code/app, so ties go to the chat on screen.
 export function environmentOfPath(path: unknown): EnvironmentKey {
@@ -66,14 +84,7 @@ export function environmentOfPath(path: unknown): EnvironmentKey {
   const active = activeEnvironment();
   let best: { key: EnvironmentKey; length: number } | null = null;
   for (const [key, store] of environmentStoreEntries()) {
-    const state = store.getState();
-    const roots = [
-      ...state.projects.map((project) => project.cwd),
-      ...Object.values(state.threadShellById ?? {}).flatMap((thread) =>
-        thread.worktreePath ? [thread.worktreePath] : [],
-      ),
-    ];
-    for (const root of roots) {
+    for (const root of workspaceRoots(store.getState())) {
       if (!isWithin(path, root)) continue;
       const better =
         best === null ||

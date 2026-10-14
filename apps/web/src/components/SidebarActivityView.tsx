@@ -485,17 +485,38 @@ function ActivityFilterMenu({
     </Menu>
   );
 }
-function ActivityShowMoreRow({
-  canShowMore,
-  canShowLess,
-  onShowMore,
-  onShowLess,
-}: {
+interface ActivityListPaging {
+  previewLimit: number;
   canShowMore: boolean;
   canShowLess: boolean;
   onShowMore: () => void;
   onShowLess: () => void;
-}) {
+}
+function pageActivityList(
+  totalCount: number,
+  extraPages: number,
+  setExtraPages: (extraPages: number) => void,
+): ActivityListPaging {
+  const paging = resolveSidebarThreadListPaging({
+    totalCount,
+    baseLimit: ACTIVITY_LIST_BASE_LIMIT,
+    pageSize: ACTIVITY_LIST_PAGE_SIZE,
+    requestedExtraPages: extraPages,
+  });
+  return {
+    ...paging,
+    onShowMore: () => setExtraPages(paging.effectiveExtraPages + 1),
+    onShowLess: () => setExtraPages(Math.max(0, paging.effectiveExtraPages - 1)),
+  };
+}
+// Every section grows a page at a time: a day with hundreds of chats must not mount every row,
+// and each row re-renders on every activity update.
+function useActivityListPaging(totalCount: number): ActivityListPaging {
+  const [extraPages, setExtraPages] = useState(0);
+  return pageActivityList(totalCount, extraPages, setExtraPages);
+}
+function ActivityShowMoreRow({ paging }: { paging: ActivityListPaging }) {
+  const { canShowMore, canShowLess, onShowMore, onShowLess } = paging;
   if (!canShowMore && !canShowLess) return null;
   const buttonClassName =
     "h-7 cursor-pointer rounded-lg px-2.5 text-left text-ui text-muted-foreground/79 hover:text-foreground";
@@ -582,9 +603,7 @@ export function SidebarActivityView({
   const [groupMode, setGroupMode] = useState<ActivityGroupMode>("time");
   const [pinnedOpen, setPinnedOpen] = useState(true);
   const [earlierOpen, setEarlierOpen] = useState(false);
-  const [earlierExtraPages, setEarlierExtraPages] = useState(0);
   const [settledOpen, setSettledOpen] = useState(false);
-  const [settledExtraPages, setSettledExtraPages] = useState(0);
   const [projectExtraPagesByKey, setProjectExtraPagesByKey] = useState<ReadonlyMap<string, number>>(
     () => new Map(),
   );
@@ -631,25 +650,24 @@ export function SidebarActivityView({
     groupMode === "project"
       ? groupActivityThreadsByProject(model.active, isRealProject)
       : EMPTY_PROJECT_GROUPS;
-  const earlierPaging = resolveSidebarThreadListPaging({
-    totalCount: dateBuckets.earlier.length,
-    baseLimit: ACTIVITY_LIST_BASE_LIMIT,
-    pageSize: ACTIVITY_LIST_PAGE_SIZE,
-    requestedExtraPages: earlierExtraPages,
-  });
-  const settledPaging = resolveSidebarThreadListPaging({
-    totalCount: model.settled.length,
-    baseLimit: ACTIVITY_LIST_BASE_LIMIT,
-    pageSize: ACTIVITY_LIST_PAGE_SIZE,
-    requestedExtraPages: settledExtraPages,
-  });
+  const todayPaging = useActivityListPaging(dateBuckets.today.length);
+  const yesterdayPaging = useActivityListPaging(dateBuckets.yesterday.length);
+  const earlierPaging = useActivityListPaging(dateBuckets.earlier.length);
+  const settledPaging = useActivityListPaging(model.settled.length);
+  const todayThreads = dateBuckets.today.slice(0, todayPaging.previewLimit);
+  const yesterdayThreads = dateBuckets.yesterday.slice(0, yesterdayPaging.previewLimit);
   const pagedProjectGroups = projectGroups.map((group) => {
-    const paging = resolveSidebarThreadListPaging({
-      totalCount: group.threads.length,
-      baseLimit: ACTIVITY_LIST_BASE_LIMIT,
-      pageSize: ACTIVITY_LIST_PAGE_SIZE,
-      requestedExtraPages: projectExtraPagesByKey.get(group.key) ?? 0,
-    });
+    const paging = pageActivityList(
+      group.threads.length,
+      projectExtraPagesByKey.get(group.key) ?? 0,
+      (extraPages) =>
+        setProjectExtraPagesByKey((current) => {
+          const next = new Map(current);
+          if (extraPages === 0) next.delete(group.key);
+          else next.set(group.key, extraPages);
+          return next;
+        }),
+    );
     return {
       group,
       paging,
@@ -661,8 +679,8 @@ export function SidebarActivityView({
     pinnedOpen,
     pinned: scopedPinnedThreads,
     recent: recentThreads,
-    today: dateBuckets.today,
-    yesterday: dateBuckets.yesterday,
+    today: todayThreads,
+    yesterday: yesterdayThreads,
     earlierOpen,
     earlier: dateBuckets.earlier.slice(0, earlierPaging.previewLimit),
     projectGroups: pagedProjectGroups.map((group) => group.threads),
@@ -867,26 +885,7 @@ export function SidebarActivityView({
             />
             <div className="flex flex-col gap-0.5">
               {visibleThreads.map(renderActiveRow)}
-              <ActivityShowMoreRow
-                canShowMore={paging.canShowMore}
-                canShowLess={paging.canShowLess}
-                onShowMore={() => {
-                  setProjectExtraPagesByKey((current) => {
-                    const next = new Map(current);
-                    next.set(group.key, paging.effectiveExtraPages + 1);
-                    return next;
-                  });
-                }}
-                onShowLess={() => {
-                  setProjectExtraPagesByKey((current) => {
-                    const next = new Map(current);
-                    const extraPages = Math.max(0, paging.effectiveExtraPages - 1);
-                    if (extraPages === 0) next.delete(group.key);
-                    else next.set(group.key, extraPages);
-                    return next;
-                  });
-                }}
-              />
+              <ActivityShowMoreRow paging={paging} />
             </div>
           </div>
         ))
@@ -898,17 +897,21 @@ export function SidebarActivityView({
               <div className="flex flex-col gap-0.5">{recentThreads.map(renderActiveRow)}</div>
             </div>
           ) : null}
-          {dateBuckets.today.length > 0 ? (
+          {todayThreads.length > 0 ? (
             <div>
               <ActivitySectionLabel label="Today" />
-              <div className="flex flex-col gap-0.5">{dateBuckets.today.map(renderActiveRow)}</div>
+              <div className="flex flex-col gap-0.5">
+                {todayThreads.map(renderActiveRow)}
+                <ActivityShowMoreRow paging={todayPaging} />
+              </div>
             </div>
           ) : null}
-          {dateBuckets.yesterday.length > 0 ? (
+          {yesterdayThreads.length > 0 ? (
             <div>
               <ActivitySectionLabel label="Yesterday" />
               <div className="flex flex-col gap-0.5">
-                {dateBuckets.yesterday.map(renderActiveRow)}
+                {yesterdayThreads.map(renderActiveRow)}
+                <ActivityShowMoreRow paging={yesterdayPaging} />
               </div>
             </div>
           ) : null}
@@ -919,14 +922,7 @@ export function SidebarActivityView({
               onToggle={() => setEarlierOpen((open) => !open)}
             >
               {dateBuckets.earlier.slice(0, earlierPaging.previewLimit).map(renderActiveRow)}
-              <ActivityShowMoreRow
-                canShowMore={earlierPaging.canShowMore}
-                canShowLess={earlierPaging.canShowLess}
-                onShowMore={() => setEarlierExtraPages(earlierPaging.effectiveExtraPages + 1)}
-                onShowLess={() =>
-                  setEarlierExtraPages(Math.max(0, earlierPaging.effectiveExtraPages - 1))
-                }
-              />
+              <ActivityShowMoreRow paging={earlierPaging} />
             </ActivityCollapsibleSection>
           ) : null}
         </>
@@ -941,14 +937,7 @@ export function SidebarActivityView({
           {model.settled
             .slice(0, settledPaging.previewLimit)
             .map((thread) => renderRow(thread, true))}
-          <ActivityShowMoreRow
-            canShowMore={settledPaging.canShowMore}
-            canShowLess={settledPaging.canShowLess}
-            onShowMore={() => setSettledExtraPages(settledPaging.effectiveExtraPages + 1)}
-            onShowLess={() =>
-              setSettledExtraPages(Math.max(0, settledPaging.effectiveExtraPages - 1))
-            }
-          />
+          <ActivityShowMoreRow paging={settledPaging} />
         </ActivityCollapsibleSection>
       ) : null}
     </div>

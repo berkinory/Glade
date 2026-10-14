@@ -7,7 +7,7 @@
 - Long chats, and long replies full of code, open and scroll more smoothly.
 - Glade starts faster and shows your chats sooner, especially with a long chat history.
 - Running chats use much less CPU and battery while agents work.
-- The sidebar stays quick with thousands of chats.
+- The sidebar stays quick with thousands of chats, in the Activity view too, where today's and yesterday's chats now show a page at a time.
 - Find in chat keeps up with typing in long replies, even with thousands of matches.
 - The Environment panel lists background tasks that are still running and only the latest turn's finished ones, instead of every task the chat ever started.
 - A tool call's details show exactly what it was given and what it returned, one box each, so a command reads as it ran instead of split into pieces.
