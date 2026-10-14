@@ -283,13 +283,95 @@
 
 /* Spinner layers animate only transform and opacity so they stay on the compositor. Percentages
    are of the full glyph box, so 12.5% is 3 units of the 24-unit viewBox. */
-.spinner-action-turn {
-  animation: spinner-turn 0.9s linear infinite;
+/* The action arc: a linear turn, an eased offset of the tail, and an eased length split at half a
+   turn between the near and far semicircles (10.8 to 223.2 degrees and back every 1.4 seconds). The
+   static transforms draw a quarter arc when motion is reduced. */
+.spinner-action-spin {
+  animation: spinner-action-spin 1.4s linear infinite;
 }
 
-@keyframes spinner-turn {
+@keyframes spinner-action-spin {
   to {
     transform: rotate(360deg);
+  }
+}
+
+.spinner-action-offset {
+  animation: spinner-action-offset 1.4s cubic-bezier(0.42, 0, 0.58, 1) infinite;
+}
+
+@keyframes spinner-action-offset {
+  0% {
+    transform: rotate(0deg);
+  }
+  50% {
+    transform: rotate(50.4deg);
+  }
+  100% {
+    transform: rotate(349.2deg);
+  }
+}
+
+.spinner-action-near {
+  transform: rotate(90deg);
+  animation: spinner-action-near 1.4s linear infinite;
+}
+
+@keyframes spinner-action-near {
+  0% {
+    transform: rotate(10.8deg);
+    animation-timing-function: cubic-bezier(0.434, 0, 0.677, 0.633);
+  }
+  34.381% {
+    transform: rotate(180deg);
+  }
+  65.619% {
+    transform: rotate(180deg);
+    animation-timing-function: cubic-bezier(0.323, 0.367, 0.566, 1);
+  }
+  100% {
+    transform: rotate(10.8deg);
+  }
+}
+
+.spinner-action-far {
+  animation: spinner-action-far 1.4s linear infinite;
+}
+
+@keyframes spinner-action-far {
+  0% {
+    transform: rotate(0deg);
+  }
+  34.381% {
+    transform: rotate(0deg);
+    animation-timing-function: cubic-bezier(0.29, 0.587, 0.61, 1);
+  }
+  50% {
+    transform: rotate(43.2deg);
+    animation-timing-function: cubic-bezier(0.39, 0, 0.71, 0.413);
+  }
+  65.619% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(0deg);
+  }
+}
+
+.spinner-action-head {
+  transform: rotate(90deg);
+  animation: spinner-action-head 1.4s cubic-bezier(0.42, 0, 0.58, 1) infinite;
+}
+
+@keyframes spinner-action-head {
+  0% {
+    transform: rotate(10.8deg);
+  }
+  50% {
+    transform: rotate(223.2deg);
+  }
+  100% {
+    transform: rotate(10.8deg);
   }
 }
 
@@ -458,7 +540,11 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .spinner-action-turn,
+  .spinner-action-spin,
+  .spinner-action-offset,
+  .spinner-action-near,
+  .spinner-action-far,
+  .spinner-action-head,
   .spinner-working-turn,
   .spinner-working-corners,
   .spinner-loading-turn,

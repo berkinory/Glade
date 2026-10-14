@@ -6,8 +6,6 @@ type SpinnerVariant = "action" | "loading" | "working" | "subagent" | "voice";
 
 type SpinnerProps = ComponentProps<"span"> & { variant?: SpinnerVariant };
 
-const ARC_CIRCUMFERENCE = 2 * Math.PI * 9;
-
 // Every moving part is a full-size layer that animates only transform and opacity, so the compositor
 // runs the motion without main-thread frames. Animating SVG attributes instead made Chromium restyle,
 // lay out and repaint the whole document every frame for as long as any spinner stayed visible.
@@ -28,7 +26,27 @@ function Glyph({ children }: { children: ReactNode }) {
   );
 }
 
-function turningArc(): ReactNode {
+// The arc grows from its tail through two clipped semicircles: one turns into the half box that
+// starts at the tail and covers the first half turn of length, the other covers the rest. Half-disk
+// caps keep the round ends without overlapping the stroke, and adding the pieces inside an isolated
+// group keeps their seams at full color with translucent colors. The keyframes split the original
+// eased length at half a turn, so the motion matches the earlier stroke-dash animation.
+function ArcHalf(props: { side: "top" | "bottom"; className: string; d: string }) {
+  const edge = props.side === "top" ? "top-0" : "bottom-0";
+  return (
+    <span className={cn("absolute inset-x-0 h-1/2 overflow-hidden", edge)}>
+      <span className={cn("absolute inset-x-0 h-[200%]", edge)}>
+        <Layer className={cn("mix-blend-plus-lighter", props.className)}>
+          <Glyph>
+            <path d={props.d} stroke="currentColor" strokeWidth="2.5" />
+          </Glyph>
+        </Layer>
+      </span>
+    </span>
+  );
+}
+
+function growingArc(): ReactNode {
   return (
     <>
       <Layer>
@@ -36,16 +54,21 @@ function turningArc(): ReactNode {
           <circle r="9" stroke="currentColor" strokeWidth="2.5" strokeOpacity="0.14" />
         </Glyph>
       </Layer>
-      <Layer className="spinner-action-turn">
-        <Glyph>
-          <circle
-            r="9"
-            stroke="currentColor"
-            strokeWidth="2.5"
-            strokeLinecap="round"
-            strokeDasharray={`${ARC_CIRCUMFERENCE / 4} ${ARC_CIRCUMFERENCE}`}
-          />
-        </Glyph>
+      <Layer className="spinner-action-spin">
+        <Layer className="spinner-action-offset isolate">
+          <ArcHalf side="bottom" className="spinner-action-near" d="M-9 0A9 9 0 0 1 9 0" />
+          <ArcHalf side="top" className="spinner-action-far" d="M9 0A9 9 0 0 1-9 0" />
+          <Layer className="mix-blend-plus-lighter">
+            <Glyph>
+              <path d="M7.75 0A1.25 1.25 0 0 1 10.25 0Z" fill="currentColor" />
+            </Glyph>
+          </Layer>
+          <Layer className="spinner-action-head mix-blend-plus-lighter">
+            <Glyph>
+              <path d="M10.25 0A1.25 1.25 0 0 1 7.75 0Z" fill="currentColor" />
+            </Glyph>
+          </Layer>
+        </Layer>
       </Layer>
     </>
   );
@@ -149,7 +172,7 @@ function stretchingPills(): ReactNode {
 }
 
 const GLYPHS: Record<SpinnerVariant, () => ReactNode> = {
-  action: turningArc,
+  action: growingArc,
   loading: foldingGrid,
   working: morphingSquare,
   subagent: triangleOrbit,

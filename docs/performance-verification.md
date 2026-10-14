@@ -90,7 +90,10 @@ recalculations a second, with 1.0-1.4%. In the Electron Dev app with one injecte
 Spinners now animate only transform and opacity on whole layers, so the compositor runs them; the
 GPU still composites each frame of a smooth spinner. The label sweep keeps its 30 steps per 2.4
 seconds through one shared timer. Rendered frames of all five spinner variants were compared with
-the previous ones; the action arc is now a fixed quarter arc that turns.
+the previous ones. The action arc's growing length is split at half a turn across two clipped
+semicircles; rendered at the same timestamps as the old stroke-dash animation, fewer than 0.06% of
+pixels differed at 96 px, and alone it needs no style or layout work where the old arc needed 60
+layouts and 120 style recalculations a second.
 
 **Desktop main process.** The embedded Cua SDK's `waitForExit` polled its Rust future about 18
 times a second, and every poll left a libuv async handle behind. In a standalone Node process, one
