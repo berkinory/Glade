@@ -12,6 +12,7 @@
 
 ### Fixed
 
+- Browser pages adapt continuously while resizing the sidebar, and closing the last browser or terminal tab collapses the sidebar.
 - Visual replies show creation progress while the agent prepares their content.
 
 - SSH chats send their first message on the selected host without switching machines or requiring a retry.
