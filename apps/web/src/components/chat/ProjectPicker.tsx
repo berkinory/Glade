@@ -530,7 +530,6 @@ export const ProjectPicker = memo(function ProjectPicker({
               }
               icon={<FolderIcon className="size-3.5" />}
               label={triggerLabel}
-              hideChevron
               {...(triggerVariant ? { variant: triggerVariant } : {})}
               {...(triggerClassName ? { className: triggerClassName } : {})}
             />
