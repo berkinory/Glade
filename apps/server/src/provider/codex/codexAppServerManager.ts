@@ -3569,13 +3569,11 @@ export class CodexAppServerManager extends EventEmitter<CodexAppServerManagerEve
       isTerminalParentTurn && !isStaleTerminal
         ? (rawRoute.turnId ?? context.session.activeTurnId)
         : undefined;
-    const gatewayTurnAuthorityRetired =
-      terminalGatewayTurnId !== undefined &&
-      context.gatewaySessionLease !== undefined &&
-      context.gatewaySessionLease.registerNativeToolCall === undefined;
     if (terminalGatewayTurnId !== undefined) {
       void this.retireGatewayTurn(context, terminalGatewayTurnId);
     }
+    const gatewayTurnAuthorityRetired =
+      terminalGatewayTurnId !== undefined && context.gatewayCredentialRetired === true;
     if (notification.method === "item/started") {
       const item = this.readObject(notification.params, "item");
       const callId = this.readString(item, "id");
@@ -4253,9 +4251,6 @@ export class CodexAppServerManager extends EventEmitter<CodexAppServerManagerEve
       }
 
       context.reviewTurnIds.delete(turnId);
-      const gatewayTurnAuthorityRetired =
-        context.gatewaySessionLease !== undefined &&
-        context.gatewaySessionLease.registerNativeToolCall === undefined;
       if (context.gatewaySessionLease) {
         void this.retireGatewayTurn(context, turnId);
       }
@@ -4282,7 +4277,9 @@ export class CodexAppServerManager extends EventEmitter<CodexAppServerManagerEve
             status: "completed",
           },
           recoveredFrom: "codex/event/task_complete",
-          ...(gatewayTurnAuthorityRetired ? { [AGENT_GATEWAY_TURN_AUTHORITY_RETIRED]: true } : {}),
+          ...(context.gatewayCredentialRetired === true
+            ? { [AGENT_GATEWAY_TURN_AUTHORITY_RETIRED]: true }
+            : {}),
         },
       });
     }, this.taskCompleteFallbackGraceMs);

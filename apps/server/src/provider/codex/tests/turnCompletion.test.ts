@@ -4,6 +4,7 @@ import {
   attachFakeGatewayLease,
   createCollabNotificationHarness,
   handleServerNotificationForTest,
+  spyOnSessionRequests,
 } from "./notificationHarness.testSupport";
 
 const terminalNotifications = [
@@ -42,6 +43,28 @@ const terminalNotifications = [
 ];
 
 describe("turn completion", () => {
+  it.each(terminalNotifications)(
+    "requests runtime renewal after interrupting a proven-call session before $notification.method",
+    async ({ expectedTurnId, notification }) => {
+      const { manager, context, emitEvent } = createCollabNotificationHarness();
+      context.session.activeTurnId = expectedTurnId;
+      const lease = attachFakeGatewayLease(context, { registerNativeToolCall: vi.fn() });
+      const { sendRequest } = spyOnSessionRequests(manager, context);
+      sendRequest.mockResolvedValue({});
+
+      await manager.interruptTurn(context.session.threadId);
+      expect(lease.release).toHaveBeenCalledOnce();
+      handleServerNotificationForTest(manager, context, notification);
+
+      expect(emitEvent).toHaveBeenCalledWith(
+        expect.objectContaining({
+          method: notification.method,
+          payload: expect.objectContaining({ [AGENT_GATEWAY_TURN_AUTHORITY_RETIRED]: true }),
+        }),
+      );
+    },
+  );
+
   it("recovers a missing turn/completed after legacy task_complete", () => {
     vi.useFakeTimers();
     try {

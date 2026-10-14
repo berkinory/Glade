@@ -178,7 +178,9 @@ function inPlaceEditTargets(rawCommand: string): string[] {
 }
 
 // A file argument: a string literal, `Path("…")`, or a name bound to one of those.
-const ARGUMENT = String.raw`((?:Path\(\s*)?[rbuf]?['"][^'"\n]+['"]\s*\)?|[A-Za-z_$][\w$]*)`;
+// Start names only at a token boundary, or a failed method match retries every suffix of long
+// identifiers (including embedded image data), making transcript rendering quadratic.
+const ARGUMENT = String.raw`((?:Path\(\s*)?[rbuf]?['"][^'"\n]+['"]\s*\)?|(?<![\w$])[A-Za-z_$][\w$]*)`;
 const LITERAL_PATH = /^(?:Path\(\s*)?[rbuf]?(['"])([^'"\n]+)\1\s*\)?$/;
 const WRITE_MODE = String.raw`[rbuf]?['"](?:[rbt]*\+[rbt]*|[rbt]*[wax][rbt+]*)['"]`;
 
