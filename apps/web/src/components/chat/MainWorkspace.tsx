@@ -8,11 +8,12 @@ import {
   lazy,
   useCallback,
   useEffect,
+  useRef,
   useState,
   useSyncExternalStore,
   type ReactNode,
 } from "react";
-import { useComposerDraftStore } from "~/composerDraftStore";
+import { requestComposerFocus, useComposerDraftStore } from "~/composerDraftStore";
 import { basenameOfPath } from "~/file-icons";
 import { WorkspaceHeaderContext } from "./WorkspaceHeaderContext";
 import { ProviderIcon } from "../ProviderIcon";
@@ -172,6 +173,14 @@ export function MainWorkspace(props: {
     activeId: state.activeTabId,
     onSelect: select,
   });
+  const previousTabRef = useRef({ threadId: props.threadId, id: resolvedId });
+  useEffect(() => {
+    const previous = previousTabRef.current;
+    previousTabRef.current = { threadId: props.threadId, id: resolvedId };
+    if (previous.threadId === props.threadId && previous.id !== "chat" && resolvedId === "chat") {
+      requestComposerFocus(props.threadId);
+    }
+  }, [props.threadId, resolvedId]);
   const filePath = resolvedId.startsWith("file:") ? resolvedId.slice(5) : null;
   const [recentFilePaths, setRecentFilePaths] = useState<readonly string[]>([]);
   if (filePath && recentFilePaths[0] !== filePath) {

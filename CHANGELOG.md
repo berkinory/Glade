@@ -30,6 +30,8 @@
 
 ### Fixed
 
+- Returning to chat from another workspace tab focuses the message field again.
+
 - Temporary connection failures to paired machines recover automatically instead of incorrectly asking you to pair again.
 
 - Unavailable images in chat show a readable error card with more room for the message and download button.
