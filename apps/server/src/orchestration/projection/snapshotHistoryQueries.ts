@@ -319,6 +319,7 @@ export function makeSnapshotHistoryQueries(input: {
           FROM projection_thread_activities
           WHERE thread_id = ${threadId}
             AND turn_id IS NOT NULL
+            AND kind IN ('runtime.error', 'turn.completed')
             AND (${turnFailureActivity})
         ),
         ranked AS (
@@ -326,6 +327,7 @@ export function makeSnapshotHistoryQueries(input: {
             thread_id,
             activity_id,
             turn_id,
+            kind,
             ROW_NUMBER() OVER (
               PARTITION BY thread_id
               ORDER BY
@@ -358,13 +360,35 @@ export function makeSnapshotHistoryQueries(input: {
                 AND turn_id IS NOT cutoff_turn_id
             ) AS has_newer_turn
           FROM cutoff_turn
+        ),
+        -- The window decision and the kind come from the covering rank index, so rows outside the
+        -- window are rejected before their payload is read; a long thread otherwise read every
+        -- activity row from disk on its first open.
+        windowed AS (
+          SELECT
+            ranked.*,
+            (
+              activity_rank <= ${MAX_THREAD_DETAIL_ACTIVITIES}
+              -- Drop a split oldest turn instead of extending the query beyond
+              -- its cap. If one turn fills the entire window, retain the raw
+              -- capped tail so an oversized turn does not hide all activity.
+              AND NOT (
+                EXISTS (SELECT 1 FROM cutoff_turn_state)
+                AND (SELECT cutoff_turn_id FROM cutoff_turn_state) IS NOT NULL
+                AND ranked.turn_id IS NOT NULL
+                AND ranked.turn_id = (SELECT cutoff_turn_id FROM cutoff_turn_state)
+                AND (SELECT is_split FROM cutoff_turn_state)
+                AND (SELECT has_newer_turn FROM cutoff_turn_state)
+              )
+            ) AS in_window
+          FROM ranked
         )
         SELECT
           activity_id AS "activityId",
           thread_id AS "threadId",
           ranked.turn_id AS "turnId",
           tone,
-          kind,
+          activity.kind,
           summary,
           COALESCE((
             SELECT CASE WHEN json_type(totals, '$.inputTokens') = 'integer'
@@ -391,33 +415,36 @@ export function makeSnapshotHistoryQueries(input: {
           ), activity.payload_json) AS "payload",
           sequence,
           created_at AS "createdAt"
-        FROM ranked
+        FROM windowed AS ranked
         JOIN projection_thread_activities AS activity USING (thread_id, activity_id)
         WHERE thread_id = ${threadId}
           AND (
-            (
-              activity_rank <= ${MAX_THREAD_DETAIL_ACTIVITIES}
-              -- Drop a split oldest turn instead of extending the query beyond
-              -- its cap. If one turn fills the entire window, retain the raw
-              -- capped tail so an oversized turn does not hide all activity.
-              AND NOT (
-                EXISTS (SELECT 1 FROM cutoff_turn_state)
-                AND (SELECT cutoff_turn_id FROM cutoff_turn_state) IS NOT NULL
-                AND ranked.turn_id IS NOT NULL
-                AND ranked.turn_id = (SELECT cutoff_turn_id FROM cutoff_turn_state)
-                AND (SELECT is_split FROM cutoff_turn_state)
-                AND (SELECT has_newer_turn FROM cutoff_turn_state)
-              )
+            ranked.in_window
+            OR ranked.kind IN (
+              ${VISUAL_REPLY_ACTIVITY_KIND},
+              'runtime.error',
+              'turn.completed',
+              'approval.requested',
+              'user-input.requested'
             )
+          )
+          AND (
+            ranked.in_window
             OR activity.kind = ${VISUAL_REPLY_ACTIVITY_KIND}
             OR (${failedTurnTerminalActivity("activity")})
             OR (
-              kind IN ('approval.requested', 'user-input.requested')
+              activity.kind IN ('approval.requested', 'user-input.requested')
               AND json_extract(payload_json, '$.requestId') IS NOT NULL
               AND NOT EXISTS (
                 SELECT 1
                 FROM projection_thread_activities AS later
                 WHERE later.thread_id = ranked.thread_id
+                  AND later.kind IN (
+                    'approval.resolved',
+                    'provider.approval.respond.failed',
+                    'user-input.resolved',
+                    'provider.user-input.respond.failed'
+                  )
                   AND json_extract(later.payload_json, '$.requestId') =
                     json_extract(activity.payload_json, '$.requestId')
                   AND (

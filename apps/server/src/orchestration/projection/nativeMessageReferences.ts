@@ -15,6 +15,8 @@ export function readNativeMessageReferences<
   return Effect.gen(function* () {
     if (!rows.length) return rows;
     // Native identifiers are durable event data; existing databases need no new projection column.
+    // The expressions match idx_orchestration_events_message_sent_refs, which answers this query
+    // without reading event payloads; keep them identical.
     const references = yield* sql`
       SELECT stream_id AS "threadId", json_extract(payload_json, '$.messageId') AS "messageId",
         json_extract(payload_json, '$.providerMessageId') AS "providerMessageId"
