@@ -11,6 +11,8 @@ const Rows = Schema.Array(
   }),
 );
 
+// The kind list must stay identical to the predicate of
+// idx_projection_thread_activities_background_work, or SQLite stops using that partial index.
 export function readBackgroundActivities(sql: SqlClient, threadIds?: readonly ThreadId[]) {
   return sql<{ threadId: string; activity: string }>`
     SELECT a.thread_id AS "threadId", json_object('id', a.activity_id, 'kind', a.kind,

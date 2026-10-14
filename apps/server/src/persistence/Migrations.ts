@@ -12,6 +12,7 @@ import SettleStalePendingInteractions from "./Migrations/008_SettleStalePendingI
 import ParkedProviderSessions from "./Migrations/009_ParkedProviderSessions.ts";
 import PruneCommandReceipts from "./Migrations/010_PruneCommandReceipts.ts";
 import DropProjectImportTables from "./Migrations/011_DropProjectImportTables.ts";
+import BackgroundWorkActivityIndex from "./Migrations/012_BackgroundWorkActivityIndex.ts";
 
 import ProfileTurnLookup from "./Migrations/002_ProfileTurnLookup.ts";
 
@@ -29,6 +30,7 @@ export const migrationEntries = [
   [9, "ParkedProviderSessions", ParkedProviderSessions],
   [10, "PruneCommandReceipts", PruneCommandReceipts],
   [11, "DropProjectImportTables", DropProjectImportTables],
+  [12, "BackgroundWorkActivityIndex", BackgroundWorkActivityIndex],
 ] as const;
 
 const LATEST_MIGRATION_ID = Math.max(...migrationEntries.map(([id]) => id));
