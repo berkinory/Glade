@@ -54,7 +54,7 @@ export function classifyWorkLogToolKind(input: {
   if (requestKind === "file-read") return "read";
   if (itemType === "command_execution" || requestKind === "command" || command) {
     if (!command) return "command";
-    if (commandFileEffects(command).written.length > 0) return "edit";
+    if (commandFileEffects(command).writeKind) return "edit";
     return classifyInspectCommand(command) ?? "command";
   }
   if (itemType === "mcp_tool_call") return "mcp";

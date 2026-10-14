@@ -52,6 +52,11 @@ describe("command labels", () => {
       "Edited CHANGELOG.md",
     ],
     ["cd /repo && cat > src/page.tsx <<'EOF'\nexport const a = 1;\nEOF", "Wrote src/page.tsx"],
+    [
+      "cd /repo && python3 - <<'EOF'\nopen('q.sql','w').write('x')\nEOF\npython3 qtime.py q.sql",
+      "Ran Python script",
+    ],
+    ["cd /repo && sed -i '' 's/a/b/' a.ts && bun run check", "Ran bun run check"],
     ["echo done >> notes.txt", "Appended to notes.txt"],
     ["cd /repo && perl -pi -e 's/a/b/' a.ts b.ts", "Edited 2 files"],
     ["node -e \"require('fs').writeFileSync('out.json', '{}')\"", "Edited out.json"],

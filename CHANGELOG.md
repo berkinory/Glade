@@ -7,6 +7,7 @@
 - Long chats open and scroll more smoothly.
 - Glade starts faster and shows your chats sooner, especially with a long chat history.
 - Running chats use much less CPU and battery while agents work.
+- A tool call's details show exactly what it was given and what it returned, one box each, so a command reads as it ran instead of split into pieces.
 
 ### Fixed
 
@@ -20,6 +21,7 @@
 - Idle cleanup no longer stops a chat that just started working again.
 - Worktree branches get their generated name even when you send a second message right away.
 - Installing an update on macOS no longer reports a failure while the update is still being prepared.
+- A command that edits a file and then runs something else is named by what it runs, not as an edit.
 
 ## 0.2.6 - 2026-10-14
 

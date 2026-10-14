@@ -53,9 +53,9 @@ function entryFileKeys(entry: WorkLogEntry): ReadonlyArray<string> {
   }
   const command = entry.command ?? entry.rawCommand;
   if (command) {
-    const written = resolveCommandPaths(command, commandFileEffects(command).written);
-    if (written.length > 0) {
-      return written;
+    const effects = commandFileEffects(command);
+    if (effects.writeKind) {
+      return resolveCommandPaths(command, effects.written);
     }
     const readFiles = commandReadFilePaths(command);
     if (readFiles.length > 0) {

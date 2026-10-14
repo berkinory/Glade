@@ -13,7 +13,7 @@ export function hasToolCallDetailsContent(
   // image read has neither, so it gets no chevron.
   if (details.kind === "tool") {
     return Boolean(
-      (details.input && describeToolInput(details.input, toolKind).length > 0) ||
+      (details.input && describeToolInput(details.input, toolKind) !== null) ||
       output?.output?.trim(),
     );
   }

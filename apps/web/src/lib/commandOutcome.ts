@@ -128,7 +128,7 @@ function truncateFailure(line: string): string {
     : line;
 }
 
-export interface SearchMatch {
+interface SearchMatch {
   file: string;
   line: number | null;
   text: string;
@@ -168,7 +168,7 @@ export function parseSearchMatches(
 }
 
 /** Search results a finished grep, rg or find printed, when the command only searched. */
-export function commandSearchMatches(
+function commandSearchMatches(
   command: string,
   output: WorkLogToolOutputDetails | undefined,
 ): SearchMatch[] | null {

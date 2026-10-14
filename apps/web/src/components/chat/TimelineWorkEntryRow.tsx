@@ -72,11 +72,7 @@ import { type ExpandedImagePreview } from "./ExpandedImagePreview";
 import { LinkChipIcon } from "../LinkChipIcon";
 import { normalizeCompactToolLabel } from "./MessagesTimeline.logic.rowTypes";
 import { GladeLogo } from "../GladeLogo";
-import {
-  fileDiffStatsByPath,
-  resolveDiffEntryByPath,
-  resolveFileDiffStatByChangedPath,
-} from "~/lib/diffRendering";
+import { fileDiffStatsByPath, resolveFileDiffStatByChangedPath } from "~/lib/diffRendering";
 import {
   extractToolArgumentField,
   isPrefixedToolArgumentSummary,
@@ -301,8 +297,11 @@ function classifyWorkEntryTool(workEntry: TimelineWorkEntry) {
 // The one file a shell command writes, or the one it reads while only looking around.
 function singleCommandFile(command: string | undefined): string | null {
   if (!command) return null;
-  const written = resolveCommandPaths(command, commandFileEffects(command).written);
-  if (written.length > 0) return written.length === 1 ? written[0]! : null;
+  const effects = commandFileEffects(command);
+  if (effects.writeKind) {
+    const written = resolveCommandPaths(command, effects.written);
+    return written.length === 1 ? written[0]! : null;
+  }
   if (classifyInspectCommand(command) === null) return null;
   const files = commandReadFilePaths(command);
   return files.length === 1 ? files[0]! : null;
@@ -696,15 +695,6 @@ function ToolWorkEntryRow(props: TimelineWorkEntryRowProps) {
                 details={workEntry.toolDetails}
                 activity={workEntry.liveActivity}
                 toolKind={workEntry.toolKind}
-                fileDiffOpener={
-                  turnId && onOpenTurnDiff && fileDiffStatByPath
-                    ? {
-                        has: (path) =>
-                          resolveDiffEntryByPath(fileDiffStatByPath, path) !== undefined,
-                        open: (path) => onOpenTurnDiff(turnId, path),
-                      }
-                    : undefined
-                }
                 detailContent={
                   activityContent ??
                   (monitorNotification ? (

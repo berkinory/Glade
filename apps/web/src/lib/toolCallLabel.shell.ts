@@ -221,7 +221,7 @@ const SHELL_INVOCATION_PREFIXES = ["/usr/bin/", "/bin/", ""].flatMap((directory)
 // The commands a shell script runs, in order. `&&`, `||`, `;` and newlines separate commands, a
 // pipe keeps only the command that produces its input, and setup (cd, exports, assignments) and
 // control-flow keywords are dropped. A heredoc's body is text rather than commands, so parsing
-// stops at the end of the line that opens it.
+// skips it and resumes after its terminator.
 export function commandSegments(rawCommand: string): string[] {
   return splitShellCommands(unwrapShellInvocation(rawCommand)).flatMap(({ producer }) => {
     const normalized = normalizeCommandSegment(producer);
@@ -319,6 +319,7 @@ export function splitHeredoc(
 }
 
 const HEREDOC_OPENER = /<<-?\s*(['"]?)([A-Za-z0-9_]+)\1/;
+const HEREDOC_OPERATOR = new RegExp(`^${HEREDOC_OPENER.source}`);
 
 interface ShellSegment {
   // The command that produces the segment's output; pipe consumers are listed apart.
@@ -331,7 +332,8 @@ function splitShellCommands(command: string): ShellSegment[] {
   let producer = "";
   let consumers: string[] = [];
   let quote: '"' | "'" | null = null;
-  let opensHeredoc = false;
+  // Terminators of the heredocs the current line opens, in order.
+  let heredocTerminators: string[] = [];
   const flush = () => {
     segments.push({ producer, consumers });
     producer = "";
@@ -360,12 +362,17 @@ function splitShellCommands(command: string): ShellSegment[] {
       keep(char);
       continue;
     }
-    if (char === "<" && next === "<") {
-      opensHeredoc = true;
+    if (char === "<" && next === "<" && command[index + 2] !== "<") {
+      const terminator = HEREDOC_OPERATOR.exec(command.slice(index))?.[2];
+      if (terminator) heredocTerminators.push(terminator);
     }
     if (char === "\n") {
       flush();
-      if (opensHeredoc) return segments;
+      for (const terminator of heredocTerminators) {
+        index = heredocEnd(command, index + 1, terminator);
+        if (index < 0) return segments;
+      }
+      heredocTerminators = [];
       continue;
     }
     if ((char === "&" && next === "&") || (char === "|" && next === "|")) {
@@ -385,6 +392,20 @@ function splitShellCommands(command: string): ShellSegment[] {
   }
   flush();
   return segments;
+}
+
+// The index of the newline ending a heredoc's terminator line, searching from `start`; -1 when the
+// heredoc never closes, so the rest of the script is its body.
+function heredocEnd(command: string, start: number, terminator: string): number {
+  let lineStart = start;
+  while (lineStart <= command.length) {
+    const newline = command.indexOf("\n", lineStart);
+    const lineEnd = newline < 0 ? command.length : newline;
+    if (command.slice(lineStart, lineEnd).trim() === terminator) return lineEnd;
+    if (newline < 0) return -1;
+    lineStart = newline + 1;
+  }
+  return -1;
 }
 
 const CONTROL_FLOW_PREFIX = /^(?:do|then|else)\s+/;

@@ -86,8 +86,13 @@ export function deriveReadableCommandDisplay(
   if (segments.length > 1 && inspections.every(Boolean)) {
     return combinedInspectDisplay(segments, rawCommand, isRunning);
   }
-  // A chain that does more than look around is named by the first thing it does.
-  const primary = segments.find((_, index) => !inspections[index]) ?? segments[0] ?? rawCommand;
+  // A chain that does more than look around is named by the first thing it does besides writing.
+  const acting = segments.filter((_, index) => !inspections[index]);
+  const primary =
+    acting.find((segment) => commandFileEffects(segment).written.length === 0) ??
+    acting[0] ??
+    segments[0] ??
+    rawCommand;
   return segmentDisplay(primary, rawCommand, isRunning);
 }
 

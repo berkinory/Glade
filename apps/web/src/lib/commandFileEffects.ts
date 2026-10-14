@@ -67,7 +67,8 @@ export function inlineScriptOf(rawCommand: string): InlineScript | null {
 export interface CommandFileEffects {
   written: string[];
   read: string[];
-  // How the files were written: plain shell output, or code that edits them in place.
+  // How the files were written: plain shell output, or code that edits them in place. Null when the
+  // command also runs something else, so the writes do not describe it.
   writeKind: "write" | "append" | "edit" | null;
 }
 
@@ -97,7 +98,7 @@ export function commandFileEffects(rawCommand: string): CommandFileEffects {
   const edited = [...(scriptEffects?.written ?? []), ...inPlaceEditTargets(rawCommand)].map(expand);
   const written = unique([...shellWrites.map((target) => target.path), ...edited]);
   const writeKind =
-    written.length === 0
+    written.length === 0 || !writesOnly(rawCommand)
       ? null
       : edited.length > 0
         ? "edit"
@@ -111,18 +112,28 @@ export function commandFileEffects(rawCommand: string): CommandFileEffects {
   };
 }
 
-/** The part of a heredoc script worth highlighting on its own, and its language. */
-export function commandScriptParts(
-  rawCommand: string,
-): { head: string; body: string; tail: string; language: string } | null {
-  const parts = splitHeredoc(rawCommand);
-  if (!parts || parts.body.trim().length === 0) return null;
-  const script = inlineScriptOf(rawCommand);
-  if (script?.code) return { ...parts, language: script.language };
-  // `cat > page.tsx <<EOF` writes a file whose extension names the body's language.
-  const target = shellWriteTargets(rawCommand)[0]?.path;
-  const extension = target ? /\.([a-z0-9]+)$/i.exec(target)?.[1]?.toLowerCase() : undefined;
-  return { ...parts, language: extension ?? "text" };
+// Steps that print, prepare a folder or feed a heredoc to a file, which a write still sums up.
+const WRITE_COMPANIONS = new Set([
+  "cat",
+  "echo",
+  "printf",
+  "tee",
+  "true",
+  "mkdir",
+  "touch",
+  "chmod",
+]);
+
+// A command is named by the files it wrote only when every step writes or accompanies a write; a
+// script that edits a file and then runs a benchmark is a run.
+function writesOnly(rawCommand: string): boolean {
+  return commandSegments(rawCommand).every((segment) => {
+    const [tool] = splitToolAndArgs(segment);
+    if (WRITE_COMPANIONS.has(tool) || inPlaceEditTargets(segment).length > 0) return true;
+    return (
+      INTERPRETER_LANGUAGES[tool] !== undefined && typeof inlineScriptOf(segment)?.code === "string"
+    );
+  });
 }
 
 function unique(values: readonly string[]): string[] {
