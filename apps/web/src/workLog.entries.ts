@@ -69,6 +69,7 @@ import { monitorNotificationEntryFields } from "./workLog.monitorEvents";
 import { requestRetryFromActivity } from "./workLog.requestRetries";
 import { deriveBackgroundTasks } from "./workLog.backgroundTasks";
 import { foldRepeatedCommands } from "./workLog.repeatedCommands";
+import { reconcileVisualPreparation } from "./workLog.visualPreparation";
 import { pairAnsweredUserInputs } from "./workLog.userInput";
 import {
   collabPayloadItem,
@@ -190,7 +191,9 @@ export function deriveWorkLogEntries(
         return backgroundTask ? { ...entry, backgroundTask } : entry;
       },
     );
-  const folded = foldRepeatedCommands(derived);
+  const folded = foldRepeatedCommands(
+    reconcileVisualPreparation(derived, ordered, options.activeTurnId),
+  );
   const outcomes = [
     ...deriveTurnFailureEntries(ordered, isVisible),
     ...deriveTurnStopEntries(ordered, isVisible, {

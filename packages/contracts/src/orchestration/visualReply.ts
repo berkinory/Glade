@@ -1,6 +1,7 @@
 import { Schema } from "effect";
 import { ThreadId, TrimmedNonEmptyString } from "../core/baseSchemas";
 
+export const VISUAL_REPLY_STARTED_ACTIVITY_KIND = "visual-reply.started";
 export const VISUAL_REPLY_ACTIVITY_KIND = "visual-reply.published";
 export const VISUAL_REPLY_MAX_SOURCE_BYTES = 2 * 1024 * 1024;
 export const VISUAL_REPLY_MAX_DOCUMENT_BYTES = 16 * 1024 * 1024;

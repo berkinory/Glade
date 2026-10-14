@@ -251,7 +251,7 @@ icon checks; build and verify signed artifacts from the final source snapshot.
 
 ## Visual replies
 
-Agents can publish self-contained HTML with `html_render`. A reply belongs to its active turn, survives reloads and projection
+Agents call `html_begin` before composing HTML so the transcript shows creation progress during generation, then publish with `html_render`. The preparation indicator yields to the render call and stops when its turn ends. A reply belongs to its active turn, survives reloads and projection
 rebuilds, and is removed with its turn or conversation. HTML and optional PNG previews
 use managed attachment quotas and cleanup. Activity history caps preserve visual
 reply references. The authenticated source endpoint serves plain text; generic HTML

@@ -270,7 +270,11 @@ export const GLADE_MCP_TOOL_PRESENTATION_ENTRIES = Object.entries(GLADE_MCP_TOOL
 );
 
 export function extractGladeMcpToolName(normalizedCandidate: string): string | null {
-  if (normalizedCandidate === "html_preview" || normalizedCandidate === "html_render") {
+  if (
+    normalizedCandidate === "html_begin" ||
+    normalizedCandidate === "html_preview" ||
+    normalizedCandidate === "html_render"
+  ) {
     return `glade_${normalizedCandidate}`;
   }
   if (isBareBrowserToolName(normalizedCandidate) || isBareComputerToolName(normalizedCandidate)) {

@@ -5,6 +5,7 @@ import {
   VisualReplyInput,
   VisualReplyPreviewInput,
   VISUAL_REPLY_ACTIVITY_KIND,
+  VISUAL_REPLY_STARTED_ACTIVITY_KIND,
   type VisualReply,
 } from "@glade/contracts/orchestration/visualReply";
 import { resolveThreadWorkspaceCwd } from "../checkpointing/Utils";
@@ -101,6 +102,51 @@ export function makeVisualReplyTools(services: VisualReplyToolServices): readonl
       requiredCapability: "thread:write",
       requiresActiveTurn: true,
       definition: {
+        name: "html_begin",
+        description:
+          "Begin creating an inline visual. Call this with a short title BEFORE composing HTML or writing its source file, so the reader sees creation progress during generation. Then create the HTML and publish with html_render. This does not publish a visual.",
+        inputSchema: toolInputSchema(Schema.Struct({ title: VisualReplyInput.fields.title })),
+        annotations: {
+          readOnlyHint: false,
+          destructiveHint: false,
+          idempotentHint: false,
+          openWorldHint: false,
+        },
+      },
+      handler: (args, context) =>
+        Effect.gen(function* () {
+          const source = yield* Schema.decodeUnknownEffect(
+            Schema.Struct({ title: VisualReplyInput.fields.title }),
+          )(args);
+          yield* context.assertCallerTurnActive();
+          if (!context.callerTurnId)
+            return yield* new VisualReplyError({
+              message: "Creating a visual requires an active turn.",
+            });
+          const marker = `visual:${randomUUID()}`;
+          const createdAt = new Date().toISOString();
+          yield* services.engine.dispatch({
+            type: "thread.activity.append",
+            commandId: CommandId.makeUnsafe(marker),
+            threadId: ThreadId.makeUnsafe(context.callerThreadId),
+            activity: {
+              id: EventId.makeUnsafe(marker),
+              kind: VISUAL_REPLY_STARTED_ACTIVITY_KIND,
+              tone: "tool",
+              summary: source.title,
+              payload: {},
+              turnId: TurnId.makeUnsafe(context.callerTurnId),
+              createdAt,
+            },
+            createdAt,
+          });
+          return mcpToolResultJson({ started: true, title: source.title });
+        }).pipe(Effect.catch((error) => Effect.succeed(mcpToolResultError(errorText(error))))),
+    },
+    {
+      requiredCapability: "thread:write",
+      requiresActiveTurn: true,
+      definition: {
         name: "html_preview",
         description:
           "Check a visual reply in a separate sandboxed browser and return its screenshot, content height and bounded console output. Provide exactly one of html or path (inside the caller workspace). Inline scripts, styles and SVG; local PNG/JPEG/GIF/WebP images are embedded. Public HTTP(S) resources are available; private/local network destinations, files outside the workspace and browser permissions are blocked. Prefer inline assets for reliable previews. The first preview downloads a pinned Chrome headless shell once; each preview closes its browser. Pass the returned previewAttachmentId to html_render with the same source to retain the screenshot. Preview alone does not publish a reply. Width defaults to 728px; use about 390px to check narrow layouts. appearance selects light or dark, defaulting to dark. The screenshot is cropped to content up to the requested height. " +
@@ -157,7 +203,7 @@ export function makeVisualReplyTools(services: VisualReplyToolServices): readonl
       definition: {
         name: "html_render",
         description:
-          "Publish a persistent visual reply inline in the current Glade conversation before the final answer. Use it for charts, diagrams, galleries, interactive tables or mockups. Provide exactly one of html or a workspace path. Prefer self-contained HTML with inline styles, scripts and SVG; public HTTP(S) resources and links are supported, and local raster images are embedded. Scripts run in an opaque sandbox without Glade APIs, browser-session access or persistent storage. Keep edits in memory and provide working inputs and completion controls when interaction is requested. Pass height (80–2000px), normally the preview contentHeight. A smaller height deliberately scrolls the content. Height is measured at nine widths when the preview browser is installed, then follows live layout up to 2000px. html_preview is an optional screenshot/console check for complex visuals or debugging; publishing never downloads a browser. The reader sees the visual, so the final reply should add only information the visual does not convey. " +
+          "Call html_begin before composing the HTML. Publish a persistent visual reply inline in the current Glade conversation before the final answer. Use it for charts, diagrams, galleries, interactive tables or mockups. Provide exactly one of html or a workspace path. Prefer self-contained HTML with inline styles, scripts and SVG; public HTTP(S) resources and links are supported, and local raster images are embedded. Scripts run in an opaque sandbox without Glade APIs, browser-session access or persistent storage. Keep edits in memory and provide working inputs and completion controls when interaction is requested. Pass height (80–2000px), normally the preview contentHeight. A smaller height deliberately scrolls the content. Height is measured at nine widths when the preview browser is installed, then follows live layout up to 2000px. html_preview is an optional screenshot/console check for complex visuals or debugging; publishing never downloads a browser. The reader sees the visual, so the final reply should add only information the visual does not convey. " +
           VISUAL_REPLY_LAYOUT_GUIDE +
           " " +
           VISUAL_REPLY_THEME_GUIDE,
