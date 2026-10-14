@@ -90,7 +90,10 @@ try {
     throw 'Required Defender scan/protection modes are disabled.'
   }
   $platformRoot = Join-Path $env:ProgramData 'Microsoft/Windows Defender/Platform'
-  $commands = @(Get-ChildItem "$platformRoot/*/MpCmdRun.exe" | Sort-Object { [version]$_.Directory.Name.Split('-')[0] } -Descending)
+  $commands = @(Get-ChildItem "$platformRoot/*/MpCmdRun.exe" | Where-Object {
+    $platformVersion = $null
+    [version]::TryParse($_.Directory.Name.Split('-')[0], [ref]$platformVersion)
+  } | Sort-Object { [version]$_.Directory.Name.Split('-')[0] } -Descending)
   if ($commands.Count -eq 0) { throw 'No versioned Defender scanner is available.' }
   $scanner = $commands[0].FullName
   $report.scanner = $scanner

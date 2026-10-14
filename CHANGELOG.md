@@ -1,11 +1,5 @@
 # Glade Changelog
 
-## Unreleased
-
-### Improved
-
-- The Environment panel lists subagents above background tasks in the same style. Both lists start collapsed, remember being opened for each chat, and show fewer rows before scrolling.
-
 ## 0.2.7 - 2026-10-14
 
 ### New
@@ -20,7 +14,7 @@
 - Running chats use less CPU, and Glade stays responsive during extended use. ([5f90c4e63](https://github.com/berkinory/Glade/commit/5f90c4e632401623ac01e770c2344b1672d52b70), [8ecd3e49b](https://github.com/berkinory/Glade/commit/8ecd3e49b47b14fb3144957e8ae22e0b74d98066), [db1eb292d](https://github.com/berkinory/Glade/commit/db1eb292db5e8c71b03ba4cc61f6896c430fde31))
 - The composer gives you more room to write and keeps project, branch and connection details in view. ([cef2934e5](https://github.com/berkinory/Glade/commit/cef2934e58c49aaeed6139cef7339687aae0c894), [1b08df60d](https://github.com/berkinory/Glade/commit/1b08df60da2e2290c5a09619425cc32244454181))
 - Remote projects and chats appear from your last connection at startup and refresh when the host reconnects. ([6e04f9de7](https://github.com/berkinory/Glade/commit/6e04f9de73648449ead57fdb816b4e2354d6a356), [d9cc4dc62](https://github.com/berkinory/Glade/commit/d9cc4dc621044bc02c5329e7cc40ddfee2f2268c))
-- Background tasks open their command and output with a click. The Environment panel keeps running tasks and recent results in view. ([0858a7bd8](https://github.com/berkinory/Glade/commit/0858a7bd8936052eb444b4313c1dcd3a9767ed70), [9462e9878](https://github.com/berkinory/Glade/commit/9462e987883f808d5b7a4ceca57ab1dd8b85759d))
+- Background tasks open their command and output with a click. Task and subagent lists stay compact and remember which sections you opened in each chat. ([0858a7bd8](https://github.com/berkinory/Glade/commit/0858a7bd8936052eb444b4313c1dcd3a9767ed70), [9462e9878](https://github.com/berkinory/Glade/commit/9462e987883f808d5b7a4ceca57ab1dd8b85759d), [ae29f04d9](https://github.com/berkinory/Glade/commit/ae29f04d9c5f4a2ce70bdc36b6772cb6b2f2750b))
 - Tool details show their input and output more clearly, and file links open directly from tool rows and replies, including files outside the project. ([4c2d4e7bc](https://github.com/berkinory/Glade/commit/4c2d4e7bc8f909431be4d89ba7b7a3224a6b6be7), [d03756123](https://github.com/berkinory/Glade/commit/d03756123f98faf8394c4309e5edfec52ba9eda3), [d60ccfcad](https://github.com/berkinory/Glade/commit/d60ccfcad6fe8e55bf448cbfe7bdb2d0c26778b0))
 - Usage panels make remaining allowances and reset times easier to read. ([aa1c2e691](https://github.com/berkinory/Glade/commit/aa1c2e691123fdf3853e7379ff7d87aeceb58467))
 - Hover feedback responds immediately, with more consistent animations throughout the app. ([a379e2392](https://github.com/berkinory/Glade/commit/a379e23925164966d6aabcec094252e6ea74d8c3))
