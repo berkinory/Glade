@@ -19,7 +19,7 @@ import { buildDraftThreadRenameCreateInput, dispatchThreadRename } from "~/lib/t
 import { cn } from "~/lib/utils";
 import { isElectron } from "~/env";
 import { EnvironmentPicker } from "../EnvironmentPicker";
-import { RemoteEnvironmentStatusChip } from "../RemoteEnvironmentStatusChip";
+import { RemoteEnvironmentStatus } from "../RemoteEnvironmentStatus";
 import { COMPOSER_EXTRAS_PANEL_ID } from "./chatViewSupport";
 import type { ChatController } from "./useChatController";
 export function createChatPresentation(
@@ -205,11 +205,12 @@ export function createChatPresentation(
       </span>
     ) : null;
   const showComposerContextControls =
-    showEnvironmentPicker ||
-    isEmptyChatLanding ||
-    showEmptyLandingProjectPicker ||
-    composerProjectChip !== null ||
-    showComposerBranchToolbar;
+    isCenteredEmptyLanding &&
+    (showEnvironmentPicker ||
+      isEmptyChatLanding ||
+      showEmptyLandingProjectPicker ||
+      composerProjectChip !== null ||
+      showComposerBranchToolbar);
   const composerContextControls = showComposerContextControls ? (
     <ComposerStackedPanel
       data-composer-context-controls="true"
@@ -268,7 +269,7 @@ export function createChatPresentation(
       ) : (
         composerProjectChip
       )}
-      {!showEnvironmentPicker ? <RemoteEnvironmentStatusChip /> : null}
+      {!showEnvironmentPicker ? <RemoteEnvironmentStatus variant="composer" /> : null}
       <div
         aria-hidden={showComposerBranchToolbar ? undefined : true}
         className={cn(

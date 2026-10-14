@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+### Improved
+
+- The composer shows project and environment selectors only before a chat starts. SSH chats show their host and connection status in the Environment panel.
+
 ### Fixed
 
 - Chats containing long inline scripts stay responsive when opening and updating the conversation.

@@ -1,3 +1,4 @@
+import { RemoteEnvironmentStatus } from "../RemoteEnvironmentStatus";
 import { EnvironmentSubagentsSection } from "./EnvironmentSubagentsSection";
 import { EnvironmentBackgroundTasksSection } from "./EnvironmentBackgroundTasksSection";
 import { GitHubIcon } from "~/lib/brandIcons";
@@ -141,6 +142,8 @@ export function EnvironmentPanel({
           <SettingsIcon className="size-3.5" />
         </IconButton>
       </div>
+
+      <RemoteEnvironmentStatus variant="panel" />
 
       {isGitRepo ? (
         <EnvironmentRow

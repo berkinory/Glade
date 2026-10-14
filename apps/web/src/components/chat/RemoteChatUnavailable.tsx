@@ -2,7 +2,7 @@ import { remoteHostAvailability } from "~/environments/remoteEnvironmentStatus";
 import type { RemoteEnvironment } from "~/environments/remoteEnvironments";
 import { ServerStack01Icon } from "~/lib/icons";
 import { PanelEmptyState } from "./PanelEmptyState";
-import { RemoteEnvironmentStatusChip } from "./RemoteEnvironmentStatusChip";
+import { RemoteEnvironmentStatus } from "./RemoteEnvironmentStatus";
 
 export function RemoteChatUnavailable({ environment }: { environment: RemoteEnvironment }) {
   const availability = remoteHostAvailability(environment);
@@ -22,7 +22,7 @@ export function RemoteChatUnavailable({ environment }: { environment: RemoteEnvi
           : `${availability.reason} Your chat will open automatically when the host connects.`
       }
     >
-      <RemoteEnvironmentStatusChip />
+      <RemoteEnvironmentStatus variant="composer" />
     </PanelEmptyState>
   );
 }

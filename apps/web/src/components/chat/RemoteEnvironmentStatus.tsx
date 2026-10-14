@@ -18,6 +18,7 @@ import type { WsTransportState } from "~/wsTransportEvents";
 import { HostStatusDot } from "../HostStatusDot";
 import { Tooltip, TooltipPopup, TooltipTrigger } from "../ui/tooltip";
 import { COMPOSER_PICKER_TRIGGER_TEXT_CLASS_NAME } from "./composerPickerStyles";
+import { ENVIRONMENT_ROW_CLASS_NAME } from "./environment/EnvironmentRow";
 
 // The host's own transport can be reconnecting or waiting on a busy server while the SSH tunnel is
 // up, so both feed the status.
@@ -57,16 +58,14 @@ function chipStatus(
   return status;
 }
 
-// Where the chat on screen runs, when that is an SSH host: its name and a status dot beside the
-// composer's controls. Hovering explains the state; clicking acts only when the user can fix it.
-export function RemoteEnvironmentStatusChip() {
+export function RemoteEnvironmentStatus({ variant }: { variant: "composer" | "panel" }) {
   const activeEnvironment = useActiveEnvironment();
   const environment = useRemoteEnvironments().find(
     (candidate) => candidate.key === activeEnvironment,
   );
   const transport = useHostTransport(environment);
   const navigate = useNavigate();
-  if (!environment) return null;
+  if (!environment || (variant === "panel" && environment.kind !== "ssh")) return null;
   const status = chipStatus(environment, transport);
   const availability = remoteHostAvailability(environment);
   const tone = status.tone === "busy" ? "busy" : availability.tone;
@@ -92,8 +91,10 @@ export function RemoteEnvironmentStatusChip() {
             aria-disabled={action === null}
             onClick={action ?? undefined}
             className={cn(
-              "inline-flex h-7 min-w-0 shrink-0 items-center gap-1.5 rounded-md px-1.5 text-muted-foreground",
-              COMPOSER_PICKER_TRIGGER_TEXT_CLASS_NAME,
+              variant === "panel"
+                ? ENVIRONMENT_ROW_CLASS_NAME
+                : "inline-flex h-7 min-w-0 shrink-0 items-center gap-1.5 rounded-md px-1.5 text-muted-foreground",
+              variant === "composer" && COMPOSER_PICKER_TRIGGER_TEXT_CLASS_NAME,
               action ? "cursor-pointer hover:bg-accent hover:text-foreground" : "cursor-default",
             )}
           >
@@ -104,7 +105,12 @@ export function RemoteEnvironmentStatusChip() {
                 className="absolute -right-0.5 -bottom-0.5 ring-2 ring-background"
               />
             </span>
-            <span className="max-w-32 truncate">{environment.host.label}</span>
+            <span className={variant === "panel" ? "min-w-0 flex-1 truncate" : "max-w-32 truncate"}>
+              {environment.host.label}
+            </span>
+            {variant === "panel" ? (
+              <span className="shrink-0 text-ui-xs text-muted-foreground">{status.label}</span>
+            ) : null}
           </button>
         }
       />
