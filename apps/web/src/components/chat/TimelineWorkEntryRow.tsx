@@ -15,7 +15,6 @@ import { GitHubIcon } from "~/lib/brandIcons";
 import {
   CheckmarkCircle02Icon,
   BookOpen01Icon,
-  BotIcon,
   Brain03Icon,
   InfoIcon,
   File02Icon,
@@ -67,6 +66,8 @@ import { commandRowMetaParts } from "./commandRowMeta.logic";
 import { RequestRetryRow } from "./RequestRetryRow";
 import { ShowMoreFilesButton, usePagedFiles } from "./ShowMoreFilesButton";
 import { ToolEditedFileRow } from "./ToolEditedFileRow";
+import { SubagentAvatar } from "./SubagentAvatar";
+import { lastSubagentThreadId } from "./SubagentAvatar.logic";
 import { useOptionalChatThreadId } from "./ChatThreadContext";
 import { useStore } from "~/store";
 import { type ExpandedImagePreview } from "./ExpandedImagePreview";
@@ -238,7 +239,9 @@ function workEntryIcon(workEntry: TimelineWorkEntry): IconComponent {
     case "computer":
       return CursorInWindowIcon;
     case "agent":
-      return BotIcon;
+      // A launch with no subagents to show: its failure, or the generic tool mark. Launches that
+      // did start show their subagent's avatar instead.
+      return workEntry.toolStatus === "failed" ? AlertCircleIcon : ToolsIcon;
     case "image_view":
       return ViewIcon;
     case "image_generation":
@@ -481,6 +484,10 @@ function ToolWorkEntryRow(props: TimelineWorkEntryRowProps & { launchStarting: b
   // A launch that has not reported its subagents yet shows the run card's spinner, so the icon does
   // not change when the card takes this row's place.
   const isPendingSubagentLaunch = props.launchStarting;
+  const launchedSubagentThreadId =
+    workEntry.toolKind === "agent" && workEntry.toolStatus !== "failed"
+      ? lastSubagentThreadId([workEntry])
+      : null;
   const classification = classifyWorkEntryTool(workEntry);
   const isGitHubToolRow = classification.isGitHub;
   const isGladeToolRow = !isGitHubToolRow && classification.gladeTitle !== null;
@@ -653,6 +660,11 @@ function ToolWorkEntryRow(props: TimelineWorkEntryRowProps & { launchStarting: b
                     <Spinner variant="subagent" className={WORK_ROW_ICON_CLASS_NAME} />
                   ) : backgroundTask?.status === "running" ? (
                     <Spinner variant="action" className={WORK_ROW_ICON_CLASS_NAME} />
+                  ) : launchedSubagentThreadId ? (
+                    <SubagentAvatar
+                      threadId={launchedSubagentThreadId}
+                      className={WORK_ROW_ICON_CLASS_NAME}
+                    />
                   ) : (
                     renderWorkEntryIcon(LeftIcon, WORK_ROW_ICON_CLASS_NAME)
                   )}

@@ -1,3 +1,5 @@
+import type { WorkLogEntry } from "~/workLog.types";
+
 interface AvatarThread {
   id: string;
   parentThreadId?: string | null;
@@ -44,4 +46,14 @@ export function subagentAvatarIndex(
     if (sibling.id === target.id) return chosen;
   }
   return preferredAvatar(id, count);
+}
+
+/** The thread whose avatar stands for these entries' subagents: the last one they launched. */
+export function lastSubagentThreadId(entries: ReadonlyArray<WorkLogEntry>): string | null {
+  for (let index = entries.length - 1; index >= 0; index -= 1) {
+    const entry = entries[index]!;
+    const subagent = entry.subagentRun?.members.at(-1)?.subagent ?? entry.subagents?.at(-1);
+    if (subagent) return subagent.resolvedThreadId ?? subagent.threadId;
+  }
+  return null;
 }

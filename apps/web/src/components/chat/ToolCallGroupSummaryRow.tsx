@@ -9,7 +9,6 @@ import { cn } from "~/lib/utils";
 import { MUTED_LABEL_TEXT_CLASS_NAME } from "~/surfaceStyles";
 import { LinkChipIcon } from "../LinkChipIcon";
 import {
-  BotIcon,
   ComputerTerminal01Icon,
   CursorInWindowIcon,
   Globe02Icon,
@@ -34,21 +33,30 @@ import {
   WORK_ROW_LINE_CLASS_NAME,
 } from "./workRowStyles";
 import { WorkTextShimmer } from "./WorkTextShimmer";
+import { SubagentAvatar } from "./SubagentAvatar";
+import { lastSubagentThreadId } from "./SubagentAvatar.logic";
 
-const ACTIVITY_ICONS: Record<Exclude<ToolCallGroupActivity, "tools">, IconComponent> = {
+const ACTIVITY_ICONS: Record<Exclude<ToolCallGroupActivity, "tools" | "agent">, IconComponent> = {
   edit: PencilEdit02Icon,
   command: ComputerTerminal01Icon,
   explore: SearchIcon,
   browse: Globe02Icon,
   computer: CursorInWindowIcon,
-  agent: BotIcon,
   image_view: ViewIcon,
   image_generation: Image01Icon,
 };
 
-function renderGroupIcon(summary: ToolCallGroupSummary) {
+function renderGroupIcon(summary: ToolCallGroupSummary, entries: readonly WorkLogEntry[]) {
   const { activity, iconEntry } = summary;
   if (activity === "mixed") return renderWorkEntryIcon(ToolsIcon, WORK_ROW_ICON_CLASS_NAME);
+  if (activity === "agent") {
+    const threadId = lastSubagentThreadId(entries);
+    return threadId ? (
+      <SubagentAvatar threadId={threadId} className={WORK_ROW_ICON_CLASS_NAME} />
+    ) : (
+      renderWorkEntryIcon(ToolsIcon, WORK_ROW_ICON_CLASS_NAME)
+    );
+  }
   if (activity !== "tools") {
     return renderWorkEntryIcon(ACTIVITY_ICONS[activity], WORK_ROW_ICON_CLASS_NAME);
   }
@@ -98,9 +106,13 @@ export function ToolCallGroupSummaryRow(props: {
       >
         <span className={WORK_ROW_ICON_SLOT_CLASS_NAME} aria-hidden>
           {live || summary.hasRunningEntry ? (
-            <Spinner variant="action" aria-hidden="true" className={WORK_ROW_ICON_CLASS_NAME} />
+            <Spinner
+              variant={summary.activity === "agent" ? "subagent" : "action"}
+              aria-hidden="true"
+              className={WORK_ROW_ICON_CLASS_NAME}
+            />
           ) : (
-            renderGroupIcon(summary)
+            renderGroupIcon(summary, entries)
           )}
         </span>
         <span className="min-w-0 truncate">
