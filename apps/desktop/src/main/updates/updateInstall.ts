@@ -1,6 +1,7 @@
 import { app } from "electron";
 import type { AppUpdater } from "electron-updater";
 import type { DesktopUpdateState } from "@glade/contracts/ipc/ipc";
+import { AUTO_UPDATE_INSTALL_STAGING_TIMEOUT_MS } from "../desktopEnvironment";
 import { formatErrorMessage } from "../lifecycle/desktopLogging";
 import type { UpdateStatus, UpdateDownloadState, UpdateInstallState } from "./updateDomainState";
 import { verifyUpdateArtifactIdentity } from "./updateArtifactIdentity";
@@ -34,7 +35,7 @@ export function createUpdateInstall(input: {
   recovery: {
     getUpdateInstallMarkerPath: () => string;
     logMacUpdateDiagnostics: (context: string) => Promise<void>;
-    armInstallWatchdog: () => void;
+    armInstallWatchdog: (windowMs: number) => void;
     clearUpdaterInstallInFlightAfterError: () => boolean;
     recordInstallMarkerFailure: (
       nowIso: string,
@@ -135,7 +136,9 @@ export function createUpdateInstall(input: {
       install.handoffInFlight = true;
       autoUpdater.quitAndInstall();
       install.preparation.requireActive(preparationAttempt);
-      recovery.armInstallWatchdog();
+      // The app quits only once the updater has staged the update; before-quit then narrows this
+      // window to AUTO_UPDATE_INSTALL_WATCHDOG_MS.
+      recovery.armInstallWatchdog(AUTO_UPDATE_INSTALL_STAGING_TIMEOUT_MS);
       return { accepted: true, completed: false };
     } catch (error: unknown) {
       const message = formatErrorMessage(error);

@@ -19,6 +19,7 @@
 - A delayed Codex completion no longer makes the next running turn look finished.
 - Idle cleanup no longer stops a chat that just started working again.
 - Worktree branches get their generated name even when you send a second message right away.
+- Installing an update on macOS no longer reports a failure while the update is still being prepared.
 
 ## 0.2.6 - 2026-10-14
 

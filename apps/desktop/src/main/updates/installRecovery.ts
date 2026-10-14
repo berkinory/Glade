@@ -4,7 +4,6 @@ import type { DesktopUpdateState } from "@glade/contracts/ipc/ipc";
 import {
   APP_USER_MODEL_ID,
   AUTO_UPDATE_DIAGNOSTICS_TIMEOUT_MS,
-  AUTO_UPDATE_INSTALL_WATCHDOG_MS,
   UPDATE_INSTALL_MARKER_FILE_NAME,
 } from "../desktopEnvironment";
 import { formatErrorMessage } from "../lifecycle/desktopLogging";
@@ -169,7 +168,7 @@ export function createInstallRecovery(input: {
     }
   }
 
-  function armInstallWatchdog(): void {
+  function armInstallWatchdog(windowMs: number): void {
     clearUpdateInstallWatchdogTimer();
     install.watchdogTimer = setTimeout(() => {
       install.watchdogTimer = null;
@@ -193,7 +192,7 @@ export function createInstallRecovery(input: {
         "[desktop-updater] quitAndInstall did not exit the app within the watchdog window; surfacing manual-download fallback.",
       );
       recoverDesktopAfterUpdaterInstallFailure();
-    }, AUTO_UPDATE_INSTALL_WATCHDOG_MS);
+    }, windowMs);
   }
   return {
     resolveUpdaterErrorContext,

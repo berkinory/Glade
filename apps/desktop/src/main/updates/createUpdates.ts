@@ -16,7 +16,7 @@ import {
   reduceDesktopUpdateStateOnInstallFailure,
 } from "./updateMachine";
 import { desktopFlavor } from "../desktopEnvironment";
-import { isDevelopment } from "../desktopEnvironment";
+import { AUTO_UPDATE_INSTALL_WATCHDOG_MS, isDevelopment } from "../desktopEnvironment";
 import { getAutoUpdateDisabledReason } from "./updateState";
 
 export interface UpdateResources {
@@ -237,6 +237,7 @@ export function createUpdates(input: {
         );
       }
       lifecycle.writeDesktopLogHeader("before-quit allowing updater quit-and-install");
+      recovery.armInstallWatchdog(AUTO_UPDATE_INSTALL_WATCHDOG_MS);
       return true;
     }
     if (install.preparing) {

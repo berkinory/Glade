@@ -79,6 +79,8 @@ export const AUTO_UPDATE_DOWNLOAD_STALL_TIMEOUT_MS = 60 * 1000;
 export const AUTO_UPDATE_DOWNLOAD_SETTLE_TIMEOUT_MS = 20 * 1000;
 export const AUTO_UPDATE_STALLED_DOWNLOAD_CANCELLATION_SUPPRESSION_MS = 2 * 60 * 1000;
 export const AUTO_UPDATE_INSTALL_WATCHDOG_MS = 15 * 1000;
+// macOS quitAndInstall first has Squirrel fetch the whole zip through electron-updater's local proxy.
+export const AUTO_UPDATE_INSTALL_STAGING_TIMEOUT_MS = 10 * 60 * 1000;
 export const AUTO_UPDATE_DIAGNOSTICS_TIMEOUT_MS = 2_800;
 export const UPDATE_INSTALL_MARKER_FILE_NAME = "pending-update-install.json";
 export const BACKEND_FORCE_KILL_DELAY_MS = 8_000;
