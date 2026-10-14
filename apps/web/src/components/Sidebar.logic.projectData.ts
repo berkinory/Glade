@@ -24,14 +24,15 @@ export function sortThreadsForSidebar<T extends { id: Thread["id"] } & SidebarTh
   threads: readonly T[],
 ): T[] {
   // Order changes only through the user's own messages; lifecycle status lives in the row's pill.
-  return threads.toSorted((left, right) => {
-    const rightTimestamp = getLatestUserMessageTimestamp(right);
-    const leftTimestamp = getLatestUserMessageTimestamp(left);
-    const byTimestamp =
-      rightTimestamp === leftTimestamp ? 0 : rightTimestamp > leftTimestamp ? 1 : -1;
-    if (byTimestamp !== 0) return byTimestamp;
-    return right.id.localeCompare(left.id);
-  });
+  // Each timestamp is read once: parsing it inside the comparator made the sidebar re-sort cost
+  // tens of milliseconds per update with a few thousand chats.
+  return threads
+    .map((thread) => ({ thread, timestamp: getLatestUserMessageTimestamp(thread) }))
+    .sort((left, right) => {
+      if (right.timestamp !== left.timestamp) return right.timestamp > left.timestamp ? 1 : -1;
+      return right.thread.id.localeCompare(left.thread.id);
+    })
+    .map((entry) => entry.thread);
 }
 
 export function getFallbackThreadIdAfterDelete<

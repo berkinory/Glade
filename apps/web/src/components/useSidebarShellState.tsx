@@ -367,13 +367,16 @@ export function useSidebarShellState() {
     [projects],
   );
 
-  const visibleSidebarActivityThreads = sidebarThreads.filter((thread) => {
-    const project = projectById.get(thread.projectId);
-    return (
-      !isHomeChatContainerProject(project, { homeDir, chatWorkspaceRoot }) ||
-      (chatSpaceByThreadId[thread.id] ?? null) === activeSpaceId
-    );
-  });
+  const homeChatProjectIds = new Set(
+    projects
+      .filter((project) => isHomeChatContainerProject(project, { homeDir, chatWorkspaceRoot }))
+      .map((project) => project.id),
+  );
+  const visibleSidebarActivityThreads = sidebarThreads.filter(
+    (thread) =>
+      !homeChatProjectIds.has(thread.projectId) ||
+      (chatSpaceByThreadId[thread.id] ?? null) === activeSpaceId,
+  );
 
   const hasUnreadActivity = hasUnreadActivityOutsideActiveThread(
     visibleSidebarActivityThreads,
@@ -525,12 +528,21 @@ export function useSidebarShellState() {
 
   const workspacePathsOf = useProjectWorkspacePathsOf({ homeDir, chatWorkspaceRoot });
   const projectSpaceIdOf = useProjectSpaceIdOf();
+  // Decided once per project: repeating the path checks for every thread made each sidebar update
+  // scale with the number of chats. Threads of an unknown project stay visible.
+  const activeSpaceRuleByProjectId = new Map<ProjectId, "chat" | boolean>(
+    projects.map((project) => {
+      const paths = workspacePathsOf(project);
+      if (isHomeChatContainerProject(project, paths)) return [project.id, "chat"] as const;
+      return [
+        project.id,
+        !isOrdinarySpaceProject(project, paths) || projectSpaceIdOf(project) === activeSpaceId,
+      ] as const;
+    }),
+  );
   const activeSpaceSidebarTreeThreads = sidebarTreeThreads.filter((thread) => {
-    const project = projectById.get(thread.projectId);
-    const paths = project ? workspacePathsOf(project) : { homeDir, chatWorkspaceRoot };
-    return isHomeChatContainerProject(project, paths)
-      ? (chatSpaceByThreadId[thread.id] ?? null) === activeSpaceId
-      : !isOrdinarySpaceProject(project, paths) || projectSpaceIdOf(project) === activeSpaceId;
+    const rule = activeSpaceRuleByProjectId.get(thread.projectId) ?? true;
+    return rule === "chat" ? (chatSpaceByThreadId[thread.id] ?? null) === activeSpaceId : rule;
   });
 
   const pinnedThreads = getPinnedItems(activeSpaceSidebarTreeThreads, pinnedThreadIds);
