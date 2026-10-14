@@ -4,6 +4,7 @@
 
 ### Improved
 
+- Chat work durations use milliseconds for subsecond work and whole seconds for longer work.
 - The composer shows project and environment selectors only before a chat starts. SSH chats show their host and connection status in the Environment panel.
 
 ### Fixed
