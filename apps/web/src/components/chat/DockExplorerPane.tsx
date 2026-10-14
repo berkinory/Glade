@@ -119,7 +119,7 @@ export const DockExplorerPane = function DockExplorerPane(props: {
     });
   };
   return (
-    <div className="flex h-full min-h-0 w-full flex-col bg-[var(--app-content-surface)]">
+    <div className="flex h-full min-h-0 w-full flex-col bg-[var(--color-background-surface)]">
       <WorkspaceExplorerSidebar
         key={props.workspaceRoot}
         isVisible={props.isVisible}

@@ -58,7 +58,7 @@ export function PdfFilePreview(props: {
     (_, index) => index + 1,
   );
   const outerClassName = cn(
-    "flex h-full min-h-0 min-w-0 flex-1 flex-col bg-[var(--app-content-surface)]",
+    "flex h-full min-h-0 min-w-0 flex-1 flex-col bg-[var(--color-background-surface)]",
     props.className,
   );
   const readyDocument = doc.document;

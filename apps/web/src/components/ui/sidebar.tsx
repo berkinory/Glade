@@ -731,7 +731,7 @@ function SidebarInset({
       <div
         className={cn(
           "flex min-h-0 min-w-0 flex-1 flex-col text-inherit",
-          surfaceClassName ?? "bg-[var(--app-inset-surface)]",
+          surfaceClassName ?? "bg-[var(--background)]",
         )}
         data-slot="sidebar-inset-surface"
       >

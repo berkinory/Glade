@@ -1,5 +1,4 @@
 import { useEffect, useSyncExternalStore } from "react";
-import { initializeDesktopWindowMaterial } from "./useDesktopWindowMaterial";
 import { DEFAULT_THEME_STATE } from "../theme/theme.logic.shared";
 import {
   parseStoredThemeState,
@@ -197,7 +196,6 @@ function syncDesktopTheme(theme: ThemeMode) {
 
 if (typeof document !== "undefined") {
   applyThemeState(readStoredThemeState());
-  initializeDesktopWindowMaterial();
 }
 
 function setTheme(nextTheme: ThemeMode) {

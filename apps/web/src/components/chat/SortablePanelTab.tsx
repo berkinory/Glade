@@ -25,7 +25,7 @@ export function SortablePanelTab({
       className={cn(
         className,
         isDragging &&
-          "rounded-lg bg-[var(--app-content-surface)] opacity-70 [&_button]:cursor-grabbing",
+          "rounded-lg bg-[var(--color-background-surface)] opacity-70 [&_button]:cursor-grabbing",
       )}
       style={{
         ...style,

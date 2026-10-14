@@ -61,8 +61,6 @@ export function buildThemeCssVariables(
     "--app-chat-code-surface": chatCodeSurface,
     "--app-user-message-background": chatCodeSurface,
 
-    "--app-settings-backdrop-filter": "none",
-
     "--app-sidebar-surface": sidebarSurface,
 
     "--app-settings-surface": settingsSurface,

@@ -22,6 +22,8 @@
 
 ### Fixed
 
+- Desktop windows now use a consistent opaque background on every platform.
+
 - The new chat project picker only lists projects you have added, without unrelated folders from your home directory.
 
 - Hovering over chat rows gives titles the available space instead of reserving extra room for hidden metadata.
@@ -324,7 +326,6 @@
 - See Claude and Codex usage limits in the sidebar, with short-term and weekly views and expandable credit balances. ([4c606b49a](https://github.com/berkinory/Glade/commit/4c606b49a2d41d897d59595d817351443e2e939c), [5cffa3d65](https://github.com/berkinory/Glade/commit/5cffa3d655f87b539d04057c5b771f79d47655d3))
 - Add files and folders to Explorer by dragging them in or pasting from the clipboard. ([d93f9c1f7](https://github.com/berkinory/Glade/commit/d93f9c1f778b6d33b83b8a221e32f7cecf1500c2))
 - Hear distinct sounds for completed replies and requests for your attention, with an option to mute them. ([11d754af5](https://github.com/berkinory/Glade/commit/11d754af5e6685b24334526ff9b19ef11160fe4a))
-- Enable native window transparency on macOS and Windows 11. ([d552f882a](https://github.com/berkinory/Glade/commit/d552f882a6eeeffc6433bcec7f3d02a03b1c38c4))
 - Agents can inspect task diffs, fork conversations, discover local servers and open files, diffs and terminals in Glade. ([5f43094f8](https://github.com/berkinory/Glade/commit/5f43094f83476787138c17f5a8eeb8925c1365f1))
 - Cycle supported model effort levels with Shift+Tab in the composer. ([493ceb3b8](https://github.com/berkinory/Glade/commit/493ceb3b8842e92ff519b83abd21f0837c6c156d))
 - Open referenced conversations directly from chat links in agent replies. ([493ceb3b8](https://github.com/berkinory/Glade/commit/493ceb3b8842e92ff519b83abd21f0837c6c156d))

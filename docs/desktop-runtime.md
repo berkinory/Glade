@@ -125,28 +125,6 @@ Verify through the real Dev launcher, using an isolated home when another instan
 
 The macOS Dev verification exercised settings navigation and native double-click zoom from 1100×780 to 1710×1072. Coordinate dragging was blocked by the native automation tool with `windowNotFoundAtPosition`; movement is not claimed verified. Rename, Windows/Linux native input, snap/window menus, multiple-display scaling and the complete layout matrix remain unverified.
 
-## Window material
-
-Appearance settings can enable a native backdrop for the whole main window, off
-by default. macOS uses under-window vibrancy; Windows uses Mica on Windows 11
-22H2 (build 22621) or newer. Mica is a wallpaper-based material, not live blur of
-windows behind Glade. Unsupported systems keep the normal opaque window.
-
-The desktop host persists the preference in `desktop-window-material.json` in
-its state directory and applies it at creation and through validated IPC without
-restarting. The renderer opens only the layout surfaces over one theme tint;
-text, images, editors and web pages retain their own rendering. Floating menus
-and the composer stay opaque in this mode, without additional CSS backdrop blur.
-The BrowserWindow does not use `transparent: true` or window-wide opacity.
-On macOS, this mode disables the native outer window shadow to avoid retained
-hover-overlay shapes; switching the material off restores the shadow. Terminal
-panes keep an opaque renderer and use one theme-derived elevated background
-across their canvas and padding, avoiding a separate dark rectangle.
-
-Native materials belong to the OS compositor. Renderer-only captures do not
-include the native backdrop; capture the native window or screen to verify the
-composited appearance.
-
 ## Window actions and launcher output
 
 Custom title-bar actions report rejected native calls through error notifications. Repeated

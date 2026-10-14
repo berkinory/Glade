@@ -58,7 +58,7 @@ import {
   writeDesktopWindowState,
 } from "./windowState";
 import { createDesktopMenuShortcuts } from "./desktopMenuShortcuts";
-import { windowMaterialOptions, readWindowMaterialState } from "./desktopWindowMaterial";
+import { opaqueWindowBackgroundColor } from "./desktopWindowAppearance";
 
 interface WindowIdentity {
   readDesktopAppIcon(): DesktopAppIcon;
@@ -161,10 +161,6 @@ export function createMainWindow({
     }
   }
 
-  function getWindowMaterialOptions(): BrowserWindowConstructorOptions {
-    return windowMaterialOptions(readWindowMaterialState().enabled);
-  }
-
   function getTitleBarOptions(): BrowserWindowConstructorOptions {
     if (process.platform === "darwin") {
       return {
@@ -216,7 +212,7 @@ export function createMainWindow({
       ...getIconOption(),
       title: APP_DISPLAY_NAME,
       ...getTitleBarOptions(),
-      ...getWindowMaterialOptions(),
+      backgroundColor: opaqueWindowBackgroundColor(),
       webPreferences: {
         preload: Path.join(__dirname, "preload.js"),
         contextIsolation: true,

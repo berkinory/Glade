@@ -30,7 +30,7 @@ export const COMPOSER_MUTED_ACCENT_TEXT_CLASS_NAME = MUTED_LABEL_TEXT_CLASS_NAME
 
 const COMPOSER_MAX_WIDTH_CLASS_NAME = "max-w-[var(--app-chat-max-width,46rem)]";
 
-export const CHAT_BACKGROUND_CLASS_NAME = "bg-[var(--app-content-surface)]";
+export const CHAT_BACKGROUND_CLASS_NAME = "bg-[var(--color-background-surface)]";
 
 // Apply this surface to opaque content only; a raised transparent SidebarInset would intercept
 // sidebar input. The content-seam rail owns the sole divider and resize hit area.

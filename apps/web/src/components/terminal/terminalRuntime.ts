@@ -797,7 +797,7 @@ export function createRuntimeEntry(config: TerminalRuntimeConfig): TerminalRunti
   });
   entry.themeObserver.observe(document.documentElement, {
     attributes: true,
-    attributeFilter: ["class", "style", "data-window-material"],
+    attributeFilter: ["class", "style"],
   });
 
   registerTerminalEventHandler(entry, {

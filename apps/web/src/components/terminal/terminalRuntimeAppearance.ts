@@ -183,7 +183,7 @@ export function terminalThemeFromApp(): ITheme {
 
   return {
     background: resolveTerminalCssColor(
-      "var(--app-terminal-background, var(--color-token-terminal-background, var(--color-background-surface)))",
+      "var(--color-token-terminal-background, var(--color-background-surface))",
       fallbackTheme.background,
       "backgroundColor",
     ),

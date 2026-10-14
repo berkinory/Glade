@@ -8,7 +8,7 @@ import {
   type WebContents,
 } from "electron";
 import * as FS from "node:fs";
-import { opaqueWindowBackgroundColor } from "../main/window/desktopWindowMaterial";
+import { opaqueWindowBackgroundColor } from "../main/window/desktopWindowAppearance";
 import { downloadTarget } from "./browserDownloads";
 import { BrowserFailure } from "./browserFailure";
 import {
@@ -258,7 +258,7 @@ export class BrowserTabs {
     );
     view.setBounds(DEFAULT_BOUNDS);
     // Restored and new tabs show the view's backdrop until the page paints, which defaults to
-    // black. It stays opaque even with window vibrancy because pages assume an opaque canvas.
+    // black. Match the app background while keeping an opaque page canvas.
     view.setBackgroundColor(opaqueWindowBackgroundColor());
     this.options.parking.park(view);
     this.tabs.set(tab.id, tab);
