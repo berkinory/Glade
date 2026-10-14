@@ -260,6 +260,13 @@ const SETTINGS_SEARCH_ENTRIES: readonly SettingsSearchEntry[] = [
     keywords: "usage limit rate limit session limit reset resume continue automatically quota",
   },
   {
+    id: "behavior:keep-display-awake",
+    section: "behavior",
+    title: "Keep display awake",
+    target: "setting-keep-display-awake",
+    keywords: "screen display dimming turn off sleep awake macOS",
+  },
+  {
     id: "behavior:keep-awake",
     section: "behavior",
     title: "Keep Mac awake",

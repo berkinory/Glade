@@ -873,6 +873,7 @@ export function useAppSettings() {
         ...(currentServerSettings?.keepAwakeMode !== DEFAULT_KEEP_AWAKE_MODE
           ? { keepAwakeMode: DEFAULT_KEEP_AWAKE_MODE }
           : {}),
+        ...(currentServerSettings?.keepDisplayAwake ? { keepDisplayAwake: false } : {}),
         ...(currentServerSettings?.allowComputerUse ? { allowComputerUse: false } : {}),
       };
       const providerSettingsChanged = Boolean(

@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+### New
+
+- Keep the display on with a separate switch alongside Keep Mac awake.
+
 ### Improved
 
 - Long chats, and long replies full of code, open and scroll more smoothly.

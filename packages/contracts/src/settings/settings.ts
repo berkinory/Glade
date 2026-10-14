@@ -67,6 +67,7 @@ export const ServerSettings = Schema.Struct({
   enableAssistantStreaming: Schema.Boolean.pipe(Schema.withDecodingDefault(() => true)),
   enableProviderUpdateChecks: Schema.Boolean.pipe(Schema.withDecodingDefault(() => true)),
   keepAwakeMode: KeepAwakeMode.pipe(Schema.withDecodingDefault(() => DEFAULT_KEEP_AWAKE_MODE)),
+  keepDisplayAwake: Schema.Boolean.pipe(Schema.withDecodingDefault(() => false)),
   autoContinueAtUsageLimit: Schema.Boolean.pipe(Schema.withDecodingDefault(() => true)),
   // Lets agents use the computer in every chat; off lists no computer tools anywhere.
   allowComputerUse: Schema.Boolean.pipe(Schema.withDecodingDefault(() => false)),
@@ -117,6 +118,7 @@ export const ServerSettingsPatch = Schema.Struct({
   enableAssistantStreaming: Schema.optionalKey(Schema.Boolean),
   enableProviderUpdateChecks: Schema.optionalKey(Schema.Boolean),
   keepAwakeMode: Schema.optionalKey(KeepAwakeMode),
+  keepDisplayAwake: Schema.optionalKey(Schema.Boolean),
   autoContinueAtUsageLimit: Schema.optionalKey(Schema.Boolean),
   allowComputerUse: Schema.optionalKey(Schema.Boolean),
   defaultThreadEnvMode: Schema.optionalKey(ThreadEnvironmentMode),

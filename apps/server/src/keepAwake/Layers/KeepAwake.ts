@@ -61,53 +61,55 @@ const make = Effect.gen(function* () {
     error: null,
   });
   const workingThreadsRef = yield* Ref.make<ReadonlySet<string>>(new Set());
-  const wantedRef = yield* Ref.make(false);
+  const wantedRef = yield* Ref.make<"system" | "display" | null>(null);
   const reconcileLock = yield* Semaphore.make(1);
 
   const setActive = (active: boolean) =>
     Ref.update(statusRef, (status) => ({ ...status, active, ...(active ? { error: null } : {}) }));
 
-  // `-i` prevents idle system sleep only; the display may still sleep. `-w` ties the assertion to
+  // `-i` prevents idle system sleep; optional `-d` also keeps the display on. `-w` ties the assertion to
   // this server process, so the kernel releases it even when the server dies without cleanup.
-  const runCaffeinate = Effect.scoped(
-    Effect.gen(function* () {
-      const child = yield* spawnEffectProcess(
-        spawner,
-        CAFFEINATE_PATH,
-        ["-i", "-w", String(process.pid)],
-        { stdin: "ignore", stdout: "ignore", stderr: "ignore" },
-      );
-      yield* setActive(true);
-      return yield* child.exitCode;
-    }),
-  );
+  const runCaffeinate = (keepDisplayAwake: boolean) =>
+    Effect.scoped(
+      Effect.gen(function* () {
+        const child = yield* spawnEffectProcess(
+          spawner,
+          CAFFEINATE_PATH,
+          ["-i", ...(keepDisplayAwake ? ["-d"] : []), "-w", String(process.pid)],
+          { stdin: "ignore", stdout: "ignore", stderr: "ignore" },
+        );
+        yield* setActive(true);
+        return yield* child.exitCode;
+      }),
+    );
 
-  const holdAssertion = Effect.gen(function* () {
-    let failures = 0;
-    while (true) {
-      const startedAt = yield* Clock.currentTimeMillis;
-      const exit = yield* Effect.exit(runCaffeinate);
-      yield* setActive(false);
-      const ranMs = (yield* Clock.currentTimeMillis) - startedAt;
-      failures = ranMs >= STABLE_RUN_MS ? 1 : failures + 1;
-      const detail = describeExit(exit);
-      if (failures >= MAX_CONSECUTIVE_FAILURES) {
-        yield* Effect.logWarning("keep-awake assertion stopped after repeated failures", {
+  const holdAssertion = (keepDisplayAwake: boolean) =>
+    Effect.gen(function* () {
+      let failures = 0;
+      while (true) {
+        const startedAt = yield* Clock.currentTimeMillis;
+        const exit = yield* Effect.exit(runCaffeinate(keepDisplayAwake));
+        yield* setActive(false);
+        const ranMs = (yield* Clock.currentTimeMillis) - startedAt;
+        failures = ranMs >= STABLE_RUN_MS ? 1 : failures + 1;
+        const detail = describeExit(exit);
+        if (failures >= MAX_CONSECUTIVE_FAILURES) {
+          yield* Effect.logWarning("keep-awake assertion stopped after repeated failures", {
+            detail,
+          });
+          yield* Ref.update(statusRef, (status) => ({
+            ...status,
+            error: `caffeinate failed ${failures} times in a row: ${detail}`,
+          }));
+          return;
+        }
+        yield* Effect.logWarning("keep-awake assertion ended unexpectedly; restarting", {
           detail,
+          failures,
         });
-        yield* Ref.update(statusRef, (status) => ({
-          ...status,
-          error: `caffeinate failed ${failures} times in a row: ${detail}`,
-        }));
-        return;
+        yield* Effect.sleep(Duration.seconds(2 ** (failures - 1)));
       }
-      yield* Effect.logWarning("keep-awake assertion ended unexpectedly; restarting", {
-        detail,
-        failures,
-      });
-      yield* Effect.sleep(Duration.seconds(2 ** (failures - 1)));
-    }
-  });
+    });
 
   const reconcile = (holder: FiberHandle.FiberHandle) =>
     reconcileLock.withPermits(1)(
@@ -122,15 +124,16 @@ const make = Effect.gen(function* () {
         if (settings === null) return;
         const mode = settings.keepAwakeMode;
         const workingCount = (yield* Ref.get(workingThreadsRef)).size;
-        const wanted = supported && (mode === "always" || (mode === "agent" && workingCount > 0));
+        const enabled = supported && (mode === "always" || (mode === "agent" && workingCount > 0));
+        const wanted = enabled ? (settings.keepDisplayAwake ? "display" : "system") : null;
         if (wanted === (yield* Ref.get(wantedRef))) return;
         yield* Ref.set(wantedRef, wanted);
-        if (wanted) {
-          yield* FiberHandle.run(holder, holdAssertion);
-          return;
-        }
         yield* FiberHandle.clear(holder);
         yield* Ref.update(statusRef, (status) => ({ ...status, active: false, error: null }));
+        if (wanted !== null) {
+          yield* FiberHandle.run(holder, holdAssertion(wanted === "display"));
+          return;
+        }
       }),
     );
 
