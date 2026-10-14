@@ -38,7 +38,6 @@
   "apps/web/src/lib/starredModels.ts": 3,
   "apps/web/src/routes/_chat.tsx": 2,
   "apps/web/src/terminalStateNormalization.ts": 2,
-  "apps/web/src/theme/theme.logic.shared.ts": 5,
   "packages/contracts/src/settings/settings.ts": 3,
   "packages/contracts/src/terminal/terminal.ts": 1,
   "packages/shared/src/git/git.ts": 1,

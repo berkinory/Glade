@@ -1,4 +1,4 @@
-import type { ThemeVariant, ChromeTheme, ThemePack } from "./themeModel";
+import type { ThemeVariant, ChromeTheme } from "./themeModel";
 import {
   CONTRAST_CURVE_ABOVE_BASELINE,
   CONTRAST_CURVE_BASELINE,
@@ -25,13 +25,13 @@ export function buildSurfaceUnder(
 }
 
 export function buildComposerFocusBorder(
-  pack: ThemePack,
+  theme: ChromeTheme,
   variant: ThemeVariant,
   panelBackground: string,
 ): string {
   const panel = parseHexColor(panelBackground);
-  const anchor = variant === "dark" ? WHITE : parseHexColor(pack.theme.ink);
-  const contrast = normalizeContrastStrength(pack.theme.contrast, variant);
+  const anchor = variant === "dark" ? WHITE : parseHexColor(theme.ink);
+  const contrast = normalizeContrastStrength(theme.contrast, variant);
   const mixAmount = variant === "dark" ? 0.12 + contrast * 0.06 : 0.1 + contrast * 0.05;
   return mixHex(formatHex(panel), formatHex(anchor), mixAmount);
 }

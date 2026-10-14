@@ -34,7 +34,7 @@ export function ThemeFontSettings() {
               size="sm"
               variant="soft"
               className="w-full sm:w-56"
-              value={draft[kind] ?? activeTheme.theme.fonts[kind] ?? ""}
+              value={draft[kind] ?? activeTheme.fonts[kind] ?? ""}
               disabled={kind === "ui" && systemUiFont}
               placeholder={kind === "ui" ? "System default" : "JetBrains Mono"}
               spellCheck={false}

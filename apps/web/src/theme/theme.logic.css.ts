@@ -2,7 +2,7 @@ import {
   normalizeFontFamilyCssValue,
   normalizeMonospaceFontFamilyCssValue,
 } from "../lib/fontFamily";
-import type { ThemeVariant, ChromeTheme, ThemePack } from "./themeModel";
+import type { ThemeVariant, ChromeTheme } from "./themeModel";
 import {
   BLACK,
   PANEL_BASE_ALPHA,
@@ -24,11 +24,11 @@ import {
 } from "./theme.logic.color";
 
 export function buildThemeCssVariables(
-  pack: ThemePack,
+  theme: ChromeTheme,
   variant: ThemeVariant,
   options?: { systemUiFont?: boolean },
 ): ThemeCssVariableBuild {
-  const resolvedTokens = buildResolvedThemeTokens(pack, variant);
+  const resolvedTokens = buildResolvedThemeTokens(theme, variant);
   const codexVariables = resolvedTokens.codexVariables;
   const readCodexVariable = (name: string) => getRequiredVariable(codexVariables, name);
 
@@ -43,7 +43,7 @@ export function buildThemeCssVariables(
 
   const composerPickerMenuSurface = "color-mix(in oklab, var(--popover) 70%, transparent)";
   const composerFocusBorder = buildComposerFocusBorder(
-    pack,
+    theme,
     variant,
     resolvedTokens.computed.panel,
   );
@@ -71,10 +71,10 @@ export function buildThemeCssVariables(
     "--card": readCodexVariable("--color-background-panel"),
     "--card-foreground": readCodexVariable("--color-text-foreground"),
     "--composer-surface": composerSurface,
-    "--destructive": pack.theme.semanticColors.diffRemoved,
-    "--destructive-foreground": pack.theme.surface,
+    "--destructive": theme.semanticColors.diffRemoved,
+    "--destructive-foreground": theme.surface,
     "--foreground": readCodexVariable("--color-text-foreground"),
-    "--info": pack.theme.accent,
+    "--info": theme.accent,
 
     "--info-foreground": readCodexVariable("--color-text-accent"),
     "--input": readCodexVariable("--color-background-control-opaque"),
@@ -95,15 +95,15 @@ export function buildThemeCssVariables(
     "--sidebar-accent-foreground": readCodexVariable("--color-text-foreground"),
     "--sidebar-border": readCodexVariable("--color-border"),
     "--sidebar-foreground": readCodexVariable("--color-text-foreground"),
-    "--success": pack.theme.semanticColors.diffAdded,
-    "--success-foreground": pack.theme.surface,
-    "--theme-font-code-family": normalizeMonospaceFontFamilyCssValue(pack.theme.fonts.code) ?? "",
+    "--success": theme.semanticColors.diffAdded,
+    "--success-foreground": theme.surface,
+    "--theme-font-code-family": normalizeMonospaceFontFamilyCssValue(theme.fonts.code) ?? "",
 
     "--theme-font-ui-family": options?.systemUiFont
       ? ""
-      : (normalizeFontFamilyCssValue(pack.theme.fonts.ui) ?? ""),
+      : (normalizeFontFamilyCssValue(theme.fonts.ui) ?? ""),
     "--warning": warningColor,
-    "--warning-foreground": pack.theme.surface,
+    "--warning-foreground": theme.surface,
   };
 
   return {
@@ -115,8 +115,8 @@ export function buildThemeCssVariables(
   };
 }
 
-function buildResolvedThemeTokens(pack: ThemePack, variant: ThemeVariant): ResolvedThemeTokens {
-  const computedTheme = buildComputedTheme(pack.theme, variant);
+function buildResolvedThemeTokens(theme: ChromeTheme, variant: ThemeVariant): ResolvedThemeTokens {
+  const computedTheme = buildComputedTheme(theme, variant);
   const derived =
     variant === "light"
       ? buildLightDerivedTokens(computedTheme)
@@ -400,16 +400,16 @@ function buildLightDerivedTokens(theme: ReturnType<typeof buildComputedTheme>) {
     elevatedSecondaryOpaque: formatOpaqueRgb(elevatedSecondaryBase),
     iconAccent: theme.theme.accent,
     iconPrimary: theme.theme.ink,
-    iconSecondary: formatRgba(theme.ink, 0.65 + theme.contrast * 0.1),
-    iconTertiary: formatRgba(theme.ink, 0.45 + theme.contrast * 0.1),
+    iconSecondary: formatRgba(theme.ink, 0.8),
+    iconTertiary: formatRgba(theme.ink, 0.68),
     simpleScrim: formatRgba(BLACK, 0.08 + theme.contrast * 0.04),
     textAccent: theme.theme.accent,
     textButtonPrimary: theme.theme.surface,
     textButtonSecondary: theme.theme.ink,
-    textButtonTertiary: formatRgba(theme.ink, 0.45 + theme.contrast * 0.1),
+    textButtonTertiary: formatRgba(theme.ink, 0.68),
     textForeground: theme.theme.ink,
-    textForegroundSecondary: formatRgba(theme.ink, 0.65 + theme.contrast * 0.1),
-    textForegroundTertiary: formatRgba(theme.ink, 0.45 + theme.contrast * 0.1),
+    textForegroundSecondary: formatRgba(theme.ink, 0.8),
+    textForegroundTertiary: formatRgba(theme.ink, 0.68),
   };
 }
 

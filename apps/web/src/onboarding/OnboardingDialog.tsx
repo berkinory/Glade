@@ -16,7 +16,6 @@ import { useProviderStatusesForLocalConfig } from "~/hooks/useProviderStatusesFo
 import { useTheme } from "~/hooks/useTheme";
 import { findProviderStatus } from "~/lib/providerAvailability";
 import { cn } from "~/lib/utils";
-import { CODE_THEME_OPTIONS } from "../theme/theme.logic.shared";
 import { ONBOARDING_INSET_CLASS_NAME } from "./layout";
 import {
   classifyProviderSetup,
@@ -68,7 +67,7 @@ function OnboardingFlow(props: {
   const { settings } = useAppSettings();
   const statuses = useProviderStatusesForLocalConfig(LOCAL_ENVIRONMENT);
   const providerDetection = useProviderDetection();
-  const { activeTheme } = useTheme();
+  const { theme } = useTheme();
   const goBack = () => setStep(previousOnboardingStep(step));
   const goNext = () => setStep(nextOnboardingStep(step));
 
@@ -88,12 +87,9 @@ function OnboardingFlow(props: {
       }),
     })),
   );
-  const themeLabel =
-    CODE_THEME_OPTIONS.find((option) => option.id === activeTheme.codeThemeId)?.label ??
-    activeTheme.codeThemeId;
   const doneSummary = [
     describeOnboardingAgentSummary(providerSummary),
-    `${themeLabel} theme`,
+    theme === "system" ? "System appearance" : `${theme === "dark" ? "Dark" : "Light"} appearance`,
     projectResults.length > 0
       ? `${plural(projectResults.length, "project")} added`
       : "No project yet",

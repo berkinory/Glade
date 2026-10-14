@@ -8,6 +8,8 @@
 
 ### Improved
 
+- Light mode is easier on the eyes, with softer neutral backgrounds and clearer secondary text.
+
 - Chat sidebar icons are more discreet, standalone remote chats show their host, and pinned project chats no longer repeat the project name.
 
 - Browser pages adapt continuously while resizing the sidebar.

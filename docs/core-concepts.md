@@ -279,7 +279,7 @@ Activity uses the model recorded for a historical turn or its reliable provider 
 
 ## Command palette search
 
-The sidebar command palette searches chat titles, project names, commands, themes and settings.
+The sidebar command palette searches chat titles, project names, commands, appearance modes and settings.
 Choosing a setting opens its Settings section at that row. Message search covers settled user
 and assistant messages in every chat the sidebar lists, including chats not opened recently:
 archived, deleted and subagent chats stay out, and messages still streaming are not matched

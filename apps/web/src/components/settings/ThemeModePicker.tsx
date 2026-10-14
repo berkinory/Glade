@@ -16,11 +16,11 @@ const MOCKUP_COLORS: Record<
 > = {
   light: {
     backdrop: "#e9e9e9",
-    panel: "#f6f6f6",
-    headerBar: "#cfcfcf",
-    headerBarSoft: "#e0e0e0",
-    card: "#ffffff",
-    rowBar: "#e3e3e3",
+    panel: "#e2e3e5",
+    headerBar: "#656769",
+    headerBarSoft: "#858789",
+    card: "#e5e6e8",
+    rowBar: "#858789",
     hairline: "#efefef",
   },
   dark: {

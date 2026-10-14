@@ -6,7 +6,7 @@ export interface ThemeFonts {
   code: string | null;
 }
 
-export interface ThemeSemanticColors {
+interface ThemeSemanticColors {
   diffAdded: string;
   diffRemoved: string;
   skill: string;
@@ -21,21 +21,8 @@ export interface ChromeTheme {
   surface: string;
 }
 
-export interface ThemePack {
-  codeThemeId: string;
-  theme: ChromeTheme;
-}
-
 export interface ThemeState {
-  chromeThemes: Record<ThemeVariant, ChromeTheme>;
-  codeThemeIds: Record<ThemeVariant, string>;
+  fonts: Record<ThemeVariant, ThemeFonts>;
   mode: ThemeMode;
-
   systemUiFont: boolean;
-}
-
-export interface CodeThemeOption {
-  id: string;
-  label: string;
-  variants: readonly ThemeVariant[];
 }

@@ -4,7 +4,6 @@ import type { ProviderKind } from "@glade/contracts/core/baseSchemas";
 import { foldSearchText } from "@glade/shared/text/searchQuery";
 import { basenameOfPath } from "../file-icons";
 import type { ProjectAppearance } from "../lib/projectAppearance";
-import type { ThemeMode, ThemeVariant } from "../theme/themeModel";
 
 export interface SidebarSearchAction {
   id: string;
@@ -18,18 +17,6 @@ export interface SidebarSearchAction {
   icon?: ComponentType<{ className?: string }>;
 
   requiresQuery?: boolean;
-}
-
-export interface SidebarSearchTheme {
-  id: string;
-  type: "mode" | "code-theme";
-  label: string;
-  description: string;
-  keywords?: readonly string[];
-  mode?: ThemeMode;
-  codeThemeId?: string;
-  variant?: ThemeVariant;
-  isActive: boolean;
 }
 
 export interface SidebarSearchProject {
@@ -266,22 +253,6 @@ function scoreAction(action: SidebarSearchAction, query: string): number | null 
   return null;
 }
 
-function scoreTheme(theme: SidebarSearchTheme, query: string): number | null {
-  if (!query) return 0;
-
-  const label = normalizeText(theme.label);
-  const description = normalizeText(theme.description);
-  const keywords = (theme.keywords ?? []).map(normalizeText);
-
-  if (label === query) return 145;
-  if (keywords.some((keyword) => keyword === query)) return 135;
-  if (label.startsWith(query)) return 125;
-  if (label.includes(query)) return 110;
-  if (keywords.some((keyword) => keyword.includes(query))) return 95;
-  if (description.includes(query)) return 75;
-  return null;
-}
-
 function scoreProject(project: SidebarSearchProject, query: string): number | null {
   if (!query) return null;
 
@@ -325,32 +296,6 @@ export function matchSidebarSearchActions(
       return left.index - right.index;
     })
     .map((candidate) => candidate.action);
-}
-
-export function matchSidebarSearchThemes(
-  themes: readonly SidebarSearchTheme[],
-  query: string,
-): SidebarSearchTheme[] {
-  const normalizedQuery = normalizeText(query);
-  if (!normalizedQuery) {
-    return [...themes];
-  }
-
-  return themes
-    .map((theme, index) => ({
-      theme,
-      index,
-      score: scoreTheme(theme, normalizedQuery),
-    }))
-    .filter((candidate) => candidate.score !== null)
-    .toSorted((left, right) => {
-      if (left.score !== right.score) return (right.score ?? 0) - (left.score ?? 0);
-      if (left.theme.isActive !== right.theme.isActive) {
-        return left.theme.isActive ? -1 : 1;
-      }
-      return left.index - right.index;
-    })
-    .map((candidate) => candidate.theme);
 }
 
 export function matchSidebarSearchProjects(

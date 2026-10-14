@@ -97,21 +97,6 @@ export function buildThemeCommandItems(input: {
   }
   return [];
 }
-export function CodeThemeBadge(props: { accent: string; background: string; foreground: string }) {
-  return (
-    <span
-      aria-hidden="true"
-      className="inline-flex size-6 shrink-0 items-center justify-center rounded-full border font-medium text-ui-xs leading-none tracking-[-0.01em]"
-      style={{
-        backgroundColor: props.background,
-        borderColor: `${props.foreground}26`,
-        color: props.accent,
-      }}
-    >
-      Aa
-    </span>
-  );
-}
 export const THEME_MODE_ICONS: Record<"system" | "light" | "dark", IconComponent> = {
   system: LaptopIcon,
   light: SunIcon,

@@ -58,12 +58,10 @@ import {
   SettingsRow,
   SettingsSection,
   SettingsSectionShell,
-  SettingsCard,
 } from "../components/settings/SettingsPanelPrimitives";
 import { SkillsSettingsPanel } from "../components/settings/SkillsSettingsPanel";
 import { ThemeModePicker } from "../components/settings/ThemeModePicker";
 import { SidebarHeaderNavigationControls } from "../components/SidebarHeaderNavigationControls";
-import { ThemePicker } from "../components/settings/ThemePicker";
 import { KeepAwakeSettingsRow } from "../components/settings/KeepAwakeSettingsRow";
 import { WindowMaterialSettingsRow } from "../components/settings/WindowMaterialSettingsRow";
 import { ThemeFontSettings } from "../components/settings/ThemeFontSettings";
@@ -263,7 +261,7 @@ function SettingsRouteView() {
   async function restoreDefaults() {
     const api = readNativeApi();
     const confirmed = await (api ?? ensureNativeApi()).dialogs.confirm(
-      "Restore default settings?\nThis resets Glade preferences, theme customizations, and provider preferences.",
+      "Restore default settings?\nThis resets Glade preferences, appearance settings, and provider preferences.",
     );
     if (!confirmed) return;
 
@@ -328,14 +326,6 @@ function SettingsRouteView() {
         <div id={settingRowAnchorId("Theme")} className="scroll-mt-24 pb-1.5">
           <ThemeModePicker value={theme} onValueChange={setTheme} ariaLabel="Theme preference" />
         </div>
-
-        <SettingsCard>
-          <SettingsRow
-            title="Theme"
-            description="Choose a theme for the current light or dark appearance."
-            control={<ThemePicker />}
-          />
-        </SettingsCard>
       </SettingsSectionShell>
 
       {isElectron ? (

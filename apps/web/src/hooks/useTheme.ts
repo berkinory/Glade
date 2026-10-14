@@ -3,10 +3,9 @@ import { initializeDesktopWindowMaterial } from "./useDesktopWindowMaterial";
 import { DEFAULT_THEME_STATE } from "../theme/theme.logic.shared";
 import {
   parseStoredThemeState,
-  resolveThemePack,
+  resolveTheme,
   resolveThemeVariant,
   serializeThemeState,
-  setThemeCodeThemeId,
   setThemeFonts,
 } from "../theme/theme.logic.state";
 import { buildThemeCssVariables } from "../theme/theme.logic.css";
@@ -149,13 +148,12 @@ function applyThemeState(state: ThemeState, suppressTransitions = false) {
   }
 
   const variant = resolveThemeVariant(state.mode, getSystemDark());
-  const activeTheme = resolveThemePack(state, variant);
+  const activeTheme = resolveTheme(state, variant);
   const cssVariableBuild = buildThemeCssVariables(activeTheme, variant, {
     systemUiFont: state.systemUiFont,
   });
 
   root.classList.toggle("dark", variant === "dark");
-  root.setAttribute("data-code-theme-id", activeTheme.codeThemeId);
   root.setAttribute("data-theme-mode", state.mode);
   root.setAttribute("data-theme-variant", variant);
 
@@ -224,10 +222,6 @@ function updateThemeFonts(variant: ThemeVariant, patch: Partial<ThemeFonts>) {
   updateStoredThemeState((state) => setThemeFonts(state, variant, patch));
 }
 
-function setCodeThemeId(variant: ThemeVariant, codeThemeId: string) {
-  updateStoredThemeState((state) => setThemeCodeThemeId(state, variant, codeThemeId));
-}
-
 export function useTheme() {
   const snapshot = useSyncExternalStore(subscribe, getSnapshot, () => ({
     state: DEFAULT_THEME_STATE,
@@ -235,9 +229,7 @@ export function useTheme() {
   }));
   const theme = snapshot.state.mode;
   const resolvedTheme = resolveThemeVariant(theme, snapshot.systemDark);
-  const activeTheme = resolveThemePack(snapshot.state, resolvedTheme);
-  const darkTheme = resolveThemePack(snapshot.state, "dark");
-  const lightTheme = resolveThemePack(snapshot.state, "light");
+  const activeTheme = resolveTheme(snapshot.state, resolvedTheme);
   useEffect(() => {
     applyThemeState(snapshot.state);
   }, [snapshot.state]);
@@ -246,14 +238,10 @@ export function useTheme() {
     activeTheme,
     systemUiFont: snapshot.state.systemUiFont,
     setSystemUiFont,
-    darkTheme,
-    lightTheme,
     resetAllThemes,
     resolvedTheme,
-    setCodeThemeId,
     setTheme,
     theme,
-    themeState: snapshot.state,
     updateThemeFonts,
   } as const;
 }

@@ -24,7 +24,6 @@ import {
 import {
   ACTION_ICONS,
   buildThemeCommandItems,
-  CodeThemeBadge,
   THEME_MODE_ICONS,
 } from "./SidebarSearchPaletteCommands";
 import { ProjectSidebarIcon } from "./ProjectSidebarIcon";
@@ -47,16 +46,13 @@ import {
 import {
   type SidebarSearchAction,
   type SidebarSearchProject,
-  type SidebarSearchTheme,
   type SidebarSearchThread,
   buildSidebarSearchServerThreadMatches,
   matchSidebarSearchActions,
   matchSidebarSearchProjects,
-  matchSidebarSearchThemes,
   matchSidebarSearchThreads,
 } from "./SidebarSearchPalette.logic";
 import { useTheme } from "../hooks/useTheme";
-import { getAvailableCodeThemes, getCodeThemeSeed } from "../theme/theme.logic.shared";
 import {
   Command,
   CommandDialog,
@@ -124,7 +120,7 @@ function expandHomeInPath(value: string, homeDir: string | null): string {
   return value;
 }
 export function SidebarSearchPalette(props: SidebarSearchPaletteProps) {
-  const { activeTheme, resolvedTheme, setCodeThemeId, setTheme, theme } = useTheme();
+  const { resolvedTheme, setTheme, theme } = useTheme();
   const [query, setQuery] = useState("");
   const [highlightedItemValue, setHighlightedItemValue] = useState<string | null>(null);
   const [addProjectErrorState, setAddProjectErrorState] = useState<{
@@ -204,26 +200,7 @@ export function SidebarSearchPalette(props: SidebarSearchPaletteProps) {
     resolvedTheme,
     theme,
   });
-  const currentCodeThemeItems: SidebarSearchTheme[] = getAvailableCodeThemes(resolvedTheme).map(
-    (option) => ({
-      id: `theme-code:${resolvedTheme}:${option.id}`,
-      type: "code-theme",
-      label: option.label,
-      description: `Apply to the current ${resolvedTheme} theme slot.`,
-      keywords: ["appearance", "theme", resolvedTheme, option.id],
-      codeThemeId: option.id,
-      variant: resolvedTheme,
-      isActive: activeTheme.codeThemeId === option.id,
-    }),
-  );
-  const matchedCurrentThemes =
-    isBrowsing || query.trim().length === 0
-      ? []
-      : matchSidebarSearchThemes(currentCodeThemeItems, query);
-  const showThemeSection =
-    !isBrowsing &&
-    query.trim().length > 0 &&
-    (themeCommandItems.length > 0 || matchedCurrentThemes.length > 0);
+  const showThemeSection = !isBrowsing && query.trim().length > 0 && themeCommandItems.length > 0;
   const matchedProjects = isBrowsing ? [] : matchSidebarSearchProjects(props.projects, query);
   // Only recently opened chats keep their messages on this client, so message hits for the rest
   // come from the server's persisted history.
@@ -251,7 +228,6 @@ export function SidebarSearchPalette(props: SidebarSearchPaletteProps) {
     matchedActions.length > 0 ||
     matchedSettings.length > 0 ||
     themeCommandItems.length > 0 ||
-    matchedCurrentThemes.length > 0 ||
     matchedProjects.length > 0 ||
     matchedThreads.length > 0;
   const hasHighlightedFolderItem =
@@ -612,54 +588,6 @@ export function SidebarSearchPalette(props: SidebarSearchPaletteProps) {
                             aria-hidden={!themeCommandItem.isActive}
                           >
                             {themeCommandItem.isActive ? (
-                              <CheckIcon className={PALETTE_ICON_CLASS} />
-                            ) : null}
-                          </span>
-                        </CommandItem>
-                      );
-                    })}
-                  </CommandGroup>
-                ) : null}
-                {matchedCurrentThemes.length > 0 ? (
-                  <CommandGroup>
-                    <CommandGroupLabel className={PALETTE_GROUP_LABEL_CLASS}>
-                      <span>{resolvedTheme === "dark" ? "Dark themes" : "Light themes"}</span>
-                    </CommandGroupLabel>
-                    {matchedCurrentThemes.map((themeItem) => {
-                      const seed =
-                        themeItem.codeThemeId && themeItem.variant
-                          ? getCodeThemeSeed(themeItem.codeThemeId, themeItem.variant)
-                          : null;
-                      return (
-                        <CommandItem
-                          key={themeItem.id}
-                          value={themeItem.id}
-                          className={PALETTE_ITEM_CLASS}
-                          onMouseDown={(event) => {
-                            event.preventDefault();
-                          }}
-                          onClick={() => {
-                            if (!themeItem.codeThemeId || !themeItem.variant) return;
-                            props.onOpenChange(false);
-                            setCodeThemeId(themeItem.variant, themeItem.codeThemeId);
-                          }}
-                        >
-                          {seed ? (
-                            <CodeThemeBadge
-                              accent={seed.accent}
-                              background={seed.surface}
-                              foreground={seed.ink}
-                            />
-                          ) : null}
-                          <span className={PALETTE_TEXT_CLASS}>{themeItem.label}</span>
-                          <span className={PALETTE_META_CLASS}>
-                            {resolvedTheme === "dark" ? "Dark color theme" : "Light color theme"}
-                          </span>
-                          <span
-                            className="flex size-3.5 shrink-0 items-center justify-center"
-                            aria-hidden={!themeItem.isActive}
-                          >
-                            {themeItem.isActive ? (
                               <CheckIcon className={PALETTE_ICON_CLASS} />
                             ) : null}
                           </span>

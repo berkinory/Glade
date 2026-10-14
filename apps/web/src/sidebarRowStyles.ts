@@ -30,7 +30,8 @@ export const SIDEBAR_PROJECT_NAME_CLASS_NAME = [
   SIDEBAR_ROW_LABEL_TEXT_CLASS_NAME,
 ].join(" ");
 
-export const SIDEBAR_SECTION_LABEL_CLASS_NAME = "text-ui font-normal text-muted-foreground/58";
+export const SIDEBAR_SECTION_LABEL_CLASS_NAME =
+  "text-ui font-normal text-muted-foreground dark:text-muted-foreground/58";
 
 export const SIDEBAR_HEADER_ROW_CLASS_NAME = [
   "flex w-full min-w-0 cursor-pointer items-center text-left select-none",
