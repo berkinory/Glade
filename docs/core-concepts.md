@@ -352,6 +352,10 @@ Agent details retain the mounted conversation, including scroll position and exp
 
 Ordinary Markdown images open the existing image preview with click, Enter or Space. Images inside links follow that link exclusively, including unavailable local images. Local previews still require workspace authorization. Closing a preview returns focus to its trigger.
 
+Newly completed assistant replies and image tool previews preserve local images in a content-addressed store. The same bytes and image format share one stored file across messages, tools and forks. Editing or deleting the source does not change those saved previews. Existing chat history is not retroactively captured, and remote image URLs remain remote.
+
+Capture uses the local image path allowlist, limits each image to 32 MiB, and caps this store at 5 GiB or 20,000 images. A failed capture shows an explicit unavailable notice instead of silently retaining a mutable preview. References commit with conversation events; deleting or rolling back the last reference makes a snapshot eligible for cleanup after its one-hour preparation lease. Cleanup runs at startup and every five minutes. Workspace file previews continue to show the current file.
+
 Use `[chat title](#chat=THREAD_ID)` in Markdown to link a conversation in this Glade workspace. The fragment is an internal Markdown convention mapped to the existing `/$threadId` route, not an operating-system URL handler. IDs may be percent-encoded and must decode to 1–128 ASCII letters, digits, underscores or hyphens. The target must exist in the accessible server chat list; missing or malformed targets show an error without navigating or discarding drafts. Titles are labels, never lookup keys. Ordinary web and file links retain their existing handling.
 
 ## Sidebar continuity

@@ -1,3 +1,4 @@
+import { chatImageSnapshotName } from "@glade/shared/attachments/chatImageSnapshots";
 import {
   LOCAL_IMAGE_ROUTE_PATH,
   SUPPORTED_LOCAL_IMAGE_EXTENSION_REGEX,
@@ -44,6 +45,7 @@ export function isLocalImageMarkdownSrc(src: string | undefined): src is string 
 }
 
 export function localImageAbsolutePath(src: string): string | null {
+  if (chatImageSnapshotName(src)) return null;
   const normalized = normalizeMarkdownImagePath(src);
   return isLocalImageMarkdownSrc(src) && isLocalAbsolutePath(normalized) ? normalized : null;
 }
@@ -57,6 +59,9 @@ export function buildLocalImageUrl(input: {
 
   readonly cacheKey?: string | number | undefined;
 }): string {
+  if (chatImageSnapshotName(input.src)) {
+    return resolveWsHttpUrl(`${input.src}${input.download ? "?download=1" : ""}`);
+  }
   const params = new URLSearchParams({ path: normalizeMarkdownImagePath(input.src) });
   if (input.cwd) {
     params.set("cwd", input.cwd);

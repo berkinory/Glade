@@ -1,3 +1,5 @@
+import * as SqlClient from "effect/unstable/sql/SqlClient";
+import { cleanChatImageSnapshots } from "./chatImages/cleanup";
 import { normalizeOperationError } from "../platform/operationError.ts";
 import { randomUUID } from "node:crypto";
 import fs from "node:fs/promises";
@@ -152,13 +154,22 @@ const drainCleanupBatches = <E, R>(
 export const ManagedAttachmentCleanupLive = Layer.effect(
   ManagedAttachmentCleanup,
   Effect.gen(function* () {
+    const sql = yield* SqlClient.SqlClient;
     const repository = yield* ManagedAttachmentRepository;
     const config = yield* ServerConfig;
     const cleanupLock = yield* Semaphore.make(1);
     const runBatch = cleanupLock.withPermits(1)(
       runManagedAttachmentCleanupBatch.pipe(
+        Effect.flatMap((count) =>
+          cleanChatImageSnapshots({
+            sql,
+            attachmentsDir: config.attachmentsDir,
+            now: new Date(),
+          }).pipe(Effect.map((snapshots) => Math.max(count, snapshots))),
+        ),
         Effect.provideService(ManagedAttachmentRepository, repository),
         Effect.provideService(ServerConfig, config),
+        Effect.provideService(SqlClient.SqlClient, sql),
       ),
     );
     yield* runBatch.pipe(

@@ -1,3 +1,4 @@
+import ChatImageSnapshots from "./Migrations/014_ChatImageSnapshots.ts";
 import CommandReceiptOwner from "./Migrations/005_CommandReceiptOwner.ts";
 import MessageAttribution from "./Migrations/004_MessageAttribution.ts";
 import * as Migrator from "effect/unstable/sql/Migrator";
@@ -33,6 +34,7 @@ export const migrationEntries = [
   [11, "DropProjectImportTables", DropProjectImportTables],
   [12, "BackgroundWorkActivityIndex", BackgroundWorkActivityIndex],
   [13, "ThreadDetailReadIndexes", ThreadDetailReadIndexes],
+  [14, "ChatImageSnapshots", ChatImageSnapshots],
 ] as const;
 
 const LATEST_MIGRATION_ID = Math.max(...migrationEntries.map(([id]) => id));

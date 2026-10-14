@@ -1,3 +1,5 @@
+import { preserveCommandImages } from "../../attachments/chatImages/commands";
+import { recordChatImageReferences } from "../../attachments/chatImages/references";
 import {
   claimVisualReplyAttachments,
   visualReplyAttachmentIds,
@@ -868,7 +870,7 @@ const makeOrchestrationEngine = Effect.gen(function* () {
       }
     });
 
-  // Preparation only reads, except for staging fork attachment copies, which nothing references
+  // Preparation stages immutable images and fork attachment copies, which nothing references
   // until the commit claims them. It records what it read so the commit can tell whether another
   // command changed those aggregates, or the whole read model was replaced, before this one committed.
   const prepareCommand = (
@@ -949,7 +951,29 @@ const makeOrchestrationEngine = Effect.gen(function* () {
         }
       }
 
-      const overlay = yield* loadDeciderOverlay(command);
+      let overlay = yield* loadDeciderOverlay(command);
+      if (
+        command.type === "thread.message.assistant.complete" ||
+        command.type === "thread.activity.append"
+      ) {
+        const originalOverlay = overlay;
+        const images = yield* preserveCommandImages({
+          command,
+          model: overlay(commandReadModel),
+          attachmentsDir: serverConfig.attachmentsDir,
+          sql,
+        }).pipe(
+          Effect.mapError(() =>
+            makeCommandInternalError(command, "Could not preserve chat images."),
+          ),
+        );
+        command = images.command;
+        const preparedThread = images.model.threads.find(
+          (thread) => thread.id === ("threadId" in command ? command.threadId : undefined),
+        );
+        if (preparedThread)
+          overlay = (model) => overlayThread(originalOverlay(model), preparedThread);
+      }
       if (command.type === "thread.fork.create") {
         const forkCommand = command;
         const source = overlay(commandReadModel).threads.find(
@@ -1091,6 +1115,9 @@ const makeOrchestrationEngine = Effect.gen(function* () {
               if (deferredPhaseSettled) deferredSettledSequences.add(savedEvent.sequence);
               afterCommitEffects.push(afterCommit);
             }
+            yield* recordChatImageReferences(sql, savedEvent).pipe(
+              Effect.mapError(toPersistenceSqlError("recordChatImageReferences")),
+            );
             committedEvents.push(savedEvent);
           }
 

@@ -26,6 +26,7 @@ export interface WorkLogToolDetails {
   // Arguments the agent passed, for tools that have no dedicated presentation.
   input?: Readonly<Record<string, unknown>>;
   isError?: boolean;
+  imageSnapshotUrl?: string | null;
   command?: string;
   output?: WorkLogToolOutputDetails;
   diff?: string;
@@ -476,11 +477,15 @@ function deriveGenericToolDetails(
   const toolInput = extractToolInput(input.payload);
   const result = extractToolResult(input.payload);
   const truncated = asRecord(input.payload?.data)?.__gladeTruncated === true;
-  if (!toolInput && !result.text) return undefined;
+  if (!toolInput && !result.text && input.payload?.imageSnapshotUrl === undefined) return undefined;
   return {
     kind: "tool",
     title: detailsTitle(input),
     ...(toolInput ? { input: toolInput } : {}),
+    ...(typeof input.payload?.imageSnapshotUrl === "string" ||
+    input.payload?.imageSnapshotUrl === null
+      ? { imageSnapshotUrl: input.payload.imageSnapshotUrl }
+      : {}),
     ...(result.text || truncated
       ? {
           output: {
@@ -536,6 +541,12 @@ export function mergeWorkLogToolDetails(
     ...((right.content ?? left.content) ? { content: right.content ?? left.content } : {}),
     ...((right.edits ?? left.edits) ? { edits: right.edits ?? left.edits } : {}),
     ...(files ? { files } : {}),
+    ...(right.imageSnapshotUrl !== undefined || left.imageSnapshotUrl !== undefined
+      ? {
+          imageSnapshotUrl:
+            right.imageSnapshotUrl !== undefined ? right.imageSnapshotUrl : left.imageSnapshotUrl,
+        }
+      : {}),
     ...((right.input ?? left.input) ? { input: right.input ?? left.input } : {}),
     ...((right.isError ?? left.isError) ? { isError: true } : {}),
   };

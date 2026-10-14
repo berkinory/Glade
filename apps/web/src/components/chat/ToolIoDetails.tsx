@@ -15,13 +15,17 @@ export function ToolIoDetails({
   details: WorkLogToolDetails;
   toolKind: WorkLogToolKind | undefined;
 }) {
-  const viewedImage = toolKind === "image_view" ? toolInputFilePath(details.input) : null;
+  if (details.imageSnapshotUrl === null)
+    return <p className="text-ui-sm text-muted-foreground">Image could not be preserved.</p>;
+  const viewedImage =
+    details.imageSnapshotUrl ??
+    (toolKind === "image_view" ? toolInputFilePath(details.input) : null);
   if (viewedImage && isLocalImageMarkdownSrc(viewedImage)) {
     // The image itself, through the same local preview a reply's images use; it loads only once
     // the row is opened.
     return (
       <ChatMarkdown
-        text={`![${basenameOfPath(viewedImage)}](<${viewedImage}>)`}
+        text={`![${basenameOfPath(toolInputFilePath(details.input) ?? viewedImage)}](<${viewedImage}>)`}
         cwd={undefined}
         className={TOOL_DETAILS_MARKDOWN_CLASS_NAME}
       />

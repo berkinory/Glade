@@ -1,3 +1,5 @@
+import { writeFileSync } from "node:fs";
+import path from "node:path";
 import type { OrchestrationEvent } from "@glade/contracts/orchestration/events";
 import type { ProviderRuntimeEvent } from "@glade/contracts/provider/runtimeEvents";
 import { CommandId } from "@glade/contracts/core/baseSchemas";
@@ -153,7 +155,8 @@ describe("ProviderRuntimeIngestion assistant streaming", () => {
   it("does not re-emit message-sent events when the same image_generation completion replays", async () => {
     const harness = await createHarness();
     const turnId = asTurnId("turn-image-replay");
-    const imagePath = "/tmp/provider-thread/replay.png";
+    const imagePath = path.join(createHarness.makeTempDir("glade-image-replay-"), "replay.svg");
+    writeFileSync(imagePath, '<svg xmlns="http://www.w3.org/2000/svg" width="1" height="1"/>');
 
     harness.emit({
       type: "turn.started",
@@ -225,7 +228,8 @@ describe("ProviderRuntimeIngestion assistant streaming", () => {
       entry.messages.some(
         (message) =>
           message.id === "assistant:answer-replay" &&
-          message.text.includes(`![Generated image](${imagePath})`),
+          message.text.includes("/attachments/chat-images/") &&
+          message.text.includes(imagePath),
       ),
     );
 
@@ -248,7 +252,7 @@ describe("ProviderRuntimeIngestion assistant streaming", () => {
     const finalText = await readAnswerText();
 
     expect(finalText).toBe(eventCountBeforeReplay);
-    const occurrences = finalText.split(`![Generated image](${imagePath})`).length - 1;
+    const occurrences = finalText.split("![Generated image]").length - 1;
     expect(occurrences).toBe(1);
   });
 

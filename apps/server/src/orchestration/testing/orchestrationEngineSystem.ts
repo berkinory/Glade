@@ -1,3 +1,4 @@
+import * as SqlClient from "effect/unstable/sql/SqlClient";
 import * as NodeServices from "@effect/platform-node/NodeServices";
 import { CommandId, ProjectId, ThreadId } from "@glade/contracts/core/baseSchemas";
 import { type OrchestrationCommand } from "@glade/contracts/orchestration/commands";
@@ -51,7 +52,7 @@ export async function createOrchestrationSystem(overrides?: {
           : OrchestrationEventStoreLive,
       ),
       Layer.provide(OrchestrationCommandReceiptRepositoryLive),
-      Layer.provide(SqlitePersistenceMemory),
+      Layer.provideMerge(SqlitePersistenceMemory),
       Layer.provideMerge(
         ServerConfig.layerTest(process.cwd(), { prefix: "glade-orchestration-engine-test-" }),
       ),
@@ -64,6 +65,8 @@ export async function createOrchestrationSystem(overrides?: {
     Effect.service(ManagedAttachmentRepository),
   );
   return {
+    sql: await runtime.runPromise(Effect.service(SqlClient.SqlClient)),
+    config: await runtime.runPromise(Effect.service(ServerConfig)),
     engine,
     snapshotQuery,
     managedAttachmentRepository,

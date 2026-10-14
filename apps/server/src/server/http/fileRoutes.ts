@@ -1,3 +1,4 @@
+import { chatImageSnapshotName } from "@glade/shared/attachments/chatImageSnapshots";
 import { downloadDisposition } from "./downloadDisposition";
 import { HttpRouter, HttpServerRequest, HttpServerResponse } from "effect/unstable/http";
 import {
@@ -99,6 +100,13 @@ export const attachmentsEffectRouteLayer = HttpRouter.add(
       return HttpServerResponse.text("Not Found", { status: 404 });
     }
 
+    if (
+      normalizedRelativePath.startsWith("chat-images/") &&
+      !chatImageSnapshotName(`${ATTACHMENTS_ROUTE_PREFIX}/${normalizedRelativePath}`)
+    ) {
+      return HttpServerResponse.text("Not Found", { status: 404 });
+    }
+
     const isIdLookup =
       !normalizedRelativePath.includes("/") && !normalizedRelativePath.includes(".");
     const managedBlob =
@@ -150,8 +158,14 @@ export const attachmentsEffectRouteLayer = HttpRouter.add(
       sizeBytes: Number(fileInfo.size),
 
       headers: {
-        "Cache-Control": "private, no-store",
-        Pragma: "no-cache",
+        ...(normalizedRelativePath.startsWith("chat-images/")
+          ? { "Cache-Control": "private, max-age=31536000, immutable" }
+          : { "Cache-Control": "private, no-store", Pragma: "no-cache" }),
+        ...localPreviewCorsHeaders({ config, request, url }),
+        ...(filePath.toLowerCase().endsWith(".svg") ? SVG_DOCUMENT_SECURITY_HEADERS : {}),
+        ...(url.searchParams.get("download") === "1"
+          ? { "Content-Disposition": downloadDisposition(nodePath.basename(filePath)) }
+          : {}),
         ...(filePath.toLowerCase().endsWith(".html") ||
         (Option.isSome(managedBlob) && managedBlob.value.mimeType === "text/html")
           ? {
