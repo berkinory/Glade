@@ -75,8 +75,13 @@ when displaying untrusted content.
 
 - **Legend List 3.3.3:** retained. A deferred end-follow frame must recheck that
   following is still enabled, and visible-content anchoring must include the
-  partially visible row. The installed release still lacks both changes.
-  The related upstream tracking issue is
+  partially visible row. After rows are measured, anchoring must also skip rows
+  measured for the first time while an already measured row is in view.
+  Otherwise an older row placed at the 90 px estimate grows below the anchor
+  and pushes the rows being read: on a real 67-row chat, scrolling up in 500 px
+  steps moved the reader by up to 1,521 px; with the patch it is 0 px apart from
+  one row that grows by itself. The installed release still lacks all three
+  changes. The related upstream tracking issue is
   [LegendApp/legend-list#492](https://github.com/LegendApp/legend-list/issues/492);
   it is not an exact patch acceptance or release guarantee.
 - **Pierre Diffs 1.3.5:** retained. Structural file edits must publish cached rows

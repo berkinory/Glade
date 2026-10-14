@@ -14,6 +14,7 @@
 - Chat work durations use milliseconds for subsecond work and whole seconds for longer work.
 - The composer shows project and environment selectors only before a chat starts. SSH chats show their host and connection status in the Environment panel.
 - Tool calls behave the same for every provider. An edit opens its change in place, or the file itself when no change was recorded, and file names in tool rows open the file. Image views show the image, web searches show what they searched and found, and Bun scripts show Bun's logo.
+- Scrolling back through long chats no longer jumps as older messages load.
 
 ### Fixed
 

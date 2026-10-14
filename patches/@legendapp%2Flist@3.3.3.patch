@@ -10,7 +10,30 @@ diff --git a/react.js b/react.js
            state.maintainingScrollAtEnd = activeState;
            const scroller = refScroller.current;
            if (state.props.horizontal && isHorizontalRTL(state)) {
-@@ -4072,7 +4072,8 @@
+@@ -1607,6 +1607,8 @@
+     return void 0;
+   }
+   const anchorLock = resolveAnchorLock(state, enableMVCPAnchorLock, mvcpData, now) ;
++  const firstMeasuredKeys = state.firstMeasuredKeys;
++  state.firstMeasuredKeys = void 0;
+   let prevPosition;
+   let targetId;
+   const idsInViewWithPositions = [];
+@@ -1624,7 +1626,12 @@
+     } else if (scrollTarget !== void 0) {
+       targetId = getId(state, scrollTarget);
+     } else if (idsInView.length > 0 && state.didContainersLayout && !dataChanged) {
+-      targetId = idsInView.find((id) => indexByKey.get(id) !== void 0);
++      // A row measured for the first time in this pass was placed at an estimate. Anchoring on it lets
++      // its growth push the rows being read, so prefer a visible row that was already measured.
++      targetId = idsInView.find((id) => indexByKey.get(id) !== void 0 && !(firstMeasuredKeys == null ? void 0 : firstMeasuredKeys.has(id)));
++      if (targetId === void 0) {
++        targetId = idsInView.find((id) => indexByKey.get(id) !== void 0);
++      }
+     }
+     if (dataChanged && idsInView.length > 0 && state.didContainersLayout) {
+       for (let i = 0; i < idsInView.length; i++) {
+@@ -4072,7 +4079,8 @@
  function getIdsInVisibleRange(state, range) {
    var _a3, _b;
    const idsInView = [];
@@ -20,6 +43,29 @@ diff --git a/react.js b/react.js
    if (firstVisibleAnchorIndex !== null && firstVisibleAnchorIndex !== void 0 && range.endNoBuffer !== null) {
      for (let i = firstVisibleAnchorIndex; i <= range.endNoBuffer; i++) {
        const id = (_b = state.idCache[i]) != null ? _b : getId(state, i);
+@@ -4766,6 +4774,9 @@
+   var _a3;
+   const state = ctx.state;
+   const result = {};
++  if (state.queuedMVCPRecalculate === void 0) {
++    state.firstMeasuredKeys = void 0;
++  }
+   for (const measurement of measurements) {
+     const ownsMeasuredItem = measurement.containerId === void 0 || peek$(ctx, `containerItemKey${measurement.containerId}`) === measurement.itemKey;
+     if (ownsMeasuredItem) {
+@@ -4816,6 +4827,12 @@
+   let shouldMaintainScrollAtEnd = false;
+   let minIndexSizeChanged;
+   const prevSizeKnown = state.sizesKnown.get(itemKey);
++  if (prevSizeKnown === void 0) {
++    if (!state.firstMeasuredKeys) {
++      state.firstMeasuredKeys = /* @__PURE__ */ new Set();
++    }
++    state.firstMeasuredKeys.add(itemKey);
++  }
+   const diff = updateOneItemSize(ctx, itemKey, sizeObj, resolvedMeasurementItem);
+   const size = roundSize(horizontal ? sizeObj.width : sizeObj.height);
+   if (diff !== 0) {
 diff --git a/react.mjs b/react.mjs
 --- a/react.mjs
 +++ b/react.mjs
@@ -32,7 +78,30 @@ diff --git a/react.mjs b/react.mjs
            state.maintainingScrollAtEnd = activeState;
            const scroller = refScroller.current;
            if (state.props.horizontal && isHorizontalRTL(state)) {
-@@ -4051,7 +4051,8 @@
+@@ -1586,6 +1586,8 @@
+     return void 0;
+   }
+   const anchorLock = resolveAnchorLock(state, enableMVCPAnchorLock, mvcpData, now) ;
++  const firstMeasuredKeys = state.firstMeasuredKeys;
++  state.firstMeasuredKeys = void 0;
+   let prevPosition;
+   let targetId;
+   const idsInViewWithPositions = [];
+@@ -1603,7 +1605,12 @@
+     } else if (scrollTarget !== void 0) {
+       targetId = getId(state, scrollTarget);
+     } else if (idsInView.length > 0 && state.didContainersLayout && !dataChanged) {
+-      targetId = idsInView.find((id) => indexByKey.get(id) !== void 0);
++      // A row measured for the first time in this pass was placed at an estimate. Anchoring on it lets
++      // its growth push the rows being read, so prefer a visible row that was already measured.
++      targetId = idsInView.find((id) => indexByKey.get(id) !== void 0 && !(firstMeasuredKeys == null ? void 0 : firstMeasuredKeys.has(id)));
++      if (targetId === void 0) {
++        targetId = idsInView.find((id) => indexByKey.get(id) !== void 0);
++      }
+     }
+     if (dataChanged && idsInView.length > 0 && state.didContainersLayout) {
+       for (let i = 0; i < idsInView.length; i++) {
+@@ -4051,7 +4058,8 @@
  function getIdsInVisibleRange(state, range) {
    var _a3, _b;
    const idsInView = [];
@@ -42,3 +111,26 @@ diff --git a/react.mjs b/react.mjs
    if (firstVisibleAnchorIndex !== null && firstVisibleAnchorIndex !== void 0 && range.endNoBuffer !== null) {
      for (let i = firstVisibleAnchorIndex; i <= range.endNoBuffer; i++) {
        const id = (_b = state.idCache[i]) != null ? _b : getId(state, i);
+@@ -4745,6 +4753,9 @@
+   var _a3;
+   const state = ctx.state;
+   const result = {};
++  if (state.queuedMVCPRecalculate === void 0) {
++    state.firstMeasuredKeys = void 0;
++  }
+   for (const measurement of measurements) {
+     const ownsMeasuredItem = measurement.containerId === void 0 || peek$(ctx, `containerItemKey${measurement.containerId}`) === measurement.itemKey;
+     if (ownsMeasuredItem) {
+@@ -4795,6 +4806,12 @@
+   let shouldMaintainScrollAtEnd = false;
+   let minIndexSizeChanged;
+   const prevSizeKnown = state.sizesKnown.get(itemKey);
++  if (prevSizeKnown === void 0) {
++    if (!state.firstMeasuredKeys) {
++      state.firstMeasuredKeys = /* @__PURE__ */ new Set();
++    }
++    state.firstMeasuredKeys.add(itemKey);
++  }
+   const diff = updateOneItemSize(ctx, itemKey, sizeObj, resolvedMeasurementItem);
+   const size = roundSize(horizontal ? sizeObj.width : sizeObj.height);
+   if (diff !== 0) {
