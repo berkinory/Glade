@@ -14,7 +14,7 @@ const APP_ICON_OPTIONS = {
   dark: { label: "Dark icon", src: "/app-icons/dark.png" },
 } as const satisfies Record<DesktopAppIcon, AppIconOption>;
 
-const DESKTOP_APP_ICONS = ["default", "dark"] as const;
+const DESKTOP_APP_ICONS = ["dark", "default"] as const;
 
 export function AppIconPicker({
   value,
