@@ -26,6 +26,8 @@
 
 - Images in new chat replies and image tool previews stay unchanged when their source files are edited; identical images share storage.
 
+- Holding the chat shortcut modifier replaces pull request icons with shortcut hints, consistently with other chat icons.
+
 - Desktop windows now use a consistent opaque background on every platform.
 
 - The new chat project picker only lists projects you have added, without unrelated folders from your home directory.
