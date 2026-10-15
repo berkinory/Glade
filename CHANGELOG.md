@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+### New
+
+- Preview HTML files rendered alongside their source, just like Markdown. ([9773c8f9c](https://github.com/berkinory/Glade/commit/9773c8f9cf6ba9d9401093b1245b43ade36600ab))
+
 ### Fixed
 
 - Command rows in the chat show a label and icon that match the step the command actually ran. ([bb2bd0abc](https://github.com/berkinory/Glade/commit/bb2bd0abc8e2e8af75eb75dab73d2fb96fdb3d31))
