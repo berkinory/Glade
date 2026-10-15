@@ -135,8 +135,8 @@ export function resolveCreatePrExecution(input: {
     return {
       kind: "unavailable",
       hint: isAhead
-        ? "Branch has diverged from upstream. Rebase/merge first."
-        : "Branch is behind upstream. Pull before creating a PR.",
+        ? "Branch has diverged from upstream."
+        : "Branch is behind upstream.",
     };
   }
   if (!gitStatus.hasUpstream && !hasOriginRemote) {
