@@ -355,6 +355,15 @@ const SETTINGS_SEARCH_ENTRIES: readonly SettingsSearchEntry[] = [
   },
 
   {
+    id: "connectors:catalog",
+    section: "connectors",
+    title: "Connectors",
+    keywords:
+      "Connectors MCP servers remote integrations Supabase Linear Notion GitHub Sentry Stripe sign in OAuth token tools",
+    target: null,
+  },
+
+  {
     id: "ssh:hosts",
     section: "connections",
     title: "SSH hosts",

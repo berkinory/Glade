@@ -115,6 +115,12 @@ import {
   WsRemoteAccessUpdateRpc,
 } from "./remoteAccessRpc";
 import {
+  WsMcpConnectorsCancelSignInRpc,
+  WsMcpConnectorsConnectRpc,
+  WsMcpConnectorsDisconnectRpc,
+  WsMcpConnectorsSubscribeRpc,
+} from "./mcpConnectorsRpc";
+import {
   WsServerGetConfigRpc,
   WsServerGetEnvironmentRpc,
   WsServerGetSettingsRpc,
@@ -263,6 +269,10 @@ export const WsFeatureRpcGroup = RpcGroup.make(
   WsRemoteAccessCreatePairingRpc,
   WsRemoteAccessSubscribeDevicesRpc,
   WsRemoteAccessRevokeDeviceRpc,
+  WsMcpConnectorsSubscribeRpc,
+  WsMcpConnectorsConnectRpc,
+  WsMcpConnectorsCancelSignInRpc,
+  WsMcpConnectorsDisconnectRpc,
   WsServerGetConfigRpc,
   WsServerGetEnvironmentRpc,
   WsServerGetSettingsRpc,

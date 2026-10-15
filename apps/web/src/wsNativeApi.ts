@@ -45,6 +45,7 @@ import { WS_CHANNELS, WS_METHODS, type WsWelcomePayload } from "@glade/contracts
 import { BROWSER_WS_METHODS } from "@glade/contracts/transport/ws/browserRpc";
 import { COMPUTER_WS_METHODS } from "@glade/contracts/transport/ws/computerRpc";
 import { REMOTE_ACCESS_WS_METHODS } from "@glade/contracts/transport/ws/remoteAccessRpc";
+import { MCP_CONNECTORS_WS_METHODS } from "@glade/contracts/transport/ws/mcpConnectorsRpc";
 import {
   WS_THREAD_DETAIL_HEAD_CAPABILITY,
   type WsBootstrapNegotiateResult,
@@ -514,6 +515,15 @@ function buildNativeApi(transport: WsTransport, listeners: NativeApiListeners): 
       onDevices: (callback) =>
         transport.subscribeStateStream(REMOTE_ACCESS_WS_METHODS.subscribeDevices, callback),
       revokeDevice: (input) => transport.request(REMOTE_ACCESS_WS_METHODS.revokeDevice, input),
+    },
+    mcpConnectors: {
+      onState: (callback) =>
+        transport.subscribeStateStream(MCP_CONNECTORS_WS_METHODS.subscribe, callback),
+      // Probing the server and starting OAuth discovery can take a few vendor round trips.
+      connect: (input) =>
+        transport.request(MCP_CONNECTORS_WS_METHODS.connect, input, { timeoutMs: 120_000 }),
+      cancelSignIn: (input) => transport.request(MCP_CONNECTORS_WS_METHODS.cancelSignIn, input),
+      disconnect: (input) => transport.request(MCP_CONNECTORS_WS_METHODS.disconnect, input),
     },
     git: {
       githubRepository: (input) => transport.request(WS_METHODS.gitGithubRepository, input),

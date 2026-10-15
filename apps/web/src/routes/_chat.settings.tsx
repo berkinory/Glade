@@ -53,6 +53,7 @@ import {
   SettingsSectionShell,
 } from "../components/settings/SettingsPanelPrimitives";
 import { SkillsSettingsPanel } from "../components/settings/SkillsSettingsPanel";
+import { ConnectorsSettingsPanel } from "../components/settings/connectors/ConnectorsSettingsPanel";
 import { ThemeModePicker } from "../components/settings/ThemeModePicker";
 import { SidebarHeaderNavigationControls } from "../components/SidebarHeaderNavigationControls";
 import { KeepAwakeSettingsRow } from "../components/settings/KeepAwakeSettingsRow";
@@ -799,6 +800,8 @@ function SettingsRouteView() {
         return <ProfileSettingsPanel />;
       case "skills":
         return <SkillsSettingsPanel />;
+      case "connectors":
+        return <ConnectorsSettingsPanel />;
       case "usage":
         return <ProviderUsageSettingsPanel />;
       case "computer":

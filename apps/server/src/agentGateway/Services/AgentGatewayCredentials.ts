@@ -1,4 +1,8 @@
 import type { NativeToolCallRegistry } from "../nativeToolCalls.ts";
+import type {
+  AgentGatewayConnectorEndpoint,
+  AgentGatewayConnectorGrants,
+} from "../connectorGrants.ts";
 import type { ProviderKind, ThreadId } from "@glade/contracts/core/baseSchemas";
 import { ServiceMap } from "effect";
 import type {
@@ -15,10 +19,15 @@ export interface AgentGatewayMcpConnection {
   readonly url: string;
 
   readonly bearerToken: string;
+
+  // The user's connected MCP servers, granted to this session when it started.
+  readonly connectors?: ReadonlyArray<AgentGatewayConnectorEndpoint>;
 }
 
 export interface AgentGatewayCredentialsShape {
   readonly nativeToolCalls?: NativeToolCallRegistry;
+
+  readonly connectorGrants?: AgentGatewayConnectorGrants;
 
   readonly mcpEndpointUrl: string;
 

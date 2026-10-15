@@ -10,6 +10,7 @@ This folder contains the Glade documentation and repository guides.
 - [Keybindings](./KEYBINDINGS.md) — default shortcuts and custom keymaps.
 - [SSH hosts](./ssh-hosts.md) — run chats on other machines over SSH from the desktop app.
 - [Remote access](./REMOTE.md) — server options and access from another device.
+- [Connectors](./connectors.md) — connect remote MCP servers once for every agent.
 
 ## Developing Glade
 

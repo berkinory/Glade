@@ -19,7 +19,7 @@ type McpBodyReadResult =
   | { readonly kind: "invalid" }
   | { readonly kind: "too-large" };
 
-function readMcpJsonBody(
+export function readMcpJsonBody(
   request: HttpServerRequest.HttpServerRequest,
   maxBytes = AGENT_GATEWAY_MCP_MAX_BODY_BYTES,
 ): Effect.Effect<McpBodyReadResult> {

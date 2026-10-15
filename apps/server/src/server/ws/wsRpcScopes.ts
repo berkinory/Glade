@@ -3,6 +3,7 @@ import type { AuthScope } from "@glade/contracts/transport/auth/auth";
 import { BROWSER_WS_METHODS } from "@glade/contracts/transport/ws/browserRpc";
 import { COMPUTER_WS_METHODS } from "@glade/contracts/transport/ws/computerRpc";
 import { REMOTE_ACCESS_WS_METHODS } from "@glade/contracts/transport/ws/remoteAccessRpc";
+import { MCP_CONNECTORS_WS_METHODS } from "@glade/contracts/transport/ws/mcpConnectorsRpc";
 import type { WsFeatureRpcGroup } from "@glade/contracts/transport/ws/rpc";
 import { WS_METHODS } from "@glade/contracts/transport/ws/ws";
 import type * as RpcGroup from "effect/unstable/rpc/RpcGroup";
@@ -123,6 +124,12 @@ export const WS_RPC_REQUIRED_SCOPES: Record<WsFeatureRpcTag, AuthScope> = {
   [REMOTE_ACCESS_WS_METHODS.createPairing]: "access:write",
   [REMOTE_ACCESS_WS_METHODS.subscribeDevices]: "access:write",
   [REMOTE_ACCESS_WS_METHODS.revokeDevice]: "access:write",
+  // Owner only: sign-ins redirect to this machine's loopback, and connectors give every agent
+  // session access to the user's accounts.
+  [MCP_CONNECTORS_WS_METHODS.subscribe]: "access:write",
+  [MCP_CONNECTORS_WS_METHODS.connect]: "access:write",
+  [MCP_CONNECTORS_WS_METHODS.cancelSignIn]: "access:write",
+  [MCP_CONNECTORS_WS_METHODS.disconnect]: "access:write",
 
   [WS_METHODS.serverGetConfig]: "orchestration:read",
   [WS_METHODS.serverGetEnvironment]: "orchestration:read",

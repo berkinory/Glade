@@ -6,6 +6,7 @@ import {
   GLADE_AGENT_GATEWAY_TOKEN_ENV,
   GLADE_MCP_SERVER_NAME,
 } from "../../agentGateway/mcpInjection.ts";
+import type { AgentGatewayMcpConnection } from "../../agentGateway/Services/AgentGatewayCredentials.ts";
 import { resolveBaseCodexHomePath } from "./codexHomePaths.ts";
 
 function record(value: unknown): Record<string, unknown> | undefined {
@@ -95,14 +96,15 @@ export type CodexThreadGatewayConfig = Readonly<
   >
 >;
 
-export function buildCodexThreadGatewayConfig(connection: {
-  readonly url: string;
-  readonly bearerToken: string;
-}): CodexThreadGatewayConfig {
-  return {
-    [`mcp_servers.${GLADE_MCP_SERVER_NAME}`]: {
-      url: connection.url,
-      http_headers: { Authorization: `Bearer ${connection.bearerToken}` },
-    },
+export function buildCodexThreadGatewayConfig(
+  connection: AgentGatewayMcpConnection,
+): CodexThreadGatewayConfig {
+  const http_headers = { Authorization: `Bearer ${connection.bearerToken}` };
+  const config: Record<string, CodexThreadGatewayConfig[string]> = {
+    [`mcp_servers.${GLADE_MCP_SERVER_NAME}`]: { url: connection.url, http_headers },
   };
+  for (const connector of connection.connectors ?? []) {
+    config[`mcp_servers.${connector.name}`] = { url: connector.url, http_headers };
+  }
+  return config;
 }

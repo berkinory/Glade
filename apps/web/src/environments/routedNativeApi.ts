@@ -67,6 +67,7 @@ const RULES: { readonly [N in Namespace]: { readonly default: Rule } & Record<st
   browser: { default: toLocal },
   computer: { default: toLocal },
   remoteAccess: { default: toLocal },
+  mcpConnectors: { default: toLocal },
   git: { default: byCwdInput, handoffThread: byThreadInput },
   // Settings, keybindings, auth and usage are the local server's; only thread-bound work moves.
   server: {

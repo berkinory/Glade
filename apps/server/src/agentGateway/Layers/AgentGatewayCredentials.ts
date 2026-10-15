@@ -1,4 +1,5 @@
 import { makeNativeToolCallRegistry } from "../nativeToolCalls.ts";
+import { makeAgentGatewayConnectorGrants } from "../connectorGrants.ts";
 
 import { Effect, Layer } from "effect";
 
@@ -47,6 +48,7 @@ const makeAgentGatewayCredentials = Effect.gen(function* () {
   const sessionRegistry = yield* AgentGatewaySessionRegistry;
   const inFlightRequests = makeAgentGatewayInFlightRequestRegistry();
   const nativeToolCalls = makeNativeToolCallRegistry();
+  const connectorGrants = makeAgentGatewayConnectorGrants();
 
   const endpoint = makeAgentGatewayEndpoint(config.host, config.port);
   const issueSessionToken: AgentGatewayCredentialsShape["issueSessionToken"] = (
@@ -61,6 +63,7 @@ const makeAgentGatewayCredentials = Effect.gen(function* () {
     const session = sessionRegistry.verify(token);
     sessionRegistry.revoke(token);
     nativeToolCalls.revoke(token);
+    connectorGrants.revoke(token);
     if (session) inFlightRequests.revokeSession(session.sessionKey);
   };
 
@@ -86,6 +89,7 @@ const makeAgentGatewayCredentials = Effect.gen(function* () {
 
   return {
     nativeToolCalls,
+    connectorGrants: { publish: connectorGrants.publish, canUse: connectorGrants.canUse },
     get mcpEndpointUrl() {
       return endpoint.url;
     },
@@ -100,10 +104,14 @@ const makeAgentGatewayCredentials = Effect.gen(function* () {
     cancelSessionTurnRequests,
     retireSessionTurn,
     revokeSessionToken,
-    connectionForThread: (threadId, provider) => ({
-      url: endpoint.url,
-      bearerToken: issueSessionToken(threadId, provider),
-    }),
+    connectionForThread: (threadId, provider) => {
+      const bearerToken = issueSessionToken(threadId, provider);
+      return {
+        url: endpoint.url,
+        bearerToken,
+        connectors: connectorGrants.grant(bearerToken, new URL(endpoint.url).origin),
+      };
+    },
   } satisfies AgentGatewayCredentialsShape;
 });
 

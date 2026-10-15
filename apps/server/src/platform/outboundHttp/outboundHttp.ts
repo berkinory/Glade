@@ -223,6 +223,9 @@ class AdmissionGate {
 const GLOBAL_MAX_CONCURRENT = 24;
 const GLOBAL_MAX_QUEUED = 96;
 const globalAdmission = new AdmissionGate(GLOBAL_MAX_CONCURRENT, GLOBAL_MAX_QUEUED);
+// Streams can stay open for minutes, so they draw from their own budget and never hold the slots
+// short requests share.
+const globalStreamAdmission = new AdmissionGate(32, 128);
 const serviceAdmissions = new Map<string, AdmissionGate>();
 
 function serviceAdmission(policy: OutboundHttpPolicy): AdmissionGate {
@@ -338,7 +341,7 @@ export function invokePinnedDnsLookup(
   });
 }
 
-async function requestHop(input: {
+interface HopInput {
   readonly url: URL;
   readonly method: string;
   readonly headers: Headers;
@@ -348,7 +351,27 @@ async function requestHop(input: {
   readonly allowLoopbackHttp: boolean;
   readonly allowFakeIpDnsAddresses: boolean;
   readonly signal: AbortSignal;
-}): Promise<OutboundHttpResponse> {
+}
+
+interface OpenHop {
+  readonly request: Http.ClientRequest;
+  readonly response: Http.IncomingMessage;
+  readonly headers: Headers;
+}
+
+function responseTooLarge(maxResponseBytes: number): OutboundHttpError {
+  return new OutboundHttpError(
+    "response-too-large",
+    `Outbound response exceeded the ${maxResponseBytes}-byte limit.`,
+  );
+}
+
+function chunkBytes(chunk: Buffer | Uint8Array | string): Uint8Array {
+  return typeof chunk === "string" ? new TextEncoder().encode(chunk) : new Uint8Array(chunk);
+}
+
+// Resolves once response headers arrive; the caller owns reading or discarding the body.
+async function openHop(input: HopInput): Promise<OpenHop> {
   const pinned = await resolvePinnedAddresses(
     input.url,
     input.requirePublicAddress,
@@ -357,14 +380,7 @@ async function requestHop(input: {
     input.signal,
   );
 
-  return await new Promise<OutboundHttpResponse>((resolve, reject) => {
-    let settled = false;
-    const settle = (result: OutboundHttpResponse | Error) => {
-      if (settled) return;
-      settled = true;
-      if (result instanceof Error) reject(result);
-      else resolve(result);
-    };
+  return await new Promise<OpenHop>((resolve, reject) => {
     const transport = input.url.protocol === "https:" ? Https : Http;
     // The HTTP option types omit Happy Eyeballs, but these options reach net.connect.
     const options: Https.RequestOptions & Pick<Net.TcpNetConnectOpts, "autoSelectFamily"> = {
@@ -381,7 +397,7 @@ async function requestHop(input: {
       const encoding = headers.get("content-encoding")?.trim().toLowerCase();
       if (encoding && encoding !== "identity") {
         response.destroy();
-        settle(
+        reject(
           new OutboundHttpError(
             "compressed-response",
             "Compressed outbound responses are rejected so byte limits remain exact.",
@@ -392,58 +408,17 @@ async function requestHop(input: {
       const declaredLength = Number(headers.get("content-length"));
       if (Number.isFinite(declaredLength) && declaredLength > input.maxResponseBytes) {
         response.destroy();
-        settle(
-          new OutboundHttpError(
-            "response-too-large",
-            `Outbound response exceeded the ${input.maxResponseBytes}-byte limit.`,
-          ),
-        );
+        reject(responseTooLarge(input.maxResponseBytes));
         return;
       }
-
-      const chunks: Uint8Array[] = [];
-      let size = 0;
-      response.on("data", (chunk: Buffer | Uint8Array | string) => {
-        const bytes =
-          typeof chunk === "string" ? new TextEncoder().encode(chunk) : new Uint8Array(chunk);
-        size += bytes.byteLength;
-        if (size > input.maxResponseBytes) {
-          response.destroy();
-          settle(
-            new OutboundHttpError(
-              "response-too-large",
-              `Outbound response exceeded the ${input.maxResponseBytes}-byte limit.`,
-            ),
-          );
-          return;
-        }
-        chunks.push(bytes);
-      });
-      response.once("end", () => {
-        const body = new Uint8Array(size);
-        let offset = 0;
-        for (const chunk of chunks) {
-          body.set(chunk, offset);
-          offset += chunk.byteLength;
-        }
-        settle({
-          status: response.statusCode ?? 0,
-          headers,
-          body,
-          url: input.url.href,
-        });
-      });
-
-      response.on("error", (cause) => {
-        settle(new OutboundHttpError("request", "Outbound response failed.", cause));
-      });
+      resolve({ request, response, headers });
     });
 
     request.on("error", (cause) => {
       if (input.signal.aborted) {
-        settle(abortedError(input.signal.reason));
+        reject(abortedError(input.signal.reason));
       } else {
-        settle(new OutboundHttpError("request", "Outbound request failed.", cause));
+        reject(new OutboundHttpError("request", "Outbound request failed.", cause));
       }
     });
     if (input.body) request.write(input.body);
@@ -451,32 +426,152 @@ async function requestHop(input: {
   });
 }
 
+function hopFailure(signal: AbortSignal, cause: unknown): OutboundHttpError {
+  if (signal.aborted) return abortedError(signal.reason);
+  return cause instanceof OutboundHttpError
+    ? cause
+    : new OutboundHttpError("request", "Outbound response failed.", cause);
+}
+
+async function requestHop(input: HopInput): Promise<OutboundHttpResponse> {
+  const { request, response, headers } = await openHop(input);
+  return await new Promise<OutboundHttpResponse>((resolve, reject) => {
+    let settled = false;
+    const settle = (result: OutboundHttpResponse | Error) => {
+      if (settled) return;
+      settled = true;
+      if (result instanceof Error) reject(result);
+      else resolve(result);
+    };
+    const chunks: Uint8Array[] = [];
+    let size = 0;
+    response.on("data", (chunk: Buffer | Uint8Array | string) => {
+      const bytes = chunkBytes(chunk);
+      size += bytes.byteLength;
+      if (size > input.maxResponseBytes) {
+        response.destroy();
+        settle(responseTooLarge(input.maxResponseBytes));
+        return;
+      }
+      chunks.push(bytes);
+    });
+    response.once("end", () => {
+      const body = new Uint8Array(size);
+      let offset = 0;
+      for (const chunk of chunks) {
+        body.set(chunk, offset);
+        offset += chunk.byteLength;
+      }
+      settle({ status: response.statusCode ?? 0, headers, body, url: input.url.href });
+    });
+    response.on("error", (cause) => settle(hopFailure(input.signal, cause)));
+    request.on("error", (cause) => settle(hopFailure(input.signal, cause)));
+  });
+}
+
+// Hands the body over as it arrives, with the same byte limit. `onSettled` runs exactly once,
+// when the body ends, fails or is cancelled, so the caller can release its admission slots.
+function streamHopBody(
+  hop: OpenHop,
+  input: HopInput,
+  onSettled: () => void,
+): ReadableStream<Uint8Array> {
+  const { request, response } = hop;
+  let settled = false;
+  const settle = () => {
+    if (settled) return;
+    settled = true;
+    onSettled();
+  };
+  return new ReadableStream<Uint8Array>({
+    start(controller) {
+      let size = 0;
+      const fail = (cause: unknown) => {
+        if (settled) return;
+        response.destroy();
+        controller.error(hopFailure(input.signal, cause));
+        settle();
+      };
+      response.on("data", (chunk: Buffer | Uint8Array | string) => {
+        if (settled) return;
+        const bytes = chunkBytes(chunk);
+        size += bytes.byteLength;
+        if (size > input.maxResponseBytes) {
+          fail(responseTooLarge(input.maxResponseBytes));
+          return;
+        }
+        controller.enqueue(bytes);
+        if ((controller.desiredSize ?? 1) <= 0) response.pause();
+      });
+      response.once("end", () => {
+        if (settled) return;
+        controller.close();
+        settle();
+      });
+      response.on("error", fail);
+      request.on("error", fail);
+      response.once("close", () => {
+        if (!response.complete) fail(new Error("Outbound response closed early."));
+      });
+    },
+    pull() {
+      response.resume();
+    },
+    cancel() {
+      response.destroy();
+      settle();
+    },
+  });
+}
+
 function isRedirectStatus(status: number): boolean {
   return status === 301 || status === 302 || status === 303 || status === 307 || status === 308;
 }
 
+export interface OutboundHttpStreamResponse {
+  readonly status: number;
+  readonly headers: Headers;
+  readonly url: string;
+  // Read or cancel it: the request keeps its admission slots until the body settles.
+  readonly body: ReadableStream<Uint8Array>;
+}
+
+interface PreparedRequest {
+  readonly policy: OutboundHttpPolicy;
+  readonly allowedOrigins: ReadonlyArray<string>;
+  readonly originOptions: { readonly allowLoopbackHttp?: true };
+  readonly url: URL;
+  readonly method: string;
+  readonly body: Uint8Array | undefined;
+  readonly headers: Headers;
+  readonly controller: AbortController;
+  readonly release: () => void;
+}
+
 class OutboundHttpClient {
-  async request(input: OutboundHttpRequest): Promise<OutboundHttpResponse> {
+  private async prepare(
+    input: OutboundHttpRequest,
+    globalGate: AdmissionGate,
+  ): Promise<PreparedRequest> {
     const policy = input.policy;
     const allowLoopbackHttp = policy.allowLoopbackHttp === true;
-    const originOptions = allowLoopbackHttp ? { allowLoopbackHttp: true } : {};
+    const originOptions = allowLoopbackHttp ? { allowLoopbackHttp: true as const } : {};
     const allowedOrigins = policy.allowedOrigins.map((origin) =>
       normalizeOutboundOrigin(origin, originOptions),
     );
-    let url = assertOutboundUrlAllowed({
+    const url = assertOutboundUrlAllowed({
       url: input.url,
       allowedOrigins,
       ...originOptions,
     });
-    let method = input.method ?? "GET";
-    let body = bodyBytes(input.body);
+    const body = bodyBytes(input.body);
     if ((body?.byteLength ?? 0) > policy.maxRequestBytes) {
       throw new OutboundHttpError(
         "request-too-large",
         `Outbound request exceeded the ${policy.maxRequestBytes}-byte limit.`,
       );
     }
-    let headers = new Headers(input.headers);
+    const headers = new Headers(input.headers);
     headers.set("accept-encoding", "identity");
     if (body) headers.set("content-length", String(body.byteLength));
 
@@ -498,21 +593,64 @@ class OutboundHttpClient {
 
     let releaseGlobal: (() => void) | undefined;
     let releaseService: (() => void) | undefined;
+    const release = () => {
+      clearTimeout(timeout);
+      input.signal?.removeEventListener("abort", abortFromCaller);
+      releaseService?.();
+      releaseGlobal?.();
+    };
+    // The service gate first: a request queued behind its own service's limit must not hold one of
+    // the shared global slots while it waits.
     try {
-      releaseGlobal = await globalAdmission.acquire(controller.signal);
       releaseService = await serviceAdmission(policy).acquire(controller.signal);
+      releaseGlobal = await globalGate.acquire(controller.signal);
+    } catch (cause) {
+      release();
+      throw failure(controller, cause);
+    }
+    return {
+      policy,
+      allowedOrigins,
+      originOptions,
+      url,
+      method: input.method ?? "GET",
+      body,
+      headers,
+      controller,
+      release,
+    };
+  }
+
+  private hopInput(
+    prepared: PreparedRequest,
+    target: Pick<HopInput, "url" | "method" | "headers"> & {
+      readonly body: Uint8Array | undefined;
+    },
+  ): HopInput {
+    const { policy } = prepared;
+    return {
+      url: target.url,
+      method: target.method,
+      headers: target.headers,
+      ...(target.body ? { body: target.body } : {}),
+      maxResponseBytes: policy.maxResponseBytes,
+      requirePublicAddress: policy.requirePublicAddress ?? true,
+      allowLoopbackHttp: policy.allowLoopbackHttp === true,
+      allowFakeIpDnsAddresses: policy.allowFakeIpDnsAddresses === true,
+      signal: prepared.controller.signal,
+    };
+  }
+
+  async request(input: OutboundHttpRequest): Promise<OutboundHttpResponse> {
+    const prepared = await this.prepare(input, globalAdmission);
+    const { policy, allowedOrigins, originOptions, controller } = prepared;
+    let url = prepared.url;
+    let method = prepared.method;
+    let body = prepared.body;
+    let headers = prepared.headers;
+    try {
       for (let redirects = 0; ; redirects += 1) {
-        const response = await requestHop({
-          url,
-          method,
-          headers,
-          ...(body ? { body } : {}),
-          maxResponseBytes: policy.maxResponseBytes,
-          requirePublicAddress: policy.requirePublicAddress ?? true,
-          allowLoopbackHttp,
-          allowFakeIpDnsAddresses: policy.allowFakeIpDnsAddresses === true,
-          signal: controller.signal,
-        });
+        const response = await requestHop(this.hopInput(prepared, { url, method, headers, body }));
         if (!isRedirectStatus(response.status)) return response;
         if (redirects >= policy.maxRedirects) {
           throw new OutboundHttpError(
@@ -533,7 +671,7 @@ class OutboundHttpClient {
           ...originOptions,
         });
         if (nextUrl.origin !== url.origin) {
-          if (allowLoopbackHttp) {
+          if (originOptions.allowLoopbackHttp) {
             throw new OutboundHttpError(
               "invalid-redirect",
               "Loopback HTTP redirects must remain on the original origin.",
@@ -550,19 +688,38 @@ class OutboundHttpClient {
         url = nextUrl;
       }
     } catch (cause) {
-      if (controller.signal.aborted) {
-        const reason = controller.signal.reason;
-        if (reason instanceof OutboundHttpError && reason.code === "timeout") throw reason;
-        throw abortedError(reason);
-      }
-      throw cause;
+      throw failure(controller, cause);
     } finally {
-      clearTimeout(timeout);
-      input.signal?.removeEventListener("abort", abortFromCaller);
-      releaseService?.();
-      releaseGlobal?.();
+      prepared.release();
     }
   }
+
+  // One hop, no redirects: a redirect status comes back as the response. The policy's deadline
+  // covers the whole exchange, including the time spent reading the body.
+  async stream(input: OutboundHttpRequest): Promise<OutboundHttpStreamResponse> {
+    const prepared = await this.prepare(input, globalStreamAdmission);
+    const hopInput = this.hopInput(prepared, prepared);
+    let hop: OpenHop;
+    try {
+      hop = await openHop(hopInput);
+    } catch (cause) {
+      prepared.release();
+      throw failure(prepared.controller, cause);
+    }
+    return {
+      status: hop.response.statusCode ?? 0,
+      headers: hop.headers,
+      url: prepared.url.href,
+      body: streamHopBody(hop, hopInput, prepared.release),
+    };
+  }
+}
+
+function failure(controller: AbortController, cause: unknown): unknown {
+  if (!controller.signal.aborted) return cause;
+  const reason: unknown = controller.signal.reason;
+  if (reason instanceof OutboundHttpError && reason.code === "timeout") return reason;
+  return abortedError(reason);
 }
 
 export const outboundHttp = new OutboundHttpClient();

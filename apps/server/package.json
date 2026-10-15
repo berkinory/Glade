@@ -32,6 +32,7 @@
     "@anthropic-ai/sdk": "^0.100.0",
     "@effect/platform-node": "catalog:",
     "@effect/sql-sqlite-bun": "catalog:",
+    "@modelcontextprotocol/sdk": "1.29.0",
     "@pierre/diffs": "^1.2.12",
     "@puppeteer/browsers": "3.2.3",
     "@xterm/headless": "^6.0.0",

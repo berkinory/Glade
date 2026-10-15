@@ -18,6 +18,8 @@ production artwork. Production updates come only from the Glade release reposito
   agent gateway remain available to authenticated provider sessions.
 - Provider MCP server management: no settings screen or RPCs to list, add, remove, enable or
   authenticate a provider's own MCP servers. Providers load them from their native configuration.
+  [Connectors](./connectors.md) are separate: Glade owns their sign-ins and serves them to every
+  provider through the agent gateway.
 - Alternate application channels: no extra installers, flavors, badges, update feeds,
   profile import or automatic remote diagnostics.
 - Side chats: no right dock pane, creation command, expiry worker, or retained side chat

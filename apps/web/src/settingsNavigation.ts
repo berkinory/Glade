@@ -12,6 +12,7 @@ import {
   LimitationIcon,
   CursorInWindowIcon,
   CloudServerIcon,
+  Plug01Icon,
 } from "~/lib/icons";
 import type { IconComponent } from "~/lib/iconComponent";
 const SETTINGS_SECTION_IDS = [
@@ -26,6 +27,7 @@ const SETTINGS_SECTION_IDS = [
   "git",
   "providers",
   "skills",
+  "connectors",
   "computer",
   "usage",
 ] as const;
@@ -140,6 +142,13 @@ export const SETTINGS_NAV_ITEMS: readonly SettingsNavItem[] = [
     label: "Skills",
     description: "Review reusable workflows discovered across all configured providers.",
     icon: Book02Icon,
+  },
+  {
+    id: "connectors",
+    group: "agents",
+    label: "Connectors",
+    description: "Connect a service once and every agent can use its tools.",
+    icon: Plug01Icon,
   },
   {
     id: "computer",

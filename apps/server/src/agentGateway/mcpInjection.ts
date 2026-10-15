@@ -114,11 +114,12 @@ export function callAgentGatewayMcpTool(input: {
 export function buildClaudeMcpServers(
   connection: AgentGatewayMcpConnection,
 ): Record<string, ClaudeMcpHttpServerConfig> {
-  return {
-    [GLADE_MCP_SERVER_NAME]: {
-      type: "http",
-      url: connection.url,
-      headers: { Authorization: authorizationHeader(connection) },
-    },
+  const headers = { Authorization: authorizationHeader(connection) };
+  const servers: Record<string, ClaudeMcpHttpServerConfig> = {
+    [GLADE_MCP_SERVER_NAME]: { type: "http", url: connection.url, headers },
   };
+  for (const connector of connection.connectors ?? []) {
+    servers[connector.name] = { type: "http", url: connector.url, headers };
+  }
+  return servers;
 }

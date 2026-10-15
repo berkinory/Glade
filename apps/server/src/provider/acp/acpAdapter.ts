@@ -232,13 +232,14 @@ export const makeAcpAdapter = (dependencies: AcpAdapterDependencies) =>
     ): McpServer[] =>
       lease && connection.initialize.agentCapabilities?.mcpCapabilities?.http
         ? [
-            {
-              type: "http",
-              name: GLADE_MCP_SERVER_NAME,
-              url: lease.connection.url,
-              headers: [{ name: "Authorization", value: `Bearer ${lease.connection.bearerToken}` }],
-            },
-          ]
+            { name: GLADE_MCP_SERVER_NAME, url: lease.connection.url },
+            ...(lease.connection.connectors ?? []),
+          ].map(({ name, url }) => ({
+            type: "http" as const,
+            name,
+            url,
+            headers: [{ name: "Authorization", value: `Bearer ${lease.connection.bearerToken}` }],
+          }))
         : [];
 
     // The agent's normal working mode and anything the runtime mode needs natively, then the model

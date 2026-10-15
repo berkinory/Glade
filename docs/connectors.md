@@ -1,0 +1,61 @@
+# Connectors
+
+Connectors let every agent use remote MCP servers such as Supabase, Linear, Notion or GitHub.
+Connect a service once in **Settings → Connectors**; agents in new chats get its tools, whichever
+provider runs the chat.
+
+## What happens when you connect
+
+| Step     | What Glade does                                                                                                                                                                                                                                       |
+| -------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Probe    | Sends an MCP `initialize` to the server. A valid answer connects it as is; a 401 starts a sign-in. A website, login page or JSON-RPC error is never saved as a server.                                                                                |
+| Sign-in  | Uses the MCP SDK's OAuth client: protected-resource and authorization-server discovery, dynamic client registration, PKCE (S256), a single-use `state` and the RFC 8707 `resource`. The browser opens the vendor's page.                              |
+| Callback | The vendor redirects to `GET /oauth/mcp/callback` on this machine's loopback port. Requests from other devices are refused. The `state` expires after ten minutes and is the only authority, because the browser carries no Glade session.            |
+| Storage  | Connectors and their tokens are one entry (`mcp-connectors`) in the server's secret store, a `0600` file under the Glade home. Entries a build cannot read are written back untouched, and an unreadable store is never overwritten.                  |
+| Sessions | Each new provider session gets one MCP server per connector, named `<name>_connector`, pointing at `/mcp/connectors/<id>` on the agent gateway and authenticated with that session's gateway bearer. Running sessions keep the set they started with. |
+| Calls    | The gateway checks the bearer and the session's grant, attaches the vendor credential and streams the exchange through the origin-pinned outbound client. A 401 triggers one refresh and one retry.                                                   |
+
+Providers never see vendor tokens. A session can reach only the connectors it was granted when it
+started, and its access ends when the session's bearer is revoked.
+
+Responses stream through as they arrive, including SSE, so progress notifications and requests the
+server sends during a tool call reach the provider. `GET` opens the server's notification stream
+on a separate, smaller admission gate so open streams never queue tool calls.
+
+Refresh tokens may be single-use, so concurrent calls share one refresh. Only `invalid_grant`,
+`invalid_client` and `unauthorized_client` mark a connector as signed out; rate limits and server
+errors keep the sign-in. Disconnecting deletes the tokens locally first, then attempts RFC 7009
+revocation when the server advertises it.
+
+## Providers
+
+Claude receives connectors as SDK `mcpServers` HTTP entries, Codex in each thread's `mcp_servers`
+config, and Cursor, Grok and OpenCode through ACP `session/new` when the agent advertises HTTP MCP
+support. Each tool call follows the chat's normal approval flow.
+
+## Catalog
+
+The presets live in `packages/shared/src/mcpConnectors/catalog.ts`. Each one was checked against
+its live server on 2026-10-16:
+
+- **No sign-in**: the server answers `initialize` without credentials.
+- **OAuth**: the server accepted a dynamic client registration with Glade's loopback redirect and
+  returned an authorization URL. A full sign-in needs a real account and was tested only for some.
+- **Token**: the server takes a bearer token the user creates (GitHub, Render).
+
+Vendors whose live check failed are left out: Figma, Slack, Asana, HubSpot, Box and Dropbox admit
+only pre-registered apps, RevenueCat and Calendly refused the registration, and Gamma and IFTTT
+reject loopback redirects. Their URLs still work as
+custom servers when they accept a token.
+
+Custom servers must be public `https://` endpoints without credentials in the URL.
+
+## Limits
+
+- Managing connectors is owner-only (`access:write`), because the OAuth redirect targets this
+  machine's browser. Paired devices cannot add or remove them.
+- The callback URL carries the server's current port, so every sign-in registers a fresh client.
+  Refreshing tokens does not depend on the port.
+- Client ID Metadata Documents are not supported yet; they need a hosted metadata document on a
+  Glade domain.
+- Connectors belong to this machine's server. Chats that run on an SSH host do not receive them.

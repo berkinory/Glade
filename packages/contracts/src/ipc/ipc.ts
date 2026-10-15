@@ -25,6 +25,11 @@ import type {
   RemoteAccessUpdateInput,
 } from "../transport/ws/remoteAccessRpc";
 import type {
+  McpConnectorConnectInput,
+  McpConnectorConnectResult,
+  McpConnectorsState,
+} from "../transport/ws/mcpConnectorsRpc";
+import type {
   BrowserCapture,
   BrowserPickedElement,
   BrowserPickRequest,
@@ -601,6 +606,13 @@ export interface NativeApi {
     createPairing: () => Promise<RemoteAccessPairing>;
     onDevices: (callback: (devices: RemoteAccessDevices) => void) => () => void;
     revokeDevice: (input: { readonly sessionId: AuthSessionId }) => Promise<void>;
+  };
+  // Remote MCP servers this machine signs in to and serves to every agent session.
+  mcpConnectors: {
+    onState: (callback: (state: McpConnectorsState) => void) => () => void;
+    connect: (input: McpConnectorConnectInput) => Promise<McpConnectorConnectResult>;
+    cancelSignIn: (input: { readonly attemptId: string }) => Promise<void>;
+    disconnect: (input: { readonly connectorId: string }) => Promise<void>;
   };
   git: {
     githubRepository: (input: GitHubRepositoryInput) => Promise<GitHubRepositoryResult>;

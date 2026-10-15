@@ -8,6 +8,7 @@ import { HttpRouter, HttpServerRequest, HttpServerResponse } from "effect/unstab
 import * as SqlClient from "effect/unstable/sql/SqlClient";
 
 import { agentGatewayRouteLayer } from "../../agentGateway/httpRoute";
+import { mcpConnectorsRouteLayer } from "../../mcpConnectors/httpRoute";
 import { AgentGatewayCredentials } from "../../agentGateway/Services/AgentGatewayCredentials";
 import {
   clearPersistedServerRuntimeState,
@@ -206,6 +207,7 @@ export const createEffectServer = Effect.fn(function* (
     makeEffectHttpRouteLayer(readiness, shutdownController),
     websocketRpcRouteLayer,
     agentGatewayRouteLayer,
+    mcpConnectorsRouteLayer,
     serverRuntimeRouteLayer,
   );
   const routedApp = yield* HttpRouter.toHttpEffect(routesLayer);

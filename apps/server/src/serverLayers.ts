@@ -55,6 +55,7 @@ import { ManagedAttachmentCleanupLive } from "./attachments/managedAttachmentCle
 import { ProviderHealthLive } from "./provider/Layers/ProviderHealth";
 import { KeepAwakeLive } from "./keepAwake/Layers/KeepAwake";
 import { RemoteAccessLive } from "./remoteAccess/Layers/RemoteAccess";
+import { McpConnectorsLive } from "./mcpConnectors/Layers/McpConnectors";
 import { makeServerProviderLayer } from "./provider/core/runtimeLayer";
 
 function makeServerRuntimeServicesLayer(
@@ -204,6 +205,7 @@ function makeServerRuntimeServicesLayer(
     ThreadMessageSearchLive,
     authServicesLayer,
     remoteAccessLayer,
+    McpConnectorsLive,
     ServerLifecycleEventsLive,
     ServerEventLoopMonitorLive,
     ServerRuntimeStartupLive,
