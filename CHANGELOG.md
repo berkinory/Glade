@@ -12,6 +12,7 @@
 - Steering a chat while background work is still running no longer plays the completion sound. ([0334dc776](https://github.com/berkinory/Glade/commit/0334dc776d13442028f0a23f46e8611260a07c98))
 - Opening a background task from the Environment panel keeps the panel open while the chat scrolls to it. ([34518870c](https://github.com/berkinory/Glade/commit/34518870cda67c829ef240d07e21fb35f4b39449))
 - Command rows in the chat show a label and icon that match the step the command actually ran. ([bb2bd0abc](https://github.com/berkinory/Glade/commit/bb2bd0abc8e2e8af75eb75dab73d2fb96fdb3d31))
+- Editing a Claude message you stopped before it replied resends it instead of failing. ([c931d56ef](https://github.com/berkinory/Glade/commit/c931d56ef35e831d18a1b14cee9b993c509e7001))
 
 ## 0.2.8 - 2026-10-15
 
