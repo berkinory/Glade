@@ -60,57 +60,73 @@ export function makeClaudeSessionBranching(input: {
             issue: "Cannot rollback while an active turn is in progress.",
           });
         }
-        if (!Number.isInteger(numTurns) || numTurns < 1 || !context.resumeSessionId) {
+        const sourceSessionId = context.resumeSessionId;
+        // A turn stopped before Claude wrote any output leaves no native history. When the edit removes every
+        // live turn and nothing was inherited from an earlier session, a fresh session is the exact rewind.
+        const hasNoNativeHistory =
+          !sourceSessionId &&
+          numTurns >= context.turns.length &&
+          !readClaudeResumeState(context.startInput.resumeCursor)?.resume;
+        if (
+          !Number.isInteger(numTurns) ||
+          numTurns < 1 ||
+          (!sourceSessionId && !hasNoNativeHistory)
+        ) {
           return yield* new ProviderAdapterValidationError({
             provider: PROVIDER,
             operation: "rollbackThread",
             issue: "The requested Claude edit boundary is invalid.",
           });
         }
-        const sourceSessionId = context.resumeSessionId;
-        const resumeCursor = yield* Effect.tryPromise({
-          try: async () => {
-            const readMessages =
-              options?.readNativeSessionMessages ?? (await loadClaudeAgentSdk()).getSessionMessages;
-            const messages = await readMessages(
-              sourceSessionId,
-              context.session.cwd ? { dir: context.session.cwd } : {},
-            );
+        const resumeCursor =
+          sourceSessionId === undefined
+            ? { threadId, turnCount: 0 }
+            : yield* Effect.tryPromise({
+                try: async () => {
+                  const readMessages =
+                    options?.readNativeSessionMessages ??
+                    (await loadClaudeAgentSdk()).getSessionMessages;
+                  const messages = await readMessages(
+                    sourceSessionId,
+                    context.session.cwd ? { dir: context.session.cwd } : {},
+                  );
 
-            const prompts = messages.filter((entry) => {
-              if (entry.type !== "user" || entry.parent_tool_use_id !== null) return false;
-              const message = entry.message as { content?: unknown } | null;
-              const content = message?.content;
-              return (
-                typeof content === "string" ||
-                (Array.isArray(content) &&
-                  content.length > 0 &&
-                  !content.some((block) => block?.type === "tool_result"))
-              );
-            });
-            const target = prompts[prompts.length - numTurns];
-            if (!target)
-              throw new Error("The edited prompt is missing from the native Claude history.");
-            const parent = await (options?.readNativeMessageParent ?? readClaudeSessionParentUuid)({
-              sessionId: sourceSessionId,
-              messageId: target.uuid,
-            });
-
-            const forked =
-              parent === null
-                ? undefined
-                : await forkNativeSession(sourceSessionId, {
-                    ...(context.session.cwd ? { dir: context.session.cwd } : {}),
-                    upToMessageId: parent,
+                  const prompts = messages.filter((entry) => {
+                    if (entry.type !== "user" || entry.parent_tool_use_id !== null) return false;
+                    const message = entry.message as { content?: unknown } | null;
+                    const content = message?.content;
+                    return (
+                      typeof content === "string" ||
+                      (Array.isArray(content) &&
+                        content.length > 0 &&
+                        !content.some((block) => block?.type === "tool_result"))
+                    );
                   });
-            return {
-              threadId,
-              ...(forked ? { resume: forked.sessionId } : {}),
-              turnCount: prompts.length - numTurns,
-            };
-          },
-          catch: (cause) => toRequestError(threadId, "session/rollback", cause),
-        });
+                  const target = prompts[prompts.length - numTurns];
+                  if (!target)
+                    throw new Error("The edited prompt is missing from the native Claude history.");
+                  const parent = await (
+                    options?.readNativeMessageParent ?? readClaudeSessionParentUuid
+                  )({
+                    sessionId: sourceSessionId,
+                    messageId: target.uuid,
+                  });
+
+                  const forked =
+                    parent === null
+                      ? undefined
+                      : await forkNativeSession(sourceSessionId, {
+                          ...(context.session.cwd ? { dir: context.session.cwd } : {}),
+                          upToMessageId: parent,
+                        });
+                  return {
+                    threadId,
+                    ...(forked ? { resume: forked.sessionId } : {}),
+                    turnCount: prompts.length - numTurns,
+                  };
+                },
+                catch: (cause) => toRequestError(threadId, "session/rollback", cause),
+              });
         const startInput = {
           ...context.startInput,
           ...(context.session.model
@@ -130,6 +146,7 @@ export function makeClaudeSessionBranching(input: {
         const preflight = yield* resolveClaudeStartPreflight(startInput);
         yield* stopSessionInternal(context, { emitExitEvent: false });
         yield* startSessionUnlocked(startInput, preflight);
+        if (sourceSessionId === undefined) return;
         const replacement = yield* requireSession(threadId);
         yield* Effect.tryPromise({
           try: async () => {

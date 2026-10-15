@@ -283,6 +283,51 @@ describe("Claude sessionHistory", () => {
     },
   );
 
+  it.effect("edits a turn that ended before Claude recorded output by starting fresh", () => {
+    const harness = makeMultiQueryHarness({
+      nativeHistory: {
+        readNativeSessionMessages: async () => {
+          throw new Error("no native history should be read");
+        },
+        deleteNativeSession: async () => {
+          throw new Error("no native session should be deleted");
+        },
+      },
+    });
+    return Effect.gen(function* () {
+      const adapter = yield* ClaudeAdapter;
+      const session = yield* adapter.startSession({
+        threadId: THREAD_ID,
+        provider: "claudeAgent",
+        runtimeMode: "full-access",
+      });
+      yield* adapter.sendTurn({ threadId: session.threadId, input: "first", attachments: [] });
+      const completedFiber = yield* Stream.filter(
+        adapter.streamEvents,
+        (event) => event.type === "turn.completed",
+      ).pipe(Stream.runHead, Effect.forkChild);
+      harness.queries[0]!.emit({
+        type: "result",
+        subtype: "error_during_execution",
+        is_error: true,
+        errors: [],
+        session_id: harness.createInputs[0]!.options.sessionId,
+        uuid: "result-interrupted",
+      } as unknown as SDKMessage);
+      yield* Fiber.join(completedFiber);
+
+      yield* adapter.rollbackThread(session.threadId, 1);
+
+      assert.equal(harness.createInputs.length, 2);
+      assert.isUndefined(harness.createInputs[1]?.options.resume);
+      const turn = yield* adapter.sendTurn({ threadId: session.threadId, input: "edited" });
+      assert.ok(turn.turnId);
+    }).pipe(
+      Effect.provideService(Random.Random, makeDeterministicRandomService()),
+      Effect.provide(harness.layer),
+    );
+  });
+
   it.effect(
     "refuses to edit when native history is unavailable instead of trimming only local turns",
     () => {
