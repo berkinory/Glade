@@ -1,51 +1,28 @@
 # Glade Changelog
 
-## Unreleased
+## 0.2.8 - 2026-10-15
 
 ### New
 
-- After an unexpected shutdown, Glade offers to continue the chats that were running.
+- After an unexpected shutdown, choose which interrupted chats to continue. ([5300336ed](https://github.com/berkinory/Glade/commit/5300336edb15ff0dbc9650792a949a59e855ba30))
 
 ### Improved
 
-- Glade has a new dithered twilight icon, a matching seal throughout the app, and a midnight-blue icon for development builds. App icons are now fixed per build instead of selectable in Settings.
-
-- The sidebar has theme-matched artwork and a refreshed header, with search available even when collapsed.
-
-- Light mode is easier on the eyes, with softer neutral backgrounds and clearer secondary text.
-
-- Chat sidebar icons are more discreet, standalone remote chats show their host, and pinned project chats no longer repeat the project name.
-
-- Browser pages adapt continuously while resizing the sidebar.
-- Sidebar and Settings update buttons now share one action, restarting without a confirmation and automatically resuming running chats. Inline usage indicators make room while an update is preparing.
-
-- Chat work durations use milliseconds for subsecond work and whole seconds for longer work.
-- The composer shows project and environment selectors only before a chat starts. SSH chats show their host and connection status in the Environment panel.
-- Tool calls behave the same for every provider. An edit opens its change in place, or the file itself when no change was recorded, and file names in tool rows open the file. Image views show the image, web searches show what they searched and found, and Bun scripts show Bun's logo.
-- Scrolling back through long chats no longer jumps as older messages load.
+- Glade has a new twilight app icon and matching seal, with theme-matched sidebar artwork and refreshed navigation. ([b7d3f8b21](https://github.com/berkinory/Glade/commit/b7d3f8b2123b3a803722ac2bf97ba391b739c5b8), [455f9a414](https://github.com/berkinory/Glade/commit/455f9a414b8e6f09265b94c8988d753c4b0ab459))
+- Light mode uses softer backgrounds and clearer secondary text. ([511e3ccce](https://github.com/berkinory/Glade/commit/511e3ccceb31fcacd12f81981ff37a9c2416ef8f))
+- Update from the sidebar or Settings in one step, with running chats resuming automatically after the restart. ([788f8258e](https://github.com/berkinory/Glade/commit/788f8258e45daf251a16221ab1dd12c887dcb1ea))
+- Tool calls behave consistently across providers: open edits in place, inspect images and search results, and see when a tool stopped before running. ([4c29eeff4](https://github.com/berkinory/Glade/commit/4c29eeff4424a71a61ce5bea135200d6d2df9720))
+- The composer stays focused on your message once a chat starts, with SSH host and connection details in the Environment panel. ([e8961b201](https://github.com/berkinory/Glade/commit/e8961b20155fb873237cfff38530aa7f1fd72065))
+- Browser pages adapt smoothly as you resize the sidebar. ([24c7015d6](https://github.com/berkinory/Glade/commit/24c7015d6d1eb0252eb4b8249c11e4f40ce3d4c8))
 
 ### Fixed
 
-- Images in new chat replies and image tool previews stay unchanged when their source files are edited; identical images share storage.
-
-- Holding the chat shortcut modifier replaces pull request icons with shortcut hints, consistently with other chat icons.
-
-- Desktop windows now use a consistent opaque background on every platform.
-
-- The new chat project picker only lists projects you have added, without unrelated folders from your home directory.
-
-- Hovering over chat rows gives titles the available space instead of reserving extra room for hidden metadata.
-
-- The right sidebar starts closed in each chat and remembers that chat’s open state, width, and selected workspace view.
-- Closing the last browser or terminal tab collapses the sidebar.
-- Visual replies show creation progress while the agent prepares their content.
-
-- SSH chats send their first message on the selected host without switching machines or requiring a retry.
-
-- Chats with long inline scripts or many tool calls stay responsive when opening and updating the conversation.
-- Codex chats renew their connection after a stopped turn instead of blocking the next message.
-- Edits in a finished turn can be opened again, and a tool that was stopped before it ran says so instead of looking finished.
-- Profile counts tokens used by Grok Build and OpenCode chats accurately and lists them under their own provider.
+- Long chats stay responsive through heavy tool activity and keep your reading position as older messages load. ([ee58bdafb](https://github.com/berkinory/Glade/commit/ee58bdafb2d43b7fc19c4b91e9c40f2e9675c9a1), [0dca53a60](https://github.com/berkinory/Glade/commit/0dca53a60571467df11a963ad6fb7d89e0190731), [46e34ef24](https://github.com/berkinory/Glade/commit/46e34ef2489432e66190f93ac4d897c3669fcbf3))
+- Images in new replies and tool previews retain their original contents when the source files change. ([cff5c9342](https://github.com/berkinory/Glade/commit/cff5c9342f05e6c59ca2381f3f4b0e7b5a34dd73))
+- The right sidebar remembers its layout for each chat and closes when its last browser or terminal tab is closed. ([f2699b39b](https://github.com/berkinory/Glade/commit/f2699b39b8c79d21eef30906647797c891985805), [29bda60e5](https://github.com/berkinory/Glade/commit/29bda60e52514fa6e3fb1d43f2d562d329cefee8), [1d7bc764c](https://github.com/berkinory/Glade/commit/1d7bc764c6d5231532583a57f0dfdee4b1c18ebd), [9b3f0f33f](https://github.com/berkinory/Glade/commit/9b3f0f33f90bf3f20d5198663616dd91c53d94bf))
+- SSH chats send their first message on the selected host without switching machines or needing a retry. ([2ef104231](https://github.com/berkinory/Glade/commit/2ef1042316a271df8f4755ae331bd82e7c9c6188))
+- Codex chats can continue after a stopped turn without the next message getting blocked. ([ee58bdafb](https://github.com/berkinory/Glade/commit/ee58bdafb2d43b7fc19c4b91e9c40f2e9675c9a1))
+- Profile reports Grok Build and OpenCode token usage accurately under the correct provider. ([ce3cb155c](https://github.com/berkinory/Glade/commit/ce3cb155cd2093db52628c9b3ecd35f7b923532a))
 
 ## 0.2.7 - 2026-10-14
 
