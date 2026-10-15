@@ -16,7 +16,6 @@ import { useFeatureFlags } from "../featureFlags";
 import { useAppDensity } from "../hooks/useAppDensity";
 import { useAppTypography } from "../hooks/useAppTypography";
 import { useChatWidth } from "../hooks/useChatWidth";
-import { useDesktopAppIcon } from "../hooks/useDesktopAppIcon";
 import { useSyncDesktopTopBarTrafficLightGutterZoom } from "../hooks/useDesktopTopBarGutter";
 import { useNativeFontSmoothing } from "../hooks/useNativeFontSmoothing";
 import { useGitStatusPush } from "../hooks/useGitStatusPush";
@@ -44,7 +43,6 @@ export function RootRouteView() {
   useAppTypography();
   useAppDensity();
   useChatWidth();
-  useDesktopAppIcon();
   useDesktopMenuShortcuts();
   usePreloadRouteChunks();
   useGitStatusPush();

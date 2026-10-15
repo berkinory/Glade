@@ -5,7 +5,6 @@ import {
   type AssistantDeliveryMode,
   type ProviderStartOptions,
 } from "@glade/contracts/provider/sessionPolicy";
-import { DesktopAppIcon } from "@glade/contracts/ipc/ipc";
 import {
   DEFAULT_KEEP_AWAKE_MODE,
   DEFAULT_SERVER_SETTINGS,
@@ -136,16 +135,6 @@ const PersistedProviderKind = Schema.String.pipe(
   ),
 );
 
-const PersistedDesktopAppIcon = Schema.String.pipe(
-  Schema.decodeTo(
-    DesktopAppIcon,
-    SchemaTransformation.transform({
-      decode: (icon) => (icon === "default" ? "default" : "dark"),
-      encode: (icon) => icon,
-    }),
-  ),
-);
-
 function resolvePersistedProviderListEntry(provider: string): ProviderKind | undefined {
   return Schema.is(ProviderKind)(provider) ? provider : undefined;
 }
@@ -216,7 +205,6 @@ const AppSettingsSchema = Schema.Struct({
   enableProviderUpdateChecks: Schema.Boolean.pipe(withDefaults(() => true)),
   autoContinueAtUsageLimit: Schema.Boolean.pipe(withDefaults(() => true)),
   enableNativeFontSmoothing: Schema.Boolean.pipe(withDefaults(getDefaultNativeFontSmoothing)),
-  desktopAppIcon: PersistedDesktopAppIcon.pipe(withDefaults(() => "dark" as const)),
 
   useCustomTitleBar: Schema.Boolean.pipe(withDefaults(() => true)),
   enableTaskCompletionToasts: Schema.Boolean.pipe(withDefaults(() => true)),

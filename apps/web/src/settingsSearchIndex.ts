@@ -119,14 +119,6 @@ const SETTINGS_SEARCH_ENTRIES: readonly SettingsSearchEntry[] = [
     keywords: "Choose how Glade looks across the app. dark light system color",
   },
   {
-    id: "appearance:app-icon",
-    section: "appearance",
-    title: "App icon",
-    applies: () => isElectron,
-    keywords: "Choose the icon Glade uses in the dock or taskbar desktop application logo.",
-    target: "setting-app-icon",
-  },
-  {
     id: "appearance:custom-title-bar",
     section: "appearance",
     title: "Use custom title bar",

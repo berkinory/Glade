@@ -9,7 +9,6 @@ import { createFileRoute, useSearch } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 
 import { AdvancedSettingsPanel } from "~/components/settings/AdvancedSettingsPanel";
-import { AppIconPicker } from "~/components/settings/AppIconPicker";
 import {
   ArchivedSettingsPanel,
   WorktreesSettingsPanel,
@@ -327,31 +326,8 @@ function SettingsRouteView() {
         </div>
       </SettingsSectionShell>
 
-      {isElectron ? (
+      {isElectron && supportsCustomTitleBarSetting ? (
         <SettingsSection title="App">
-          <SettingsRow
-            title="App icon"
-            description="Choose the icon Glade uses in the dock or taskbar."
-            resetAction={
-              settings.desktopAppIcon !== defaults.desktopAppIcon ? (
-                <SettingResetButton
-                  label="app icon"
-                  onClick={() => updateSettings({ desktopAppIcon: defaults.desktopAppIcon })}
-                />
-              ) : null
-            }
-            control={
-              <AppIconPicker
-                value={settings.desktopAppIcon}
-                onValueChange={async (desktopAppIcon) => {
-                  if (desktopAppIcon !== settings.desktopAppIcon) {
-                    updateSettings({ desktopAppIcon });
-                  }
-                  await window.desktopBridge?.setAppIcon(desktopAppIcon);
-                }}
-              />
-            }
-          />
           {supportsCustomTitleBarSetting ? (
             <SettingsRow
               title="Use custom title bar"

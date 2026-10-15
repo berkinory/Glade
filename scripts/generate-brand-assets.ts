@@ -12,12 +12,9 @@ const paths = `<path d="${GLADE_MARK_PATH}"/>`;
 const tile =
   "M300 100H724C858 100 924 166 924 300V724C924 858 858 924 724 924H300C166 924 100 858 100 724V300C100 166 166 100 300 100Z";
 const tileSize = 824;
-const markSize = 530;
-// Icon Composer sources fill the whole canvas, so the mark keeps its proportion of the tile.
-const fullBleedMarkSize = (markSize * 1024) / tileSize;
-const ink = { light: "#131514", dark: "#f3ead8", dev: "#f4f9fd" } as const;
-const paper = { light: "#fbf9f2", dark: "#191614", dev: "#1591fa" } as const;
-type Variant = keyof typeof ink;
+const markFraction = 0.6;
+const markInk = "#fff9e7";
+type Variant = "production" | "development";
 
 function run(command: string, args: string[]) {
   const result = spawnSync(command, args, { cwd: root, encoding: "utf8" });
@@ -59,7 +56,7 @@ function render(content: string, target: string, size = 1024) {
     writeFileSync(output, image.asPng());
     return;
   }
-  // The ASCII plates alias into moire when rasterized straight to small sizes; filter a full render instead.
+  // The dithered artwork aliases into moire at small sizes; filter a full render instead.
   // Lanczos ringing leaves faint alpha outside the tile, which ICO masks turn into opaque pixels,
   // and slightly translucent pixels just inside it; snap both ends.
   const full = join(scratch, "render.png");
@@ -94,21 +91,18 @@ function plate(variant: Variant, size: number) {
 
 function artwork(variant: Variant) {
   return svg(
-    `<defs><clipPath id="tile"><path d="${tile}"/></clipPath></defs><g clip-path="url(#tile)"><image x="100" y="100" width="${tileSize}" height="${tileSize}" xlink:href="${plate(variant, tileSize)}"/>${mark(ink[variant], markSize)}</g>`,
+    `<defs><clipPath id="tile"><path d="${tile}"/></clipPath></defs><g clip-path="url(#tile)"><image x="100" y="100" width="${tileSize}" height="${tileSize}" xlink:href="${plate(variant, tileSize)}"/>${mark(markInk, tileSize * markFraction)}</g>`,
   );
 }
 
-// At 16px the texture is only noise around the mark, so the smallest frames use a flat tile.
-function flatArtwork(variant: Variant) {
-  return svg(`<path d="${tile}" fill="${paper[variant]}"/>${mark(ink[variant], markSize)}`);
-}
-
 function icon(variant: Variant, target: string, size = 1024) {
-  render(size <= 16 ? flatArtwork(variant) : artwork(variant), target, size);
+  render(artwork(variant), target, size);
 }
 
-function fullBleedPlate(variant: Variant) {
-  return `<image width="1024" height="1024" xlink:href="${plate(variant, 1024)}"/>`;
+function fullBleedArtwork(variant: Variant) {
+  return svg(
+    `<image width="1024" height="1024" xlink:href="${plate(variant, 1024)}"/>${mark(markInk, 1024 * markFraction)}`,
+  );
 }
 
 function ico(variant: Variant, target: string, sizes = [256, 128, 64, 48, 32, 16]) {
@@ -143,26 +137,22 @@ try {
   );
   render(svg(mark("#000", 736)), "assets/brand/glade-master.png", 2048);
   // Icon Composer applies the platform mask itself; keep its sources edge-to-edge.
-  render(
-    svg(`${fullBleedPlate("light")}${mark(ink.light, fullBleedMarkSize)}`),
-    "assets/prod/Glade.icon/Assets/background.png",
-  );
-  render(svg(fullBleedPlate("dev")), "assets/dev/Glade.icon/Assets/background.png");
-  render(svg(mark(ink.dev, fullBleedMarkSize)), "assets/dev/Glade.icon/Assets/glyph.png");
+  render(fullBleedArtwork("production"), "assets/prod/Glade.icon/Assets/background.png");
+  render(fullBleedArtwork("development"), "assets/dev/Glade.icon/Assets/background.png");
 
   for (const filename of [
     "black-macos-1024.png",
     "black-macos-legacy-1024.png",
     "black-universal-1024.png",
   ]) {
-    icon("light", `assets/prod/${filename}`);
+    icon("production", `assets/prod/${filename}`);
   }
   for (const filename of ["blueprint-macos-1024.png", "blueprint-universal-1024.png"]) {
-    icon("dev", `assets/dev/${filename}`);
+    icon("development", `assets/dev/${filename}`);
   }
   for (const [folder, prefix, variant] of [
-    ["prod", "glade-black", "light"],
-    ["dev", "blueprint", "dev"],
+    ["prod", "glade-black", "production"],
+    ["dev", "blueprint", "development"],
   ] as const) {
     for (const size of [16, 32])
       icon(variant, `assets/${folder}/${prefix}-web-favicon-${size}x${size}.png`, size);
@@ -180,15 +170,10 @@ try {
   ]) {
     copy("assets/prod/black-macos-legacy-1024.png", `apps/desktop/resources/${filename}`);
   }
-  icon("dark", "apps/desktop/resources/dock-icon-dark.png");
-  icon("dark", "apps/desktop/resources/icon-dark.png");
-  ico("dark", "apps/desktop/resources/icon-dark.ico");
   copy("assets/prod/black-universal-1024.png", "apps/web/public/glade.png");
   for (const filename of ["icon.ico", "app-icon-windows.ico"]) {
     copy("assets/prod/glade-black-windows.ico", `apps/desktop/resources/${filename}`);
   }
-  icon("light", "apps/web/public/app-icons/default.png", 256);
-  icon("dark", "apps/web/public/app-icons/dark.png", 256);
   for (const [source, target] of [
     ["glade-black-web-favicon.ico", "favicon.ico"],
     ["glade-black-web-favicon-16x16.png", "favicon-16x16.png"],
@@ -197,8 +182,8 @@ try {
   ])
     copy(`assets/prod/${source}`, `apps/web/public/${target}`);
 
-  icns("light", "apps/desktop/resources/icon.icns");
-  icns("dev", "assets/dev/blueprint-macos.icns");
+  icns("production", "apps/desktop/resources/icon.icns");
+  icns("development", "assets/dev/blueprint-macos.icns");
   run("xcrun", [
     "actool",
     "assets/prod/Glade.icon",

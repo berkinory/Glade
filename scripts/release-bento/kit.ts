@@ -168,9 +168,8 @@ export function logo(name: LogoName, size = 15): string {
 }
 
 /** The macOS app icon, rendered by scripts/generate-brand-assets.ts. */
-export function appIcon(appearance: "light" | "dark", size: number): string {
-  const file = appearance === "dark" ? "icon-dark.png" : "icon.png";
-  const png = readFileSync(join(import.meta.dirname, "../../apps/desktop/resources", file));
+export function appIcon(size: number): string {
+  const png = readFileSync(join(import.meta.dirname, "../../apps/desktop/resources/icon.png"));
   return `<img src="data:image/png;base64,${png.toString("base64")}" width="${size}" height="${size}" alt="">`;
 }
 

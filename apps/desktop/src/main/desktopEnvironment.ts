@@ -50,7 +50,6 @@ export const BASE_DIR =
   Path.join(OS.homedir(), desktopIdentity.defaultHomeDirectoryName);
 export const STATE_DIR = Path.join(BASE_DIR, "userdata");
 export const DESKTOP_WINDOW_STATE_PATH = Path.join(STATE_DIR, "desktop-window-state.json");
-export const DESKTOP_APP_ICON_PATH = Path.join(STATE_DIR, "desktop-app-icon");
 export const DESKTOP_CONTENT_BLOCKER_PATH = Path.join(STATE_DIR, "desktop-content-blocker.json");
 
 export const DESKTOP_CUSTOM_TITLE_BAR_PATH = Path.join(STATE_DIR, "desktop-custom-title-bar.json");

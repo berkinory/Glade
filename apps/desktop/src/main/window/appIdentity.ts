@@ -1,4 +1,4 @@
-import type { DesktopAppIcon } from "@glade/contracts/ipc/ipc";
+import { createHash } from "node:crypto";
 import { app, BrowserWindow, nativeImage, shell } from "electron";
 import * as ChildProcess from "node:child_process";
 import * as FS from "node:fs";
@@ -21,12 +21,11 @@ import {
 import {
   APP_DISPLAY_NAME,
   APP_USER_MODEL_ID,
-  DESKTOP_APP_ICON_PATH,
   desktopFlavor,
   STATE_DIR,
 } from "../desktopEnvironment";
 import { formatErrorMessage } from "../lifecycle/desktopLogging";
-import { desktopAppIconResourceName, isDesktopAppIcon } from "./desktopAppIcon";
+import { desktopAppIconResourceName } from "./desktopAppIcon";
 import { persistMacAppIcon } from "./macAppIcon";
 import {
   LSREGISTER_PATH,
@@ -85,20 +84,6 @@ export function createAppIdentity(
     if (process.platform === "win32") {
       app.setAppUserModelId(APP_USER_MODEL_ID);
     }
-  }
-
-  function readDesktopAppIcon(): DesktopAppIcon {
-    try {
-      const storedIcon = FS.readFileSync(DESKTOP_APP_ICON_PATH, "utf8").trim();
-      return isDesktopAppIcon(storedIcon) ? storedIcon : "dark";
-    } catch {
-      return "dark";
-    }
-  }
-
-  function persistDesktopAppIcon(icon: DesktopAppIcon): void {
-    FS.mkdirSync(Path.dirname(DESKTOP_APP_ICON_PATH), { recursive: true });
-    FS.writeFileSync(DESKTOP_APP_ICON_PATH, icon, "utf8");
   }
 
   function windowsShortcutSearchDirectories(): string[] {
@@ -169,9 +154,9 @@ export function createAppIdentity(
     return matched;
   }
 
-  function materializeWindowsShellIcon(icon: DesktopAppIcon, sourcePath: string): string {
+  function materializeWindowsShellIcon(sourcePath: string): string {
     const bytes = toWindowsTaskbarIcoBytes(sourcePath);
-    const contentKey = windowsShellIconContentKey(icon, bytes);
+    const contentKey = windowsShellIconContentKey(desktopFlavor, bytes);
     const cacheKey = windowsIcon.nextCacheKey(contentKey);
     const fallbackDirectory = Path.join(STATE_DIR, "taskbar-icons");
     const directories = [
@@ -241,19 +226,17 @@ export function createAppIdentity(
     }
   }
 
-  async function syncMacAppBundleIcon(
-    icon: DesktopAppIcon,
-    image: Electron.NativeImage,
-  ): Promise<void> {
+  async function syncMacAppBundleIcon(image: Electron.NativeImage): Promise<void> {
     if (!app.isPackaged) return;
     const bundlePath = resolveMacAppBundlePath(process.execPath, process.platform);
     if (!bundlePath) return;
-    const key = `${app.getVersion()}:${icon}`;
+    const png = image.toPNG();
+    const key = `${app.getVersion()}:${createHash("sha256").update(png).digest("hex")}`;
     if (isMacAppBundleIconApplied(bundlePath, key)) return;
     await persistMacAppIcon({
       bundlePath,
       cacheDirectory: MAC_APP_ICON_CACHE_DIRECTORY,
-      png: image.toPNG(),
+      png,
     });
     FS.writeFileSync(MAC_APP_ICON_APPLIED_PATH, key, "utf8");
   }
@@ -303,21 +286,11 @@ export function createAppIdentity(
     });
   }
 
-  async function applyDesktopAppIcon(
-    icon: DesktopAppIcon,
+  function applyDesktopAppIcon(
     window: BrowserWindow | null = getMainWindow(),
     options?: { reregisterTaskbarButton?: boolean; flushShellIconCache?: boolean },
   ): Promise<void> {
-    return enqueueDesktopAppIconJob(() => applyDesktopAppIconUnlocked(icon, window, options));
-  }
-
-  function applyPersistedDesktopAppIcon(
-    window: BrowserWindow | null = getMainWindow(),
-    options?: { reregisterTaskbarButton?: boolean; flushShellIconCache?: boolean },
-  ): Promise<void> {
-    return enqueueDesktopAppIconJob(() =>
-      applyDesktopAppIconUnlocked(readDesktopAppIcon(), window, options),
-    );
+    return enqueueDesktopAppIconJob(() => applyDesktopAppIconUnlocked(window, options));
   }
 
   function enqueueDesktopAppIconJob(job: () => Promise<void>): Promise<void> {
@@ -330,7 +303,6 @@ export function createAppIdentity(
   }
 
   async function applyDesktopAppIconUnlocked(
-    icon: DesktopAppIcon,
     window: BrowserWindow | null = getMainWindow(),
     options?: { reregisterTaskbarButton?: boolean; flushShellIconCache?: boolean },
   ): Promise<void> {
@@ -341,10 +313,7 @@ export function createAppIdentity(
     ) {
       return;
     }
-    const resourceName = desktopAppIconResourceName({
-      icon,
-      platform: process.platform,
-    });
+    const resourceName = desktopAppIconResourceName(process.platform);
     const iconPath =
       desktopFlavor === "development"
         ? Path.resolve(
@@ -366,13 +335,13 @@ export function createAppIdentity(
       // Dock tiles top out at 128 pt (256 px on Retina) with the stock settings. The Dock keeps a
       // raster of whatever it is given: 32 MB for the 1024 px artwork, 8 MB at 512 px.
       app.dock?.setIcon(image.resize({ width: MAC_DOCK_ICON_PX, quality: "best" }));
-      await syncMacAppBundleIcon(icon, image);
+      await syncMacAppBundleIcon(image);
       return;
     }
     if (process.platform === "win32") {
       let shellIconPath = iconPath;
       try {
-        shellIconPath = materializeWindowsShellIcon(icon, iconPath);
+        shellIconPath = materializeWindowsShellIcon(iconPath);
       } catch (error) {
         console.warn(
           `[desktop] Failed to materialize Windows taskbar icon: ${formatErrorMessage(error)}`,
@@ -443,7 +412,7 @@ export function createAppIdentity(
     if (process.platform !== "darwin" || !app.dock) {
       return;
     }
-    void applyPersistedDesktopAppIcon().catch((error) => {
+    void applyDesktopAppIcon().catch((error) => {
       console.warn("[desktop] Failed to persist the macOS app icon", error);
     });
   }
@@ -503,11 +472,8 @@ export function createAppIdentity(
   return {
     repairBrowserProfileBeforeElectronReady,
     configureAppIdentity,
-    readDesktopAppIcon,
-    persistDesktopAppIcon,
     materializeWindowsShellIcon,
     applyDesktopAppIcon,
-    applyPersistedDesktopAppIcon,
     applyInitialMacDockIcon,
     refreshMacIconCacheOnVersionChange,
     dispose: () => {

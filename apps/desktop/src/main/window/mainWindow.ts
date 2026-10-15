@@ -1,4 +1,4 @@
-import type { DesktopAppIcon, DesktopUpdateState } from "@glade/contracts/ipc/ipc";
+import type { DesktopUpdateState } from "@glade/contracts/ipc/ipc";
 import { getMacTrafficLightPosition } from "@glade/shared/platform/desktopChrome";
 import type { BrowserWindowConstructorOptions, MenuItemConstructorOptions } from "electron";
 import {
@@ -61,9 +61,8 @@ import { createDesktopMenuShortcuts } from "./desktopMenuShortcuts";
 import { opaqueWindowBackgroundColor } from "./desktopWindowAppearance";
 
 interface WindowIdentity {
-  readDesktopAppIcon(): DesktopAppIcon;
-  materializeWindowsShellIcon(icon: DesktopAppIcon, sourcePath: string): string;
-  applyPersistedDesktopAppIcon(
+  materializeWindowsShellIcon(sourcePath: string): string;
+  applyDesktopAppIcon(
     window?: BrowserWindow | null,
     options?: { reregisterTaskbarButton?: boolean; flushShellIconCache?: boolean },
   ): Promise<void>;
@@ -136,11 +135,7 @@ export function createMainWindow({
   function getIconOption(): { icon: string } | Record<string, never> {
     if (process.platform === "darwin") return {};
     if (process.platform !== "linux" && process.platform !== "win32") return {};
-    const icon = identity.readDesktopAppIcon();
-    const resourceName = desktopAppIconResourceName({
-      icon,
-      platform: process.platform,
-    });
+    const resourceName = desktopAppIconResourceName(process.platform);
     const iconPath =
       desktopFlavor === "development"
         ? Path.resolve(
@@ -152,7 +147,7 @@ export function createMainWindow({
     if (!iconPath) return {};
     if (process.platform !== "win32") return { icon: iconPath };
     try {
-      return { icon: identity.materializeWindowsShellIcon(icon, iconPath) };
+      return { icon: identity.materializeWindowsShellIcon(iconPath) };
     } catch (error) {
       console.warn(
         `[desktop] Failed to materialize Windows window icon: ${formatErrorMessage(error)}`,
@@ -254,7 +249,7 @@ export function createMainWindow({
       }
       window.show();
       if (process.platform === "win32") {
-        void identity.applyPersistedDesktopAppIcon(window);
+        void identity.applyDesktopAppIcon(window);
       }
       emitDesktopWindowState(window);
     });
@@ -304,7 +299,7 @@ export function createMainWindow({
 
     if (process.platform === "linux" || process.platform === "win32") {
       try {
-        void identity.applyPersistedDesktopAppIcon(window, {
+        void identity.applyDesktopAppIcon(window, {
           reregisterTaskbarButton: false,
         });
       } catch (error) {

@@ -42,7 +42,7 @@ export function createDesktopBundleFilePatterns(
     "!node_modules/node-pty/build/**/*.{iobj,ipdb,tlog,vcxproj,filters,recipe,lastbuildstate,exp,lib}",
   );
 
-  // All icon preferences for the target OS and the menu fallback remain intact. Build resources
+  // The app icon for the target OS and the menu fallback remain intact. Build resources
   // (signing entitlements / installer icons) are left untouched; only their otherwise redundant
   // runtime copies are filtered here.
   const resources = "!apps/desktop/prod-resources/";
@@ -54,14 +54,8 @@ export function createDesktopBundleFilePatterns(
       `${resources}icon.icns`,
     );
   }
-  if (platform !== "linux")
-    files.push(`${resources}app-icon-linux.png`, `${resources}icon-dark.png`);
-  if (platform !== "win")
-    files.push(
-      `${resources}app-icon-windows.ico`,
-      `${resources}icon.ico`,
-      `${resources}icon-dark.ico`,
-    );
+  if (platform !== "linux") files.push(`${resources}app-icon-linux.png`);
+  if (platform !== "win") files.push(`${resources}app-icon-windows.ico`, `${resources}icon.ico`);
 
   return files;
 }

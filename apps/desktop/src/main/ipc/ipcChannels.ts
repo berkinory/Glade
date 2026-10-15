@@ -3,8 +3,6 @@ export const DESKTOP_IPC_CHANNELS = {
   saveFile: "desktop:save-file",
   confirm: "desktop:confirm",
   setTheme: "desktop:set-theme",
-  getAppIcon: "desktop:get-app-icon",
-  setAppIcon: "desktop:set-app-icon",
   editCommand: "desktop:edit-command",
   copyImageAt: "desktop:copy-image-at",
   openExternal: "desktop:open-external",

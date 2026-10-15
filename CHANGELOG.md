@@ -8,6 +8,8 @@
 
 ### Improved
 
+- Glade has a new dithered twilight icon, a matching seal throughout the app, and a midnight-blue icon for development builds. App icons are now fixed per build instead of selectable in Settings.
+
 - The sidebar has theme-matched artwork and a refreshed header, with search available even when collapsed.
 
 - Light mode is easier on the eyes, with softer neutral backgrounds and clearer secondary text.

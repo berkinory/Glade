@@ -40,7 +40,7 @@ const composer = `
 
 const brand = (version: string) => `
 <section class="tile brand app-brand">
-  ${appIcon("dark", 180)}
+  ${appIcon(180)}
   <div><div class="brand-name">Glade</div><div class="ver">${version}</div></div>
 </section>`;
 

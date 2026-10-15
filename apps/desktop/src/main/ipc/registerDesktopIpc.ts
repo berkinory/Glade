@@ -2,7 +2,6 @@ import { registerMenuShortcutsIpc } from "./menuShortcutsIpc";
 import type { DesktopMenuShortcutState } from "@glade/contracts/ipc/menuShortcuts";
 import { readDesktopClipboardFiles } from "./clipboardFiles";
 import type {
-  DesktopAppIcon,
   DesktopEditCommand,
   DesktopUpdateActionResult,
   DesktopUpdateState,
@@ -27,11 +26,6 @@ import {
   MAX_CLIPBOARD_IMAGE_DATA_URL_LENGTH,
 } from "../desktopEnvironment";
 import { showDesktopConfirmDialog } from "../window/confirmDialog";
-import {
-  createExclusiveApplyQueue,
-  isDesktopAppIcon,
-  shouldUpdateDesktopAppIcon,
-} from "../window/desktopAppIcon";
 import { opaqueWindowBackgroundColor } from "../window/desktopWindowAppearance";
 import { writeCustomTitleBarPreference } from "../window/desktopCustomTitleBar";
 import { DESKTOP_IPC_CHANNELS } from "./ipcChannels";
@@ -66,15 +60,6 @@ interface IpcWindow {
     threadId?: string;
   }) => boolean;
 }
-interface IpcIdentity {
-  readDesktopAppIcon: () => DesktopAppIcon;
-  persistDesktopAppIcon: (icon: DesktopAppIcon) => void;
-  applyDesktopAppIcon: (
-    icon: DesktopAppIcon,
-    window?: BrowserWindow | null,
-    options?: { reregisterTaskbarButton?: boolean; flushShellIconCache?: boolean },
-  ) => Promise<void>;
-}
 interface IpcUpdates {
   getState(): DesktopUpdateState;
   check: (reason: string) => Promise<void>;
@@ -100,7 +85,6 @@ function isDesktopEditCommand(value: unknown): value is DesktopEditCommand {
 
 export interface DesktopIpcDependencies {
   windows: IpcWindow;
-  identity: IpcIdentity;
   updates: IpcUpdates;
   control: IpcControl;
   desktopHost: () => DesktopHost | null;
@@ -108,7 +92,6 @@ export interface DesktopIpcDependencies {
 }
 export function createRegisterDesktopIpc({
   windows,
-  identity,
   updates,
   control,
   desktopHost,
@@ -193,24 +176,6 @@ export function createRegisterDesktopIpc({
       nativeTheme.themeSource = theme;
       const window = windows.getMainWindow();
       if (window) window.setBackgroundColor(opaqueWindowBackgroundColor());
-    });
-
-    ipcMain.removeHandler(DESKTOP_IPC_CHANNELS.getAppIcon);
-    ipcMain.handle(DESKTOP_IPC_CHANNELS.getAppIcon, () => identity.readDesktopAppIcon());
-
-    ipcMain.removeHandler(DESKTOP_IPC_CHANNELS.setAppIcon);
-    const enqueueDesktopAppIconApply = createExclusiveApplyQueue(async (icon: DesktopAppIcon) => {
-      const shouldPersist = shouldUpdateDesktopAppIcon(identity.readDesktopAppIcon(), icon);
-      if (shouldPersist) identity.persistDesktopAppIcon(icon);
-
-      if (!shouldPersist && process.platform !== "win32" && process.platform !== "darwin") return;
-      await identity.applyDesktopAppIcon(icon, windows.getMainWindow(), {
-        flushShellIconCache: true,
-      });
-    });
-    ipcMain.handle(DESKTOP_IPC_CHANNELS.setAppIcon, async (_event, rawIcon: unknown) => {
-      if (!isDesktopAppIcon(rawIcon)) return;
-      await enqueueDesktopAppIconApply(rawIcon);
     });
 
     ipcMain.removeHandler(DESKTOP_IPC_CHANNELS.editCommand);

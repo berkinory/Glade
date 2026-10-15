@@ -43,7 +43,6 @@ import {
   ProviderPluginInventoryResult,
   ProviderManagePluginInput,
 } from "../provider/providerManagement";
-import { Schema } from "effect";
 
 import type {
   AuthBearerBootstrapResult,
@@ -392,9 +391,6 @@ export interface DesktopCustomTitleBarState {
   restartRequired: boolean;
 }
 
-export const DesktopAppIcon = Schema.Literals(["default", "dark"]);
-export type DesktopAppIcon = typeof DesktopAppIcon.Type;
-
 export interface DesktopClipboardFile {
   path: string;
   name: string;
@@ -450,8 +446,6 @@ export interface DesktopBridge {
   }) => Promise<string | null>;
   confirm: (message: string) => Promise<boolean>;
   setTheme: (theme: DesktopTheme) => Promise<void>;
-  getAppIcon?: () => Promise<DesktopAppIcon>;
-  setAppIcon: (icon: DesktopAppIcon) => Promise<void>;
   editCommand: (command: DesktopEditCommand) => Promise<void>;
   copyImageAt: (position: { x: number; y: number }) => Promise<void>;
   openExternal: (url: string) => Promise<boolean>;

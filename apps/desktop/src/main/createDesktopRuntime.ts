@@ -126,7 +126,6 @@ export function createDesktopRuntime(): void {
   app.once("will-quit", () => remoteHosts.stop());
   const ipc = createRegisterDesktopIpc({
     windows,
-    identity,
     updates,
     control: {
       getWsUrl: backend.getWsUrl,

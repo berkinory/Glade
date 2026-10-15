@@ -27,7 +27,6 @@ export interface DesktopIconAssetPaths {
   readonly macIconComposer: string;
   readonly macLegacyIconPng: string;
 
-  readonly macLegacyDarkIconPng?: string;
   readonly linuxIconPng: string;
   readonly windowsIconIco: string;
 }

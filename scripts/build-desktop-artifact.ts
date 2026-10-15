@@ -479,7 +479,6 @@ function stageMacIcons(
     const iconPngPath = path.join(stageResourcesDir, "icon.png");
     const iconIcnsPath = path.join(stageResourcesDir, "icon.icns");
     const dockIconPngPath = path.join(stageResourcesDir, "dock-icon.png");
-    const dockIconDarkPngPath = path.join(stageResourcesDir, "dock-icon-dark.png");
 
     yield* runCommand(
       ChildProcess.make({
@@ -492,21 +491,6 @@ function stageMacIcons(
         ...commandOutputOptions(verbose),
       })`sips -z 1024 1024 ${legacyIconSource} --out ${dockIconPngPath}`,
     );
-
-    const darkIconAssetPath = iconPaths.macLegacyDarkIconPng;
-    if (darkIconAssetPath !== undefined) {
-      const darkIconSource = yield* iconSourceFor(darkIconAssetPath);
-      if (!(yield* fs.exists(darkIconSource))) {
-        return yield* new BuildScriptError({
-          message: `${flavor} macOS dark icon source is missing at ${darkIconSource}`,
-        });
-      }
-      yield* runCommand(
-        ChildProcess.make({
-          ...commandOutputOptions(verbose),
-        })`sips -z 1024 1024 ${darkIconSource} --out ${dockIconDarkPngPath}`,
-      );
-    }
 
     yield* generateMacIconSet(legacyIconSource, iconIcnsPath, tmpRoot, path, verbose);
 

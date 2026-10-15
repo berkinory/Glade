@@ -86,7 +86,7 @@ const performance = `
 
 const brand = (version: string) => `
 <section class="tile brand app-brand">
-  ${appIcon("dark", 190)}
+  ${appIcon(190)}
   <div class="brand-text"><div class="brand-name">Glade</div><div class="ver">${version}</div></div>
 </section>`;
 

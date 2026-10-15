@@ -58,7 +58,7 @@ const providers = `
 
 const brand = (version: string) => `
 <section class="tile brand new-icon">
-  ${appIcon("dark", 200)}
+  ${appIcon(200)}
   <div class="brand-text"><div class="brand-name">Glade</div><div class="ver">${version}</div></div>
 </section>`;
 
