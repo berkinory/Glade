@@ -68,7 +68,7 @@ describe("SQLite persistence", () => {
         const [mmapSize] = yield* sql<{ readonly mmap_size: number }>`
           PRAGMA mmap_size;
         `;
-        expect(cacheSize?.cache_size).toBeLessThanOrEqual(-65_536);
+        expect(cacheSize?.cache_size).toBe(-32_768);
         expect(mmapSize?.mmap_size).toBeGreaterThan(0);
 
         yield* sql`CREATE TABLE ownership_probe(value TEXT NOT NULL)`;
