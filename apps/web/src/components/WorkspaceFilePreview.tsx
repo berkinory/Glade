@@ -692,6 +692,13 @@ export function WorkspaceFilePreview(props: WorkspaceFilePreviewProps) {
             cacheKey: binaryPreviewRevision,
           })}
           label={basenameOfPath(filePath!)}
+          unplayable={
+            <UnsupportedFilePreview
+              filePath={filePath!}
+              workspaceRoot={props.workspaceRoot}
+              description="Glade can't play this video format. Open it in another app to watch it."
+            />
+          }
           className="min-h-0 flex-1"
           onReady={handleBinaryPreviewReady}
           onError={handleBinaryPreviewError}

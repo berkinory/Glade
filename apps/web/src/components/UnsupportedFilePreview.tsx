@@ -7,7 +7,11 @@ import { FileEntryIcon } from "./chat/FileEntryIcon";
 import { OpenInPicker } from "./chat/OpenInPicker";
 import { PanelEmptyState } from "./chat/PanelEmptyState";
 
-export function UnsupportedFilePreview(props: { filePath: string; workspaceRoot: string | null }) {
+export function UnsupportedFilePreview(props: {
+  filePath: string;
+  workspaceRoot: string | null;
+  description?: string;
+}) {
   const openInTarget =
     props.workspaceRoot && isWorkspaceRelativePathSafe(props.filePath)
       ? joinWorkspaceRelativePath(props.workspaceRoot, props.filePath)
@@ -18,7 +22,10 @@ export function UnsupportedFilePreview(props: { filePath: string; workspaceRoot:
       fill="flex"
       icon={<FileEntryIcon pathValue={props.filePath} kind="file" className="size-12" />}
       title="Preview unavailable"
-      description="Glade can't preview this file type. Open it in another app to view its contents."
+      description={
+        props.description ??
+        "Glade can't preview this file type. Open it in another app to view its contents."
+      }
     >
       <OpenInPicker openInTarget={openInTarget} labelMode="always" />
     </PanelEmptyState>

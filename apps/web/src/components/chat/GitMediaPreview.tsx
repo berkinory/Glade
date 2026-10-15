@@ -9,7 +9,19 @@ import { useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { ensureNativeApi } from "~/nativeApi";
 import { LocalVideoPlayer } from "../LocalVideoPlayer";
+import { FileEntryIcon } from "./FileEntryIcon";
+import { PanelEmptyState } from "./PanelEmptyState";
 import { PanelStateMessage } from "./PanelStateMessage";
+
+function GitMediaUnavailable(props: { path: string; description: string }) {
+  return (
+    <PanelEmptyState
+      icon={<FileEntryIcon pathValue={props.path} kind="file" className="size-12" />}
+      title="Preview unavailable"
+      description={props.description}
+    />
+  );
+}
 
 export function isGitMediaPath(path: string) {
   return isSupportedLocalImagePath(path) || isSupportedLocalVideoPath(path);
@@ -77,20 +89,26 @@ export function GitMediaPreview(props: {
 
   if (data.isError || data.data?.missing || data.data?.truncated)
     return (
-      <PanelStateMessage density="compact">
-        Selected media is unavailable or exceeds the preview limit.
-      </PanelStateMessage>
+      <GitMediaUnavailable
+        path={props.path}
+        description="This file is missing at this revision or too large to preview."
+      />
     );
   const url = resource?.contents === data.data?.contents ? resource?.url : null;
   if (url && failedUrl === url)
     return (
-      <PanelStateMessage density="compact">
-        This image format could not be decoded.
-      </PanelStateMessage>
+      <GitMediaUnavailable path={props.path} description="Glade can't decode this image format." />
     );
   if (!url) return <PanelStateMessage density="compact" loadingLabel="Loading selected media" />;
   return video ? (
-    <LocalVideoPlayer url={url} label={props.path} className="min-h-full" />
+    <LocalVideoPlayer
+      url={url}
+      label={props.path}
+      unplayable={
+        <GitMediaUnavailable path={props.path} description="Glade can't play this video format." />
+      }
+      className="min-h-full"
+    />
   ) : (
     <div className="local-image-preview min-h-full">
       <img
