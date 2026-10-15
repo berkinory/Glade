@@ -274,10 +274,7 @@ export function EnvironmentPanel({
       <EnvironmentBackgroundTasksSection
         threadId={activeThreadId}
         localServersEnabled={open && isLocalEnvironment}
-        onOpenToolCall={(toolCallId) => {
-          onJumpToToolCall(toolCallId);
-          onClose();
-        }}
+        onOpenToolCall={onJumpToToolCall}
       />
     </div>
   );
