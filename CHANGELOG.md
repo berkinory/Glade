@@ -8,6 +8,7 @@
 
 ### Fixed
 
+- Chat status indicators in the sidebar stay at the right edge for chats on SSH and remote hosts. ([eb8b56261](https://github.com/berkinory/Glade/commit/eb8b5626180b0395fab8d8729dee3cba84d68e56))
 - Command rows in the chat show a label and icon that match the step the command actually ran. ([bb2bd0abc](https://github.com/berkinory/Glade/commit/bb2bd0abc8e2e8af75eb75dab73d2fb96fdb3d31))
 
 ## 0.2.8 - 2026-10-15
