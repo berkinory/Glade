@@ -4,6 +4,7 @@
     "composite": true,
     "types": ["node", "electron"],
     "lib": ["ES2023", "DOM", "esnext.disposable"],
+    "noEmit": true,
     "allowImportingTsExtensions": true
   },
   "include": ["src", "tsdown.config.mts", "../../scripts/lib/asciiOnlyChunks.ts"]
