@@ -15,6 +15,7 @@
 - Command rows in the chat show a label and icon that match the step the command actually ran. ([bb2bd0abc](https://github.com/berkinory/Glade/commit/bb2bd0abc8e2e8af75eb75dab73d2fb96fdb3d31))
 - Editing a Claude message you stopped before it replied resends it instead of failing. ([c931d56ef](https://github.com/berkinory/Glade/commit/c931d56ef35e831d18a1b14cee9b993c509e7001))
 - Generating commit messages, branch names and pull requests with Claude works again in the desktop app. ([a4a1244db](https://github.com/berkinory/Glade/commit/a4a1244db5585ecdadac2f1f708e473eca5b15cf))
+- Message times follow your system's 12- or 24-hour clock setting. ([8fb1c1d4d](https://github.com/berkinory/Glade/commit/8fb1c1d4d2a7ac034a26549ff0419b9bc8330dd0))
 
 ## 0.2.8 - 2026-10-15
 
