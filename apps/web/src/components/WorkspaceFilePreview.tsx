@@ -61,7 +61,7 @@ import { DiffTruncationWarning } from "./DiffTruncationWarning";
 import { HtmlFilePreview } from "./HtmlFilePreview";
 import { PanelStateMessage } from "./chat/PanelStateMessage";
 import { WorkspaceFilePreviewHeader } from "./chat/WorkspaceFilePreviewHeader";
-import { LocalVideoThumbnail } from "./LocalVideoThumbnail";
+import { LocalVideoPlayer } from "./LocalVideoPlayer";
 import { buildLocalImageUrl } from "~/lib/localImageUrls";
 import { LocalImagePreview } from "./LocalImagePreview";
 import { PdfFilePreview } from "./PdfFilePreview";
@@ -683,7 +683,7 @@ export function WorkspaceFilePreview(props: WorkspaceFilePreviewProps) {
         localPreviewGrantQuery.isPending ? (
         <FilePreviewLoadingState />
       ) : fileIsVideo ? (
-        <LocalVideoThumbnail
+        <LocalVideoPlayer
           key={binaryPreviewKey}
           url={buildLocalImageUrl({
             src: filePath!,
@@ -691,8 +691,7 @@ export function WorkspaceFilePreview(props: WorkspaceFilePreviewProps) {
             grant: localPreviewGrant,
             cacheKey: binaryPreviewRevision,
           })}
-          alt={basenameOfPath(filePath!)}
-          retainFrameOnReload
+          label={basenameOfPath(filePath!)}
           className="min-h-0 flex-1"
           onReady={handleBinaryPreviewReady}
           onError={handleBinaryPreviewError}

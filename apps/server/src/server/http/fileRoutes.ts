@@ -58,6 +58,7 @@ export const localImageEffectRouteLayer = HttpRouter.add(
     const isSvg = nodePath.extname(previewFile.path).toLowerCase() === ".svg";
     return streamedFileResponse({
       fileSystem,
+      range: request.headers.range,
       path: previewFile.path,
       sizeBytes: previewFile.sizeBytes,
       headers: {
@@ -154,6 +155,7 @@ export const attachmentsEffectRouteLayer = HttpRouter.add(
 
     return streamedFileResponse({
       fileSystem,
+      range: request.headers.range,
       path: filePath,
       sizeBytes: Number(fileInfo.size),
 

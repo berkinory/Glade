@@ -8,7 +8,7 @@ import { isSupportedLocalVideoPath } from "@glade/shared/attachments/localVideoF
 import { useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { ensureNativeApi } from "~/nativeApi";
-import { LocalVideoThumbnail } from "../LocalVideoThumbnail";
+import { LocalVideoPlayer } from "../LocalVideoPlayer";
 import { PanelStateMessage } from "./PanelStateMessage";
 
 export function isGitMediaPath(path: string) {
@@ -90,7 +90,7 @@ export function GitMediaPreview(props: {
     );
   if (!url) return <PanelStateMessage density="compact" loadingLabel="Loading selected media" />;
   return video ? (
-    <LocalVideoThumbnail url={url} alt={props.path} className="min-h-full" />
+    <LocalVideoPlayer url={url} label={props.path} className="min-h-full" />
   ) : (
     <div className="local-image-preview min-h-full">
       <img

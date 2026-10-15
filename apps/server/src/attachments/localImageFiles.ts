@@ -146,7 +146,7 @@ export async function resolveAllowedLocalPreviewFile(input: {
   }
 
   const stat = await fs.stat(realFilePath).catch(() => null);
-  if (!stat?.isFile() || (isSupportedLocalVideoPath(realFilePath) && stat.size > 32_000_000)) {
+  if (!stat?.isFile()) {
     return null;
   }
   const resolved: ResolvedLocalPreviewFile = {

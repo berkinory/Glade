@@ -45,6 +45,7 @@ export const projectFaviconEffectRouteLayer = HttpRouter.add(
     const stats = yield* fileSystem.stat(faviconPath);
     return streamedFileResponse({
       fileSystem,
+      range: request.headers.range,
       path: faviconPath,
       sizeBytes: Number(stats.size),
       headers: {
