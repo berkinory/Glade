@@ -37,16 +37,20 @@ export function SourceControlTurnChanges(props: {
   }
   return (
     <div className="flex h-full min-h-0 flex-col">
-      <div className="flex flex-wrap items-center gap-2 border-b border-border/70 p-2">
-        <span className="min-w-0 flex-1 text-ui-sm">Turn changes · {count ?? "unavailable"}</span>
-        <DiffLayoutToggle />
-      </div>
+      {props.filePath ? null : (
+        <div className="flex flex-wrap items-center gap-2 border-b border-border/70 p-2">
+          <span className="min-w-0 flex-1 text-ui-sm">Turn changes · {count ?? "unavailable"}</span>
+          <DiffLayoutToggle />
+        </div>
+      )}
       {query.error || !turn || count === undefined ? (
         <PanelStateMessage>
           {query.error?.message ?? "This turn’s checkpoint is unavailable."}
         </PanelStateMessage>
       ) : query.isPending ? (
         <PanelStateMessage loadingLabel="Loading turn changes" />
+      ) : props.filePath ? (
+        <PanelStateMessage>This file has no changes in this turn.</PanelStateMessage>
       ) : patch?.kind === "files" ? (
         <FileDiffSurface className="min-h-0 flex-1 overflow-auto p-2">
           {pagedFiles.visibleFiles.map((file) => (
