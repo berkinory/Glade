@@ -166,8 +166,9 @@ function makeClaudeAdapter(options?: ClaudeAdapterLiveOptions) {
       settlePendingUserInput,
       settlePendingApproval,
     } = makeClaudeInteractionSettlement({ makeEventStamp, offerRuntimeEvent });
-    const { completeTurn } = makeClaudeTurnCompletion({
+    const { completeTurn, settleSubagentRun } = makeClaudeTurnCompletion({
       settlePendingHumanInteractions,
+      settlePendingHumanInteractionsForAgent,
       readClaudeContextUsage,
       makeEventStamp,
       offerRuntimeEvent,
@@ -230,7 +231,7 @@ function makeClaudeAdapter(options?: ClaudeAdapterLiveOptions) {
         stopWorkflowRuntimePoller,
         makeEventStamp,
         offerRuntimeEvent,
-        completeTurn,
+        settleSubagentRun,
         updateResumeCursor,
         emitRuntimeWarning,
         emitCompactionProgress,

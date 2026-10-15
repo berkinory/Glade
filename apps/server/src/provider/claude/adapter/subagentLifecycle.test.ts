@@ -454,6 +454,132 @@ describe("Claude subagentLifecycle", () => {
     );
   });
 
+  it.effect("settles a foreground subagent with the turn that failed under it", () => {
+    const harness = makeHarness();
+    return Effect.gen(function* () {
+      const adapter = yield* ClaudeAdapter;
+      const eventsFiber = yield* adapter.streamEvents.pipe(
+        Stream.takeUntil(
+          (event) => event.type === "task.completed" && event.payload.taskId === "task-bg",
+        ),
+        Stream.runCollect,
+        Effect.forkChild,
+      );
+      const session = yield* adapter.startSession({
+        threadId: THREAD_ID,
+        provider: "claudeAgent",
+        runtimeMode: "full-access",
+      });
+      yield* adapter.sendTurn({ threadId: session.threadId, input: "delegate", attachments: [] });
+      const envelope = { session_id: "sdk-session-limit", parent_tool_use_id: null };
+      harness.query.emit({
+        ...envelope,
+        type: "stream_event",
+        uuid: "limit-tool-start",
+        event: {
+          type: "content_block_start",
+          index: 0,
+          content_block: {
+            type: "tool_use",
+            id: "tool-fg",
+            name: "Agent",
+            input: { description: "Audit", prompt: "audit", subagent_type: "general-purpose" },
+          },
+        },
+      } as unknown as SDKMessage);
+      harness.query.emit({
+        ...envelope,
+        type: "system",
+        subtype: "task_started",
+        task_id: "task-fg",
+        tool_use_id: "tool-fg",
+        subagent_type: "general-purpose",
+        description: "Audit",
+        is_backgrounded: false,
+        uuid: "limit-task-fg-started",
+      } as unknown as SDKMessage);
+      harness.query.emit({
+        ...envelope,
+        type: "assistant",
+        uuid: "limit-child-assistant",
+        parent_tool_use_id: "tool-fg",
+        message: { id: "limit-child-message", content: [{ type: "text", text: "Auditing." }] },
+      } as unknown as SDKMessage);
+      harness.query.emit({
+        ...envelope,
+        type: "system",
+        subtype: "task_started",
+        task_id: "task-bg",
+        task_type: "local_bash",
+        description: "Watch logs",
+        is_backgrounded: true,
+        uuid: "limit-task-bg-started",
+      } as unknown as SDKMessage);
+      // A usage limit ends the turn mid-subagent and the CLI never reports the subagent task.
+      harness.query.emit({
+        ...envelope,
+        type: "result",
+        subtype: "error_during_execution",
+        is_error: true,
+        errors: ["You've hit your usage limit."],
+        uuid: "limit-result",
+      } as unknown as SDKMessage);
+      harness.query.emit({
+        ...envelope,
+        type: "system",
+        subtype: "task_progress",
+        task_id: "task-fg",
+        tool_use_id: "tool-fg",
+        description: "Audit",
+        uuid: "limit-late-progress",
+      } as unknown as SDKMessage);
+      harness.query.emit({
+        ...envelope,
+        type: "system",
+        subtype: "task_notification",
+        task_id: "task-bg",
+        status: "completed",
+        summary: "Logs watched.",
+        uuid: "limit-task-bg-notification",
+      } as unknown as SDKMessage);
+
+      const events = Array.from(yield* Fiber.join(eventsFiber));
+      const rootTurnCompletedAt = events.findIndex(
+        (event) =>
+          event.type === "turn.completed" && event.providerRefs?.providerThreadId === undefined,
+      );
+      const taskCompletions = events.flatMap((event) =>
+        event.type === "task.completed" ? [event.payload] : [],
+      );
+      assert.deepEqual(
+        taskCompletions.map(({ taskId, status }) => ({ taskId, status })),
+        [
+          { taskId: "task-fg", status: "failed" },
+          { taskId: "task-bg", status: "completed" },
+        ],
+      );
+      const childTurnCompleted = events.find(
+        (event) =>
+          event.type === "turn.completed" && event.providerRefs?.providerThreadId === "tool-fg",
+      );
+      assert.equal(
+        childTurnCompleted?.type === "turn.completed"
+          ? childTurnCompleted.payload.state
+          : undefined,
+        "failed",
+      );
+      assert.equal(
+        events
+          .slice(rootTurnCompletedAt)
+          .some((event) => event.type === "task.progress" && event.payload.taskId === "task-fg"),
+        false,
+      );
+    }).pipe(
+      Effect.provideService(Random.Random, makeDeterministicRandomService()),
+      Effect.provide(harness.layer),
+    );
+  });
+
   it.effect("attributes a wake only to the task that settled while the agent was idle", () => {
     const harness = makeHarness();
     return Effect.gen(function* () {

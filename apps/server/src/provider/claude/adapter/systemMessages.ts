@@ -23,7 +23,6 @@ import {
   sdkNativeMethod,
   runtimeSessionStateFromClaudeTaskStatus,
   readClaudeVcsStateChange,
-  claudeTaskTurnStatus,
 } from "./sdkMetadata";
 import { asCanonicalTurnId, nativeProviderRefs } from "./messageContent";
 import {
@@ -53,7 +52,7 @@ export function makeClaudeSystemMessages(input: {
   >["stopWorkflowRuntimePoller"];
   readonly makeEventStamp: () => Effect.Effect<{ eventId: EventId; createdAt: string }>;
   readonly offerRuntimeEvent: ClaudeRuntimeEventsShape["offerRuntimeEvent"];
-  readonly completeTurn: ReturnType<typeof makeClaudeTurnCompletion>["completeTurn"];
+  readonly settleSubagentRun: ReturnType<typeof makeClaudeTurnCompletion>["settleSubagentRun"];
   readonly updateResumeCursor: ClaudeRuntimeEventsShape["updateResumeCursor"];
   readonly emitRuntimeWarning: ClaudeRuntimeEventsShape["emitRuntimeWarning"];
   readonly emitCompactionProgress: ClaudeRuntimeEventsShape["emitCompactionProgress"];
@@ -70,7 +69,7 @@ export function makeClaudeSystemMessages(input: {
     stopWorkflowRuntimePoller,
     makeEventStamp,
     offerRuntimeEvent,
-    completeTurn,
+    settleSubagentRun,
     updateResumeCursor,
     emitRuntimeWarning,
     emitCompactionProgress,
@@ -102,10 +101,17 @@ export function makeClaudeSystemMessages(input: {
         }
         const isTerminalStatus =
           status === "completed" || status === "failed" || status === "killed";
+        // A late patch from a settled task, such as one settled with its turn, must not revive it.
+        if (!isTerminalStatus && context.terminalTaskIds.has(message.task_id)) return;
         const wakesAgent = isTerminalStatus && !context.turnState;
         if (isTerminalStatus) {
           context.terminalTaskIds.add(message.task_id);
           yield* settlePendingHumanInteractionsForAgent(context, message.task_id);
+        }
+        if (isTerminalStatus || isBackgrounded === true) {
+          context.foregroundTaskIds.delete(message.task_id);
+        } else if (isBackgrounded === false && context.turnState) {
+          context.foregroundTaskIds.add(message.task_id);
         }
 
         if (isTerminalStatus || isBackgrounded === false) {
@@ -171,18 +177,11 @@ export function makeClaudeSystemMessages(input: {
           raw,
         });
         if (isTerminalStatus) {
-          context.subagentRuns.delete(run.toolUseId);
-          context.pendingSubagentStops.delete(run.toolUseId);
-          context.settledSubagentToolUseIds.set(
-            run.toolUseId,
+          yield* settleSubagentRun(
+            context,
+            run,
             status === "completed" ? "completed" : status === "failed" ? "failed" : "stopped",
           );
-          if (run.context.turnState) {
-            yield* completeTurn(
-              run.context,
-              status === "completed" ? "completed" : status === "failed" ? "failed" : "interrupted",
-            );
-          }
         }
         return;
       }
@@ -421,6 +420,15 @@ export function makeClaudeSystemMessages(input: {
             }
           }
           if (context.terminalTaskIds.has(message.task_id)) return;
+          // Foreground work nested under a foreground task ends with the same turn.
+          if (
+            context.turnState &&
+            message.is_backgrounded === false &&
+            (message.parent_task_id === undefined ||
+              context.foregroundTaskIds.has(message.parent_task_id))
+          ) {
+            context.foregroundTaskIds.add(message.task_id);
+          }
           const subagentToolUseId = resumedToolUseId ?? message.tool_use_id;
           const ownerTurnId = context.turnState?.turnId ?? context.lastTurnId;
           if (ownerTurnId) {
@@ -560,6 +568,7 @@ export function makeClaudeSystemMessages(input: {
           }
           if (context.terminalTaskIds.has(message.task_id)) return;
           context.terminalTaskIds.add(message.task_id);
+          context.foregroundTaskIds.delete(message.task_id);
           yield* settlePendingHumanInteractionsForAgent(context, message.task_id);
           context.knownBackgroundTaskIds.delete(message.task_id);
           const workflowTaskId = context.workflowTaskIdByMemberTaskId.get(message.task_id);
@@ -609,14 +618,7 @@ export function makeClaudeSystemMessages(input: {
           context.workflowTaskIdByMemberTaskId.delete(message.task_id);
           context.workflowRuntimeStates.delete(message.task_id);
           yield* stopWorkflowRuntimePoller(context, message.task_id);
-          if (run) {
-            context.subagentRuns.delete(run.toolUseId);
-            context.pendingSubagentStops.delete(run.toolUseId);
-            context.settledSubagentToolUseIds.set(run.toolUseId, message.status);
-            if (run.context.turnState) {
-              yield* completeTurn(run.context, claudeTaskTurnStatus(message.status));
-            }
-          }
+          if (run) yield* settleSubagentRun(context, run, message.status);
           return;
         }
         case "files_persisted":
@@ -651,6 +653,7 @@ export function makeClaudeSystemMessages(input: {
           context.knownBackgroundTaskIds.clear();
           for (const task of tasks) {
             context.knownBackgroundTaskIds.add(task.task_id);
+            context.foregroundTaskIds.delete(task.task_id);
           }
           for (const task of added) {
             const ownerTurnId = taskOwnerTurnId(context, task.task_id) ?? context.lastTurnId;

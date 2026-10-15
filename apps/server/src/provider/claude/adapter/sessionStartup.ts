@@ -464,6 +464,7 @@ export function makeClaudeSessionStartup(input: {
           pendingSubagentStops,
           knownBackgroundTaskIds: new Set(),
           terminalTaskIds: new Set(),
+          foregroundTaskIds: new Set(),
           settledSubagentToolUseIds: new Map(),
           subagentToolUseIdByAgentId: new Map(),
           subagentToolUseIdAliases: new Map(),

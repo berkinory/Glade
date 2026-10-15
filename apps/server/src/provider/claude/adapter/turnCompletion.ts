@@ -2,8 +2,8 @@ import { readClaudeNativeTitle } from "./nativeHistory.ts";
 import { isClaudeMissingResumeConversationMessage } from "./streamErrors.ts";
 import { readClaudeResumeState } from "./sessionResume.ts";
 import { Effect } from "effect";
-import { EventId } from "@glade/contracts/core/baseSchemas";
-import { ClaudeSessionContext, PROVIDER } from "./sessionTypes";
+import { EventId, RuntimeTaskId } from "@glade/contracts/core/baseSchemas";
+import { ClaudeSessionContext, ClaudeSubagentRun, PROVIDER } from "./sessionTypes";
 import { type RuntimeTurnState } from "@glade/contracts/provider/runtimeMetadata";
 import type { SDKResultMessage } from "@anthropic-ai/claude-agent-sdk";
 import { claudeTurnResultUsage } from "../claudeResultUsage.ts";
@@ -19,6 +19,7 @@ import { withoutProcessedTokenTotal } from "./sessionResume";
 import { type ThreadTokenUsageSnapshot } from "@glade/contracts/provider/runtimePayloads";
 import { cancelAgentGatewayTurn } from "../../../agentGateway/sessionLease.ts";
 import { asRuntimeItemId, nativeProviderRefs, asCanonicalTurnId } from "./messageContent";
+import { claudeTaskTurnStatus, subagentRunForTask } from "./sdkMetadata";
 import { isClaudeSubagentTool, toolLifecycleEventData } from "./toolPresentation";
 import { makeClaudeInteractionSettlement } from "./interactionSettlement";
 import { makeClaudeContextUsage } from "./contextUsage";
@@ -30,6 +31,9 @@ export function makeClaudeTurnCompletion(input: {
   readonly settlePendingHumanInteractions: ReturnType<
     typeof makeClaudeInteractionSettlement
   >["settlePendingHumanInteractions"];
+  readonly settlePendingHumanInteractionsForAgent: ReturnType<
+    typeof makeClaudeInteractionSettlement
+  >["settlePendingHumanInteractionsForAgent"];
   readonly readClaudeContextUsage: ReturnType<
     typeof makeClaudeContextUsage
   >["readClaudeContextUsage"];
@@ -42,6 +46,7 @@ export function makeClaudeTurnCompletion(input: {
 }) {
   const {
     settlePendingHumanInteractions,
+    settlePendingHumanInteractionsForAgent,
     readClaudeContextUsage,
     makeEventStamp,
     offerRuntimeEvent,
@@ -73,6 +78,52 @@ export function makeClaudeTurnCompletion(input: {
       });
     });
 
+  const settleSubagentRun = (
+    context: ClaudeSessionContext,
+    run: ClaudeSubagentRun,
+    status: "completed" | "failed" | "stopped",
+  ): Effect.Effect<void> =>
+    Effect.gen(function* () {
+      context.subagentRuns.delete(run.toolUseId);
+      context.pendingSubagentStops.delete(run.toolUseId);
+      context.settledSubagentToolUseIds.set(run.toolUseId, status);
+      if (run.context.turnState) {
+        yield* completeTurn(run.context, claudeTaskTurnStatus(status));
+      }
+    });
+
+  // A foreground task blocks the tool call that started it, so it ends with the root turn. A turn
+  // that fails under it (a usage limit, for one) may never get the task's terminal message, and a
+  // task left live keeps the runtime from going idle.
+  const settleForegroundTasks = (
+    context: ClaudeSessionContext,
+    turnStatus: RuntimeTurnState,
+  ): Effect.Effect<void> =>
+    Effect.gen(function* () {
+      const status =
+        turnStatus === "completed" ? "completed" : turnStatus === "failed" ? "failed" : "stopped";
+      for (const taskId of Array.from(context.foregroundTaskIds)) {
+        context.foregroundTaskIds.delete(taskId);
+        context.terminalTaskIds.add(taskId);
+        yield* settlePendingHumanInteractionsForAgent(context, taskId);
+        const ownerTurnId = context.taskTurnIds?.get(taskId);
+        context.taskTurnIds?.delete(taskId);
+        const stamp = yield* makeEventStamp();
+        yield* offerRuntimeEvent(context, {
+          type: "task.completed",
+          eventId: stamp.eventId,
+          provider: PROVIDER,
+          createdAt: stamp.createdAt,
+          threadId: context.session.threadId,
+          ...(ownerTurnId ? { turnId: ownerTurnId } : {}),
+          payload: { taskId: RuntimeTaskId.makeUnsafe(taskId), status },
+          providerRefs: nativeProviderRefs(context),
+        });
+        const run = subagentRunForTask(context, undefined, taskId);
+        if (run) yield* settleSubagentRun(context, run, status);
+      }
+    });
+
   const completeTurn = (
     context: ClaudeSessionContext,
     status: RuntimeTurnState,
@@ -80,6 +131,10 @@ export function makeClaudeTurnCompletion(input: {
     result?: SDKResultMessage,
   ): Effect.Effect<void> =>
     Effect.gen(function* () {
+      // Closing a stale synthetic turn without a result does not end the CLI's own turn.
+      if (!context.subagentRefs && (result !== undefined || status !== "completed")) {
+        yield* settleForegroundTasks(context, status);
+      }
       // A terminal foreground turn cannot retain its root callbacks once the UI can no longer answer
       // them. Agent callbacks remain actionable until their own task has provider-terminal evidence or
       // the session stops; background membership messages may race the callback itself.
@@ -421,5 +476,5 @@ export function makeClaudeTurnCompletion(input: {
       });
       if (result) yield* refreshNativeTitle(context);
     });
-  return { completeTurn };
+  return { completeTurn, settleSubagentRun };
 }

@@ -241,6 +241,8 @@ export interface ClaudeSessionSubagents {
   readonly knownBackgroundTaskIds: Set<string>;
   // Agent-scoped human interactions settle only on terminal task evidence or session stop.
   readonly terminalTaskIds: Set<string>;
+  // Root only: unsettled tasks running in the foreground of the root turn, which end with it.
+  readonly foregroundTaskIds: Set<string>;
   // Settled tool ids fence late child messages so stopped runs cannot reappear as running.
   readonly settledSubagentToolUseIds: Map<string, "completed" | "failed" | "stopped">;
   // A subagent's agent id (its task id) to the Task call that launched it. It outlives the run so a

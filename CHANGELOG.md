@@ -22,6 +22,7 @@
 - Message times follow your system's 12- or 24-hour clock setting. ([8fb1c1d4d](https://github.com/berkinory/Glade/commit/8fb1c1d4d2a7ac034a26549ff0419b9bc8330dd0))
 - Switching providers warns before it stops background tasks that are still running.
 - Ask for approval mode now always asks before Claude acts, even when Claude settings choose a different default.
+- Claude subagents interrupted by a failed turn no longer stay running forever.
 
 ## 0.2.8 - 2026-10-15
 
