@@ -1,5 +1,11 @@
 # Glade Changelog
 
+## Unreleased
+
+### Fixed
+
+- Command rows in the chat show a label and icon that match the step the command actually ran. ([bb2bd0abc](https://github.com/berkinory/Glade/commit/bb2bd0abc8e2e8af75eb75dab73d2fb96fdb3d31))
+
 ## 0.2.8 - 2026-10-15
 
 ### New
