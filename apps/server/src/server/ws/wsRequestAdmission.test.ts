@@ -10,7 +10,7 @@ describe("WsRequestAdmission", () => {
     await Effect.runPromise(
       Effect.gen(function* () {
         const admission = yield* makeWsRequestAdmission;
-        const first = yield* admission.acquire(1, ORCHESTRATION_WS_METHODS.getSnapshot);
+        const first = yield* admission.acquire(1, ORCHESTRATION_WS_METHODS.getThreadDetailSnapshot);
         const second = yield* admission.acquire(1, WS_METHODS.statsGetProfileStats);
         const rejected = yield* admission
           .acquire(1, WS_METHODS.gitReadWorkingTreeDiff)
@@ -54,8 +54,8 @@ describe("WsRequestAdmission", () => {
     await Effect.runPromise(
       Effect.gen(function* () {
         const admission = yield* makeWsRequestAdmission;
-        const clientOne = yield* admission.acquire(1, ORCHESTRATION_WS_METHODS.getSnapshot);
-        const clientTwo = yield* admission.acquire(2, ORCHESTRATION_WS_METHODS.getSnapshot);
+        const clientOne = yield* admission.acquire(1, ORCHESTRATION_WS_METHODS.getThreadDetailSnapshot);
+        const clientTwo = yield* admission.acquire(2, ORCHESTRATION_WS_METHODS.getThreadDetailSnapshot);
 
         const failed = yield* admission
           .guard(1, WS_METHODS.gitStatus, Effect.fail("expected"))
@@ -82,7 +82,7 @@ describe("WsRequestAdmission", () => {
         const fiber = yield* admission
           .guard(
             1,
-            ORCHESTRATION_WS_METHODS.getSnapshot,
+            ORCHESTRATION_WS_METHODS.getThreadDetailSnapshot,
             Deferred.succeed(started, undefined).pipe(Effect.andThen(Effect.never)),
           )
           .pipe(Effect.forkChild);

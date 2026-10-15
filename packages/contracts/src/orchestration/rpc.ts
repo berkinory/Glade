@@ -19,7 +19,7 @@ import { OrchestrationEvent } from "./events";
 import { ClientOrchestrationCommand, ClientThreadTurnStartCommand } from "./commands";
 
 export const ORCHESTRATION_WS_METHODS = {
-  getSnapshot: "orchestration.getSnapshot",
+  getProjectionCounts: "orchestration.getProjectionCounts",
   getShellSnapshot: "orchestration.getShellSnapshot",
   getThreadDetailSnapshot: "orchestration.getThreadDetailSnapshot",
   getThreadDetailHead: "orchestration.getThreadDetailHead",
@@ -68,13 +68,14 @@ export const OrchestrationSettleTurnDispatchResult = Schema.Union([
 export type OrchestrationSettleTurnDispatchResult =
   typeof OrchestrationSettleTurnDispatchResult.Type;
 
-export const OrchestrationGetSnapshotInput = Schema.Struct({});
+export const OrchestrationGetProjectionCountsInput = Schema.Struct({});
 
-export type OrchestrationGetSnapshotInput = typeof OrchestrationGetSnapshotInput.Type;
+export const OrchestrationProjectionCounts = Schema.Struct({
+  projectCount: NonNegativeInt,
+  threadCount: NonNegativeInt,
+});
 
-const OrchestrationGetSnapshotResult = OrchestrationReadModel;
-
-export type OrchestrationGetSnapshotResult = typeof OrchestrationGetSnapshotResult.Type;
+export type OrchestrationProjectionCounts = typeof OrchestrationProjectionCounts.Type;
 
 export const OrchestrationGetShellSnapshotInput = Schema.Struct({});
 
@@ -333,9 +334,9 @@ export type OrchestrationUnsubscribeThreadInput = typeof OrchestrationUnsubscrib
 
 export const OrchestrationRpcSchemas = {
   previewWorkspaceRestore: { input: PreviewWorkspaceRestoreInput, output: WorkspaceRestoreReview },
-  getSnapshot: {
-    input: OrchestrationGetSnapshotInput,
-    output: OrchestrationGetSnapshotResult,
+  getProjectionCounts: {
+    input: OrchestrationGetProjectionCountsInput,
+    output: OrchestrationProjectionCounts,
   },
   getShellSnapshot: {
     input: OrchestrationGetShellSnapshotInput,

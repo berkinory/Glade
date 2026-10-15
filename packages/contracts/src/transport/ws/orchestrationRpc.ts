@@ -28,11 +28,14 @@ export const WsOrchestrationSettleTurnDispatchRpc = Rpc.make(
   },
 );
 
-export const WsOrchestrationGetSnapshotRpc = Rpc.make(ORCHESTRATION_WS_METHODS.getSnapshot, {
-  payload: OrchestrationRpcSchemas.getSnapshot.input,
-  success: OrchestrationRpcSchemas.getSnapshot.output,
-  error: WsRpcError,
-});
+export const WsOrchestrationGetProjectionCountsRpc = Rpc.make(
+  ORCHESTRATION_WS_METHODS.getProjectionCounts,
+  {
+    payload: OrchestrationRpcSchemas.getProjectionCounts.input,
+    success: OrchestrationRpcSchemas.getProjectionCounts.output,
+    error: WsRpcError,
+  },
+);
 
 export const WsOrchestrationGetShellSnapshotRpc = Rpc.make(
   ORCHESTRATION_WS_METHODS.getShellSnapshot,

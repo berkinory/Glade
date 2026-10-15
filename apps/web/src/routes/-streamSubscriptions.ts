@@ -235,7 +235,7 @@ export function createStreamSubscriptions(
     ? registerEmptyRouteRestoreRefresh(() =>
         runEmptyRouteRestoreRefresh({
           getShellSnapshot: () => context.api.orchestration.getShellSnapshot(),
-          getSnapshot: () => context.api.orchestration.getSnapshot(),
+          getProjectionCounts: () => context.api.orchestration.getProjectionCounts(),
           repairState: () => context.api.orchestration.repairState(),
           applyShellSnapshot: applyQueriedShellSnapshot,
           hasThreads: () => (context.store.getState().threadIds?.length ?? 0) > 0,

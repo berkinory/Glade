@@ -687,7 +687,7 @@ function buildNativeApi(transport: WsTransport, listeners: NativeApiListeners): 
       listAgents: (input) => transport.request(WS_METHODS.providerListAgents, input),
     },
     orchestration: {
-      getSnapshot: () => transport.request(ORCHESTRATION_WS_METHODS.getSnapshot),
+      getProjectionCounts: () => transport.request(ORCHESTRATION_WS_METHODS.getProjectionCounts),
       getShellSnapshot: () => transport.request(ORCHESTRATION_WS_METHODS.getShellSnapshot),
       getThreadDetailSnapshot: (input) =>
         transport.request(ORCHESTRATION_WS_METHODS.getThreadDetailSnapshot, input),

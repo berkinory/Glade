@@ -234,6 +234,7 @@ import type {
   OrchestrationResolveCrashResumeResult,
   OrchestrationGetTurnDiffInput,
   OrchestrationGetTurnDiffResult,
+  OrchestrationProjectionCounts,
   OrchestrationSubscribeThreadInput,
   OrchestrationUnsubscribeThreadInput,
 } from "../orchestration/rpc";
@@ -745,7 +746,7 @@ export interface NativeApi {
     listAgents: (input: ProviderListAgentsInput) => Promise<ProviderListAgentsResult>;
   };
   orchestration: {
-    getSnapshot: () => Promise<OrchestrationReadModel>;
+    getProjectionCounts: () => Promise<OrchestrationProjectionCounts>;
     getShellSnapshot: () => Promise<OrchestrationShellSnapshot>;
     getThreadDetailSnapshot: (
       input: OrchestrationGetThreadDetailSnapshotInput,

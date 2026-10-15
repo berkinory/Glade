@@ -1,3 +1,4 @@
+import type { OrchestrationProjectionCounts } from "@glade/contracts/orchestration/rpc";
 import type {
   OrchestrationReadModel,
   OrchestrationShellSnapshot,
@@ -49,7 +50,7 @@ function delay(ms: number): Promise<void> {
 
 export async function runEmptyRouteRestoreRefresh(input: {
   readonly getShellSnapshot: () => Promise<OrchestrationShellSnapshot>;
-  readonly getSnapshot: () => Promise<OrchestrationReadModel>;
+  readonly getProjectionCounts: () => Promise<OrchestrationProjectionCounts>;
   readonly repairState: () => Promise<OrchestrationReadModel>;
   readonly applyShellSnapshot: (snapshot: OrchestrationShellSnapshot) => void;
   readonly hasThreads: () => boolean;
@@ -72,8 +73,8 @@ export async function runEmptyRouteRestoreRefresh(input: {
 
   // Applying it here would bypass EventRouter's shell sequence fence, which is the race this
   // coordinator exists to remove.
-  const readModel = await input.getSnapshot();
-  if (readModel.threads.length > 0) {
+  const counts = await input.getProjectionCounts();
+  if (counts.threadCount > 0) {
     return await applyFreshShellSnapshot();
   }
 

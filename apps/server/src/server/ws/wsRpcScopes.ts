@@ -12,7 +12,7 @@ export type WsFeatureRpcTag = RpcGroup.Rpcs<typeof WsFeatureRpcGroup>["_tag"];
 // The scope each RPC requires. The record is exhaustive, so a new RPC does not compile until it
 // declares one, and the admission middleware rejects a call before its handler runs.
 export const WS_RPC_REQUIRED_SCOPES: Record<WsFeatureRpcTag, AuthScope> = {
-  [ORCHESTRATION_WS_METHODS.getSnapshot]: "orchestration:read",
+  [ORCHESTRATION_WS_METHODS.getProjectionCounts]: "orchestration:read",
   [ORCHESTRATION_WS_METHODS.getShellSnapshot]: "orchestration:read",
   [ORCHESTRATION_WS_METHODS.getThreadDetailSnapshot]: "orchestration:read",
   [ORCHESTRATION_WS_METHODS.getThreadDetailHead]: "orchestration:read",

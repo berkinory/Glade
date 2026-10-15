@@ -37,7 +37,6 @@ const CONTROL_METHODS = new Set<string>([
 ]);
 
 const EXPENSIVE_READ_METHODS = new Set<string>([
-  ORCHESTRATION_WS_METHODS.getSnapshot,
   ORCHESTRATION_WS_METHODS.getThreadDetailSnapshot,
   ORCHESTRATION_WS_METHODS.searchThreadMessages,
   ORCHESTRATION_WS_METHODS.repairState,

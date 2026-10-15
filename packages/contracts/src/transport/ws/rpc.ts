@@ -2,7 +2,7 @@ import * as RpcGroup from "effect/unstable/rpc/RpcGroup";
 import {
   WsOrchestrationDispatchCommandRpc,
   WsOrchestrationSettleTurnDispatchRpc,
-  WsOrchestrationGetSnapshotRpc,
+  WsOrchestrationGetProjectionCountsRpc,
   WsOrchestrationGetShellSnapshotRpc,
   WsOrchestrationGetThreadDetailSnapshotRpc,
   WsOrchestrationGetThreadDetailHeadRpc,
@@ -156,7 +156,7 @@ import {
 export const WsFeatureRpcGroup = RpcGroup.make(
   WsOrchestrationDispatchCommandRpc,
   WsOrchestrationSettleTurnDispatchRpc,
-  WsOrchestrationGetSnapshotRpc,
+  WsOrchestrationGetProjectionCountsRpc,
   WsOrchestrationGetShellSnapshotRpc,
   WsOrchestrationGetThreadDetailSnapshotRpc,
   WsOrchestrationGetThreadDetailHeadRpc,
