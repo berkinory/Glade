@@ -13,7 +13,7 @@ import {
   type ScriptLanguage,
   commandFileEffects,
   inlineScriptOf,
-  isFileWriteStep,
+  isWriteStep,
   resolveCommandPaths,
 } from "./commandFileEffects";
 import {
@@ -102,14 +102,16 @@ function parseReadableCommandDisplay(
   if (segments.length > 1 && inspections.every(Boolean)) {
     return combinedInspectDisplay(segments, rawCommand, isRunning);
   }
-  // A chain that does more than look around is named by the first thing it does besides writing.
-  const acting = segments.filter((_, index) => !inspections[index]);
-  const primary =
-    acting.find((segment) => !isFileWriteStep(segment, rawCommand)) ??
-    acting[0] ??
-    segments[0] ??
-    rawCommand;
-  return segmentDisplay(primary, rawCommand, isRunning);
+  return segmentDisplay(primarySegment(rawCommand) ?? rawCommand, rawCommand, isRunning);
+}
+
+// A chain that does more than look around is named by the first thing it does besides writing.
+function primarySegment(rawCommand: string): string | null {
+  const segments = meaningfulSegments(rawCommand);
+  const acting = segments.filter((segment) => !inspectPresentation(segment));
+  return (
+    acting.find((segment) => !isWriteStep(segment, rawCommand)) ?? acting[0] ?? segments[0] ?? null
+  );
 }
 
 function parseCommandSearchShape(
@@ -170,12 +172,11 @@ function parseCommandReadRange(rawCommand: string): ReadRange | null {
 export const commandReadRange = cachedByCommand(parseCommandReadRange);
 
 function parseCommandPrimaryTool(rawCommand: string): string | null {
-  const segments = meaningfulSegments(rawCommand);
-  const primary = segments.find((segment) => !inspectPresentation(segment)) ?? segments[0];
+  const primary = primarySegment(rawCommand);
   return primary ? splitToolAndArgs(primary)[0] : null;
 }
 
-/** The program a command is named after: its first step that does more than look around. */
+/** The program a command is named after, the same step its readable label describes. */
 export const commandPrimaryTool = cachedByCommand(parseCommandPrimaryTool);
 
 function segmentDisplay(
