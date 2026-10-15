@@ -15,10 +15,12 @@ const Rows = Schema.Array(
 
 // Task activities of each thread's latest turn. The kind list must stay identical to the predicate
 // of idx_projection_thread_activities_background_work, or SQLite stops using that partial index.
+// Pending turn-start rows have no turn id yet; counting them would hide the running turn's tasks
+// whenever a steer or follow-up is requested, which reads as the turn settling.
 const latestTurnTaskActivity = (sql: SqlClient) => sql`
   a.kind IN ('task.started', 'task.updated', 'task.progress', 'task.completed', 'background-work.reset')
-  AND (a.turn_id = (SELECT t.turn_id FROM projection_turns t WHERE t.thread_id = a.thread_id ORDER BY t.requested_at DESC, t.turn_id DESC LIMIT 1)
-    OR (a.turn_id IS NULL AND a.created_at >= (SELECT MAX(t.requested_at) FROM projection_turns t WHERE t.thread_id = a.thread_id)))
+  AND (a.turn_id = (SELECT t.turn_id FROM projection_turns t WHERE t.thread_id = a.thread_id AND t.turn_id IS NOT NULL ORDER BY t.requested_at DESC, t.turn_id DESC LIMIT 1)
+    OR (a.turn_id IS NULL AND a.created_at >= (SELECT MAX(t.requested_at) FROM projection_turns t WHERE t.thread_id = a.thread_id AND t.turn_id IS NOT NULL)))
 `;
 
 export function readThreadIdsWithBackgroundActivity(sql: SqlClient) {
