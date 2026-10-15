@@ -38,7 +38,6 @@ import { PanelTabBar, type PanelTab } from "./PanelTabBar";
 import { PanelStateMessage } from "./PanelStateMessage";
 import { useWorkspaceShortcuts } from "./useWorkspaceShortcuts";
 import { useWorkspaceTabSelection } from "./useWorkspaceTabSelection";
-import { useWorkspaceSidebarStore } from "~/workspaceSidebarStore";
 
 // File previews and reviews carry the editor, diff renderer and HTML parser, so they load with the first
 // tab that shows one instead of with every chat.
@@ -311,9 +310,6 @@ export function MainWorkspace(props: {
                   filePath={review.filePath}
                   cwd={props.workspaceRoot}
                   onOpenFile={(path) => openFile(props.threadId, path)}
-                  onCurrentChanges={() =>
-                    useWorkspaceSidebarStore.getState().show(props.threadId, "git")
-                  }
                 />
               ) : null}
             </Suspense>

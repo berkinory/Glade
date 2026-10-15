@@ -9,7 +9,6 @@ import { DiffLayoutToggle } from "./DiffLayoutToggle";
 import { EditSourceFile } from "./EditSourceFile";
 import { PanelStateMessage } from "./PanelStateMessage";
 import { ShowMoreFilesButton, usePagedFiles } from "./ShowMoreFilesButton";
-import { Button } from "../ui/button";
 
 export function SourceControlTurnChanges(props: {
   threadId: ThreadId;
@@ -17,7 +16,6 @@ export function SourceControlTurnChanges(props: {
   filePath: string | null;
   cwd: string | null;
   onOpenFile: (path: string) => void;
-  onCurrentChanges: () => void;
 }) {
   const { turn, count, query, patch } = useTurnDiff({
     threadId: props.threadId,
@@ -26,11 +24,6 @@ export function SourceControlTurnChanges(props: {
   const pagedFiles = usePagedFiles(patch?.kind === "files" ? patch.files : []);
   const { resolvedTheme } = useTheme();
   const diffStyle = useAppSettings().settings.diffLayout;
-  const currentChanges = (
-    <Button size="sm" variant="outline" onClick={props.onCurrentChanges}>
-      Current changes
-    </Button>
-  );
   const selectedFile = props.filePath ? findPatchFile(patch, props.filePath) : null;
   if (!query.error && turn && count !== undefined && selectedFile) {
     return (
@@ -39,7 +32,6 @@ export function SourceControlTurnChanges(props: {
         file={selectedFile}
         theme={resolvedTheme as "light" | "dark"}
         onOpenFile={props.onOpenFile}
-        actions={currentChanges}
       />
     );
   }
@@ -48,7 +40,6 @@ export function SourceControlTurnChanges(props: {
       <div className="flex flex-wrap items-center gap-2 border-b border-border/70 p-2">
         <span className="min-w-0 flex-1 text-ui-sm">Turn changes · {count ?? "unavailable"}</span>
         <DiffLayoutToggle />
-        {currentChanges}
       </div>
       {query.error || !turn || count === undefined ? (
         <PanelStateMessage>
