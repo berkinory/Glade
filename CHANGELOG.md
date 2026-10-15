@@ -4,6 +4,7 @@
 
 ### New
 
+- Videos in file and Git previews play with full controls instead of showing a still frame, including larger files. ([2a3d780c9](https://github.com/berkinory/Glade/commit/2a3d780c94af888a4218d509a6b6966367c75a9d))
 - Preview HTML files rendered alongside their source, just like Markdown. ([9773c8f9c](https://github.com/berkinory/Glade/commit/9773c8f9cf6ba9d9401093b1245b43ade36600ab))
 
 ### Fixed
