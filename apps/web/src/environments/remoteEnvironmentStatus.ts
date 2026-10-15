@@ -1,5 +1,4 @@
 import type { DesktopSshConnectionState } from "@glade/contracts/ipc/sshHosts";
-import type { SettingsSectionId } from "../settingsNavigation";
 
 export interface RemoteEnvironmentStatus {
   readonly label: string;
@@ -51,12 +50,6 @@ export interface RemoteHostAvailability {
   // or a paired machine that signed this app out.
   readonly needsUser: boolean;
   readonly reason: string;
-}
-
-// Where the user fixes a machine that needs them: SSH hosts are repaired in the SSH settings, paired
-// machines are paired again from Remote access.
-export function remoteMachineSettingsSection(kind: "ssh" | "paired"): SettingsSectionId {
-  return kind === "ssh" ? "ssh" : "remote";
 }
 
 // Whether pickers offer a host. Only connected hosts are offered; unreachable ones are retried in the

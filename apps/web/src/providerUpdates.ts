@@ -46,7 +46,6 @@ export async function withProviderUpdateTimeout<T>(input: {
 
 type ProviderUpdateFilterInput = {
   readonly providers: ReadonlyArray<ServerProviderStatus>;
-  readonly hiddenProviders?: ReadonlyArray<ProviderKind>;
   readonly serverSettings?:
     | Pick<ServerSettings, "providers" | "enableProviderUpdateChecks">
     | null
@@ -56,8 +55,6 @@ type ProviderUpdateFilterInput = {
 
 type ProviderUpdateVisibilityInput = {
   readonly provider: ServerProviderStatus;
-  readonly hiddenProviders?: ReadonlyArray<ProviderKind>;
-  readonly hiddenProviderSet?: ReadonlySet<ProviderKind>;
   readonly serverSettings?:
     | Pick<ServerSettings, "providers" | "enableProviderUpdateChecks">
     | null
@@ -99,13 +96,11 @@ function isProviderEnabled(
 
 export function shouldShowProviderUpdateStatus(input: ProviderUpdateVisibilityInput): boolean {
   const advisory = input.provider.versionAdvisory;
-  const hiddenProviderSet = input.hiddenProviderSet ?? new Set(input.hiddenProviders ?? []);
   if (
     !advisory ||
     input.serverSettings?.enableProviderUpdateChecks === false ||
     advisory.status !== "behind_latest" ||
     advisory.latestVersion === null ||
-    hiddenProviderSet.has(input.provider.provider) ||
     !isProviderEnabled(input.provider.provider, input.serverSettings)
   ) {
     return false;
@@ -119,14 +114,12 @@ export function shouldShowProviderUpdateStatus(input: ProviderUpdateVisibilityIn
 function getVisibleProviderUpdateStatuses(
   input: ProviderUpdateFilterInput,
 ): ServerProviderStatus[] {
-  const hiddenProviderSet = new Set(input.hiddenProviders ?? []);
   const oneClickOnly = input.oneClickOnly ?? false;
 
   return input.providers.filter((provider) =>
     shouldShowProviderUpdateStatus({
       provider,
       serverSettings: input.serverSettings,
-      hiddenProviderSet,
       oneClickOnly,
     }),
   );

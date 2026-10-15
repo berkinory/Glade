@@ -4,42 +4,34 @@ import {
   BellIcon,
   KeyboardIcon,
   User02Icon,
-  BriefcaseBusinessIcon,
   FilterHorizontalIcon,
   WorkflowCircle04Icon,
   Archive04Icon,
   PuzzleIcon,
-  BlocksIcon,
   Book02Icon,
   LimitationIcon,
   CursorInWindowIcon,
-  ServerIcon,
   CloudServerIcon,
 } from "~/lib/icons";
 import type { IconComponent } from "~/lib/iconComponent";
 const SETTINGS_SECTION_IDS = [
   "general",
-  "profile",
   "appearance",
   "notifications",
-  "behavior",
   "shortcuts",
-  "worktrees",
+  "profile",
+  "connections",
   "archived",
-  "files",
+  "behavior",
+  "git",
   "providers",
   "skills",
-  "mcp",
-  "plugins",
   "computer",
   "usage",
-  "advanced",
-  "ssh",
-  "remote",
 ] as const;
 
 export type SettingsSectionId = (typeof SETTINGS_SECTION_IDS)[number];
-export type SettingsNavGroupId = "app" | "workspace" | "agents";
+export type SettingsNavGroupId = "app" | "agents";
 
 export const SETTINGS_TARGETS = {
   providerUpdates: "provider-updates",
@@ -64,7 +56,6 @@ export const SETTINGS_NAV_GROUPS: ReadonlyArray<{
   label: string;
 }> = [
   { id: "app", label: "App" },
-  { id: "workspace", label: "Workspace" },
   { id: "agents", label: "Agents" },
 ] as const;
 
@@ -73,14 +64,14 @@ export const SETTINGS_NAV_ITEMS: readonly SettingsNavItem[] = [
     id: "general",
     group: "app",
     label: "General",
-    description: "Choose defaults for new chats, navigation, and the Environment panel.",
+    description: "Arrange the sidebar, check for updates, and manage settings files.",
     icon: SettingsIcon,
   },
   {
     id: "appearance",
     group: "app",
     label: "Appearance",
-    description: "Customize the theme, typography, density, and time format.",
+    description: "Customize the theme, typography, density, and editor cursor.",
     icon: PaletteIcon,
   },
   {
@@ -105,57 +96,36 @@ export const SETTINGS_NAV_ITEMS: readonly SettingsNavItem[] = [
     icon: User02Icon,
   },
   {
-    id: "ssh",
+    id: "connections",
     group: "app",
-    label: "SSH hosts",
+    label: "Connections",
     description:
-      "Run chats on other machines over SSH. Their projects sit in the sidebar with yours.",
-    icon: ServerIcon,
-    desktopOnly: true,
-  },
-  {
-    id: "remote",
-    group: "app",
-    label: "Remote access",
-    description:
-      "Use Glade from your phone or another computer, or use another computer's Glade from here.",
+      "Run chats on other machines over SSH, and use Glade from your phone or another computer.",
     icon: CloudServerIcon,
     desktopOnly: true,
   },
   {
-    id: "advanced",
-    group: "app",
-    label: "Advanced",
-    description: "Manage connections, updates, and app defaults.",
-    icon: BriefcaseBusinessIcon,
-  },
-  {
-    id: "behavior",
-    group: "workspace",
-    label: "Chat",
-    description: "Choose how chats respond and when to ask for confirmation.",
-    icon: FilterHorizontalIcon,
-  },
-  {
-    id: "files",
-    group: "workspace",
-    label: "Files & diffs",
-    description: "Choose which files appear and how diffs are displayed.",
-    icon: WorkflowCircle04Icon,
-  },
-  {
-    id: "worktrees",
-    group: "workspace",
-    label: "Git & worktrees",
-    description: "Configure Git generation and clean up worktrees created by Glade.",
-    icon: WorkflowCircle04Icon,
-  },
-  {
     id: "archived",
-    group: "workspace",
+    group: "app",
     label: "Archived chats",
     description: "Find and restore archived chats.",
     icon: Archive04Icon,
+  },
+  {
+    id: "behavior",
+    group: "agents",
+    label: "Chat",
+    description:
+      "Choose where new chats work, how they respond, the Environment panel, and confirmations.",
+    icon: FilterHorizontalIcon,
+  },
+  {
+    id: "git",
+    group: "agents",
+    label: "Git & files",
+    description:
+      "Configure Git generation, choose how files and diffs appear, and clean up worktrees.",
+    icon: WorkflowCircle04Icon,
   },
   {
     id: "providers",
@@ -170,20 +140,6 @@ export const SETTINGS_NAV_ITEMS: readonly SettingsNavItem[] = [
     label: "Skills",
     description: "Review reusable workflows discovered across all configured providers.",
     icon: Book02Icon,
-  },
-  {
-    id: "mcp",
-    group: "agents",
-    label: "MCP servers",
-    description: "Manage native tools, connections and authentication.",
-    icon: PuzzleIcon,
-  },
-  {
-    id: "plugins",
-    group: "agents",
-    label: "Plugins",
-    description: "Manage native installed plugins and session loading.",
-    icon: BlocksIcon,
   },
   {
     id: "computer",
@@ -215,6 +171,7 @@ export function normalizeSettingsSection(value: unknown): SettingsSectionId {
   if (typeof value !== "string") {
     return "general";
   }
-  if (value === "models") return "worktrees";
+  if (value === "models" || value === "worktrees" || value === "files") return "git";
+  if (value === "ssh" || value === "remote") return "connections";
   return SETTINGS_SECTION_IDS.find((candidate) => candidate === value) ?? "general";
 }

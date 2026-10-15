@@ -6,7 +6,6 @@ import {
 } from "../claude/adapter/adapterConfiguration";
 import { Effect, FileSystem, Option, Layer } from "effect";
 import { ServerConfig } from "../../server/config.ts";
-import { DEFAULT_SERVER_SETTINGS } from "@glade/contracts/settings/settings";
 import { ServerSettingsService } from "../../settings/serverSettings.ts";
 import { AgentGatewayCredentials } from "../../agentGateway/Services/AgentGatewayCredentials.ts";
 import type { SDKUserMessage, Options as ClaudeQueryOptions } from "@anthropic-ai/claude-agent-sdk";
@@ -42,7 +41,6 @@ import { makeClaudeSessionInteractions } from "../claude/adapter/sessionInteract
 import { makeClaudeSessionBranching } from "../claude/adapter/sessionBranching";
 import { makeClaudeDiscovery } from "../claude/adapter/discovery";
 import { makeClaudeSessionStartup } from "../claude/adapter/sessionStartup";
-import { makeClaudeManagement } from "../claude/adapter/management.ts";
 
 function makeClaudeAdapter(options?: ClaudeAdapterLiveOptions) {
   return Effect.gen(function* () {
@@ -341,7 +339,6 @@ function makeClaudeAdapter(options?: ClaudeAdapterLiveOptions) {
       forkNativeSession,
       runtimeEvents,
     });
-    const management = makeClaudeManagement({ sessions, serverConfig });
 
     yield* Effect.addFinalizer(() =>
       settleConcurrentTeardowns(
@@ -395,21 +392,10 @@ function makeClaudeAdapter(options?: ClaudeAdapterLiveOptions) {
       hasSession,
       stopAll,
       getComposerCapabilities,
-      // Artifact commands follow this provider's own setting, not the caller's request.
-      listCommands: (input) =>
-        serverSettings.getSettings.pipe(
-          Effect.orElseSucceed(() => DEFAULT_SERVER_SETTINGS),
-          Effect.flatMap((settings) =>
-            listCommands({
-              ...input,
-              enableArtifacts: settings.providers.claudeAgent.enableArtifacts,
-            }),
-          ),
-        ),
+      listCommands,
       listSkills,
       listModels,
       listAgents,
-      ...management,
       streamEvents,
     } satisfies ClaudeAdapterShape;
   });

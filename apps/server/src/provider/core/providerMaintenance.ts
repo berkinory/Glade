@@ -23,11 +23,12 @@ const PROVIDER_UPDATE_ACTION_MESSAGE = "Install the update now or review provide
 
 type ProviderInstallSource = "npm" | "bun" | "pnpm" | "homebrew" | "native" | "unknown";
 
-export interface ProviderLatestVersionSource {
-  readonly kind: "npm" | "homebrew";
-  readonly name: string;
-  readonly homebrewKind?: "formula" | "cask";
-}
+export type ProviderLatestVersionSource =
+  | { readonly kind: "npm"; readonly name: string }
+  | { readonly kind: "homebrew"; readonly name: string; readonly homebrewKind: "formula" | "cask" }
+  // The vendor installer's own release channel. A bare version body is read as is; `pattern`
+  // captures the version when the URL serves the installer script instead.
+  | { readonly kind: "url"; readonly url: string; readonly pattern?: RegExp };
 
 interface ProviderHomebrewPackageDefinition {
   readonly name: string;
@@ -322,7 +323,11 @@ function resolveLatestVersionSourceForInstallSource(
       homebrewKind: homebrewPackage.kind,
     };
   }
-  return definition.npmPackageName ? { kind: "npm", name: definition.npmPackageName } : null;
+  if (definition.npmPackageName) {
+    return { kind: "npm", name: definition.npmPackageName };
+  }
+  // A path no package manager owns came from the vendor's installer, which its own channel tracks.
+  return definition.nativeUpdate?.latestVersionSource ?? null;
 }
 
 function makeNativeProviderMaintenanceCapabilities(
@@ -339,7 +344,11 @@ function makeNativeProviderMaintenanceCapabilities(
     provider: definition.provider,
     packageName: installSource === "homebrew" ? null : definition.npmPackageName,
 
-    latestVersionSource: resolveLatestVersionSourceForInstallSource(definition, installSource),
+    latestVersionSource: resolveLatestVersionSourceForInstallSource(
+      definition,
+      installSource,
+      installSource === "homebrew" ? definition.homebrew : null,
+    ),
     updateExecutable: executable ?? definition.nativeUpdate.executable,
     updateArgs: definition.nativeUpdate.args(installSource),
     updateLockKey: definition.nativeUpdate.lockKey,
@@ -524,9 +533,14 @@ function resolvePackageManagedProviderMaintenance(
     });
   }
 
-  return makeManualOnlyProviderMaintenanceCapabilities({
+  // A custom path is never updated in place, but its version is still compared with the latest.
+  return makeProviderMaintenanceCapabilities({
     provider: definition.provider,
     packageName: definition.npmPackageName,
+    latestVersionSource: resolveLatestVersionSourceForInstallSource(definition, "unknown"),
+    updateExecutable: null,
+    updateArgs: [],
+    updateLockKey: null,
   });
 }
 
@@ -647,7 +661,7 @@ const fetchNpmLatestVersion = Effect.fn("fetchNpmLatestVersion")(function* (pack
 const fetchHomebrewLatestVersion = Effect.fn("fetchHomebrewLatestVersion")(function* (
   source: ProviderLatestVersionSource,
 ) {
-  if (source.kind !== "homebrew" || !source.homebrewKind) {
+  if (source.kind !== "homebrew") {
     return null;
   }
   return yield* Effect.tryPromise(async () => {
@@ -673,6 +687,23 @@ const fetchHomebrewLatestVersion = Effect.fn("fetchHomebrewLatestVersion")(funct
   }).pipe(Effect.catch(() => Effect.succeed(null)));
 });
 
+const fetchUrlLatestVersion = Effect.fn("fetchUrlLatestVersion")(function* (source: {
+  readonly url: string;
+  readonly pattern?: RegExp;
+}) {
+  return yield* Effect.tryPromise(async () => {
+    const response = await fetch(source.url, {
+      signal: AbortSignal.timeout(LATEST_VERSION_TIMEOUT_MS),
+    });
+    if (!response.ok) {
+      return null;
+    }
+    const body = await response.text();
+    const candidate = source.pattern ? source.pattern.exec(body)?.[1] : body;
+    return candidate ? parseGenericCliVersion(candidate) : null;
+  }).pipe(Effect.catch(() => Effect.succeed(null)));
+});
+
 const resolveLatestProviderVersion = Effect.fn("resolveLatestProviderVersion")(function* (
   maintenanceCapabilities: ProviderMaintenanceCapabilities,
 ) {
@@ -683,8 +714,10 @@ const resolveLatestProviderVersion = Effect.fn("resolveLatestProviderVersion")(f
 
   const cacheKey =
     source.kind === "homebrew"
-      ? `homebrew:${source.homebrewKind ?? "unknown"}:${source.name}`
-      : `npm:${source.name}`;
+      ? `homebrew:${source.homebrewKind}:${source.name}`
+      : source.kind === "url"
+        ? `url:${source.url}`
+        : `npm:${source.name}`;
   const cached = latestVersionCache.get(cacheKey);
   const now = DateTime.toEpochMillis(yield* DateTime.now);
   if (cached && cached.expiresAt > now) {
@@ -694,7 +727,9 @@ const resolveLatestProviderVersion = Effect.fn("resolveLatestProviderVersion")(f
   const version =
     source.kind === "homebrew"
       ? yield* fetchHomebrewLatestVersion(source)
-      : yield* fetchNpmLatestVersion(source.name);
+      : source.kind === "url"
+        ? yield* fetchUrlLatestVersion(source)
+        : yield* fetchNpmLatestVersion(source.name);
   latestVersionCache.set(cacheKey, {
     expiresAt: now + LATEST_VERSION_CACHE_TTL_MS,
     version,

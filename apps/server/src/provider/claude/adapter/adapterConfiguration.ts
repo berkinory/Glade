@@ -10,8 +10,6 @@ import type {
   SDKUserMessage,
   EffortLevel,
   SDKControlInitializeResponse,
-  McpServerStatus,
-  SDKControlReloadPluginsResponse,
   Options as ClaudeQueryOptions,
   SessionMessage,
   SpawnOptions as ClaudeSpawnOptions,
@@ -39,10 +37,6 @@ export interface ClaudeQueryRuntime extends AsyncIterable<SDKMessage> {
   readonly supportedCommands: () => Promise<SlashCommand[]>;
   readonly supportedModels: () => Promise<ModelInfo[]>;
   readonly initializationResult: () => Promise<SDKControlInitializeResponse>;
-  readonly mcpServerStatus: () => Promise<McpServerStatus[]>;
-  readonly reconnectMcpServer: (serverName: string) => Promise<void>;
-  readonly toggleMcpServer: (serverName: string, enabled: boolean) => Promise<void>;
-  readonly reloadPlugins: () => Promise<SDKControlReloadPluginsResponse>;
   readonly supportedAgents: () => Promise<AgentInfo[]>;
   readonly close: () => void;
 }

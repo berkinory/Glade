@@ -60,7 +60,6 @@ export function TimelineUserMessage({
     resolvedTheme,
     isRevertingCheckpoint,
     markdownCwd,
-    timestampFormat,
   } = controller.props;
   const {
     latestEditableUserMessageId,
@@ -279,7 +278,7 @@ export function TimelineUserMessage({
               style={chatMessageFooterStyle}
             >
               <p className={cn("tabular-nums", MESSAGE_HOVER_REVEAL_CLASS_NAME)}>
-                {formatDayAwareTimestamp(row.message.createdAt, timestampFormat)}
+                {formatDayAwareTimestamp(row.message.createdAt)}
               </p>
               <div className="flex items-center">
                 {displayedUserMessage.copyText && (

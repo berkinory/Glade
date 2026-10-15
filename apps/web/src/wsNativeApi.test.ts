@@ -195,12 +195,7 @@ describe("wsNativeApi", () => {
           textGenerationModelSelection: { provider: "codex", model: "gpt-5.4-mini" },
           providers: {
             codex: { enabled: true, binaryPath: "codex", homePath: "" },
-            claudeAgent: {
-              enabled: true,
-              binaryPath: "claude",
-              launchArgs: "",
-              enableArtifacts: false,
-            },
+            claudeAgent: { enabled: true, binaryPath: "claude", launchArgs: "" },
           },
           skills: { disabled: [] },
         },

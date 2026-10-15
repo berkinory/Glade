@@ -11,8 +11,6 @@ import type {
   ProviderListPluginsResult,
   ProviderListSkillsInput,
   ProviderListSkillsResult,
-  ProviderReadPluginInput,
-  ProviderReadPluginResult,
 } from "@glade/contracts/provider/providerDiscovery";
 import { ServiceMap } from "effect";
 import type { Effect } from "effect";
@@ -41,9 +39,6 @@ export interface ProviderDiscoveryServiceShape {
   readonly listPlugins: (
     input: ProviderListPluginsInput,
   ) => Effect.Effect<ProviderListPluginsResult, ProviderDiscoveryError>;
-  readonly readPlugin: (
-    input: ProviderReadPluginInput,
-  ) => Effect.Effect<ProviderReadPluginResult, ProviderDiscoveryError>;
   readonly listModels: (
     input: ProviderListModelsInput,
   ) => Effect.Effect<ProviderListModelsResult, ProviderDiscoveryError>;

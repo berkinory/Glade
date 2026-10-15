@@ -1,4 +1,5 @@
 import { useActiveEnvironment } from "~/environments/activeEnvironment";
+import { resolveFallbackProvider } from "~/providerOrdering";
 import { usePendingTurnDispatchStore } from "../pendingTurnDispatch";
 import { type ProjectId, ThreadId } from "@glade/contracts/core/baseSchemas";
 import { useNavigate, useRouter } from "@tanstack/react-router";
@@ -80,7 +81,6 @@ export function useHandleNewThread() {
     prefetchModelsForNewThread(queryClient, {
       settings,
       serverSettings: serverSettings ?? null,
-      hiddenProviders: settings.hiddenProviders,
       providerOverride: options?.provider ?? null,
       draftActiveProvider: draftComposer?.activeProvider ?? null,
       stickyActiveProvider: draftStore.stickyActiveProvider,
@@ -184,10 +184,10 @@ export function useHandleNewThread() {
       }
 
       const fallbackProvider = resolveAvailableProviderPreference({
-        preferredProvider: projectDefaultModelSelection?.provider ?? settings.defaultProvider,
+        preferredProvider:
+          projectDefaultModelSelection?.provider ?? resolveFallbackProvider(settings),
         statuses: providerStatuses,
         providerOrder: settings.providerOrder,
-        hiddenProviders: settings.hiddenProviders,
       });
       if (!isProviderUsable(findProviderStatus(providerStatuses, fallbackProvider))) {
         return;

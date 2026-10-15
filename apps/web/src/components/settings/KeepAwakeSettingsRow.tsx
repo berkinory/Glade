@@ -1,7 +1,6 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   DEFAULT_KEEP_AWAKE_MODE,
-  type KeepAwakeMode,
   type ServerSettingsPatch,
   type ServerSettings,
 } from "@glade/contracts/settings/settings";
@@ -12,14 +11,8 @@ import {
   serverQueryKeys,
   serverSettingsQueryOptions,
 } from "~/lib/serverReactQuery";
-import { SettingResetButton, SettingsSegmentedControl } from "./SettingControls";
+import { SettingResetButton } from "./SettingControls";
 import { SettingsRow } from "./SettingsPanelPrimitives";
-
-const KEEP_AWAKE_OPTIONS = [
-  { value: "off", label: "Off" },
-  { value: "agent", label: "While working" },
-  { value: "always", label: "Always" },
-] as const satisfies ReadonlyArray<{ value: KeepAwakeMode; label: string }>;
 
 export function KeepAwakeSettingsRow() {
   const queryClient = useQueryClient();
@@ -58,7 +51,7 @@ export function KeepAwakeSettingsRow() {
         description={
           unsupported
             ? "Available when the Glade server runs on macOS."
-            : "Prevent idle sleep while agents work, or always."
+            : "Prevent idle sleep while agents work."
         }
         status={unsupported ? undefined : statusText}
         resetAction={
@@ -71,11 +64,10 @@ export function KeepAwakeSettingsRow() {
         }
         control={
           status?.supported && mode !== undefined ? (
-            <SettingsSegmentedControl
-              value={mode}
-              onValueChange={(keepAwakeMode) => update({ keepAwakeMode })}
-              ariaLabel="Keep Mac awake"
-              options={KEEP_AWAKE_OPTIONS}
+            <Switch
+              checked={mode === "agent"}
+              onCheckedChange={(checked) => update({ keepAwakeMode: checked ? "agent" : "off" })}
+              aria-label="Keep Mac awake while agents work"
             />
           ) : null
         }
@@ -85,6 +77,7 @@ export function KeepAwakeSettingsRow() {
           id="setting-keep-display-awake"
           title="Keep display awake"
           description="Also prevent the display from dimming or turning off while Keep Mac awake is active."
+          disabled={!status?.supported || mode === "off"}
           resetAction={
             settingsQuery.data.keepDisplayAwake ? (
               <SettingResetButton

@@ -16,6 +16,8 @@ production artwork. Production updates come only from the Glade release reposito
 - External agent connections: no pairing UI, external MCP HTTP transport, CLI commands,
   management RPC or integration authorization runtime. Provider MCP and the internal
   agent gateway remain available to authenticated provider sessions.
+- Provider MCP server management: no settings screen or RPCs to list, add, remove, enable or
+  authenticate a provider's own MCP servers. Providers load them from their native configuration.
 - Alternate application channels: no extra installers, flavors, badges, update feeds,
   profile import or automatic remote diagnostics.
 - Side chats: no right dock pane, creation command, expiry worker, or retained side chat
@@ -44,7 +46,7 @@ when the script runs, so agents can inspect the user's own dev app; it refuses e
 Browser tools and the Browser view do not exist outside the desktop app.
 
 Computer Use (desktop control) is available in the desktop app on top of the bundled Cua Driver.
-Settings' Allow Computer Use switch (off by default) is the permission: on, agents may use the
+Settings' Allow Computer Use switch (on by default) is the permission: on, agents may use the
 computer in any chat; off, no computer tools exist anywhere. There is no per-chat mode. Agents use
 it only when the user asks, in words or with `/computer`, which prefixes the request with an
 instruction to use Computer Use, or when a task clearly needs a desktop app that no other tool

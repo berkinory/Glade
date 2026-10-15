@@ -233,14 +233,12 @@ export function SidebarView({ context }: { context: ReturnType<typeof useSidebar
         </SidebarHeader>
       )}
 
-      {!isOnSettings && (
-        <div className="flex h-[82px] shrink-0 items-end px-4 pb-2">
-          <h2 className="flex h-8 min-w-0 items-center gap-1.5">
-            <span className="font-display min-w-0 truncate text-[17px] text-foreground">Glade</span>
-            <GladeLogo aria-hidden className="size-4 text-foreground" />
-          </h2>
-        </div>
-      )}
+      <div className="flex h-[82px] shrink-0 items-end px-4 pb-2">
+        <h2 className="flex h-8 min-w-0 items-center gap-1.5">
+          <span className="font-display min-w-0 truncate text-[17px] text-foreground">Glade</span>
+          <GladeLogo aria-hidden className="size-4 text-foreground" />
+        </h2>
+      </div>
 
       <SidebarContent className="gap-0 font-system-ui">
         {showArm64IntelBuildWarning && arm64IntelBuildWarningDescription ? (
@@ -273,13 +271,13 @@ export function SidebarView({ context }: { context: ReturnType<typeof useSidebar
             <SettingsSidebarNav
               activeSection={activeSettingsSection}
               onBack={handleBackToAppFromSettings}
-              onSelectSection={(section, options) => {
+              onSelectSection={(section) => {
                 void navigate({
                   to: "/settings",
                   search: (previous) => ({
                     ...previous,
                     section: section === "general" ? undefined : section,
-                    target: options?.target,
+                    target: undefined,
                   }),
                 });
               }}

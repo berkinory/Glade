@@ -1,4 +1,5 @@
 import { useCallback } from "react";
+import { resolveFallbackProvider } from "~/providerOrdering";
 import { useProjectSpaceIdOf } from "../spacesUiStore";
 import { useEffect, startTransition } from "react";
 import { MAX_PINNED_PROJECTS } from "@glade/contracts/orchestration/threadEntities";
@@ -482,7 +483,7 @@ export function useSidebarProjectNavigation(context: ReturnType<typeof useSideba
           ? {}
           : { createIfMissing: options.createIfMissing }),
         ...(options.spaceId === undefined ? {} : { spaceId: options.spaceId }),
-        defaultProvider: appSettings.defaultProvider,
+        defaultProvider: resolveFallbackProvider(appSettings),
         loadSnapshot: () => api.orchestration.getShellSnapshot().catch(() => null),
         maxAttempts: ADD_PROJECT_SNAPSHOT_CATCH_UP_MAX_ATTEMPTS,
         delayMs: ADD_PROJECT_SNAPSHOT_CATCH_UP_DELAY_MS,
@@ -565,7 +566,6 @@ export function useSidebarProjectNavigation(context: ReturnType<typeof useSideba
       prefetchModelsForNewThread(queryClient, {
         settings: appSettings,
         serverSettings: serverSettings ?? null,
-        hiddenProviders: appSettings.hiddenProviders,
         draftActiveProvider: draftComposer?.activeProvider ?? null,
         stickyActiveProvider: draftStore.stickyActiveProvider,
         projectDefaultProvider: project.defaultModelSelection?.provider ?? null,

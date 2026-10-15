@@ -23,23 +23,16 @@ export function settingsSearchEntryTarget(entry: SettingsSearchEntry): string | 
 
 const SETTINGS_SEARCH_ENTRIES: readonly SettingsSearchEntry[] = [
   {
-    id: "general:default-provider",
-    section: "general",
-    title: "Default provider",
-    target: "setting-default-provider",
-    keywords: "Choose the provider used for new chats. agent codex claude",
-  },
-  {
     id: "general:new-threads",
-    section: "general",
-    title: "New chats",
+    section: "behavior",
+    title: "Workspace",
     target: "setting-new-threads",
     keywords:
-      "New threads Pick the default workspace mode for newly created draft threads. local worktree environment",
+      "New chats new threads Pick the default workspace mode for newly created draft threads. local worktree environment",
   },
   {
     id: "general:delete-worktree-on-archive",
-    section: "worktrees",
+    section: "git",
     title: "Delete worktree on archive",
     target: "setting-archiveDeletesOrphanedWorktree",
     keywords:
@@ -47,11 +40,25 @@ const SETTINGS_SEARCH_ENTRIES: readonly SettingsSearchEntry[] = [
   },
   {
     id: "general:welcome-tour",
-    section: "advanced",
+    section: "general",
     title: "Welcome tour",
     target: "setting-welcome-tour",
     keywords:
       "Replay the first-run setup: feature tour, provider selection, appearance, and first project. onboarding welcome wizard getting started setup",
+  },
+  {
+    id: "general:settings-file",
+    section: "general",
+    title: "Settings file",
+    target: "setting-settings-file",
+    keywords: "settings.json config file edit open editor json advanced",
+  },
+  {
+    id: "general:shortcuts-file",
+    section: "general",
+    title: "Shortcuts file",
+    target: "setting-shortcuts-file",
+    keywords: "keybindings.json keyboard shortcuts config file edit open editor json advanced",
   },
   {
     id: "general:project-order",
@@ -62,7 +69,7 @@ const SETTINGS_SEARCH_ENTRIES: readonly SettingsSearchEntry[] = [
   },
   {
     id: "general:environment-default-open",
-    section: "general",
+    section: "behavior",
     title: "Open by default",
     target: "setting-environmentPanelDefaultOpen",
     keywords:
@@ -70,43 +77,43 @@ const SETTINGS_SEARCH_ENTRIES: readonly SettingsSearchEntry[] = [
   },
   {
     id: "general:environment-usage",
-    section: "general",
-    title: "Usage",
+    section: "behavior",
+    title: "Show usage",
     target: "setting-showEnvironmentUsage",
     keywords: "Show the provider usage row in the chat Environment panel.",
   },
   {
     id: "general:environment-repository",
-    section: "general",
-    title: "Repository",
+    section: "behavior",
+    title: "Show repository",
     target: "setting-showEnvironmentRepository",
     keywords: "Show the GitHub repository link in the chat Environment panel. git changes worktree",
   },
   {
     id: "general:environment-pull-request",
-    section: "general",
-    title: "Pull request",
+    section: "behavior",
+    title: "Show pull request",
     target: "setting-showEnvironmentPullRequest",
     keywords: "Show the pull request link in the chat Environment panel. pr github",
   },
   {
     id: "general:environment-editor",
-    section: "general",
-    title: "Editor",
+    section: "behavior",
+    title: "Show editor",
     target: "setting-showEnvironmentEditor",
     keywords: "Show the Open in editor picker in the chat Environment panel.",
   },
   {
     id: "general:environment-pinned",
-    section: "general",
-    title: "Pinned messages",
+    section: "behavior",
+    title: "Show pinned messages",
     target: "setting-showEnvironmentPinned",
     keywords: "Show the pinned messages in the Environment panel.",
   },
   {
     id: "general:environment-notepad",
-    section: "general",
-    title: "Notepad",
+    section: "behavior",
+    title: "Show notepad",
     target: "setting-showEnvironmentNotepad",
     keywords: "Show the per-thread notepad in the Environment panel.",
   },
@@ -184,17 +191,9 @@ const SETTINGS_SEARCH_ENTRIES: readonly SettingsSearchEntry[] = [
   {
     id: "appearance:caret-style",
     section: "appearance",
-    title: "Composer cursor",
+    title: "Editor cursor",
     target: "setting-caret-style",
-    keywords: "Caret style Choose a line or block cursor when editing files.",
-  },
-  {
-    id: "appearance:time-format",
-    section: "appearance",
-    title: "Time format",
-    target: "setting-time-format",
-    keywords:
-      "System default follows your browser or OS clock preference. timestamp 12-hour 24-hour locale",
+    keywords: "Caret style composer Choose a line or block cursor when writing a message.",
   },
 
   {
@@ -263,12 +262,11 @@ const SETTINGS_SEARCH_ENTRIES: readonly SettingsSearchEntry[] = [
     section: "behavior",
     title: "Keep Mac awake",
     target: "setting-keep-awake",
-    keywords:
-      "Prevent idle sleep while agents work, or always. caffeinate sleep power battery macOS display",
+    keywords: "Prevent idle sleep while agents work. caffeinate sleep power battery macOS display",
   },
   {
     id: "behavior:diff-line-wrapping",
-    section: "files",
+    section: "git",
     title: "Diff line wrapping",
     target: "setting-diffWordWrap",
     keywords: "Wrap long lines in Source Control diffs. word wrap",
@@ -308,7 +306,7 @@ const SETTINGS_SEARCH_ENTRIES: readonly SettingsSearchEntry[] = [
 
   {
     id: "worktrees:managed-worktrees",
-    section: "worktrees",
+    section: "git",
     title: "Managed worktrees",
     keywords: "Review and clean up the worktrees created by Glade. git branch remove",
     target: "setting-managed-worktrees",
@@ -324,7 +322,7 @@ const SETTINGS_SEARCH_ENTRIES: readonly SettingsSearchEntry[] = [
 
   {
     id: "models:git-writing-model",
-    section: "worktrees",
+    section: "git",
     title: "Git generation model",
     target: "setting-git-writing-model",
     keywords: "Git writing model Used for generated commit messages, PR titles, and branch names.",
@@ -344,7 +342,7 @@ const SETTINGS_SEARCH_ENTRIES: readonly SettingsSearchEntry[] = [
     title: "Providers",
     target: "setting-providers",
     keywords:
-      "Agent providers Enable disable providers CLI availability setup sign-in visibility picker order versions updates tools binary overrides path install CODEX_HOME artifacts",
+      "Agent providers Enable disable providers CLI availability setup sign-in visibility picker order versions updates tools binary overrides path install CODEX_HOME",
   },
 
   {
@@ -358,7 +356,7 @@ const SETTINGS_SEARCH_ENTRIES: readonly SettingsSearchEntry[] = [
 
   {
     id: "ssh:hosts",
-    section: "ssh",
+    section: "connections",
     title: "SSH hosts",
     target: null,
     applies: () => isElectron,
@@ -367,7 +365,7 @@ const SETTINGS_SEARCH_ENTRIES: readonly SettingsSearchEntry[] = [
   },
   {
     id: "remote:access",
-    section: "remote",
+    section: "connections",
     title: "Allow other devices",
     target: "setting-remote-access",
     applies: () => isElectron,
@@ -376,7 +374,7 @@ const SETTINGS_SEARCH_ENTRIES: readonly SettingsSearchEntry[] = [
   },
   {
     id: "remote:machines",
-    section: "remote",
+    section: "connections",
     title: "Pair with a machine",
     target: null,
     applies: () => isElectron,
@@ -437,23 +435,15 @@ const SETTINGS_SEARCH_ENTRIES: readonly SettingsSearchEntry[] = [
   },
 
   {
-    id: "advanced:keybindings",
-    section: "shortcuts",
-    title: "Open shortcuts file",
-    target: "setting-shortcuts-file",
-    keywords:
-      "Open the persisted keybindings.json file to edit advanced bindings directly. shortcuts",
-  },
-  {
     id: "advanced:version",
-    section: "advanced",
+    section: "general",
     title: "Version",
     target: "setting-version",
     keywords: "Current application version. about",
   },
   {
     id: "advanced:release-history",
-    section: "advanced",
+    section: "general",
     title: "Changelog",
     target: "setting-release-history",
     keywords:
@@ -461,38 +451,24 @@ const SETTINGS_SEARCH_ENTRIES: readonly SettingsSearchEntry[] = [
   },
   {
     id: "files:visibility",
-    section: "files",
+    section: "git",
     title: "Hide ignored files",
     target: "setting-hideIgnoredFiles",
     keywords: "Explorer gitignored files folders visibility",
   },
   {
     id: "files:colors",
-    section: "files",
+    section: "git",
     title: "Pull request diff colors",
     target: "setting-showPullRequestDiffColors",
     keywords: "Review additions deletions green red",
   },
   {
     id: "advanced:reset",
-    section: "advanced",
+    section: "general",
     title: "Restore defaults",
     target: "setting-restore-defaults",
     keywords: "reset preferences theme provider settings",
-  },
-  {
-    id: "mcp:servers",
-    section: "mcp",
-    title: "MCP servers",
-    target: null,
-    keywords: "tools connections authentication provider project chat",
-  },
-  {
-    id: "plugins:plugins",
-    section: "plugins",
-    title: "Plugins",
-    target: null,
-    keywords: "Agent plugins installed enabled loaded provider extensions project chat",
   },
   {
     id: "profile:activity",

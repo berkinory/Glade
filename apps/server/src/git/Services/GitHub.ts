@@ -44,6 +44,7 @@ interface GitHubRepositoryCloneUrls {
 
 export interface GitHubAccount {
   readonly login: string;
+  readonly name: string | null;
   readonly avatarUrl: string | null;
 }
 

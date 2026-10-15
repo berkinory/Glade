@@ -1,12 +1,10 @@
 import type { ProviderKind } from "@glade/contracts/core/baseSchemas";
-import type { ServerProviderStatus } from "@glade/contracts/server/server";
 import { PROVIDER_DESCRIPTORS as VISIBLE_PROVIDER_DESCRIPTORS } from "@glade/shared/provider/providerMetadata";
 import { DEFAULT_SERVER_SETTINGS } from "@glade/contracts/settings/settings";
 import type { ReactNode } from "react";
 import type { AppSettings } from "~/appSettings";
 
 type ProviderInstallTextKey = "codexHomePath";
-type ProviderInstallBooleanKey = "claudeEnableArtifacts";
 export type ProviderInstallField =
   | {
       readonly kind: "binaryPath";
@@ -21,13 +19,6 @@ export type ProviderInstallField =
       readonly settingsKey: ProviderInstallTextKey;
       readonly label: string;
       readonly placeholder: string;
-      readonly description: ReactNode;
-    }
-  | {
-      readonly kind: "boolean";
-      readonly id: string;
-      readonly settingsKey: ProviderInstallBooleanKey;
-      readonly label: string;
       readonly description: ReactNode;
     };
 export type ProviderInstallSettings = {
@@ -54,21 +45,6 @@ const PROVIDER_EXTRA_INSTALL_FIELDS: Partial<
       label: "CODEX_HOME path",
       placeholder: "CODEX_HOME",
       description: "Optional custom Codex home and config directory.",
-    },
-  ],
-  claudeAgent: [
-    {
-      kind: "boolean",
-      id: "claudeEnableArtifacts",
-      settingsKey: "claudeEnableArtifacts",
-      label: "Artifacts, /design and /slides",
-      description: (
-        <>
-          Claude Code keeps Artifacts off in embedded sessions. Turn this on so <code>/design</code>{" "}
-          and <code>/slides</code> publish to claude.ai. Needs a claude.ai login on a Pro, Max, Team
-          or Enterprise plan, and applies to new sessions.
-        </>
-      ),
     },
   ],
 };
@@ -99,7 +75,7 @@ export function readProviderInstallField(
   provider: ProviderKind,
   field: ProviderInstallField,
   settings: AppSettings,
-): string | boolean {
+): string {
   return field.kind === "binaryPath"
     ? (settings.providerBinaryPaths[provider] ?? "")
     : settings[field.settingsKey];
@@ -108,7 +84,7 @@ export function readProviderInstallField(
 export function providerInstallFieldPatch(
   provider: ProviderKind,
   field: ProviderInstallField,
-  value: string | boolean,
+  value: string,
   settings: AppSettings,
 ): Partial<AppSettings> {
   if (field.kind === "binaryPath") {
@@ -175,11 +151,4 @@ export function setProviderListMembership(
 ): ProviderKind[] {
   const withoutTarget = current.filter((entry) => entry !== provider);
   return included ? [...withoutTarget, provider] : withoutTarget;
-}
-
-export function isProviderPickerProviderEnabled(
-  providerStatus: Pick<ServerProviderStatus, "available"> | null | undefined,
-  isHidden: boolean,
-): boolean {
-  return providerStatus?.available === true && !isHidden;
 }

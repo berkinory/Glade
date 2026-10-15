@@ -554,18 +554,3 @@ export function createProjectLastActivityAtSelector(): (
     return previousActivity;
   };
 }
-
-export function createFirstProjectSelector(): (state: AppState) => Project | undefined {
-  let previousProjects: readonly Project[] | undefined;
-  let previousFirstProject: Project | undefined;
-
-  return (state) => {
-    if (state.projects === previousProjects) {
-      return previousFirstProject;
-    }
-
-    previousProjects = state.projects;
-    previousFirstProject = state.projects.find((project) => project.kind === "project");
-    return previousFirstProject;
-  };
-}

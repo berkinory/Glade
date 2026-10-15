@@ -88,10 +88,13 @@ export const CLAUDE_PROVIDER_DESCRIPTOR: ServerProviderDescriptor = {
       args: () => ["update"],
       lockKey: "claude-native",
       strategy: "matching-path",
-      latestVersionSource: null,
+      // `claude update` follows the latest channel unless the user pinned stable in Claude Code.
+      latestVersionSource: {
+        kind: "url",
+        url: "https://downloads.claude.ai/claude-code-releases/latest",
+      },
       isCommandPath: isNativeCommandPath,
     },
   },
   nativeHistory: { archives: false },
-  mcp: { writesRequireConfigVersion: false },
 };

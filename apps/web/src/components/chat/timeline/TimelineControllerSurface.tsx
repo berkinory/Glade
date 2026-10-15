@@ -60,7 +60,6 @@ export function TimelineControllerSurface({ controller }: { controller: Timeline
   } = controller.state;
   const {
     markdownCwd,
-    timestampFormat,
     onImageExpand,
     getAgentActivityDetail,
     activeTurnInProgress,
@@ -171,7 +170,6 @@ export function TimelineControllerSurface({ controller }: { controller: Timeline
               markdownCwd={markdownCwd}
               onImageExpand={onImageExpand}
               activityDetail={getAgentActivityDetail?.(workEntry.id)}
-              timestampFormat={timestampFormat}
             />
           );
           const isLiveGroup =

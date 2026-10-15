@@ -36,10 +36,9 @@ export const GROK_PROVIDER_DESCRIPTOR: ServerProviderDescriptor = {
       args: () => ["update"],
       lockKey: "grok-native",
       strategy: "always",
-      latestVersionSource: null,
+      latestVersionSource: { kind: "url", url: "https://x.ai/cli/stable" },
     },
   },
   nativeHistory: { archives: false },
-  mcp: { writesRequireConfigVersion: false },
   acp: GROK_ACP_PROFILE,
 };

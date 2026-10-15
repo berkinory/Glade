@@ -102,7 +102,7 @@ export function RemoteAccessControls(props: { readonly api: RemoteAccessApi }) {
 
   return (
     <div className="space-y-6">
-      <SettingsSectionShell title="Access">
+      <SettingsSectionShell title="Remote access">
         <SettingsCard>
           <SettingsRow
             id="setting-remote-access"

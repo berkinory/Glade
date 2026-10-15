@@ -31,9 +31,7 @@ export async function createOrRecoverProjectFromPath(input: {
   createIfMissing?: boolean;
 
   spaceId?: SpaceId | null;
-  // Persisted default provider (settings.defaultProvider) that seeds the new project's default model
-  // selection. Defaults to codex when omitted. falls back to codex because it has no default model
-  // slug.
+  // Seeds the new project's default model selection. Defaults to codex because it needs no model slug.
   defaultProvider?: ProviderKind;
   loadSnapshot: () => Promise<OrchestrationShellSnapshot | null>;
   maxAttempts?: number;

@@ -9,7 +9,6 @@ import { makeCodexAdapterLive } from "../Layers/CodexAdapter";
 import { AcpAdaptersLive } from "../Layers/AcpAdapters.ts";
 import { makeEventNdjsonLogger } from "../Layers/EventNdjsonLogger";
 import { ProviderAdapterRegistryLive } from "../Layers/ProviderAdapterRegistry";
-import { ProviderManagementLive } from "../Layers/ProviderManagement.ts";
 import { ProviderDiscoveryServiceLive } from "../Layers/ProviderDiscoveryService";
 import { makeDurableProviderServiceLive } from "../Layers/ProviderService";
 import { ProviderSessionDirectoryLive } from "../Layers/ProviderSessionDirectory";
@@ -79,7 +78,6 @@ export function makeServerProviderLayer(
       codexAdapterLayer,
       providerServiceLayer,
       providerDiscoveryLayer,
-      ProviderManagementLive.pipe(Layer.provide(adapterRegistryLayer)),
       adapterRegistryLayer,
       providerSessionDirectoryLayer,
     );

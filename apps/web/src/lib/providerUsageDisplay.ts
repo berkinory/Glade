@@ -5,6 +5,7 @@ import {
   type ProviderRateLimit,
   type VisibleRateLimitRow,
 } from "~/lib/rateLimits";
+import type { ServerProviderUsageLine } from "@glade/contracts/server/server";
 
 type ProviderUsageTone = "healthy" | "warning" | "danger";
 
@@ -81,4 +82,11 @@ export function selectPrimaryProviderUsageDisplayRow(
     }
     return selected;
   }, null);
+}
+
+// Usage surfaces show quota meters and remaining credits; token and session tallies stay out.
+export function selectProviderUsageCreditLines(
+  lines: ReadonlyArray<ServerProviderUsageLine>,
+): ReadonlyArray<ServerProviderUsageLine> {
+  return lines.filter((line) => line.label === "Credits");
 }

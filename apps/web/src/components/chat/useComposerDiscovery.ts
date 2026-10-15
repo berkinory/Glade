@@ -53,7 +53,6 @@ export function useComposerDiscovery({
     isLocalFolderBrowserOpen: discovery.isLocalFolderBrowserOpen,
     providerPlugins: discovery.providerPlugins,
     providerNativeCommands: discovery.providerNativeCommands,
-    providerArtifacts: discovery.providerArtifacts,
     providerSkills: discovery.providerSkills,
     workspaceEntries: discovery.workspaceEntries,
     effectiveComposerTrigger,

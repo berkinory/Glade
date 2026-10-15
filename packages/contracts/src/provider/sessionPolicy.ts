@@ -38,7 +38,6 @@ export const ClaudeProviderStartOptions = Schema.Struct({
   binaryPath: Schema.optional(TrimmedNonEmptyString),
   permissionMode: Schema.optional(TrimmedNonEmptyString),
   maxThinkingTokens: Schema.optional(NonNegativeInt),
-  enableArtifacts: Schema.optional(Schema.Boolean),
 });
 
 // Providers whose only start option is the executable to launch.

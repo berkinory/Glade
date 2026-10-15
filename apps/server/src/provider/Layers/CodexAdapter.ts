@@ -19,7 +19,6 @@ import {
   type ProviderComposerCapabilities,
   type ProviderListModelsResult,
   type ProviderListPluginsResult,
-  type ProviderReadPluginResult,
   type ProviderListSkillsResult,
 } from "@glade/contracts/provider/providerDiscovery";
 import { type ProviderEvent, type ProviderSendTurnInput } from "@glade/contracts/provider/provider";
@@ -2251,25 +2250,6 @@ const makeCodexAdapter = (options?: CodexAdapterLiveOptions) =>
           }),
       }).pipe(Effect.map((result) => result satisfies ProviderListPluginsResult));
 
-    const readPlugin: NonNullable<CodexAdapterShape["readPlugin"]> = (input) =>
-      Effect.tryPromise({
-        try: () =>
-          manager.readPlugin({
-            ...(input.marketplacePath ? { marketplacePath: input.marketplacePath } : {}),
-            ...(input.remoteMarketplaceName
-              ? { remoteMarketplaceName: input.remoteMarketplaceName }
-              : {}),
-            pluginName: input.pluginName,
-          }),
-        catch: (cause) =>
-          new ProviderAdapterRequestError({
-            provider: PROVIDER,
-            method: "plugin/read",
-            detail: toMessage(cause, "plugin/read failed"),
-            cause,
-          }),
-      }).pipe(Effect.map((result) => result satisfies ProviderReadPluginResult));
-
     const listModels: NonNullable<CodexAdapterShape["listModels"]> = (input) =>
       Effect.tryPromise({
         try: () => manager.listModels(undefined, input.cwd),
@@ -2281,54 +2261,6 @@ const makeCodexAdapter = (options?: CodexAdapterLiveOptions) =>
             cause,
           }),
       }).pipe(Effect.map((result) => result satisfies ProviderListModelsResult));
-
-    const listMcpServers: NonNullable<CodexAdapterShape["listMcpServers"]> = (input) =>
-      Effect.tryPromise({
-        try: () => manager.listMcpServers(input),
-        catch: (cause) =>
-          new ProviderAdapterRequestError({
-            provider: PROVIDER,
-            method: "mcpServerStatus/list",
-            detail: toMessage(cause, "MCP listing failed"),
-            cause,
-          }),
-      });
-
-    const manageMcpServer: NonNullable<CodexAdapterShape["manageMcpServer"]> = (input) =>
-      Effect.tryPromise({
-        try: () => manager.manageMcpServer(input),
-        catch: (cause) =>
-          new ProviderAdapterRequestError({
-            provider: PROVIDER,
-            method: "mcpServer/manage",
-            detail: toMessage(cause, "MCP action failed"),
-            cause,
-          }),
-      });
-
-    const pluginInventory: NonNullable<CodexAdapterShape["pluginInventory"]> = (input) =>
-      Effect.tryPromise({
-        try: () => manager.pluginInventory(input),
-        catch: (cause) =>
-          new ProviderAdapterRequestError({
-            provider: PROVIDER,
-            method: "plugin/installed",
-            detail: toMessage(cause, "Plugin inventory failed"),
-            cause,
-          }),
-      });
-
-    const managePlugin: NonNullable<CodexAdapterShape["managePlugin"]> = (input) =>
-      Effect.tryPromise({
-        try: () => manager.managePlugin(input),
-        catch: (cause) =>
-          new ProviderAdapterRequestError({
-            provider: PROVIDER,
-            method: "plugin/manage",
-            detail: toMessage(cause, "Plugin action failed"),
-            cause,
-          }),
-      });
 
     const transcribeVoice: NonNullable<CodexAdapterShape["transcribeVoice"]> = (input) =>
       Effect.tryPromise({
@@ -2508,12 +2440,7 @@ const makeCodexAdapter = (options?: CodexAdapterLiveOptions) =>
       getComposerCapabilities,
       listSkills,
       listPlugins,
-      readPlugin,
       listModels,
-      listMcpServers,
-      manageMcpServer,
-      pluginInventory,
-      managePlugin,
       prewarmVoice,
       transcribeVoice,
       streamEvents: Stream.fromQueue(runtimeEventQueue),

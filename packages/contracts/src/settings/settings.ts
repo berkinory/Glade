@@ -1,4 +1,4 @@
-import { Schema } from "effect";
+import { Schema, SchemaTransformation } from "effect";
 import { IsoDateTime, TrimmedString } from "../core/baseSchemas";
 import { ModelSelection } from "../provider/sessionPolicy";
 import { ThreadEnvironmentMode } from "../orchestration/threadEntities";
@@ -24,8 +24,6 @@ export const ClaudeServerProviderSettings = Schema.Struct({
   launchArgs: Schema.String.check(Schema.isMaxLength(4096)).pipe(
     Schema.withDecodingDefault(() => ""),
   ),
-
-  enableArtifacts: Schema.Boolean.pipe(Schema.withDecodingDefault(() => false)),
 });
 export type ClaudeServerProviderSettings = typeof ClaudeServerProviderSettings.Type;
 
@@ -57,11 +55,25 @@ export const SkillsServerSettings = Schema.Struct({
 export type SkillsServerSettings = typeof SkillsServerSettings.Type;
 
 // "agent" keeps the host awake only while server-tracked agent work is running.
-export const KeepAwakeMode = Schema.Literals(["off", "agent", "always"]);
-export type KeepAwakeMode = typeof KeepAwakeMode.Type;
+const KeepAwakeModeLiteral = Schema.Literals(["off", "agent"]);
+export type KeepAwakeMode = typeof KeepAwakeModeLiteral.Type;
 export const DEFAULT_KEEP_AWAKE_MODE: KeepAwakeMode = "off";
-
-const ArchivedWorktreeMaxAgeDays = Schema.Int.check(Schema.isBetween({ minimum: 1, maximum: 365 }));
+// The retired "always" mode is still stored in older settings files; it keeps its intent of staying
+// awake for agent work instead of failing the whole settings decode.
+export const KeepAwakeMode = Schema.String.pipe(
+  Schema.decodeTo(
+    KeepAwakeModeLiteral,
+    SchemaTransformation.transform({
+      decode: (value) =>
+        Schema.is(KeepAwakeModeLiteral)(value)
+          ? value
+          : value === "always"
+            ? "agent"
+            : DEFAULT_KEEP_AWAKE_MODE,
+      encode: (value) => value,
+    }),
+  ),
+);
 
 export const ServerSettings = Schema.Struct({
   enableAssistantStreaming: Schema.Boolean.pipe(Schema.withDecodingDefault(() => true)),
@@ -70,7 +82,7 @@ export const ServerSettings = Schema.Struct({
   keepDisplayAwake: Schema.Boolean.pipe(Schema.withDecodingDefault(() => false)),
   autoContinueAtUsageLimit: Schema.Boolean.pipe(Schema.withDecodingDefault(() => true)),
   // Lets agents use the computer in every chat; off lists no computer tools anywhere.
-  allowComputerUse: Schema.Boolean.pipe(Schema.withDecodingDefault(() => false)),
+  allowComputerUse: Schema.Boolean.pipe(Schema.withDecodingDefault(() => true)),
   defaultThreadEnvMode: ThreadEnvironmentMode.pipe(Schema.withDecodingDefault(() => "local")),
   addProjectBaseDirectory: StringSetting.pipe(Schema.withDecodingDefault(() => "")),
   textGenerationModelSelection: Schema.NullOr(ModelSelection).pipe(
@@ -84,11 +96,8 @@ export const ServerSettings = Schema.Struct({
     cursor: CursorServerProviderSettings.pipe(Schema.withDecodingDefault(() => ({}))),
   }).pipe(Schema.withDecodingDefault(() => ({}))),
   skills: SkillsServerSettings.pipe(Schema.withDecodingDefault(() => ({}))),
-  // Both apply only to archived chats, and only to clean worktrees whose commits stay reachable.
+  // Applies only to archived chats, and only to clean worktrees whose commits stay reachable.
   deleteMergedArchivedWorktrees: Schema.Boolean.pipe(Schema.withDecodingDefault(() => true)),
-  archivedWorktreeMaxAgeDays: Schema.NullOr(ArchivedWorktreeMaxAgeDays).pipe(
-    Schema.withDecodingDefault(() => null),
-  ),
 
   onboardingCompletedAt: Schema.optionalKey(Schema.NullOr(IsoDateTime)),
 });
@@ -136,7 +145,6 @@ export const ServerSettingsPatch = Schema.Struct({
         Schema.Struct({
           ...ProviderSettingsBasePatch,
           launchArgs: Schema.optionalKey(Schema.String.check(Schema.isMaxLength(4096))),
-          enableArtifacts: Schema.optionalKey(Schema.Boolean),
         }),
       ),
       opencode: Schema.optionalKey(Schema.Struct(ProviderSettingsBasePatch)),
@@ -150,7 +158,6 @@ export const ServerSettingsPatch = Schema.Struct({
     }),
   ),
   deleteMergedArchivedWorktrees: Schema.optionalKey(Schema.Boolean),
-  archivedWorktreeMaxAgeDays: Schema.optionalKey(Schema.NullOr(ArchivedWorktreeMaxAgeDays)),
   onboardingCompletedAt: Schema.optionalKey(Schema.NullOr(IsoDateTime)),
 });
 export type ServerSettingsPatch = typeof ServerSettingsPatch.Type;

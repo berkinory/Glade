@@ -18,7 +18,10 @@ import { ProviderUsageResetCredits } from "~/components/ProviderUsageResetCredit
 import { SettingsCard, SettingsSectionShell } from "~/components/settings/SettingsPanelPrimitives";
 import { Button } from "~/components/ui/button";
 import { useProviderUsageSummary } from "~/hooks/useProviderUsageSummary";
-import { deriveProviderUsageDisplayRows } from "~/lib/providerUsageDisplay";
+import {
+  deriveProviderUsageDisplayRows,
+  selectProviderUsageCreditLines,
+} from "~/lib/providerUsageDisplay";
 import { deriveAccountRateLimits, type ProviderRateLimit } from "~/lib/rateLimits";
 import {
   fetchAllProviderUsage,
@@ -58,10 +61,14 @@ function ProviderUsageCard({
   snapshot,
   threadRateLimits,
   codexHomePath,
+  showInSidebar,
+  onShowInSidebarChange,
 }: {
   snapshot: ServerProviderUsageSnapshot;
   threadRateLimits: ReadonlyArray<ProviderRateLimit>;
   codexHomePath: string | null;
+  showInSidebar: boolean;
+  onShowInSidebarChange: (show: boolean) => void;
 }) {
   const provider = snapshot.provider;
   const status = snapshot.status ?? "ok";
@@ -72,7 +79,7 @@ function ProviderUsageCard({
     providerSnapshot: snapshot,
   });
   const meterRows = deriveProviderUsageDisplayRows(usageSummary.rateLimits);
-  const usageLines = usageSummary.usageLines;
+  const usageLines = selectProviderUsageCreditLines(usageSummary.usageLines);
   const resetCredits = provider === "codex" ? snapshot.resetCredits : undefined;
   const hasResetCredits = Boolean(resetCredits && resetCredits.availableCount > 0);
   const hasUsage = meterRows.length > 0 || usageLines.length > 0 || hasResetCredits;
@@ -88,14 +95,22 @@ function ProviderUsageCard({
             <span className="truncate text-ui-lg font-semibold text-foreground">
               {providerUsageDisplayName(provider)}
             </span>
+            {status === "ok" && snapshot.planName ? (
+              <span className={cn(PILL_CLASS_NAME, "bg-muted text-muted-foreground")}>
+                {snapshot.planName}
+              </span>
+            ) : pill ? (
+              <span className={cn(PILL_CLASS_NAME, pill.className)}>{pill.label}</span>
+            ) : null}
           </div>
-          {status === "ok" && snapshot.planName ? (
-            <span className={cn(PILL_CLASS_NAME, "bg-muted text-muted-foreground")}>
-              {snapshot.planName}
-            </span>
-          ) : pill ? (
-            <span className={cn(PILL_CLASS_NAME, pill.className)}>{pill.label}</span>
-          ) : null}
+          <label className="flex shrink-0 items-center gap-2 text-ui-sm text-muted-foreground">
+            Show in sidebar
+            <Switch
+              aria-label={`Show ${providerUsageDisplayName(provider)} usage in sidebar`}
+              checked={showInSidebar}
+              onCheckedChange={(checked) => onShowInSidebarChange(Boolean(checked))}
+            />
+          </label>
         </div>
 
         {status === "ok" && hasUsage ? (
@@ -106,16 +121,13 @@ function ProviderUsageCard({
                 <span>{usageSummary.usageNotice}</span>
               </p>
             ) : null}
-            {meterRows.length > 0 ? (
-              <ProviderUsageLimitRows rows={meterRows} surface="settings" />
-            ) : null}
+            {meterRows.length > 0 ? <ProviderUsageLimitRows rows={meterRows} /> : null}
             {usageLines.length > 0 ? (
               <ProviderUsageLineList
                 className={cn(
                   meterRows.length > 0 && "border-t border-[color:var(--color-border)] pt-3",
                 )}
                 lines={usageLines}
-                surface="settings"
               />
             ) : null}
             {hasResetCredits && resetCredits ? (
@@ -188,48 +200,6 @@ export function ProviderUsageSettingsPanel() {
         </Button>
       }
     >
-      <SettingsCard>
-        <div className="space-y-3 p-4">
-          <h3 className="text-ui-lg font-medium">Sidebar usage indicators</h3>
-          {PROVIDER_USAGE_PROVIDERS.filter(
-            (provider) => !settings.disabledProviders.includes(provider),
-          ).map((provider) => (
-            <label key={provider} className="flex items-center justify-between gap-2 text-ui">
-              {providerUsageDisplayName(provider)}
-              <Switch
-                aria-label={`Show ${providerUsageDisplayName(provider)} usage in sidebar`}
-                checked={settings.sidebarUsageProviders.includes(provider)}
-                onCheckedChange={(checked) =>
-                  updateSettings({
-                    sidebarUsageProviders: checked
-                      ? [...settings.sidebarUsageProviders, provider]
-                      : settings.sidebarUsageProviders.filter((entry) => entry !== provider),
-                  })
-                }
-              />
-            </label>
-          ))}
-          <label className="flex items-center justify-between gap-2 text-ui">
-            Quota windows
-            <select
-              aria-label="Sidebar quota windows"
-              className="rounded-md border bg-background px-2 py-1 text-ui"
-              value={settings.sidebarUsageWindow}
-              onChange={(event) => {
-                const value = event.currentTarget.value;
-                if (value === "five-hour" || value === "weekly" || value === "both")
-                  updateSettings({
-                    sidebarUsageWindow: value,
-                  });
-              }}
-            >
-              <option value="five-hour">Five-hour</option>
-              <option value="weekly">Weekly</option>
-              <option value="both">Both</option>
-            </select>
-          </label>
-        </div>
-      </SettingsCard>
       {showInitialLoading ? (
         <SettingsCard>
           <div className="px-4 py-3.5 text-ui leading-snug text-muted-foreground">
@@ -244,6 +214,14 @@ export function ProviderUsageSettingsPanel() {
               snapshot={snapshot}
               threadRateLimits={threadRateLimits}
               codexHomePath={codexHomePath}
+              showInSidebar={settings.sidebarUsageProviders.includes(snapshot.provider)}
+              onShowInSidebarChange={(show) =>
+                updateSettings({
+                  sidebarUsageProviders: show
+                    ? [...settings.sidebarUsageProviders, snapshot.provider]
+                    : settings.sidebarUsageProviders.filter((entry) => entry !== snapshot.provider),
+                })
+              }
             />
           ))}
         </div>

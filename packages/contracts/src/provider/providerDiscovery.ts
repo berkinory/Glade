@@ -95,17 +95,12 @@ export const ProviderListCommandsInput = Schema.Struct({
   binaryPath: Schema.optional(TrimmedNonEmptyString),
   serverUrl: Schema.optional(TrimmedNonEmptyString),
   experimentalWebSockets: Schema.optional(Schema.Boolean),
-  enableArtifacts: Schema.optional(Schema.Boolean),
   forceReload: Schema.optional(Schema.Boolean),
 });
 export type ProviderListCommandsInput = typeof ProviderListCommandsInput.Type;
 
-export const ProviderArtifactsState = Schema.Literals(["available", "disabled", "unavailable"]);
-export type ProviderArtifactsState = typeof ProviderArtifactsState.Type;
-
 export const ProviderListCommandsResult = Schema.Struct({
   commands: Schema.Array(ProviderNativeCommandDescriptor),
-  artifacts: Schema.optional(ProviderArtifactsState),
   source: Schema.optional(TrimmedNonEmptyString),
   cached: Schema.optional(Schema.Boolean),
 });
@@ -189,15 +184,6 @@ export const ProviderPluginMarketplaceDescriptor = Schema.Struct({
 });
 export type ProviderPluginMarketplaceDescriptor = typeof ProviderPluginMarketplaceDescriptor.Type;
 
-export const ProviderPluginAppSummary = Schema.Struct({
-  id: TrimmedNonEmptyString,
-  name: TrimmedNonEmptyString,
-  description: Schema.optional(TrimmedNonEmptyString),
-  installUrl: Schema.optional(TrimmedNonEmptyString),
-  needsAuth: Schema.Boolean,
-});
-export type ProviderPluginAppSummary = typeof ProviderPluginAppSummary.Type;
-
 export const ProviderListPluginsInput = Schema.Struct({
   provider: ProviderDiscoveryKind,
   cwd: Schema.optional(TrimmedNonEmptyString),
@@ -218,34 +204,6 @@ export const ProviderListPluginsResult = Schema.Struct({
   cached: Schema.optional(Schema.Boolean),
 });
 export type ProviderListPluginsResult = typeof ProviderListPluginsResult.Type;
-
-export const ProviderReadPluginInput = Schema.Struct({
-  provider: ProviderDiscoveryKind,
-  marketplacePath: Schema.optional(TrimmedNonEmptyString),
-  remoteMarketplaceName: Schema.optional(TrimmedNonEmptyString),
-  pluginName: TrimmedNonEmptyString,
-  cwd: Schema.optional(TrimmedNonEmptyString),
-  threadId: Schema.optional(TrimmedNonEmptyString),
-});
-export type ProviderReadPluginInput = typeof ProviderReadPluginInput.Type;
-
-export const ProviderPluginDetail = Schema.Struct({
-  marketplaceName: TrimmedNonEmptyString,
-  marketplacePath: Schema.NullOr(TrimmedNonEmptyString),
-  summary: ProviderPluginDescriptor,
-  description: Schema.optional(TrimmedNonEmptyString),
-  skills: Schema.Array(ProviderSkillDescriptor),
-  apps: Schema.Array(ProviderPluginAppSummary),
-  mcpServers: Schema.Array(TrimmedNonEmptyString),
-});
-export type ProviderPluginDetail = typeof ProviderPluginDetail.Type;
-
-export const ProviderReadPluginResult = Schema.Struct({
-  plugin: ProviderPluginDetail,
-  source: Schema.optional(TrimmedNonEmptyString),
-  cached: Schema.optional(Schema.Boolean),
-});
-export type ProviderReadPluginResult = typeof ProviderReadPluginResult.Type;
 
 export const ProviderListModelsInput = Schema.Struct({
   provider: ProviderDiscoveryKind,

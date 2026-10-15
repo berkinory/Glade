@@ -11,10 +11,10 @@ export function isProviderKind(value: string): value is ProviderKind {
   return PROVIDER_KIND_SET.has(value as ProviderKind);
 }
 
-export function normalizeHiddenProviders(hiddenProviders: ReadonlyArray<string>): ProviderKind[] {
+export function normalizeProviderList(providers: ReadonlyArray<string>): ProviderKind[] {
   const seen = new Set<ProviderKind>();
   const result: ProviderKind[] = [];
-  for (const candidate of hiddenProviders) {
+  for (const candidate of providers) {
     if (isProviderKind(candidate) && !seen.has(candidate)) {
       seen.add(candidate);
       result.push(candidate);
@@ -59,4 +59,15 @@ export function compareProvidersByOrder(
   const normalizedRightIndex =
     rightIndex >= 0 ? rightIndex : DEFAULT_PROVIDER_ORDER.indexOf(right) + providerOrder.length;
   return normalizedLeftIndex - normalizedRightIndex;
+}
+
+// Chats with no remembered or project provider start on the first enabled provider in the user's order.
+export function resolveFallbackProvider(settings: {
+  readonly providerOrder: readonly ProviderKind[];
+  readonly disabledProviders: readonly ProviderKind[];
+}): ProviderKind {
+  return (
+    settings.providerOrder.find((provider) => !settings.disabledProviders.includes(provider)) ??
+    PROVIDER_DESCRIPTORS[0].kind
+  );
 }

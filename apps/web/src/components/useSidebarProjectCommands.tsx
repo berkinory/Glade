@@ -1,4 +1,5 @@
 import { resolveProviderModelSelection } from "~/lib/providerModelSelection";
+import { resolveFallbackProvider } from "~/providerOrdering";
 import { useComposerDraftStore } from "../composerDraftStore";
 import { useSidebarProjectOrderStore } from "../sidebarProjectOrderStore";
 import { sortProjectsForSidebar } from "./Sidebar.logic.projectData";
@@ -171,7 +172,7 @@ export function useSidebarProjectCommands(context: ReturnType<typeof useSidebarT
                   newProjectSpaceId: host ? null : value.spaceId,
                   defaultModelSelection: await resolveProviderModelSelection({
                     api,
-                    selection: { provider: appSettings.defaultProvider, model: "" },
+                    selection: { provider: resolveFallbackProvider(appSettings), model: "" },
                   }),
                   createdAt: new Date().toISOString(),
                 },
@@ -203,7 +204,7 @@ export function useSidebarProjectCommands(context: ReturnType<typeof useSidebarT
         const projectId = await addProjectOnHost({
           environmentKey: value.environmentKey,
           workspaceRoot: value.workspaceRoot,
-          defaultProvider: appSettings.defaultProvider,
+          defaultProvider: resolveFallbackProvider(appSettings),
         });
         assignHostProject(projectId, value.spaceId);
         handleSelectSpaceForIncomingProject(value.spaceId);

@@ -170,10 +170,7 @@ interface ClaudeSessionIdentity {
 export interface ClaudeSessionQuery {
   readonly promptQueue: Queue.Queue<PromptQueueItem>;
   readonly query: ClaudeQueryRuntime;
-  readonly artifactsEnabled: boolean;
-  initToolNames?: ReadonlySet<string>;
   initSkillNames?: ReadonlySet<string>;
-  loadedPluginNames?: ReadonlySet<string>;
   readonly messageStream: AsyncIterable<SDKMessage>;
   readonly processOwner: ClaudeProcessOwner;
   stopDeferred?: Deferred.Deferred<void, ProviderAdapterProcessError>;

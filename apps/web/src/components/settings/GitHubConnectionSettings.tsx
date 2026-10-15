@@ -2,29 +2,38 @@ import type { GitHubConnectionStatus } from "@glade/contracts/git/githubConnecti
 import { useQuery } from "@tanstack/react-query";
 import { RefreshCwIcon } from "~/lib/icons";
 import { ensureNativeApi } from "~/nativeApi";
+import { AuthorAvatar } from "../AuthorAvatar";
 import { Button } from "../ui/button";
 import { Spinner } from "../ui/spinner";
+import { SettingsStatus, type SettingsStatusTone } from "./SettingsStatus";
 import { SettingsRow, SettingsSection } from "./SettingsPanelPrimitives";
 
 function describeConnection(status: GitHubConnectionStatus): {
+  tone: SettingsStatusTone;
   label: string;
-  hint: string | null;
+  hint: string;
 } {
   switch (status.state) {
     case "connected":
-      return { label: `Connected as @${status.login}`, hint: null };
+      return {
+        tone: "granted",
+        label: "Signed in",
+        hint: "Pull requests, checks and merges use this GitHub CLI account.",
+      };
     case "not_installed":
       return {
+        tone: "needed",
         label: "GitHub CLI not found",
-        hint: "Install the GitHub CLI (`gh`) to create pull requests, read checks and merge.",
+        hint: "Install the GitHub CLI (gh) to create pull requests, read checks and merge.",
       };
     case "signed_out":
       return {
+        tone: "needed",
         label: "Not signed in",
-        hint: "Run `gh auth login` in a terminal, then check again.",
+        hint: "Run gh auth login in a terminal, then check again.",
       };
     case "error":
-      return { label: "Status unavailable", hint: status.detail };
+      return { tone: "blocked", label: "Status unavailable", hint: status.detail };
   }
 }
 
@@ -34,33 +43,45 @@ export function GitHubConnectionSettings() {
     queryFn: () => ensureNativeApi().git.githubConnection(),
     staleTime: 60_000,
   });
+  const account = connection.data?.state === "connected" ? connection.data : null;
+  const accountName = account?.name && account.name !== account.login ? account.name : null;
   const description = connection.data ? describeConnection(connection.data) : null;
   return (
     <SettingsSection title="GitHub">
       <SettingsRow
-        title="GitHub CLI"
-        description="Pull requests, checks and merges use your GitHub CLI sign-in."
+        id="setting-github-cli"
+        title={
+          // The avatar slot is the same size before and after the account loads, so the row keeps
+          // its height while the sign-in is checked.
+          <span className="flex min-w-0 items-center gap-2">
+            {account ? (
+              <AuthorAvatar actor={account} size="md" />
+            ) : (
+              <span aria-hidden className="size-5 shrink-0 rounded-full bg-muted" />
+            )}
+            <span className="truncate">
+              {account ? (accountName ?? `@${account.login}`) : "GitHub CLI"}
+            </span>
+            {accountName ? (
+              <span className="truncate font-normal text-muted-foreground">@{account?.login}</span>
+            ) : null}
+          </span>
+        }
+        description={
+          description?.hint ?? "Pull requests, checks and merges use your GitHub CLI sign-in."
+        }
         status={
           connection.isPending ? (
-            "Checking..."
+            <SettingsStatus tone="checking" label="Checking sign-in" />
           ) : connection.isError ? (
-            connection.error.message
+            <SettingsStatus tone="blocked" label={connection.error.message} />
           ) : description ? (
-            <span className="flex flex-col gap-0.5">
-              <span
-                className={
-                  connection.data?.state === "connected" ? "text-foreground" : "text-warning"
-                }
-              >
-                {description.label}
-              </span>
-              {description.hint ? <span>{description.hint}</span> : null}
-            </span>
+            <SettingsStatus tone={description.tone} label={description.label} />
           ) : null
         }
         control={
           <Button
-            size="xs"
+            size="sm"
             variant="outline"
             disabled={connection.isFetching}
             onClick={() => void connection.refetch()}

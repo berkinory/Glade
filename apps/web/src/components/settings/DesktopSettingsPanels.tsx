@@ -2,15 +2,18 @@ import { useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import type { AppSettingsBinding } from "~/appSettings";
 import {
-  notificationPermissionText,
   readNotificationPermission,
   requestBrowserNotificationPermission,
 } from "~/notifications/notificationPermission";
 
+import {
+  describeNotificationPermission,
+  type NotificationPermissionNextStep,
+  type NotificationPermissionPresentation,
+} from "./DesktopSettingsPanels.logic";
 import { SettingResetButton } from "./SettingControls";
+import { SettingsStatusButton, SettingsStatus, type SettingsStatusAction } from "./SettingsStatus";
 import { SettingsRow, SettingsSection } from "./SettingsPanelPrimitives";
-
-import { Button } from "~/components/ui/button";
 
 import { Switch } from "~/components/ui/switch";
 import { toastManager } from "~/components/ui/toast";
@@ -78,7 +81,7 @@ export function NotificationsSettingsPanel({
     const body = "Notification test for chats and terminal agents.";
     const current = await readNotificationPermission();
     if (!["granted", "provisional", "unknown"].includes(current.status)) {
-      throw new Error(notificationPermissionText(current.status));
+      throw new Error(describeNotificationPermission(current, Boolean(window.desktopBridge)).label);
     }
     if (window.desktopBridge) {
       const shown = await window.desktopBridge.notifications.show({ title, body, silent: true });
@@ -100,6 +103,28 @@ export function NotificationsSettingsPanel({
   }
 
   if (!active) return null;
+
+  const permissionActions: Record<NotificationPermissionNextStep, SettingsStatusAction> = {
+    allow: { label: "Allow", run: () => void runAction(requestPermission) },
+    "open-settings": {
+      label: "Open system settings",
+      run: () =>
+        void runAction(async () => {
+          await window.desktopBridge?.notifications.openSettings();
+        }),
+    },
+    test: { label: "Send test", run: () => void runAction(sendTestNotification) },
+  };
+  const permissionStatus: NotificationPermissionPresentation = permission.isError
+    ? { tone: "blocked", label: "Could not read permission", nextStep: null }
+    : permission.data
+      ? describeNotificationPermission(permission.data, Boolean(window.desktopBridge))
+      : { tone: "checking", label: "Checking permission", nextStep: null };
+  const permissionAction: SettingsStatusAction | undefined = permission.isError
+    ? { label: "Retry", run: () => void refetch() }
+    : permissionStatus.nextStep
+      ? permissionActions[permissionStatus.nextStep]
+      : undefined;
 
   return (
     <div className="space-y-6">
@@ -160,22 +185,7 @@ export function NotificationsSettingsPanel({
           id="setting-desktop-notifications"
           title="Desktop notifications"
           description="Show system alerts for activity while Glade is in the background."
-          status={
-            permission.isError ? (
-              <span role="alert" className="text-destructive">
-                Could not read notification permission. Retry to check again.
-              </span>
-            ) : permission.data ? (
-              <span
-                className={permission.data.status === "denied" ? "text-destructive" : undefined}
-                role={permission.data.status === "denied" ? "alert" : undefined}
-              >
-                {notificationPermissionText(permission.data.status)}
-              </span>
-            ) : (
-              "Checking notification permission"
-            )
-          }
+          status={<SettingsStatus tone={permissionStatus.tone} label={permissionStatus.label} />}
           resetAction={
             settings.enableSystemTaskCompletionNotifications !==
             defaults.enableSystemTaskCompletionNotifications ? (
@@ -191,49 +201,10 @@ export function NotificationsSettingsPanel({
             ) : null
           }
           control={
-            <div className="flex w-full items-center gap-2 sm:w-auto sm:justify-end">
-              {permission.isError ? (
-                <Button size="xs" variant="outline" onClick={() => void refetch()}>
-                  Retry
-                </Button>
+            <>
+              {permissionAction ? (
+                <SettingsStatusButton action={permissionAction} disabled={busy} />
               ) : null}
-              {permission.data?.canRequest ? (
-                <Button
-                  size="xs"
-                  variant="outline"
-                  disabled={busy}
-                  onClick={() => void runAction(requestPermission)}
-                >
-                  Allow notifications
-                </Button>
-              ) : null}
-              {permission.data?.canOpenSettings && !permission.data.canRequest ? (
-                <Button
-                  size="xs"
-                  variant="outline"
-                  disabled={busy}
-                  onClick={() =>
-                    void runAction(async () => {
-                      await window.desktopBridge?.notifications.openSettings();
-                    })
-                  }
-                >
-                  Open system settings
-                </Button>
-              ) : null}
-              <Button
-                size="xs"
-                variant="outline"
-                disabled={
-                  busy ||
-                  permission.isError ||
-                  !permission.data ||
-                  !["granted", "provisional", "unknown"].includes(permission.data.status)
-                }
-                onClick={() => void runAction(sendTestNotification)}
-              >
-                Test
-              </Button>
               <Switch
                 checked={settings.enableSystemTaskCompletionNotifications}
                 disabled={busy}
@@ -242,7 +213,7 @@ export function NotificationsSettingsPanel({
                 }}
                 aria-label="Desktop activity notifications"
               />
-            </div>
+            </>
           }
         />
       </SettingsSection>

@@ -14,7 +14,6 @@ import {
   type TouchEventHandler,
   type WheelEventHandler,
 } from "react";
-import { type TimestampFormat } from "../../appSettings";
 import { type TurnDiffSummary, type WorktreeSetupSnapshot } from "../../types";
 import { cn } from "~/lib/utils";
 import { ELEVATED_HOVER_SURFACE_CLASS_NAME } from "~/surfaceStyles";
@@ -86,7 +85,6 @@ interface ChatTranscriptPaneProps {
   scrollButtonVisible: boolean;
   timelineEntries: ComponentProps<typeof MessagesTimeline>["timelineEntries"];
   messageChangeSignal?: ComponentProps<typeof MessagesTimeline>["messageChangeSignal"];
-  timestampFormat: TimestampFormat;
   turnDiffSummaryByAssistantMessageId: Map<MessageId, TurnDiffSummary>;
   workspaceRoot: string | undefined;
   keybindings?: ComponentProps<typeof MessagesTimeline>["keybindings"];
@@ -154,7 +152,6 @@ export function ChatTranscriptPane({
   scrollButtonVisible,
   timelineEntries,
   messageChangeSignal,
-  timestampFormat,
   turnDiffSummaryByAssistantMessageId,
   workspaceRoot,
   keybindings,
@@ -319,7 +316,6 @@ export function ChatTranscriptPane({
             markdownCwd={markdownCwd}
             resolvedTheme={resolvedTheme}
             chatFontSizePx={chatFontSizePx}
-            timestampFormat={timestampFormat}
             workspaceRoot={workspaceRoot}
             {...(keybindings
               ? {

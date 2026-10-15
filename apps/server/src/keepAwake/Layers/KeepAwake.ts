@@ -124,7 +124,7 @@ const make = Effect.gen(function* () {
         if (settings === null) return;
         const mode = settings.keepAwakeMode;
         const workingCount = (yield* Ref.get(workingThreadsRef)).size;
-        const enabled = supported && (mode === "always" || (mode === "agent" && workingCount > 0));
+        const enabled = supported && mode === "agent" && workingCount > 0;
         const wanted = enabled ? (settings.keepDisplayAwake ? "display" : "system") : null;
         if (wanted === (yield* Ref.get(wantedRef))) return;
         yield* Ref.set(wantedRef, wanted);

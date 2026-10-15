@@ -21,7 +21,7 @@ import { EnvMode } from "./components/BranchToolbar.logic";
 import { formatProviderModelOptionName, type ProviderModelOption } from "./providerModelOptions";
 import {
   DEFAULT_PROVIDER_ORDER,
-  normalizeHiddenProviders,
+  normalizeProviderList,
   normalizeProviderOrder,
 } from "./providerOrdering";
 import { ensureNativeApi } from "./nativeApi";
@@ -68,9 +68,6 @@ export const TERMINAL_FONT_FAMILY_SUGGESTIONS: ReadonlyArray<string> = [
   "Consolas",
 ];
 
-export const TimestampFormat = Schema.Literals(["locale", "12-hour", "24-hour"]);
-export type TimestampFormat = typeof TimestampFormat.Type;
-const DEFAULT_TIMESTAMP_FORMAT: TimestampFormat = "locale";
 export const EditorCaretStyle = Schema.Literals(["line", "block"]);
 export type EditorCaretStyle = typeof EditorCaretStyle.Type;
 export const DEFAULT_EDITOR_CARET_STYLE: EditorCaretStyle = "line";
@@ -160,7 +157,6 @@ const AppSettingsSchema = Schema.Struct({
     ProviderKind,
     Schema.optionalKey(Schema.String.check(Schema.isMaxLength(4096))),
   ).pipe(withDefaults(() => ({}))),
-  claudeEnableArtifacts: Schema.Boolean.pipe(withDefaults(() => false)),
 
   onboardingCompletedAt: Schema.NullOr(Schema.String).pipe(withDefaults((): string | null => null)),
   uiDensity: PersistedUiDensity.pipe(withDefaults(() => DEFAULT_UI_DENSITY)),
@@ -172,9 +168,6 @@ const AppSettingsSchema = Schema.Struct({
     withDefaults(() => DEFAULT_TERMINAL_FONT_FAMILY),
   ),
   sidebarUsageProviders: PersistedProviderKindList.pipe(withDefaults(() => [])),
-  sidebarUsageWindow: Schema.Literals(["five-hour", "weekly", "both"]).pipe(
-    withDefaults(() => "both" as const),
-  ),
   codexHomePath: Schema.String.check(Schema.isMaxLength(4096)).pipe(withDefaults(() => "")),
   defaultThreadEnvMode: EnvMode.pipe(withDefaults(() => "local" as const satisfies EnvMode)),
   confirmThreadDelete: Schema.Boolean.pipe(withDefaults(() => true)),
@@ -223,15 +216,9 @@ const AppSettingsSchema = Schema.Struct({
     ),
     withDefaults(() => DEFAULT_SIDEBAR_PROJECT_SORT_ORDER),
   ),
-  timestampFormat: TimestampFormat.pipe(withDefaults(() => DEFAULT_TIMESTAMP_FORMAT)),
   textGenerationProvider: PersistedProviderKind.pipe(withDefaults(() => "codex" as const)),
   textGenerationModel: Schema.optional(TrimmedNonEmptyString),
   uiFontFamily: Schema.String.check(Schema.isMaxLength(256)).pipe(withDefaults(() => "")),
-  defaultProvider: PersistedProviderKind.pipe(withDefaults(() => "codex" as const)),
-  // Local-only UI preference: providers explicitly hidden from the composer picker. The active/locked
-  // provider for a thread is always shown regardless, so users never get stuck on a thread whose
-  // provider they later chose to hide.
-  hiddenProviders: PersistedProviderKindList.pipe(withDefaults(() => [])),
 
   disabledProviders: PersistedProviderKindList.pipe(withDefaults(() => [])),
 
@@ -343,8 +330,7 @@ function normalizeAppSettings(settings: AppSettings): AppSettings {
     chatFontSizePx: normalizeChatFontSizePx(settings.chatFontSizePx),
     terminalFontSizePx: normalizeTerminalFontSizePx(settings.terminalFontSizePx),
     terminalFontFamily: normalizeTerminalFontFamily(settings.terminalFontFamily),
-    hiddenProviders: normalizeHiddenProviders(settings.hiddenProviders),
-    disabledProviders: normalizeHiddenProviders(settings.disabledProviders),
+    disabledProviders: normalizeProviderList(settings.disabledProviders),
     sidebarUsageProviders: [...new Set(settings.sidebarUsageProviders)].filter(
       (provider) => PROVIDER_DESCRIPTOR_BY_KIND[provider].usage !== null,
     ),
@@ -370,22 +356,11 @@ export function didProviderEnablementChange(
   );
 }
 
-export function didProviderCommandDiscoverySettingsChange(
-  previous: Pick<ServerSettingsView, "providers"> | undefined,
-  next: Pick<ServerSettingsView, "providers">,
-): boolean {
-  return (
-    previous !== undefined &&
-    previous.providers.claudeAgent.enableArtifacts !== next.providers.claudeAgent.enableArtifacts
-  );
-}
-
 function serverSettingsToAppSettings(settings: ServerSettingsView): Partial<AppSettings> {
   return {
     providerBinaryPaths: Object.fromEntries(
       DEFAULT_PROVIDER_ORDER.map((provider) => [provider, settings.providers[provider].binaryPath]),
     ),
-    claudeEnableArtifacts: settings.providers.claudeAgent.enableArtifacts,
     codexHomePath: settings.providers.codex.homePath,
     defaultThreadEnvMode: settings.defaultThreadEnvMode,
     enableAssistantStreaming: settings.enableAssistantStreaming,
@@ -410,10 +385,6 @@ function resolveTextGenerationProvider(input: {
 
 function hasOwn<Key extends keyof AppSettings>(patch: Partial<AppSettings>, key: Key): boolean {
   return Object.prototype.hasOwnProperty.call(patch, key);
-}
-
-function touchesProviderDiscoverySettings(patch: Partial<AppSettings>): boolean {
-  return hasOwn(patch, "claudeEnableArtifacts") || hasOwn(patch, "disabledProviders");
 }
 
 function serverSettingValuesEqual(left: unknown, right: unknown): boolean {
@@ -490,14 +461,8 @@ function appSettingsPatchToServerSettingsPatch(
   if (hasOwn(patch, "codexHomePath")) {
     providers.codex = { ...providers.codex, homePath: patch.codexHomePath ?? "" };
   }
-  if (hasOwn(patch, "claudeEnableArtifacts")) {
-    providers.claudeAgent = {
-      ...providers.claudeAgent,
-      enableArtifacts: Boolean(patch.claudeEnableArtifacts),
-    };
-  }
   if (hasOwn(patch, "disabledProviders")) {
-    const disabledProviders = new Set(normalizeHiddenProviders(patch.disabledProviders ?? []));
+    const disabledProviders = new Set(normalizeProviderList(patch.disabledProviders ?? []));
     for (const provider of DEFAULT_PROVIDER_ORDER) {
       const enabled = !disabledProviders.has(provider);
       if (currentSettings?.providers[provider].enabled === enabled) {
@@ -529,7 +494,6 @@ function buildInitialServerSettingsMigrationPatch(settings: AppSettings): Server
   const defaults = DEFAULT_APP_SETTINGS;
 
   for (const key of [
-    "claudeEnableArtifacts",
     "codexHomePath",
     "defaultThreadEnvMode",
     "enableAssistantStreaming",
@@ -824,16 +788,12 @@ export function useAppSettings() {
         queryClient.setQueryData(serverQueryKeys.settings(), nextSettings);
         if (hasOwn(patch, "disabledProviders")) {
           await refreshProvidersAfterEnablementChange();
-        } else if (touchesProviderDiscoverySettings(patch)) {
-          await queryClient
-            .invalidateQueries({ queryKey: providerDiscoveryQueryKeys.all })
-            .catch(() => undefined);
         }
       } catch {
         await queryClient
           .invalidateQueries({ queryKey: serverQueryKeys.settings() })
           .catch(() => undefined);
-        if (touchesProviderDiscoverySettings(patch)) {
+        if (hasOwn(patch, "disabledProviders")) {
           await queryClient
             .invalidateQueries({ queryKey: providerDiscoveryQueryKeys.all })
             .catch(() => undefined);
@@ -862,7 +822,7 @@ export function useAppSettings() {
           ? { keepAwakeMode: DEFAULT_KEEP_AWAKE_MODE }
           : {}),
         ...(currentServerSettings?.keepDisplayAwake ? { keepDisplayAwake: false } : {}),
-        ...(currentServerSettings?.allowComputerUse ? { allowComputerUse: false } : {}),
+        ...(currentServerSettings?.allowComputerUse === false ? { allowComputerUse: true } : {}),
       };
       const providerSettingsChanged = Boolean(
         serverPatch.providers && Object.keys(serverPatch.providers).length > 0,

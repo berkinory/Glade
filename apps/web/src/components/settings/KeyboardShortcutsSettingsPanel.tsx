@@ -1,4 +1,5 @@
-import { FolderIcon, CommandIcon } from "~/lib/icons";
+import { isElectron } from "~/env";
+import { CommandIcon } from "~/lib/icons";
 import type {
   KeybindingCommand,
   KeybindingRule,
@@ -6,7 +7,6 @@ import type {
 } from "@glade/contracts/settings/keybindings";
 import { useState, type KeyboardEvent as ReactKeyboardEvent } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { resolveAndPersistPreferredEditor } from "~/editorPreferences";
 import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
 import { ShortcutKbd } from "~/components/ui/kbd";
@@ -28,7 +28,7 @@ import {
   SETTINGS_CARD_ROW_DESCRIPTION_CLASS_NAME,
   SETTINGS_CARD_ROW_TITLE_CLASS_NAME,
 } from "~/settingsPanelStyles";
-import { SettingsCard, SettingsEmptyState, SettingsRow } from "./SettingsPanelPrimitives";
+import { SettingsCard, SettingsEmptyState } from "./SettingsPanelPrimitives";
 const EMPTY_KEYBINDINGS: ResolvedKeybindingsConfig = [];
 const SETTINGS_SHORTCUT_CONTEXT: ShortcutSheetContext = {
   terminalFocus: false,
@@ -50,34 +50,10 @@ export function KeyboardShortcutsSettingsPanel() {
   const [isSaving, setIsSaving] = useState(false);
   const serverConfigQuery = useQuery(serverConfigQueryOptions());
   const queryClient = useQueryClient();
-  const [isOpeningKeybindings, setIsOpeningKeybindings] = useState(false);
-  const [openKeybindingsError, setOpenKeybindingsError] = useState<string | null>(null);
-  const keybindingsConfigPath = serverConfigQuery.data?.keybindingsConfigPath ?? null;
-  const availableEditors = serverConfigQuery.data?.availableEditors;
-  const openKeybindingsFile = () => {
-    if (!keybindingsConfigPath) return;
-    setOpenKeybindingsError(null);
-    setIsOpeningKeybindings(true);
-    const editor = resolveAndPersistPreferredEditor(availableEditors ?? []);
-    if (!editor) {
-      setOpenKeybindingsError("No available editors found.");
-      setIsOpeningKeybindings(false);
-      return;
-    }
-    void ensureNativeApi()
-      .shell.openInEditor(keybindingsConfigPath, editor)
-      .catch((error) => {
-        setOpenKeybindingsError(
-          error instanceof Error ? error.message : "Unable to open keybindings file.",
-        );
-      })
-      .finally(() => {
-        setIsOpeningKeybindings(false);
-      });
-  };
   const keybindings = serverConfigQuery.data?.keybindings ?? EMPTY_KEYBINDINGS;
   const platform = getNavigatorPlatform();
   const sections = buildShortcutSheetSections({
+    desktop: isElectron,
     keybindings,
     platform,
     context: SETTINGS_SHORTCUT_CONTEXT,
@@ -178,36 +154,6 @@ export function KeyboardShortcutsSettingsPanel() {
   };
   return (
     <div className="space-y-4">
-      <SettingsRow
-        id="setting-shortcuts-file"
-        title="Open shortcuts file"
-        description="Edit advanced shortcuts in your preferred editor."
-        status={
-          <>
-            <span className="block break-all font-mono text-ui-sm text-foreground">
-              {keybindingsConfigPath ?? "Resolving keybindings path..."}
-            </span>
-            {openKeybindingsError ? (
-              <span className="mt-1 block text-destructive">{openKeybindingsError}</span>
-            ) : null}
-          </>
-        }
-        control={
-          <Button
-            size="xs"
-            variant="outline"
-            disabled={!keybindingsConfigPath || isOpeningKeybindings}
-            onClick={openKeybindingsFile}
-          >
-            <FolderIcon className="size-3.5" />
-            {isOpeningKeybindings ? "Opening..." : "Open file"}
-          </Button>
-        }
-      />
-      <div className="rounded-lg bg-muted/45 px-3 py-2.5 text-ui leading-relaxed text-muted-foreground">
-        Capture up to two modifiers and one key. Changes are saved directly to{" "}
-        <code>keybindings.json</code>.
-      </div>
       <div className="flex items-center justify-between gap-3">
         <div className="min-w-0">
           <h3 className="text-ui-lg font-medium text-foreground">Keyboard shortcuts</h3>

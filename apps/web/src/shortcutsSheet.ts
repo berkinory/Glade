@@ -35,6 +35,8 @@ interface BuildShortcutSheetSectionsOptions {
   keybindings: ResolvedKeybindingsConfig;
   platform: string;
   context: ShortcutSheetContext;
+  // System-wide shortcuts registered by the desktop app.
+  desktop: boolean;
 }
 
 interface ShortcutDefinition {
@@ -332,6 +334,23 @@ function modSlashLabel(platform: string): string {
   return isMacPlatform(platform) ? "⌘/" : "Ctrl+/";
 }
 
+// The desktop registers this chord system-wide (apps/desktop/src/computer/computerKillSwitch.ts);
+// the two must name the same keys.
+export function computerKillSwitchLabel(platform: string): string {
+  const isMac = isMacPlatform(platform);
+  return formatShortcutLabel(
+    {
+      key: "escape",
+      ctrlKey: true,
+      altKey: true,
+      metaKey: isMac,
+      shiftKey: !isMac,
+      modKey: false,
+    },
+    platform,
+  );
+}
+
 function definitionToEntry(
   definition: ShortcutDefinition,
   keybindings: ResolvedKeybindingsConfig,
@@ -396,6 +415,16 @@ export function buildShortcutSheetSections(
   );
   if (sidebarToggle) {
     currentEntries.splice(1, 0, sidebarToggle);
+  }
+  if (options.desktop) {
+    currentEntries.push({
+      id: "computer.stop",
+      command: null,
+      binding: null,
+      label: "Stop Computer Use",
+      description: "Stops Computer Use in every chat from any app.",
+      shortcutLabel: computerKillSwitchLabel(options.platform),
+    });
   }
 
   const currentNavigationEntries = options.context.terminalWorkspaceOpen

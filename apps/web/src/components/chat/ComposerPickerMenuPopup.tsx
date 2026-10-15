@@ -39,7 +39,7 @@ export function ComposerPickerMenuPopup({
   );
 }
 
-type ComposerPickerSelectPopupProps = Omit<ComponentProps<typeof SelectPopup>, "surface"> & {
+type ComposerPickerSelectPopupProps = ComponentProps<typeof SelectPopup> & {
   size?: ComposerPickerSize;
 };
 
@@ -57,7 +57,6 @@ export function ComposerPickerSelectPopup({
     <SelectPopup
       align={align}
       alignItemWithTrigger={alignItemWithTrigger}
-      surface="composer"
       shellClassName={composerPickerMenuShellClassName(resolvedSize)}
       className={className}
       {...props}

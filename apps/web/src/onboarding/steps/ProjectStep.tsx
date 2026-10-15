@@ -1,4 +1,5 @@
 import { CheckIcon, FolderIcon, FolderPlusIcon } from "~/lib/icons";
+import { resolveFallbackProvider } from "~/providerOrdering";
 import type { ProjectId } from "@glade/contracts/core/baseSchemas";
 import { useEffect, useState, type FormEvent } from "react";
 import { useAppSettings } from "~/appSettings";
@@ -47,7 +48,7 @@ export function ProjectStep(props: {
         api,
         workspaceRoot,
         spaceId: null,
-        defaultProvider: settings.defaultProvider,
+        defaultProvider: resolveFallbackProvider(settings),
         loadSnapshot: () => api.orchestration.getShellSnapshot().catch(() => null),
       });
       if (result.snapshot) {

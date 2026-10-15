@@ -1,4 +1,5 @@
 import { useActiveEnvironment } from "~/environments/activeEnvironment";
+import { resolveFallbackProvider } from "~/providerOrdering";
 import { useShallow } from "zustand/react/shallow";
 import { hasUnsentComposerDraft } from "../composerDraftDomain";
 import { buildSidebarThreadSummary } from "../storeProjection.records";
@@ -345,7 +346,7 @@ export function useSidebarShellState() {
           draft,
           resolveDraftFallbackModelSelection({
             projectDefault: project.defaultModelSelection,
-            settingsDefaultProvider: appSettings.defaultProvider,
+            settingsDefaultProvider: resolveFallbackProvider(appSettings),
           }),
           null,
         ),

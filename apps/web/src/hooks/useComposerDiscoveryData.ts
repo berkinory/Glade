@@ -142,7 +142,6 @@ export function useComposerDiscoveryData(input: {
     isLocalFolderBrowserOpen,
     providerPlugins,
     providerNativeCommands,
-    providerArtifacts: commandsQuery.data?.artifacts,
     providerSkills: skillsQuery.data?.skills ?? EMPTY_PROVIDER_SKILLS,
     workspaceEntries: entriesQuery.data?.entries ?? EMPTY_PROJECT_ENTRIES,
     isComposerMenuLoading,

@@ -62,7 +62,6 @@ type ComposerModelPickerProps = {
   modelOptionsByProvider: Record<ProviderKind, ReadonlyArray<ProviderModelOption>>;
   loadingModelProviders?: Partial<Record<ProviderKind, boolean>>;
   discoveryErrorsByProvider?: Partial<Record<ProviderKind, string | undefined>>;
-  hiddenProviders?: ReadonlyArray<ProviderKind>;
   providerOrder?: ReadonlyArray<ProviderKind>;
   hideModelLabel?: boolean;
   disabled?: boolean;
@@ -192,7 +191,6 @@ export function ComposerModelPicker(props: ComposerModelPickerProps) {
       provider: props.provider,
       lockedProvider: null,
       providers: props.providers,
-      hiddenProviders: props.hiddenProviders,
       providerOrder: props.providerOrder,
     }).filter((option) => connectedProviders.has(option.value)),
     props.providers,

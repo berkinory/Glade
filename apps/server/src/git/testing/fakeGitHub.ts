@@ -207,7 +207,7 @@ export function createFakeGitHub(scenario: FakeGhScenario = {}): {
       execute,
       getViewer: () => {
         ghCalls.push("api user --jq .login");
-        return Effect.succeed({ login: "viewer", avatarUrl: null });
+        return Effect.succeed({ login: "viewer", name: null, avatarUrl: null });
       },
       listOpenPullRequests: (input) =>
         listPullRequestsWithState(input, { state: "open", defaultLimit: 1 }),

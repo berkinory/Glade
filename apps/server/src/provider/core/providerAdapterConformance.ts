@@ -13,7 +13,6 @@ type OptionalAdapterMethod =
   | "listSkills"
   | "listCommands"
   | "listPlugins"
-  | "readPlugin"
   | "listModels";
 
 type RequiredAdapterMethod =
@@ -60,7 +59,7 @@ const CAPABILITY_METHOD_REQUIREMENTS: ReadonlyArray<{
   { capability: "supportsTurnSteering", methods: ["steerTurn"] },
   { capability: "supportsSkillDiscovery", methods: ["listSkills"] },
   { capability: "supportsNativeSlashCommandDiscovery", methods: ["listCommands"] },
-  { capability: "supportsPluginDiscovery", methods: ["listPlugins", "readPlugin"] },
+  { capability: "supportsPluginDiscovery", methods: ["listPlugins"] },
   { capability: "supportsRuntimeModelList", methods: ["listModels"] },
 ];
 

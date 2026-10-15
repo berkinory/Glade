@@ -15,6 +15,7 @@ import {
 import {
   deriveProviderUsageDisplayRows,
   selectPrimaryProviderUsageDisplayRow,
+  selectProviderUsageCreditLines,
   type ProviderUsageDisplayRow,
 } from "~/lib/providerUsageDisplay";
 import type { ServerProviderUsageLine } from "@glade/contracts/server/server";
@@ -106,14 +107,12 @@ export function ProviderUsageMenuPopup({
   model,
   align: alignProp,
   side = "bottom",
-  showUsageLines = false,
   children,
 }: {
   provider: ProviderKind;
   model: ProviderUsageMenuModel;
   align?: "start" | "end";
   side?: "top" | "bottom";
-  showUsageLines?: boolean;
   children: ReactNode;
 }) {
   const align = alignProp ?? "end";
@@ -124,11 +123,7 @@ export function ProviderUsageMenuPopup({
         <ProviderUsagePanelContent
           provider={provider}
           rateLimits={model.rateLimits}
-          usageLines={
-            showUsageLines
-              ? model.usageLines
-              : model.usageLines.filter((line) => line.label === "Credits")
-          }
+          usageLines={selectProviderUsageCreditLines(model.usageLines)}
           notice={model.notice}
           emptyMessage={model.emptyMessage}
           isLoading={model.isLoading}
@@ -150,12 +145,8 @@ export function ProviderUsageMenuControl({
   surface?: "header" | "sidebar";
 }) {
   const model = useProviderUsageMenuModel(provider);
-  const { settings } = useAppSettings();
   if (surface === "sidebar") {
-    const windows =
-      settings.sidebarUsageWindow === "both"
-        ? [300, 10080]
-        : [settings.sidebarUsageWindow === "five-hour" ? 300 : 10080];
+    const windows = [300, 10080];
     const hasStandardWindows = model.rows.some(
       (row) => row.windowDurationMins === 300 || row.windowDurationMins === 10080,
     );

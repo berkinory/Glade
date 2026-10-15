@@ -31,7 +31,6 @@ import { selectedClaudeModelInfo, toPermissionMode } from "./modelCapabilities";
 import { CLAUDE_SETTING_SOURCES, buildEmbeddedClaudeSystemPromptAppend } from "./promptPolicy";
 import { acquireAgentGatewaySessionLease } from "../../../agentGateway/sessionLease.ts";
 import { makeClaudeSdkHooks } from "./sdkHooks";
-import { withClaudeArtifactOptIn } from "../claudeProcessEnv.ts";
 import { buildClaudeMcpServers } from "../../../agentGateway/mcpInjection.ts";
 import { toMessage } from "./streamErrors";
 import { cancellableClaudeMessageStream } from "./sdkProcessRuntime";
@@ -275,7 +274,7 @@ export function makeClaudeSessionStartup(input: {
         },
         canUseTool,
         onElicitation,
-        env: withClaudeArtifactOptIn(claudeSdkEnv, providerOptions?.enableArtifacts),
+        env: claudeSdkEnv,
         spawnClaudeCodeProcess: bindClaudeProcessOwner(processOwner),
         ...(input.cwd ? { additionalDirectories: [input.cwd] } : {}),
         ...(agentGatewayCredentials
@@ -407,7 +406,6 @@ export function makeClaudeSessionStartup(input: {
           ...(gatewaySessionLease ? { gatewaySessionLease } : {}),
           session,
           startInput: input,
-          artifactsEnabled: providerOptions?.enableArtifacts === true,
           ...(input.lifecycleGeneration !== undefined
             ? { lifecycleGeneration: input.lifecycleGeneration }
             : {}),

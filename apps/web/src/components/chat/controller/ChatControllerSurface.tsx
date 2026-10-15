@@ -66,7 +66,6 @@ export function ChatControllerSurface({ controller }: { controller: ChatControll
     setPendingFileUndo,
     resolvedTheme,
     settings,
-    timestampFormat,
     composerTranscriptInsetPx,
     composerOverlayBottomClearancePx,
     composerOverlayRef,
@@ -416,7 +415,6 @@ export function ChatControllerSurface({ controller }: { controller: ChatControll
           activeUsageLimitResume
             ? {
                 resetsAt: activeUsageLimitResume.resetsAt,
-                timestampFormat,
                 onCancel: () =>
                   void cancelUsageLimitResume(activeThread.id, activeUsageLimitResume.turnId).catch(
                     (error: unknown) =>
@@ -580,7 +578,6 @@ export function ChatControllerSurface({ controller }: { controller: ChatControll
                     markdownCwd={threadWorkspaceCwd ?? undefined}
                     resolvedTheme={resolvedTheme}
                     chatFontSizePx={settings.chatFontSizePx}
-                    timestampFormat={timestampFormat}
                     workspaceRoot={threadArtifactWorkspaceRoot ?? undefined}
                     keybindings={keybindings}
                     availableEditors={availableEditors}

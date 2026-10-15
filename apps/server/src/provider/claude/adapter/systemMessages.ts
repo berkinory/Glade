@@ -306,12 +306,8 @@ export function makeClaudeSystemMessages(input: {
           return;
         case "init":
           context.initSkillNames = new Set(message.skills);
-          context.loadedPluginNames = new Set(message.plugins.map((plugin) => plugin.name));
           yield* syncFastModeState(context, message);
           context.effectiveEffort = message.effort;
-          if (Array.isArray(message.tools)) {
-            context.initToolNames = new Set(message.tools);
-          }
           yield* offerRuntimeEvent(context, {
             ...base,
             type: "session.configured",

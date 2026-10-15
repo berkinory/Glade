@@ -1,4 +1,5 @@
 import { resolveFollowUpDispatchMode } from "~/appSettings";
+import { resolveFallbackProvider } from "~/providerOrdering";
 import { providerCapabilities } from "@glade/shared/provider/providerMetadata";
 import { useLayoutEffect, useRef } from "react";
 import { ComposerModelMenuTrigger } from "~/components/chat/ComposerModelMenuTrigger";
@@ -272,7 +273,6 @@ export function useChatSubmissionController({
         modelOptionsByProvider={modelOptionsByProvider}
         loadingModelProviders={loadingModelProviders}
         discoveryErrorsByProvider={discoveryErrorsByProvider}
-        hiddenProviders={settings.hiddenProviders}
         providerOrder={settings.providerOrder}
         threadId={threadId}
         runtimeModel={selectedRuntimeModel}
@@ -323,7 +323,7 @@ export function useChatSubmissionController({
     transcript,
     discovery,
     composer,
-    turn: { defaultProvider: settings.defaultProvider },
+    turn: { defaultProvider: resolveFallbackProvider(settings) },
   });
 
   const {

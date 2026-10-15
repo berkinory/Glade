@@ -1,54 +1,13 @@
-import { type TimestampFormat } from "./appSettings";
+const timeFormatter = new Intl.DateTimeFormat(undefined, { hour: "numeric", minute: "2-digit" });
 
-function getTimestampFormatOptions(
-  timestampFormat: TimestampFormat,
-  includeSeconds: boolean,
-): Intl.DateTimeFormatOptions {
-  const baseOptions: Intl.DateTimeFormatOptions = {
-    hour: "numeric",
-    minute: "2-digit",
-    ...(includeSeconds ? { second: "2-digit" } : {}),
-  };
+const timeWithSecondsFormatter = new Intl.DateTimeFormat(undefined, {
+  hour: "numeric",
+  minute: "2-digit",
+  second: "2-digit",
+});
 
-  if (timestampFormat === "locale") {
-    return baseOptions;
-  }
-
-  return {
-    ...baseOptions,
-    hour12: timestampFormat === "12-hour",
-  };
-}
-
-const CALENDAR_DATE_OPTIONS: Intl.DateTimeFormatOptions = {
-  year: "numeric",
-  month: "short",
-  day: "numeric",
-};
-
-const timestampFormatterCache = new Map<string, Intl.DateTimeFormat>();
-
-function getTimestampFormatter(
-  timestampFormat: TimestampFormat,
-  includeSeconds: boolean,
-  includeDate = false,
-): Intl.DateTimeFormat {
-  const cacheKey = `${timestampFormat}:${includeSeconds ? "seconds" : "minutes"}:${includeDate ? "date" : "time"}`;
-  const cachedFormatter = timestampFormatterCache.get(cacheKey);
-  if (cachedFormatter) {
-    return cachedFormatter;
-  }
-
-  const formatter = new Intl.DateTimeFormat(undefined, {
-    ...(includeDate ? CALENDAR_DATE_OPTIONS : {}),
-    ...getTimestampFormatOptions(timestampFormat, includeSeconds),
-  });
-  timestampFormatterCache.set(cacheKey, formatter);
-  return formatter;
-}
-
-export function formatTimestamp(isoDate: string, timestampFormat: TimestampFormat): string {
-  return getTimestampFormatter(timestampFormat, true).format(new Date(isoDate));
+export function formatTimestamp(isoDate: string): string {
+  return timeWithSecondsFormatter.format(new Date(isoDate));
 }
 
 const dayLabelFormatterCache = new Map<string, Intl.DateTimeFormat>();
@@ -81,13 +40,9 @@ function calendarDaysBetween(from: Date, to: Date): number {
   return Math.round((toMidnight.getTime() - fromMidnight.getTime()) / DAY_IN_MS);
 }
 
-export function formatDayAwareTimestamp(
-  isoDate: string,
-  timestampFormat: TimestampFormat,
-  now: Date = new Date(),
-): string {
+export function formatDayAwareTimestamp(isoDate: string, now: Date = new Date()): string {
   const date = new Date(isoDate);
-  const time = getTimestampFormatter(timestampFormat, false).format(date);
+  const time = timeFormatter.format(date);
   if (isSameCalendarDay(date, now)) {
     return time;
   }

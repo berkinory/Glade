@@ -11,7 +11,6 @@ import { z } from "zod";
 import modelListSchema from "./generated/schemas/v2/ModelListResponse.json";
 import skillsListSchema from "./generated/schemas/v2/SkillsListResponse.json";
 import pluginListSchema from "./generated/schemas/v2/PluginListResponse.json";
-import pluginReadSchema from "./generated/schemas/v2/PluginReadResponse.json";
 import serverNotificationSchema from "./generated/schemas/ServerNotification.json";
 import serverRequestSchema from "./generated/schemas/ServerRequest.json";
 import jsonRpcErrorSchema from "./generated/schemas/JSONRPCErrorError.json";
@@ -29,19 +28,11 @@ import threadTurnsListSchema from "./generated/schemas/v2/ThreadTurnsListRespons
 import turnInterruptSchema from "./generated/schemas/v2/TurnInterruptResponse.json";
 import turnStartSchema from "./generated/schemas/v2/TurnStartResponse.json";
 import turnSteerSchema from "./generated/schemas/v2/TurnSteerResponse.json";
-import mcpStatusListSchema from "./generated/schemas/v2/ListMcpServerStatusResponse.json";
 import configReadSchema from "./generated/schemas/v2/ConfigReadResponse.json";
-import configWriteSchema from "./generated/schemas/v2/ConfigWriteResponse.json";
-import mcpOauthLoginSchema from "./generated/schemas/v2/McpServerOauthLoginResponse.json";
-import pluginInstalledSchema from "./generated/schemas/v2/PluginInstalledResponse.json";
-import pluginInstallSchema from "./generated/schemas/v2/PluginInstallResponse.json";
-import pluginUninstallSchema from "./generated/schemas/v2/PluginUninstallResponse.json";
-import mcpRefreshSchema from "./generated/schemas/v2/McpServerRefreshResponse.json";
 import errorNotificationSchema from "./generated/schemas/v2/ErrorNotification.json";
 import type { ModelListResponse } from "./generated/types/v2/ModelListResponse";
 import type { SkillsListResponse } from "./generated/types/v2/SkillsListResponse";
 import type { PluginListResponse } from "./generated/types/v2/PluginListResponse";
-import type { PluginReadResponse } from "./generated/types/v2/PluginReadResponse";
 import type { GetAccountResponse } from "./generated/types/v2/GetAccountResponse";
 import type { GetAccountRateLimitsResponse } from "./generated/types/v2/GetAccountRateLimitsResponse";
 import type { ErrorNotification } from "./generated/types/v2/ErrorNotification";
@@ -85,7 +76,6 @@ const responseDocuments: Readonly<Record<string, object>> = {
   "model/list": modelListSchema,
   "skills/list": skillsListSchema,
   "plugin/list": pluginListSchema,
-  "plugin/read": pluginReadSchema,
   "account/read": accountReadSchema,
   "account/rateLimits/read": accountRateLimitsReadSchema,
   "review/start": reviewStartSchema,
@@ -102,15 +92,7 @@ const responseDocuments: Readonly<Record<string, object>> = {
   "turn/interrupt": turnInterruptSchema,
   "turn/start": turnStartSchema,
   "turn/steer": turnSteerSchema,
-  "mcpServerStatus/list": mcpStatusListSchema,
   "config/read": configReadSchema,
-  "config/value/write": configWriteSchema,
-  "config/batchWrite": configWriteSchema,
-  "mcpServer/oauth/login": mcpOauthLoginSchema,
-  "config/mcpServer/reload": mcpRefreshSchema,
-  "plugin/installed": pluginInstalledSchema,
-  "plugin/install": pluginInstallSchema,
-  "plugin/uninstall": pluginUninstallSchema,
 };
 
 const notificationDocuments = documentsByMethod(serverNotificationSchema);
@@ -142,7 +124,6 @@ export function decodeCodexResponse(method: "project/list", value: unknown): Pro
 export function decodeCodexResponse(method: "model/list", value: unknown): ModelListResponse;
 export function decodeCodexResponse(method: "skills/list", value: unknown): SkillsListResponse;
 export function decodeCodexResponse(method: "plugin/list", value: unknown): PluginListResponse;
-export function decodeCodexResponse(method: "plugin/read", value: unknown): PluginReadResponse;
 export function decodeCodexResponse(method: "account/read", value: unknown): GetAccountResponse;
 export function decodeCodexResponse(
   method: "account/rateLimits/read",

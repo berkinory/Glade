@@ -50,38 +50,16 @@ export function resolveLiveProviderAvailability(provider: ServerProviderStatus |
 
 export const AVAILABLE_PROVIDER_OPTIONS = PROVIDER_OPTIONS.filter(isAvailableProviderOption);
 
-function filterProviderOptionsByVisibility<T extends { value: ProviderKind }>(
-  options: ReadonlyArray<T>,
-  hiddenProviders: ReadonlySet<ProviderKind>,
-  protectedProviders: ReadonlySet<ProviderKind>,
-): ReadonlyArray<T> {
-  if (hiddenProviders.size === 0) {
-    return options;
-  }
-  return options.filter(
-    (option) => protectedProviders.has(option.value) || !hiddenProviders.has(option.value),
-  );
-}
-
 export function resolveVisibleProviderOptions(input: {
   provider: ProviderKind;
   lockedProvider: ProviderKind | null;
   providers: ReadonlyArray<ServerProviderStatus> | undefined;
-  hiddenProviders: ReadonlyArray<ProviderKind> | undefined;
   providerOrder: ReadonlyArray<ProviderKind> | undefined;
 }) {
-  const protectedProviderSet = new Set<ProviderKind>([input.provider]);
-  if (input.lockedProvider !== null) {
-    protectedProviderSet.add(input.lockedProvider);
-  }
-  return filterProviderOptionsByVisibility(
-    AVAILABLE_PROVIDER_OPTIONS.toSorted((left, right) =>
-      compareProvidersByOrder(input.providerOrder ?? [], left.value, right.value),
-    ).filter((option) =>
-      input.providers?.some((provider) => provider.provider === option.value && provider.available),
-    ),
-    new Set<ProviderKind>(input.hiddenProviders ?? []),
-    protectedProviderSet,
+  return AVAILABLE_PROVIDER_OPTIONS.toSorted((left, right) =>
+    compareProvidersByOrder(input.providerOrder ?? [], left.value, right.value),
+  ).filter((option) =>
+    input.providers?.some((provider) => provider.provider === option.value && provider.available),
   );
 }
 

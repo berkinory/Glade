@@ -74,7 +74,6 @@ export interface ServerProviderDescriptor {
   }) => Effect.Effect<ProviderStatusCheck>;
   readonly maintenance: PackageManagedProviderMaintenanceDefinition;
   readonly nativeHistory: { readonly archives: boolean };
-  readonly mcp: { readonly writesRequireConfigVersion: boolean };
   // Providers that speak the Agent Client Protocol run on the shared ACP adapter.
   readonly acp?: AcpProviderProfile;
 }

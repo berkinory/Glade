@@ -35,14 +35,6 @@ import type {
   PreviewWorkspaceRestoreInput,
   WorkspaceRestoreReview,
 } from "../orchestration/workspaceRestore";
-import {
-  ProviderManagementContext,
-  ProviderListMcpServersResult,
-  ProviderManageMcpServerInput,
-  ProviderManagementResult,
-  ProviderPluginInventoryResult,
-  ProviderManagePluginInput,
-} from "../provider/providerManagement";
 
 import type {
   AuthBearerBootstrapResult,
@@ -269,8 +261,6 @@ import type {
   ProviderListSkillsResult,
   ProviderSkillsCatalogInput,
   ProviderSkillsCatalogResult,
-  ProviderReadPluginInput,
-  ProviderReadPluginResult,
 } from "../provider/providerDiscovery";
 import type {
   StatsGetProfileStatsInput,
@@ -748,12 +738,6 @@ export interface NativeApi {
     listSkills: (input: ProviderListSkillsInput) => Promise<ProviderListSkillsResult>;
     listSkillsCatalog: (input: ProviderSkillsCatalogInput) => Promise<ProviderSkillsCatalogResult>;
     listPlugins: (input: ProviderListPluginsInput) => Promise<ProviderListPluginsResult>;
-    listMcpServers: (input: ProviderManagementContext) => Promise<ProviderListMcpServersResult>;
-    manageMcpServer: (input: ProviderManageMcpServerInput) => Promise<ProviderManagementResult>;
-    pluginInventory: (input: ProviderManagementContext) => Promise<ProviderPluginInventoryResult>;
-    managePlugin: (input: ProviderManagePluginInput) => Promise<ProviderManagementResult>;
-
-    readPlugin: (input: ProviderReadPluginInput) => Promise<ProviderReadPluginResult>;
     listModels: (input: ProviderListModelsInput) => Promise<ProviderListModelsResult>;
     listAgents: (input: ProviderListAgentsInput) => Promise<ProviderListAgentsResult>;
   };

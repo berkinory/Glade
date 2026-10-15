@@ -57,5 +57,4 @@ export const CODEX_PROVIDER_DESCRIPTOR: ServerProviderDescriptor = {
     },
   },
   nativeHistory: { archives: true },
-  mcp: { writesRequireConfigVersion: true },
 };

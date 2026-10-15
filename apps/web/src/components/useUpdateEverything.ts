@@ -124,7 +124,6 @@ export function useUpdateEverything(): UpdateControls {
         !isProviderUpdateActive(provider) &&
         shouldShowProviderUpdateStatus({
           provider,
-          hiddenProviders: settings.hiddenProviders,
           serverSettings: providerSettings,
           oneClickOnly: true,
         }),

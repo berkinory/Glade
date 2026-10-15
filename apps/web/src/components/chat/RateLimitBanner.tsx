@@ -1,7 +1,6 @@
 import { AlertCircleIcon, XIcon } from "~/lib/icons";
 import { asObjectRecord } from "@glade/shared/transport/payloadValues";
 import type { OrchestrationThreadActivity } from "@glade/contracts/orchestration/threadEntities";
-import type { TimestampFormat } from "~/appSettings";
 import { formatDayAwareTimestamp } from "~/timestampFormat";
 import { Alert, AlertAction, AlertDescription } from "../ui/alert";
 import { Button } from "../ui/button";
@@ -60,14 +59,13 @@ export const RateLimitBanner = function RateLimitBanner({
   rateLimitStatus: RateLimitStatus | null;
   usageLimitResume?: {
     readonly resetsAt: string;
-    readonly timestampFormat: TimestampFormat;
     readonly onCancel: () => void;
   } | null;
 }) {
   if (usageLimitResume) {
     const message =
       Date.parse(usageLimitResume.resetsAt) > Date.now()
-        ? `Usage limit reached. Continuing automatically at ${formatDayAwareTimestamp(usageLimitResume.resetsAt, usageLimitResume.timestampFormat)}.`
+        ? `Usage limit reached. Continuing automatically at ${formatDayAwareTimestamp(usageLimitResume.resetsAt)}.`
         : "Usage limit reset. Continuing shortly.";
     return (
       <ChatColumnBannerFrame>

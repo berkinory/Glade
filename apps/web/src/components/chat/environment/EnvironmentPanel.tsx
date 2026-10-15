@@ -139,6 +139,7 @@ export function EnvironmentPanel({
             void navigate({
               to: "/settings",
               search: {
+                section: "behavior",
                 target: SETTINGS_TARGETS.environmentPanel,
               },
             })

@@ -74,7 +74,6 @@ export function TimelineAssistantMessage({
     pinnedMessageIds,
     onTogglePinMessage,
     onForkFromMessage,
-    timestampFormat,
     markdownCwd,
     onImageExpand,
     onOpenTurnDiff,
@@ -150,9 +149,7 @@ export function TimelineAssistantMessage({
   const inlineEditedFiles = usePagedFiles(inlineEditedFilesFromTurnSummary);
   const isTerminalAssistantMessage = row.showAssistantCopyButton && !row.assistantTurnInProgress;
   const assistantMeta = [
-    isTerminalAssistantMessage
-      ? formatDayAwareTimestamp(row.message.createdAt, timestampFormat)
-      : null,
+    isTerminalAssistantMessage ? formatDayAwareTimestamp(row.message.createdAt) : null,
   ]
     .filter((value): value is string => Boolean(value))
     .join(" • ");
@@ -195,7 +192,6 @@ export function TimelineAssistantMessage({
         markdownCwd={markdownCwd}
         onImageExpand={onImageExpand}
         activityDetail={getAgentActivityDetail?.(workEntry.id)}
-        timestampFormat={timestampFormat}
       />
     );
     const isLiveGroup =
@@ -262,7 +258,6 @@ export function TimelineAssistantMessage({
                 markdownCwd={markdownCwd}
                 onImageExpand={onImageExpand}
                 activityDetail={getAgentActivityDetail?.(workEntry.id)}
-                timestampFormat={timestampFormat}
               />
             ))}
           </div>
@@ -280,7 +275,6 @@ export function TimelineAssistantMessage({
         markdownCwd={markdownCwd}
         onImageExpand={onImageExpand}
         activityDetail={getAgentActivityDetail?.(item.entry.id)}
-        timestampFormat={timestampFormat}
       />
     ) : (
       <div

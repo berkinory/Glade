@@ -14,8 +14,6 @@ import type {
   Options as ClaudeQueryOptions,
   SDKUserMessage,
   SDKControlInitializeResponse,
-  McpServerStatus,
-  SDKControlReloadPluginsResponse,
   CanUseTool,
 } from "@anthropic-ai/claude-agent-sdk";
 import { Effect, Layer, Option, Stream } from "effect";
@@ -185,20 +183,6 @@ export class FakeClaudeQuery implements AsyncIterable<SDKMessage> {
       output_style: "default",
       available_output_styles: [],
     }) as SDKControlInitializeResponse;
-
-  readonly mcpServerStatus = async (): Promise<McpServerStatus[]> => [];
-
-  readonly reconnectMcpServer = async (_name: string): Promise<void> => {};
-
-  readonly toggleMcpServer = async (_name: string, _enabled: boolean): Promise<void> => {};
-
-  readonly reloadPlugins = async (): Promise<SDKControlReloadPluginsResponse> => ({
-    plugins: [],
-    commands: [],
-    agents: [],
-    mcpServers: [],
-    error_count: 0,
-  });
 
   readonly close = (): void => {
     this.closeCalls += 1;

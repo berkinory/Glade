@@ -21,7 +21,6 @@ export function ProviderUsagePanelContent(props: {
   emptyMessage?: string | null | undefined;
   isLoading?: boolean | undefined;
   learnMoreHref?: string | null | undefined;
-  showUsageLines?: boolean | undefined;
   resetCredits?: ServerCodexResetCredits | undefined;
   resetCreditsSurface?: "settings" | "popover" | undefined;
   showTitle?: boolean | undefined;
@@ -46,12 +45,11 @@ export function ProviderUsagePanelContent(props: {
           <span>{props.notice}</span>
         </p>
       ) : null}
-      <ProviderUsageLimitRows rows={visibleRows} surface="popover" />
-      {props.showUsageLines !== false && props.usageLines && props.usageLines.length > 0 ? (
+      <ProviderUsageLimitRows rows={visibleRows} />
+      {props.usageLines && props.usageLines.length > 0 ? (
         <ProviderUsageLineList
           className={cn(visibleRows.length > 0 && "pt-0.5")}
           lines={props.usageLines}
-          surface="popover"
         />
       ) : visibleRows.length === 0 && props.isLoading ? (
         <p className="text-chat-meta leading-relaxed text-muted-foreground">

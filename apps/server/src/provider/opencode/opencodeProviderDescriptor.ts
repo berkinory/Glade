@@ -37,10 +37,14 @@ export const OPENCODE_PROVIDER_DESCRIPTOR: ServerProviderDescriptor = {
       args: () => ["upgrade"],
       lockKey: "opencode-native",
       strategy: "always",
-      latestVersionSource: null,
+      // The official installer and `opencode upgrade` both take the latest GitHub release.
+      latestVersionSource: {
+        kind: "url",
+        url: "https://api.github.com/repos/anomalyco/opencode/releases/latest",
+        pattern: /"tag_name"\s*:\s*"v?([^"]+)"/,
+      },
     },
   },
   nativeHistory: { archives: false },
-  mcp: { writesRequireConfigVersion: false },
   acp: OPENCODE_ACP_PROFILE,
 };

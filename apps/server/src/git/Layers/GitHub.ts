@@ -80,9 +80,17 @@ function cliError(error: unknown): GitHubError {
 
 function toAccount(value: unknown): GitHubAccount | null {
   if (typeof value !== "object" || value === null) return null;
-  const { login, avatar_url: avatarUrl } = value as { login?: unknown; avatar_url?: unknown };
+  const {
+    login,
+    name,
+    avatar_url: avatarUrl,
+  } = value as { login?: unknown; name?: unknown; avatar_url?: unknown };
   return typeof login === "string" && login.trim()
-    ? { login: login.trim(), avatarUrl: typeof avatarUrl === "string" ? avatarUrl : null }
+    ? {
+        login: login.trim(),
+        name: typeof name === "string" && name.trim() ? name.trim() : null,
+        avatarUrl: typeof avatarUrl === "string" ? avatarUrl : null,
+      }
     : null;
 }
 

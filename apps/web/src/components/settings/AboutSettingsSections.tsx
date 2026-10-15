@@ -9,9 +9,9 @@ import { toastManager } from "~/components/ui/toast";
 import { ensureNativeApi, readNativeApi } from "~/nativeApi";
 import { serverAuthSessionQueryOptions } from "~/lib/serverReactQuery";
 import { SettingsRow, SettingsSection } from "./SettingsPanelPrimitives";
+import { ConfigFileRows } from "./ConfigFileRows";
 import { DesktopUpdateSettingsRow } from "./DesktopUpdateSettingsRow";
-export function AdvancedSettingsPanel(props: {
-  active: boolean;
+export function AboutSettingsSections(props: {
   onOpenReleaseHistory: () => void;
   onRestoreDefaults: () => void;
 }) {
@@ -37,9 +37,8 @@ export function AdvancedSettingsPanel(props: {
     });
     if (result !== "redirecting") setIsLoggingOut(false);
   }, [isLoggingOut]);
-  if (!props.active) return null;
   return (
-    <div className="space-y-6">
+    <>
       {authSessionQuery.data?.authenticated ? (
         <SettingsSection title="Session">
           <SettingsRow
@@ -59,6 +58,21 @@ export function AdvancedSettingsPanel(props: {
           />
         </SettingsSection>
       ) : null}
+      <SettingsSection title="Getting started">
+        <SettingsRow
+          id="setting-welcome-tour"
+          title="Welcome tour"
+          description="Replay the first-run setup: feature tour, provider selection, appearance, and first project."
+          control={
+            <Button
+              variant="outline"
+              onClick={() => useOnboardingDialogStore.getState().openDialog()}
+            >
+              Open welcome tour
+            </Button>
+          }
+        />
+      </SettingsSection>
       <SettingsSection title="About">
         <DesktopUpdateSettingsRow />
         <SettingsRow
@@ -80,22 +94,8 @@ export function AdvancedSettingsPanel(props: {
           }
         />
       </SettingsSection>
-      <SettingsSection title="Getting started">
-        <SettingsRow
-          id="setting-welcome-tour"
-          title="Welcome tour"
-          description="Replay the first-run setup: feature tour, provider selection, appearance, and first project."
-          control={
-            <Button
-              variant="outline"
-              onClick={() => useOnboardingDialogStore.getState().openDialog()}
-            >
-              Open welcome tour
-            </Button>
-          }
-        />
-      </SettingsSection>
-      <SettingsSection title="Reset settings">
+      <SettingsSection title="Settings">
+        <ConfigFileRows />
         <SettingsRow
           id="setting-restore-defaults"
           title="Restore defaults"
@@ -108,6 +108,6 @@ export function AdvancedSettingsPanel(props: {
           }
         />
       </SettingsSection>
-    </div>
+    </>
   );
 }

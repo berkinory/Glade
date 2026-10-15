@@ -1,20 +1,15 @@
-import { McpSettingsPanel } from "~/components/settings/McpSettingsPanel";
-import { WorktreeCleanupPolicyRows } from "../components/settings/WorktreeCleanupPolicyRows";
-import { GitHubConnectionSettings } from "../components/settings/GitHubConnectionSettings";
-import { PluginsSettingsPanel } from "~/components/settings/PluginsSettingsPanel";
+import { GitForkIcon, LaptopIcon } from "~/lib/icons";
 import { ComputerSettings } from "~/components/computer/ComputerSettings";
 import { SshHostsSettingsPanel } from "~/components/settings/SshHostsSettingsPanel";
 import { RemoteAccessSettingsPanel } from "~/components/settings/remoteAccess/RemoteAccessSettingsPanel";
 import { createFileRoute, useSearch } from "@tanstack/react-router";
-import { useEffect, useMemo, useState } from "react";
+import { type ComponentProps, useEffect, useMemo, useState } from "react";
 
-import { AdvancedSettingsPanel } from "~/components/settings/AdvancedSettingsPanel";
-import {
-  ArchivedSettingsPanel,
-  WorktreesSettingsPanel,
-} from "~/components/settings/ConversationStorageSettingsPanels";
+import { AboutSettingsSections } from "~/components/settings/AboutSettingsSections";
+import { BooleanSettingRow } from "~/components/settings/BooleanSettingRow";
+import { GitAndFilesSettingsPanel } from "~/components/settings/GitAndFilesSettingsPanel";
+import { ArchivedSettingsPanel } from "~/components/settings/ConversationStorageSettingsPanels";
 import { NotificationsSettingsPanel } from "~/components/settings/DesktopSettingsPanels";
-import { ModelsSettingsPanel } from "~/components/settings/ModelsSettingsPanel";
 import { ProvidersSettingsPanel } from "~/components/settings/ProvidersSettingsPanel";
 import {
   DEFAULT_CHAT_WIDTH,
@@ -29,7 +24,6 @@ import {
   normalizeTerminalFontSizePx,
   TERMINAL_FONT_FAMILY_SUGGESTIONS,
   useAppSettings,
-  type AppSettings,
   type EditorCaretStyle,
   type FollowUpBehavior,
   type UiDensity,
@@ -50,10 +44,10 @@ import { ProviderUsageSettingsPanel } from "../components/settings/ProviderUsage
 import {
   SettingResetButton,
   SettingsSegmentedControl,
-  SettingsSelectControl,
   type SettingsSegmentedOption,
 } from "../components/settings/SettingControls";
 import {
+  SettingsCard,
   SettingsRow,
   SettingsSection,
   SettingsSectionShell,
@@ -74,7 +68,6 @@ import {
 import { Badge } from "../components/ui/badge";
 import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
-import { SelectItem } from "../components/ui/select";
 import { Switch } from "../components/ui/switch";
 import { toastManager } from "../components/ui/toast";
 import { isElectron } from "../env";
@@ -95,6 +88,7 @@ import {
   normalizeSettingsSection,
   settingRowAnchorId,
   SETTINGS_NAV_ITEMS,
+  SETTINGS_TARGETS,
 } from "../settingsNavigation";
 import { SETTINGS_PAGE_BACKGROUND_CLASS_NAME } from "../settingsPanelStyles";
 import { SettingsGeneralPanel } from "./-settingsGeneralPanel";
@@ -138,20 +132,10 @@ const CHAT_WIDTH_OPTIONS = [
   description: string;
 }>;
 
-const TIMESTAMP_FORMAT_LABELS = {
-  locale: "System default",
-  "12-hour": "12-hour",
-  "24-hour": "24-hour",
-} as const;
-
 const FOLLOW_UP_BEHAVIOR_OPTIONS = [
   { value: "queue", label: "Queue" },
   { value: "steer", label: "Steer" },
 ] as const satisfies ReadonlyArray<{ value: FollowUpBehavior; label: string }>;
-
-type BooleanSettingKey = {
-  [Key in keyof AppSettings]-?: AppSettings[Key] extends boolean ? Key : never;
-}[keyof AppSettings];
 
 function SettingsRouteView() {
   const routeSearch = useSearch({ strict: false }) as Record<string, unknown>;
@@ -274,42 +258,10 @@ function SettingsRouteView() {
     setResetEpoch((current) => current + 1);
   }
 
-  const renderBooleanSettingRow = (config: {
-    settingKey: BooleanSettingKey;
-    title: string;
-    description?: string;
-    resetLabel: string;
-    ariaLabel: string;
-  }) => {
-    const { settingKey, title, description, resetLabel, ariaLabel } = config;
-    const isChanged = settings[settingKey] !== defaults[settingKey];
-    return (
-      <SettingsRow
-        id={`setting-${settingKey}`}
-        title={title}
-        description={description}
-        resetAction={
-          isChanged ? (
-            <SettingResetButton
-              label={resetLabel}
-              onClick={() =>
-                updateSettings({ [settingKey]: defaults[settingKey] } as Partial<AppSettings>)
-              }
-            />
-          ) : null
-        }
-        control={
-          <Switch
-            checked={settings[settingKey]}
-            onCheckedChange={(checked) =>
-              updateSettings({ [settingKey]: Boolean(checked) } as Partial<AppSettings>)
-            }
-            aria-label={ariaLabel}
-          />
-        }
-      />
-    );
-  };
+  const binding = { settings, defaults, updateSettings };
+  const renderBooleanSettingRow = (
+    config: Omit<ComponentProps<typeof BooleanSettingRow>, "binding">,
+  ) => <BooleanSettingRow binding={binding} {...config} />;
 
   const renderAppearancePanel = () => (
     <div className="space-y-6">
@@ -601,15 +553,15 @@ function SettingsRouteView() {
         />
       </SettingsSection>
 
-      <SettingsSection title="Composer">
+      <SettingsSection title="Editor">
         <SettingsRow
           id="setting-caret-style"
-          title="Composer cursor"
+          title="Editor cursor"
           description="Choose the cursor shape when writing a message."
           resetAction={
             settings.editorCaretStyle !== defaults.editorCaretStyle ? (
               <SettingResetButton
-                label="composer cursor"
+                label="editor cursor"
                 onClick={() => updateSettings({ editorCaretStyle: DEFAULT_EDITOR_CARET_STYLE })}
               />
             ) : null
@@ -618,55 +570,9 @@ function SettingsRouteView() {
             <SettingsSegmentedControl
               value={settings.editorCaretStyle}
               onValueChange={(editorCaretStyle) => updateSettings({ editorCaretStyle })}
-              ariaLabel="Composer cursor"
+              ariaLabel="Editor cursor"
               options={EDITOR_CARET_STYLE_OPTIONS}
             />
-          }
-        />
-      </SettingsSection>
-
-      <SettingsSection title="Time">
-        <SettingsRow
-          id="setting-time-format"
-          title="Time format"
-          description="System default follows your browser or OS clock preference."
-          resetAction={
-            settings.timestampFormat !== defaults.timestampFormat ? (
-              <SettingResetButton
-                label="time format"
-                onClick={() =>
-                  updateSettings({
-                    timestampFormat: defaults.timestampFormat,
-                  })
-                }
-              />
-            ) : null
-          }
-          control={
-            <SettingsSelectControl
-              value={settings.timestampFormat}
-              onValueChange={(value) => {
-                if (value !== "locale" && value !== "12-hour" && value !== "24-hour") {
-                  return;
-                }
-                updateSettings({
-                  timestampFormat: value,
-                });
-              }}
-              ariaLabel="Timestamp format"
-              triggerClassName="w-full sm:w-40"
-              valueContent={TIMESTAMP_FORMAT_LABELS[settings.timestampFormat]}
-            >
-              <SelectItem hideIndicator value="locale">
-                {TIMESTAMP_FORMAT_LABELS.locale}
-              </SelectItem>
-              <SelectItem hideIndicator value="12-hour">
-                {TIMESTAMP_FORMAT_LABELS["12-hour"]}
-              </SelectItem>
-              <SelectItem hideIndicator value="24-hour">
-                {TIMESTAMP_FORMAT_LABELS["24-hour"]}
-              </SelectItem>
-            </SettingsSelectControl>
           }
         />
       </SettingsSection>
@@ -675,6 +581,57 @@ function SettingsRouteView() {
 
   const renderBehaviorPanel = () => (
     <div className="space-y-6">
+      <SettingsSection title="New chats">
+        <SettingsRow
+          id="setting-new-threads"
+          title="Workspace"
+          description="Choose where new chats work."
+          resetAction={
+            settings.defaultThreadEnvMode !== defaults.defaultThreadEnvMode ? (
+              <SettingResetButton
+                label="new chats"
+                onClick={() =>
+                  updateSettings({
+                    defaultThreadEnvMode: defaults.defaultThreadEnvMode,
+                  })
+                }
+              />
+            ) : null
+          }
+          control={
+            <SettingsSegmentedControl
+              value={settings.defaultThreadEnvMode}
+              onValueChange={(value) =>
+                updateSettings({
+                  defaultThreadEnvMode: value,
+                })
+              }
+              ariaLabel="New chat workspace"
+              options={[
+                {
+                  value: "local",
+                  label: (
+                    <>
+                      <LaptopIcon className="size-3.5" />
+                      Local
+                    </>
+                  ),
+                },
+                {
+                  value: "worktree",
+                  label: (
+                    <>
+                      <GitForkIcon className="size-3.5" />
+                      New worktree
+                    </>
+                  ),
+                },
+              ]}
+            />
+          }
+        />
+      </SettingsSection>
+
       <SettingsSection title="Conversation">
         <SettingsRow
           id="setting-follow-up-behavior"
@@ -729,6 +686,63 @@ function SettingsRouteView() {
         })}
       </SettingsSection>
 
+      <SettingsSectionShell title="Environment panel" id={SETTINGS_TARGETS.environmentPanel}>
+        <SettingsCard>
+          {renderBooleanSettingRow({
+            settingKey: "environmentPanelDefaultOpen",
+            title: "Open by default",
+            description: "Opening or closing the panel also updates this preference.",
+            resetLabel: "environment panel default open",
+            ariaLabel: "Open the Environment panel by default on chats",
+          })}
+
+          {renderBooleanSettingRow({
+            settingKey: "showEnvironmentUsage",
+            title: "Show usage",
+            resetLabel: "usage section",
+            ariaLabel: "Show the Usage section in the Environment panel",
+          })}
+
+          {renderBooleanSettingRow({
+            settingKey: "showEnvironmentRepository",
+            title: "Show repository",
+            description:
+              "Link to the GitHub repository. Git changes and branch controls always show.",
+            resetLabel: "repository section",
+            ariaLabel: "Show the Repository section in the Environment panel",
+          })}
+
+          {renderBooleanSettingRow({
+            settingKey: "showEnvironmentPullRequest",
+            title: "Show pull request",
+            description: "Link to the pull request for the current branch.",
+            resetLabel: "pull request section",
+            ariaLabel: "Show the Pull request section in the Environment panel",
+          })}
+
+          {renderBooleanSettingRow({
+            settingKey: "showEnvironmentEditor",
+            title: "Show editor",
+            resetLabel: "editor section",
+            ariaLabel: "Show the Editor section in the Environment panel",
+          })}
+
+          {renderBooleanSettingRow({
+            settingKey: "showEnvironmentPinned",
+            title: "Show pinned messages",
+            resetLabel: "pinned messages section",
+            ariaLabel: "Show the Pinned messages section in the Environment panel",
+          })}
+
+          {renderBooleanSettingRow({
+            settingKey: "showEnvironmentNotepad",
+            title: "Show notepad",
+            resetLabel: "notepad section",
+            ariaLabel: "Show the Notepad section in the Environment panel",
+          })}
+        </SettingsCard>
+      </SettingsSectionShell>
+
       <SettingsSection title="Power">
         <KeepAwakeSettingsRow />
       </SettingsSection>
@@ -761,65 +775,41 @@ function SettingsRouteView() {
     </div>
   );
 
-  const renderFilesPanel = () => (
-    <div className="space-y-6">
-      <SettingsSection title="File visibility">
-        {renderBooleanSettingRow({
-          settingKey: "hideIgnoredFiles",
-          title: "Hide ignored files",
-          description: "Hide gitignored files and folders from the Explorer tree.",
-          resetLabel: "hide ignored files",
-          ariaLabel: "Hide ignored files",
-        })}
-      </SettingsSection>
-      <SettingsSection title="Diff display">
-        {renderBooleanSettingRow({
-          settingKey: "showPullRequestDiffColors",
-          title: "Pull request diff colors",
-          description: "Show additions in green and deletions in red in pull request summaries.",
-          resetLabel: "pull request diff colors",
-          ariaLabel: "Show pull request diff colors",
-        })}
-
-        {renderBooleanSettingRow({
-          settingKey: "diffWordWrap",
-          title: "Diff line wrapping",
-          description: "Wrap long lines in Source Control diffs.",
-          resetLabel: "diff line wrapping",
-          ariaLabel: "Wrap diff lines by default",
-        })}
-      </SettingsSection>
-    </div>
-  );
-
   const renderRouteOwnedPanel = () => {
     switch (activeSection) {
       case "general":
-        return <SettingsGeneralPanel renderBooleanSettingRow={renderBooleanSettingRow} />;
+        return (
+          <div className="space-y-6">
+            <SettingsGeneralPanel />
+            <AboutSettingsSections
+              onOpenReleaseHistory={() => setReleaseHistoryOpen(true)}
+              onRestoreDefaults={() => void restoreDefaults()}
+            />
+          </div>
+        );
       case "appearance":
         return renderAppearancePanel();
-      case "files":
-        return renderFilesPanel();
+      case "git":
+        return <GitAndFilesSettingsPanel {...binding} />;
       case "behavior":
         return renderBehaviorPanel();
       case "shortcuts":
         return <KeyboardShortcutsSettingsPanel />;
       case "profile":
         return <ProfileSettingsPanel />;
-      case "mcp":
-        return <McpSettingsPanel />;
-      case "plugins":
-        return <PluginsSettingsPanel />;
       case "skills":
         return <SkillsSettingsPanel />;
       case "usage":
         return <ProviderUsageSettingsPanel />;
       case "computer":
         return <ComputerSettings />;
-      case "ssh":
-        return <SshHostsSettingsPanel />;
-      case "remote":
-        return <RemoteAccessSettingsPanel />;
+      case "connections":
+        return (
+          <div className="space-y-6">
+            <SshHostsSettingsPanel />
+            <RemoteAccessSettingsPanel />
+          </div>
+        );
       default:
         return null;
     }
@@ -887,31 +877,6 @@ function SettingsRouteView() {
                   updateSettings={updateSettings}
                 />
                 <ArchivedSettingsPanel active={activeSection === "archived"} />
-                <ModelsSettingsPanel
-                  active={activeSection === "worktrees"}
-                  settings={settings}
-                  defaults={defaults}
-                  updateSettings={updateSettings}
-                />
-                {activeSection === "worktrees" ? (
-                  <div className="mt-6 space-y-6">
-                    <GitHubConnectionSettings />
-                    <SettingsSection title="Worktree cleanup">
-                      {renderBooleanSettingRow({
-                        settingKey: "archiveDeletesOrphanedWorktree",
-                        title: "Delete worktree on archive",
-                        description:
-                          "After Archive's Undo period, remove a clean worktree only if the task has stopped and no other task uses it. Its branch remains available for recovery.",
-                        resetLabel: "delete worktree on archive",
-                        ariaLabel: "Delete worktree on archive",
-                      })}
-                      <WorktreeCleanupPolicyRows />
-                    </SettingsSection>
-                    <SettingsSectionShell title="Managed worktrees" id="setting-managed-worktrees">
-                      <WorktreesSettingsPanel active />
-                    </SettingsSectionShell>
-                  </div>
-                ) : null}
                 <ProvidersSettingsPanel
                   active={activeSection === "providers"}
                   settings={settings}
@@ -919,11 +884,6 @@ function SettingsRouteView() {
                   updateSettings={updateSettings}
                   updateSettingsAndWait={updateSettingsAndWait}
                   resetEpoch={resetEpoch}
-                />
-                <AdvancedSettingsPanel
-                  active={activeSection === "advanced"}
-                  onOpenReleaseHistory={() => setReleaseHistoryOpen(true)}
-                  onRestoreDefaults={() => void restoreDefaults()}
                 />
               </div>
             </div>

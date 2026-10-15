@@ -27,7 +27,7 @@ import {
 import { buildSearchableModelOptions } from "../../hooks/useComposerCommandMenuItems";
 import { useProviderModelCatalog } from "../../hooks/useProviderModelCatalog";
 import { buildModelSelection } from "../../providerModelOptions";
-import { DEFAULT_PROVIDER_ORDER } from "../../providerOrdering";
+import { DEFAULT_PROVIDER_ORDER, resolveFallbackProvider } from "../../providerOrdering";
 import type { Project } from "../../types";
 import { type Thread } from "../../types";
 import {
@@ -87,7 +87,7 @@ export function useChatProviderModels({
   const environmentKey = useActiveEnvironment();
   const localProviderStatuses = useProviderStatusesForLocalConfig(environmentKey);
   const preferredDraftProvider =
-    selectedProviderByThreadId ?? threadProvider ?? settings.defaultProvider;
+    selectedProviderByThreadId ?? threadProvider ?? resolveFallbackProvider(settings);
   // The local server pushes reconciled statuses; a host's are fetched, so any answer counts.
   const providerStatusesReconciled =
     environmentKey === LOCAL_ENVIRONMENT
@@ -110,7 +110,6 @@ export function useChatProviderModels({
         preferredProvider: preferredDraftProvider,
         statuses: providerStatusesReconciled ? localProviderStatuses : EMPTY_PROVIDER_STATUSES,
         providerOrder: settings.providerOrder,
-        hiddenProviders: settings.hiddenProviders,
       }),
     [
       handoffSelection?.provider,
@@ -119,7 +118,6 @@ export function useChatProviderModels({
       preferredDraftProvider,
       providerStatusesReconciled,
       draftProvider,
-      settings.hiddenProviders,
       settings.providerOrder,
     ],
   );
@@ -273,19 +271,10 @@ export function useChatProviderModels({
         providerOptions: AVAILABLE_PROVIDER_OPTIONS,
         modelOptionsByProvider,
         providerOrder: settings.providerOrder,
-        hiddenProviders: settings.hiddenProviders,
         disabledProviders: settings.disabledProviders,
-        protectedProviders: [selectedProvider],
         lockedProvider,
       }),
-    [
-      lockedProvider,
-      modelOptionsByProvider,
-      selectedProvider,
-      settings.disabledProviders,
-      settings.hiddenProviders,
-      settings.providerOrder,
-    ],
+    [lockedProvider, modelOptionsByProvider, settings.disabledProviders, settings.providerOrder],
   );
   return {
     hasThreadStarted,

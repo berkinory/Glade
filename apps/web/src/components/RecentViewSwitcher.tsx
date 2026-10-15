@@ -1,4 +1,4 @@
-import { MessageCircleIcon, PinFilledIcon, PuzzleIcon, SettingsIcon } from "~/lib/icons";
+import { MessageCircleIcon, PinFilledIcon, SettingsIcon } from "~/lib/icons";
 import type { KeybindingShortcut } from "@glade/contracts/settings/keybindings";
 import { formatShortcutLabel } from "../keybindings";
 import { cn } from "../lib/utils";
@@ -65,8 +65,6 @@ function EntryIcon(props: { entry: RecentViewDisplayEntry }) {
       return <MessageCircleIcon className={className} aria-hidden="true" />;
     case "settings":
       return <SettingsIcon className={className} aria-hidden="true" />;
-    case "plugins":
-      return <PuzzleIcon className={className} aria-hidden="true" />;
   }
 }
 export function RecentViewSwitcher(props: {

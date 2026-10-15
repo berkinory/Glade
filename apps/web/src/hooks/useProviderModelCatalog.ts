@@ -73,10 +73,6 @@ export function useProviderModelCatalog(input: {
   const { settings, serverSettings } = useAppSettings();
   const queryClient = useQueryClient();
   useQuery(serverConfigQueryOptions());
-  const hiddenProviderSet = useMemo(
-    () => new Set(settings.hiddenProviders),
-    [settings.hiddenProviders],
-  );
   const prefetchProviderSet = useMemo(
     () => (input.prefetchProviders === undefined ? null : new Set(input.prefetchProviders)),
     [input.prefetchProviders],
@@ -85,7 +81,7 @@ export function useProviderModelCatalog(input: {
     if (serverSettings?.providers[provider]?.enabled === false) return false;
     if (provider === selectedProvider) return true;
     if (!prefetchRequested) return false;
-    return prefetchProviderSet?.has(provider) ?? !hiddenProviderSet.has(provider);
+    return prefetchProviderSet?.has(provider) ?? true;
   };
 
   const binaryPathFor = (provider: ProviderKind) => settings.providerBinaryPaths[provider] || null;

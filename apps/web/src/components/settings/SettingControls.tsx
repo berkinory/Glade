@@ -6,7 +6,7 @@ import { Select, SelectTrigger, SelectValue } from "~/components/ui/select";
 import { Tooltip, TooltipPopup, TooltipTrigger } from "~/components/ui/tooltip";
 import { useRadioGroupKeyboardNav } from "~/hooks/useRadioGroupKeyboardNav";
 import { SETTINGS_CONTROL_RADIUS_CLASS_NAME } from "~/settingsPanelStyles";
-import { SettingsSelectPopup } from "./SettingsPanelPrimitives";
+import { ComposerPickerSelectPopup } from "../chat/ComposerPickerMenuPopup";
 export function useSettingsRestoreSignal(epoch: number, onRestore: () => void): void {
   const previousEpochRef = useRef(epoch);
   const restore = useEffectEvent(onRestore);
@@ -68,7 +68,9 @@ export function SettingsSelectControl({
       >
         <SelectValue>{valueContent}</SelectValue>
       </SelectTrigger>
-      <SettingsSelectPopup>{children}</SettingsSelectPopup>
+      <ComposerPickerSelectPopup className="max-h-[min(var(--available-height),20rem)]">
+        {children}
+      </ComposerPickerSelectPopup>
     </Select>
   );
 }

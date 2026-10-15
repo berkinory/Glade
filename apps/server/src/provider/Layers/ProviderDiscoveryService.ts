@@ -9,7 +9,6 @@ import {
   type ProviderListPluginsResult,
   ProviderModelDescriptor,
   ProviderListSkillsInput,
-  ProviderReadPluginInput,
 } from "@glade/contracts/provider/providerDiscovery";
 import { Effect, Exit, FileSystem, Layer, Option, Queue, Schema, SchemaIssue } from "effect";
 
@@ -332,29 +331,6 @@ const make = Effect.gen(function* () {
       return parsed.installedOnly ? keepInstalledPlugins(result) : result;
     });
 
-  const readPlugin: ProviderDiscoveryServiceShape["readPlugin"] = (input) =>
-    Effect.gen(function* () {
-      const parsed = yield* decodeInputOrValidationError({
-        operation: "ProviderDiscoveryService.readPlugin",
-        schema: ProviderReadPluginInput,
-        payload: input,
-      });
-      if (!(yield* providerIsEnabled(parsed.provider))) {
-        return yield* new ProviderValidationError({
-          operation: "ProviderDiscoveryService.readPlugin",
-          issue: `Provider '${parsed.provider}' is disabled in Glade settings.`,
-        });
-      }
-      const adapter = yield* registry.getByProvider(parsed.provider);
-      if (!adapter.readPlugin) {
-        return yield* new ProviderValidationError({
-          operation: "ProviderDiscoveryService.readPlugin",
-          issue: `Plugin discovery is unavailable for provider '${parsed.provider}'.`,
-        });
-      }
-      return yield* adapter.readPlugin(parsed);
-    });
-
   const listModels: ProviderDiscoveryServiceShape["listModels"] = (input) =>
     Effect.gen(function* () {
       const parsed = yield* decodeInputOrValidationError({
@@ -435,7 +411,6 @@ const make = Effect.gen(function* () {
     listCommands,
     listSkills,
     listPlugins,
-    readPlugin,
     listModels,
     listAgents,
   } satisfies ProviderDiscoveryServiceShape;

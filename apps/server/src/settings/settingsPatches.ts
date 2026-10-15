@@ -46,10 +46,7 @@ export function providerStartOptionsFromServerSettings(
       ...(codexBinaryPath ? { binaryPath: codexBinaryPath } : {}),
       ...(codexHomePath ? { homePath: codexHomePath } : {}),
     },
-    claudeAgent: {
-      ...(claudeBinaryPath ? { binaryPath: claudeBinaryPath } : {}),
-      enableArtifacts: providers.claudeAgent.enableArtifacts,
-    },
+    claudeAgent: claudeBinaryPath ? { binaryPath: claudeBinaryPath } : {},
     opencode: binaryOnly(providers.opencode.binaryPath),
     grok: binaryOnly(providers.grok.binaryPath),
     cursor: binaryOnly(providers.cursor.binaryPath),

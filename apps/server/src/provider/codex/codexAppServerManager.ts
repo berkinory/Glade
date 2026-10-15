@@ -31,10 +31,8 @@ import {
   type ProviderListModelsResult,
   type ProviderListPluginsResult,
   type ProviderMentionReference,
-  type ProviderReadPluginResult,
   type ProviderListSkillsResult,
   type ProviderListPluginsInput,
-  type ProviderReadPluginInput,
   type ProviderSkillReference,
 } from "@glade/contracts/provider/providerDiscovery";
 import {
@@ -112,7 +110,6 @@ import {
 import {
   parseCodexModelListResponse,
   parseCodexPluginListResponse,
-  parseCodexPluginReadResponse,
   parseCodexSkillsListResponse,
 } from "./codexDiscoveryCatalog.ts";
 import {
@@ -125,24 +122,9 @@ import {
 import type { ModelListResponse } from "./protocol/generated/types/v2/ModelListResponse";
 import type { SkillsListResponse } from "./protocol/generated/types/v2/SkillsListResponse";
 import type { PluginListResponse } from "./protocol/generated/types/v2/PluginListResponse";
-import type { PluginReadResponse } from "./protocol/generated/types/v2/PluginReadResponse";
 import type { GetAccountResponse } from "./protocol/generated/types/v2/GetAccountResponse";
 import type { GetAccountRateLimitsResponse } from "./protocol/generated/types/v2/GetAccountRateLimitsResponse";
-import type { ListMcpServerStatusResponse } from "./protocol/generated/types/v2/ListMcpServerStatusResponse";
 import type { ConfigReadResponse } from "./protocol/generated/types/v2/ConfigReadResponse";
-import type { ConfigWriteResponse } from "./protocol/generated/types/v2/ConfigWriteResponse";
-import type { McpServerOauthLoginResponse } from "./protocol/generated/types/v2/McpServerOauthLoginResponse";
-import type { PluginInstalledResponse } from "./protocol/generated/types/v2/PluginInstalledResponse";
-import type {
-  ProviderListMcpServersResult,
-  ProviderManageMcpServerInput,
-  ProviderManagePluginInput,
-  ProviderManagementContext,
-  ProviderManagementResult,
-  ProviderPluginInventoryResult,
-  ProviderManagementScope,
-} from "@glade/contracts/provider/providerManagement";
-import { codexConfigTarget, codexInstalledPlugin, codexMcpServer } from "./codexManagement.ts";
 
 const log = createLogger("codex");
 
@@ -282,8 +264,6 @@ interface CodexSkillListInput {
 }
 
 interface CodexPluginListInput extends Omit<ProviderListPluginsInput, "provider"> {}
-
-interface CodexPluginReadInput extends Omit<ProviderReadPluginInput, "provider"> {}
 
 interface JsonRpcError {
   code?: number;
@@ -835,7 +815,6 @@ export class CodexAppServerManager extends EventEmitter<CodexAppServerManagerEve
     | undefined;
   private readonly skillsCache = new Map<string, ProviderListSkillsResult>();
   private readonly pluginsCache = new Map<string, ProviderListPluginsResult>();
-  private readonly pluginDetailCache = new Map<string, ProviderReadPluginResult>();
 
   private runPromise: (effect: Effect.Effect<unknown, never>) => Promise<unknown>;
   private readonly gladeSkillsDir: string | undefined;
@@ -2641,41 +2620,6 @@ export class CodexAppServerManager extends EventEmitter<CodexAppServerManagerEve
     return result;
   }
 
-  async readPlugin(input: CodexPluginReadInput): Promise<ProviderReadPluginResult> {
-    const marketplacePath = input.marketplacePath?.trim();
-    const remoteMarketplaceName = input.remoteMarketplaceName?.trim();
-    if (!marketplacePath && !remoteMarketplaceName) {
-      throw new Error("plugin/read requires a marketplace path or remote marketplace name.");
-    }
-    const pluginName = input.pluginName.trim();
-    const cacheKey = JSON.stringify({
-      marketplacePath,
-      remoteMarketplaceName,
-      pluginName,
-    });
-    const cached = getRecentCacheEntry(this.pluginDetailCache, cacheKey);
-    if (cached) {
-      return {
-        ...cached,
-        cached: true,
-      };
-    }
-
-    const context = await this.resolveContextForDiscovery(undefined);
-    const response = await this.sendRequest<PluginReadResponse>(context, "plugin/read", {
-      ...(marketplacePath ? { marketplacePath } : {}),
-      ...(remoteMarketplaceName ? { remoteMarketplaceName } : {}),
-      pluginName,
-    });
-    const result: ProviderReadPluginResult = {
-      plugin: parseCodexPluginReadResponse(response),
-      source: "codex-app-server",
-      cached: false,
-    };
-    setRecentCacheEntry(this.pluginDetailCache, cacheKey, result);
-    return result;
-  }
-
   async generateThreadTitle(input: CodexThreadTitleInput, signal: AbortSignal): Promise<string> {
     const context = this.requireSession(input.threadId);
     if (context.titleGeneration)
@@ -2792,190 +2736,6 @@ export class CodexAppServerManager extends EventEmitter<CodexAppServerManagerEve
       input.providerOptions,
     );
     return this.sendRequest<GetAccountRateLimitsResponse>(context, "account/rateLimits/read", {});
-  }
-
-  async listMcpServers(input: ProviderManagementContext): Promise<ProviderListMcpServersResult> {
-    const context = await this.resolveContextForDiscovery(input.threadId, input.cwd);
-    const config = await this.sendRequest<ConfigReadResponse>(context, "config/read", {
-      cwd: input.cwd ?? null,
-      includeLayers: true,
-    });
-    const target = codexConfigTarget(config, "user");
-    const deadline = Date.now() + 20_000;
-    const seen = new Set<string>();
-    const servers = new Map<string, ProviderListMcpServersResult["servers"][number]>();
-    let cursor: string | null = null;
-    do {
-      const page: ListMcpServerStatusResponse = await this.sendRequest<ListMcpServerStatusResponse>(
-        context,
-        "mcpServerStatus/list",
-        { cursor, limit: 100, detail: "full", threadId: input.threadId ?? null },
-        Math.max(1, deadline - Date.now()),
-      );
-      for (const server of page.data) {
-        servers.set(server.name, codexMcpServer(server, config));
-      }
-      cursor = page.nextCursor;
-      if (cursor !== null) {
-        if (seen.has(cursor)) throw new Error("mcpServerStatus/list repeated its cursor.");
-        seen.add(cursor);
-      }
-    } while (cursor !== null);
-    return {
-      servers: [...servers.values()],
-      source: "codex-app-server",
-      canAdd: target !== undefined,
-      ...(target ? { configVersion: target.version } : {}),
-    };
-  }
-
-  private async writeCodexConfig(input: {
-    readonly context: CodexSessionContext;
-    readonly cwd?: string;
-    readonly scope: ProviderManagementScope;
-    readonly expectedVersion?: string;
-    readonly keyPath: string;
-    readonly value: unknown;
-  }): Promise<ConfigWriteResponse> {
-    if (!input.expectedVersion) throw new Error("A current Codex config version is required.");
-    const config = await this.sendRequest<ConfigReadResponse>(input.context, "config/read", {
-      cwd: input.cwd ?? null,
-      includeLayers: true,
-    });
-    const target = codexConfigTarget(config, input.scope);
-    if (!target || target.version !== input.expectedVersion) {
-      throw new Error("Codex configuration changed; refresh before editing.");
-    }
-    return this.sendRequest<ConfigWriteResponse>(input.context, "config/batchWrite", {
-      edits: [{ keyPath: input.keyPath, value: input.value, mergeStrategy: "replace" }],
-      expectedVersion: input.expectedVersion,
-      ...(target.filePath ? { filePath: target.filePath } : {}),
-      reloadUserConfig: true,
-    });
-  }
-
-  async manageMcpServer(input: ProviderManageMcpServerInput): Promise<ProviderManagementResult> {
-    if (input.name === GLADE_MCP_SERVER_NAME) {
-      throw new Error("The Glade gateway is managed and cannot be changed here.");
-    }
-    if (!/^[A-Za-z0-9_-]+$/.test(input.name)) {
-      throw new Error("MCP server name contains unsupported characters.");
-    }
-    const context = await this.resolveContextForDiscovery(input.threadId, input.cwd);
-    if (input.action === "authenticate") {
-      const login = await this.sendRequest<McpServerOauthLoginResponse>(
-        context,
-        "mcpServer/oauth/login",
-        { name: input.name, ...(input.threadId ? { threadId: input.threadId } : {}) },
-        120_000,
-      );
-      return { applied: true, affects: "session", authorizationUrl: login.authorizationUrl };
-    }
-    if (input.action === "reconnect") {
-      await this.sendRequest(context, "config/mcpServer/reload", null);
-      return { applied: true, affects: "provider" };
-    }
-    const scope =
-      input.scope ??
-      (await this.listMcpServers(input)).servers.find((server) => server.name === input.name)
-        ?.scope ??
-      "user";
-    if (scope !== "user" && scope !== "project")
-      throw new Error("MCP configuration scope is unavailable.");
-    let value: unknown;
-    let keyPath = `mcp_servers.${input.name}`;
-    if (input.action === "add") {
-      const configuration = input.configuration;
-      if (!configuration) throw new Error("MCP configuration is required to add a server.");
-      if (configuration.transport === "http") {
-        const url = new URL(configuration.url);
-        if (
-          (url.protocol !== "http:" && url.protocol !== "https:") ||
-          url.username ||
-          url.password
-        ) {
-          throw new Error("MCP URL must use HTTP without embedded credentials.");
-        }
-        value = {
-          url: url.toString(),
-          ...(configuration.headers ? { http_headers: configuration.headers } : {}),
-        };
-      } else {
-        value = {
-          command: configuration.command,
-          args: configuration.args,
-          ...(configuration.env ? { env: configuration.env } : {}),
-        };
-      }
-    } else if (input.action === "remove") {
-      value = null;
-    } else {
-      keyPath += ".enabled";
-      value = input.action === "enable";
-    }
-    await this.writeCodexConfig({
-      context,
-      ...(input.cwd ? { cwd: input.cwd } : {}),
-      scope,
-      ...(input.expectedVersion ? { expectedVersion: input.expectedVersion } : {}),
-      keyPath,
-      value,
-    });
-    return { applied: true, affects: "provider" };
-  }
-
-  async pluginInventory(input: ProviderManagementContext): Promise<ProviderPluginInventoryResult> {
-    const context = await this.resolveContextForDiscovery(input.threadId, input.cwd);
-    const response = await this.sendRequest<PluginInstalledResponse>(context, "plugin/installed", {
-      ...(input.cwd ? { cwds: [input.cwd] } : {}),
-    });
-    return {
-      plugins: response.marketplaces.flatMap((marketplace) =>
-        marketplace.plugins.map(codexInstalledPlugin),
-      ),
-      source: "codex-app-server",
-      canInstall: true,
-    };
-  }
-
-  async managePlugin(input: ProviderManagePluginInput): Promise<ProviderManagementResult> {
-    const context = await this.resolveContextForDiscovery(input.threadId, input.cwd);
-    if (input.action === "reload") {
-      await this.sendRequest(context, "plugin/reconcile", { reason: "glade-management" });
-      return { applied: true, affects: "provider" };
-    }
-    if (input.action === "remove") {
-      await this.sendRequest(context, "plugin/uninstall", { pluginId: input.id });
-      return { applied: true, affects: "provider" };
-    }
-    if (input.action === "install") {
-      const catalog = await this.listPlugins({ ...(input.cwd ? { cwd: input.cwd } : {}) });
-      const plugin = catalog.marketplaces
-        .flatMap((marketplace) => marketplace.plugins)
-        .find((candidate) => candidate.id === input.id);
-      if (!plugin) throw new Error("Plugin is absent from the native catalog.");
-      if (!input.marketplacePath && !input.remoteMarketplaceName) {
-        throw new Error("Plugin marketplace identity is required for installation.");
-      }
-      await this.sendRequest(context, "plugin/install", {
-        pluginName: plugin.name,
-        ...(input.marketplacePath ? { marketplacePath: input.marketplacePath } : {}),
-        ...(input.remoteMarketplaceName
-          ? { remoteMarketplaceName: input.remoteMarketplaceName }
-          : {}),
-      });
-      return { applied: true, affects: "provider" };
-    }
-    if (!/^[A-Za-z0-9@._-]+$/.test(input.id)) throw new Error("Invalid plugin id.");
-    await this.writeCodexConfig({
-      context,
-      ...(input.cwd ? { cwd: input.cwd } : {}),
-      scope: input.scope ?? "user",
-      ...(input.expectedVersion ? { expectedVersion: input.expectedVersion } : {}),
-      keyPath: `plugins.${JSON.stringify(input.id)}.enabled`,
-      value: input.action === "enable",
-    });
-    return { applied: true, affects: "provider" };
   }
 
   async transcribeVoice(

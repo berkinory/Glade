@@ -11,6 +11,7 @@ import {
   Cause,
   Deferred,
   Effect,
+  Exit,
   FileSystem,
   Layer,
   Path,
@@ -18,6 +19,7 @@ import {
   Ref,
   Schema,
   SchemaIssue,
+  Scope,
   ServiceMap,
   Stream,
 } from "effect";
@@ -207,61 +209,77 @@ const makeServerSettings = Effect.gen(function* () {
   const revisionRef = yield* Ref.make(0);
   const startedRef = yield* Ref.make(false);
   const startedDeferred = yield* Deferred.make<void, ServerSettingsError>();
+  const watcherScope = yield* Scope.make("sequential");
+  yield* Effect.addFinalizer(() => Scope.close(watcherScope, Exit.void));
 
   const emitChange = (settings: ServerSettings) =>
     PubSub.publish(changesPubSub, settings).pipe(Effect.asVoid);
 
-  const loadSettingsFromDisk = Effect.gen(function* () {
-    const exists = yield* fs.exists(settingsPath).pipe(
-      Effect.mapError(
-        (cause) =>
-          new ServerSettingsError({
-            settingsPath,
-            detail: "failed to check settings file existence",
-            cause,
-          }),
-      ),
-    );
-    if (!exists) {
-      return {
-        settings: DEFAULT_SERVER_SETTINGS,
-        revision: 0,
-        migrated: false,
-      };
-    }
+  // Startup quarantines an invalid file; a running server keeps its current settings instead, so
+  // a half-saved hand edit can neither move the file away nor reset every setting to defaults.
+  const loadSettingsFromDisk = (onInvalid: "quarantine" | "keep-current") =>
+    Effect.gen(function* () {
+      const exists = yield* fs.exists(settingsPath).pipe(
+        Effect.mapError(
+          (cause) =>
+            new ServerSettingsError({
+              settingsPath,
+              detail: "failed to check settings file existence",
+              cause,
+            }),
+        ),
+      );
+      if (!exists) {
+        return {
+          settings: DEFAULT_SERVER_SETTINGS,
+          revision: 0,
+          migrated: false,
+        };
+      }
 
-    const raw = yield* fs.readFileString(settingsPath).pipe(
-      Effect.mapError(
-        (cause) =>
-          new ServerSettingsError({
-            settingsPath,
-            detail: "failed to read settings file",
-            cause,
-          }),
-      ),
-    );
-    const decoded = decodeSettingsFromJson(settingsPath, raw);
-    if (decoded._tag === "Failure") {
-      const quarantinePath = `${settingsPath}.invalid-${Date.now()}`;
-      yield* fs.rename(settingsPath, quarantinePath).pipe(Effect.catch(() => Effect.void));
-      yield* Effect.logWarning("quarantined invalid settings.json, using defaults", {
-        path: settingsPath,
-        quarantinePath,
-        error: decoded.error,
-      });
+      const raw = yield* fs.readFileString(settingsPath).pipe(
+        Effect.mapError(
+          (cause) =>
+            new ServerSettingsError({
+              settingsPath,
+              detail: "failed to read settings file",
+              cause,
+            }),
+        ),
+      );
+      const decoded = decodeSettingsFromJson(settingsPath, raw);
+      if (decoded._tag === "Failure" && onInvalid === "keep-current") {
+        yield* Effect.logWarning("ignoring invalid settings.json", {
+          path: settingsPath,
+          error: decoded.error,
+        });
+        return {
+          settings: yield* Ref.get(settingsRef),
+          revision: yield* Ref.get(revisionRef),
+          migrated: false,
+        };
+      }
+      if (decoded._tag === "Failure") {
+        const quarantinePath = `${settingsPath}.invalid-${Date.now()}`;
+        yield* fs.rename(settingsPath, quarantinePath).pipe(Effect.catch(() => Effect.void));
+        yield* Effect.logWarning("quarantined invalid settings.json, using defaults", {
+          path: settingsPath,
+          quarantinePath,
+          error: decoded.error,
+        });
+        return {
+          settings: DEFAULT_SERVER_SETTINGS,
+          revision: 0,
+          migrated: false,
+        };
+      }
       return {
-        settings: DEFAULT_SERVER_SETTINGS,
-        revision: 0,
-        migrated: false,
+        settings: migrateSettings(decoded.value, decoded.migrationVersion),
+        revision: decoded.revision,
+        migrated:
+          decoded.legacyFormat || decoded.migrationVersion !== SERVER_SETTINGS_MIGRATION_VERSION,
       };
-    }
-    return {
-      settings: migrateSettings(decoded.value, decoded.migrationVersion),
-      revision: decoded.revision,
-      migrated:
-        decoded.legacyFormat || decoded.migrationVersion !== SERVER_SETTINGS_MIGRATION_VERSION,
-    };
-  });
+    });
 
   const writeSettingsAtomically = (snapshot: ServerSettingsSnapshot) => {
     return writeFileStringAtomically({
@@ -278,6 +296,34 @@ const makeServerSettings = Effect.gen(function* () {
       ),
     );
   };
+
+  // Hand edits to settings.json apply while Glade runs. Our own atomic writes also land here and
+  // reload to identical settings, which emits nothing.
+  const reloadEditedSettings = writeSemaphore
+    .withPermits(1)(
+      Effect.gen(function* () {
+        const disk = yield* loadSettingsFromDisk("keep-current");
+        const current = yield* Ref.get(settingsRef);
+        if (JSON.stringify(disk.settings) === JSON.stringify(current)) return;
+        yield* Ref.set(settingsRef, disk.settings);
+        yield* Ref.set(revisionRef, Math.max(disk.revision, yield* Ref.get(revisionRef)));
+        yield* emitChange(disk.settings);
+      }),
+    )
+    .pipe(Effect.ignoreCause({ log: true }));
+
+  const startWatcher = Effect.gen(function* () {
+    const settingsDir = path.dirname(settingsPath);
+    const settingsFile = path.basename(settingsPath);
+    const settingsPathResolved = path.resolve(settingsPath);
+    yield* Stream.runForEach(fs.watch(settingsDir), (event) =>
+      event.path === settingsFile ||
+      event.path === settingsPath ||
+      path.resolve(settingsDir, event.path) === settingsPathResolved
+        ? reloadEditedSettings
+        : Effect.void,
+    ).pipe(Effect.ignoreCause({ log: true }), Effect.forkIn(watcherScope), Effect.asVoid);
+  });
 
   const start = Effect.gen(function* () {
     const shouldStart = yield* Ref.modify(startedRef, (started) => [!started, true]);
@@ -296,7 +342,7 @@ const makeServerSettings = Effect.gen(function* () {
             }),
         ),
       );
-      const loaded = yield* loadSettingsFromDisk;
+      const loaded = yield* loadSettingsFromDisk("quarantine");
       if (loaded.migrated) {
         loaded.revision += 1;
         yield* writeSettingsAtomically({
@@ -314,6 +360,7 @@ const makeServerSettings = Effect.gen(function* () {
       yield* Deferred.failCause(startedDeferred, startupExit.cause).pipe(Effect.orDie);
       return yield* Effect.failCause(startupExit.cause);
     }
+    yield* startWatcher;
 
     yield* Deferred.succeed(startedDeferred, undefined).pipe(Effect.orDie);
   });
@@ -322,7 +369,7 @@ const makeServerSettings = Effect.gen(function* () {
   const updateSettings = (patch: ServerSettingsPatch) =>
     writeSemaphore.withPermits(1)(
       Effect.gen(function* () {
-        const disk = yield* loadSettingsFromDisk;
+        const disk = yield* loadSettingsFromDisk("keep-current");
         const current = disk.settings;
         const normalized = yield* normalizeSettings(settingsPath, current, patch);
         const next = normalized;

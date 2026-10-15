@@ -43,7 +43,6 @@ export function makeClaudeToolTracking(input: {
         promptQueue: context.promptQueue,
         query: context.query,
         messageStream: context.messageStream,
-        artifactsEnabled: context.artifactsEnabled,
         processOwner: context.processOwner,
         streamFiber: undefined,
         startedAt: context.startedAt,

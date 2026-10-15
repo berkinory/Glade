@@ -374,14 +374,9 @@ describe("managed worktree cleanup policies", () => {
   const DAY_MS = 24 * 60 * 60 * 1000;
   const nowMs = Date.UTC(2026, 5, 1);
 
-  it("reclaims merged and expired archived worktrees inside the retention count", async () => {
-    const { root, paths } = await makeManagedRoot(4);
-    const [mergedPath, expiredPath, recentPath, activePath] = paths as [
-      string,
-      string,
-      string,
-      string,
-    ];
+  it("reclaims merged archived worktrees inside the retention count", async () => {
+    const { root, paths } = await makeManagedRoot(3);
+    const [mergedPath, openPath, activePath] = paths as [string, string, string];
     const removals: string[] = [];
     const archived = (worktreePath: string, ageDays: number, prState?: "open" | "merged") => ({
       id: `thread-${path.basename(path.dirname(worktreePath))}`,
@@ -393,8 +388,7 @@ describe("managed worktree cleanup policies", () => {
     });
     const threads = [
       archived(mergedPath, 1, "merged"),
-      archived(expiredPath, 40),
-      archived(recentPath, 2, "open"),
+      archived(openPath, 2, "open"),
       { ...archived(activePath, 0, "merged"), archivedAt: null },
     ];
 
@@ -404,11 +398,11 @@ describe("managed worktree cleanup policies", () => {
         snapshotsDir: path.join(root, "snapshots"),
         threads,
         git: makeGit({ removals }),
-        policy: { deleteMerged: true, archivedMaxAgeMs: 30 * DAY_MS, nowMs },
+        policy: { deleteMerged: true },
       }),
     );
 
-    expect(removals.toSorted()).toEqual([mergedPath, expiredPath].toSorted());
+    expect(removals).toEqual([mergedPath]);
   });
 
   it.each([

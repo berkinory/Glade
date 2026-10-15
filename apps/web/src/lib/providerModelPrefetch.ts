@@ -1,4 +1,5 @@
 import type { ProviderKind } from "@glade/contracts/core/baseSchemas";
+import { resolveFallbackProvider } from "~/providerOrdering";
 import type { ServerProviderStatus } from "@glade/contracts/server/server";
 import type { ServerSettings } from "@glade/contracts/settings/settings";
 import type { QueryClient } from "@tanstack/react-query";
@@ -16,7 +17,7 @@ import {
 
 export type ProviderModelPrefetchSettings = Pick<
   AppSettings,
-  "defaultProvider" | "providerBinaryPaths"
+  "providerOrder" | "disabledProviders" | "providerBinaryPaths"
 >;
 
 const NEW_THREAD_MODEL_PREFETCH_STALE_TIME_MS = 30 * 60_000;
@@ -125,7 +126,6 @@ export function prefetchModelsForNewThread(
   input: {
     settings: ProviderModelPrefetchSettings;
     serverSettings?: ServerSettings | null;
-    hiddenProviders?: ReadonlyArray<ProviderKind>;
 
     providerStatuses?: readonly ServerProviderStatus[] | null;
 
@@ -149,7 +149,7 @@ export function prefetchModelsForNewThread(
     draftActiveProvider: input.draftActiveProvider,
     stickyActiveProvider: input.stickyActiveProvider,
     projectDefaultProvider: input.projectDefaultProvider,
-    defaultProvider: input.settings.defaultProvider,
+    defaultProvider: resolveFallbackProvider(input.settings),
   });
 
   const selectedProvider =
@@ -158,7 +158,6 @@ export function prefetchModelsForNewThread(
           preferredProvider: resolvedProvider,
           statuses: input.providerStatuses ?? EMPTY_PROVIDER_STATUSES,
           providerOrder: input.providerOrder ?? [],
-          hiddenProviders: input.hiddenProviders ?? [],
         })
       : resolvedProvider;
   const cwd = resolveNewThreadModelPrefetchCwd({

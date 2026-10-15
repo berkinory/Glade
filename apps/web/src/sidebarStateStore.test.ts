@@ -10,7 +10,10 @@ it("hydrates existing sidebar keys and persists each feature under its original 
   const values = new Map<string, string>([
     [
       "glade:pinned-projects:v1",
-      JSON.stringify({ state: { pinnedProjectIds: ["project-a"] }, version: 0 }),
+      JSON.stringify({
+        state: { pinnedProjectIds: ["project-a"] },
+        version: 0,
+      }),
     ],
     [
       "glade:pinned-threads:v1",
@@ -18,7 +21,10 @@ it("hydrates existing sidebar keys and persists each feature under its original 
     ],
     [
       "glade:recent-views:v1",
-      JSON.stringify({ state: { recentViews: [{ kind: "plugins" }] }, version: 0 }),
+      JSON.stringify({
+        state: { recentViews: [{ kind: "settings", section: "general" }] },
+        version: 0,
+      }),
     ],
   ]);
   const storage = {
@@ -33,7 +39,7 @@ it("hydrates existing sidebar keys and persists each feature under its original 
   const state = useSidebarStateStore.getState();
   expect(state.pinnedProjectIds).toEqual(["project-a"]);
   expect(state.pinnedThreadIds).toEqual(["thread-a"]);
-  expect(state.recentViews).toEqual([{ kind: "plugins" }]);
+  expect(state.recentViews).toEqual([{ kind: "settings", section: "general" }]);
 
   state.pinProject(ProjectId.makeUnsafe("project-b"));
   state.pinThread(ThreadId.makeUnsafe("thread-b"));
@@ -47,7 +53,7 @@ it("hydrates existing sidebar keys and persists each feature under its original 
     version: 0,
   });
   expect(JSON.parse(values.get("glade:recent-views:v1") ?? "null")).toEqual({
-    state: { recentViews: [{ kind: "plugins" }] },
+    state: { recentViews: [{ kind: "settings", section: "general" }] },
     version: 0,
   });
 });

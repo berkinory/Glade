@@ -26,9 +26,8 @@ import { toMessage, toRequestError } from "./streamErrors";
 import { mapClaudeModelCatalog, resolveClaudeAutoModeModel } from "./modelCapabilities";
 import { neverResolvingUserMessageStream, CLAUDE_DISCOVERY_THREAD_ID } from "./sdkProcessRuntime";
 import { CLAUDE_SETTING_SOURCES } from "./promptPolicy";
-import { mapSupportedCommands, resolveClaudeArtifactsState } from "./commandPresentation";
+import { mapSupportedCommands } from "./commandPresentation";
 import { type ClaudeAdapterShape } from "../../Services/ClaudeAdapter.ts";
-import { withClaudeArtifactOptIn } from "../claudeProcessEnv.ts";
 import { createClaudeSkillBridge, isSharedClaudeSkill } from "../claudeSkillBridge.ts";
 import { discoverSkillsCatalog } from "../../core/skillsCatalog.ts";
 import { makeDiscoveryResultCache } from "../../core/discoveryResultCache.ts";
@@ -136,7 +135,6 @@ export function makeClaudeDiscovery(input: {
   let commandsCache: {
     result: ProviderListCommandsResult;
     cwd: string;
-    enableArtifacts: boolean;
   } | null = null;
 
   const pendingCommandDiscoveries = new Map<string, Promise<ProviderListCommandsResult>>();
@@ -193,17 +191,9 @@ export function makeClaudeDiscovery(input: {
     cwd: string,
     env: NodeJS.ProcessEnv,
     binaryPath: string,
-    artifactsEnabled: boolean,
   ): Promise<ProviderListCommandsResult> =>
     discoverViaTemporaryProcess(cwd, env, binaryPath, (queryRuntime) =>
-      queryRuntime
-        .supportedCommands()
-        .then((commands) =>
-          mapSupportedCommands(
-            commands,
-            resolveClaudeArtifactsState({ artifactsEnabled, commands }),
-          ),
-        ),
+      queryRuntime.supportedCommands().then(mapSupportedCommands),
     );
 
   const discoverModelsViaTemporaryProcess = async (
@@ -228,8 +218,6 @@ export function makeClaudeDiscovery(input: {
     input: ProviderListCommandsInput,
   ) =>
     Effect.gen(function* () {
-      const enableArtifacts = input.enableArtifacts === true;
-
       const ownContext = input.threadId
         ? sessions.get(ThreadId.makeUnsafe(input.threadId))
         : undefined;
@@ -238,54 +226,31 @@ export function makeClaudeDiscovery(input: {
           ? ownContext
           : input.threadId
             ? undefined
-            : [...sessions.list()].find(
-                (s) => !s.stopped && s.artifactsEnabled === enableArtifacts,
-              );
+            : [...sessions.list()].find((s) => !s.stopped);
 
       if (context && !context.stopped) {
         const commands = yield* Effect.tryPromise({
           try: () => context.query.supportedCommands(),
           catch: (cause) => toRequestError(context.session.threadId, "listCommands", cause),
         });
-        const result = mapSupportedCommands(
-          commands,
-          resolveClaudeArtifactsState({
-            artifactsEnabled: context.artifactsEnabled,
-            commands,
-            initToolNames: context.initToolNames,
-          }),
-        );
-        // Cache under the flag this process was spawned with, not the current setting, so a pre-toggle
-        // session cannot poison fresh discovery.
-        commandsCache = { result, cwd: input.cwd, enableArtifacts: context.artifactsEnabled };
+        const result = mapSupportedCommands(commands);
+        commandsCache = { result, cwd: input.cwd };
         return result;
       }
 
-      if (
-        commandsCache &&
-        commandsCache.cwd === input.cwd &&
-        commandsCache.enableArtifacts === enableArtifacts &&
-        !input.forceReload
-      ) {
+      if (commandsCache && commandsCache.cwd === input.cwd && !input.forceReload) {
         return { ...commandsCache.result, cached: true } satisfies ProviderListCommandsResult;
       }
 
       const claudeSdkEnv = yield* resolveClaudeSdkEnv;
       const binaryPath = input.binaryPath ?? "claude";
-      const discoveryKey = JSON.stringify([input.cwd, binaryPath, enableArtifacts]);
+      const discoveryKey = JSON.stringify([input.cwd, binaryPath]);
       let discoveryPromise = pendingCommandDiscoveries.get(discoveryKey);
       if (!discoveryPromise) {
         const previous = commandDiscoveryTail;
         const started = previous
           .catch(() => undefined)
-          .then(() =>
-            discoverCommandsViaTemporaryProcess(
-              input.cwd,
-              withClaudeArtifactOptIn(claudeSdkEnv, enableArtifacts),
-              binaryPath,
-              enableArtifacts,
-            ),
-          );
+          .then(() => discoverCommandsViaTemporaryProcess(input.cwd, claudeSdkEnv, binaryPath));
         discoveryPromise = started;
         commandDiscoveryTail = started;
         pendingCommandDiscoveries.set(discoveryKey, started);
@@ -309,7 +274,7 @@ export function makeClaudeDiscovery(input: {
           }),
       });
 
-      commandsCache = { result, cwd: input.cwd, enableArtifacts };
+      commandsCache = { result, cwd: input.cwd };
       return result;
     });
 

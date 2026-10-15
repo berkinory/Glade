@@ -39,10 +39,14 @@ export const CURSOR_PROVIDER_DESCRIPTOR: ServerProviderDescriptor = {
       args: () => ["update"],
       lockKey: "cursor-native",
       strategy: "always",
-      latestVersionSource: null,
+      // Cursor publishes no version endpoint; its installer names the current build in the URL.
+      latestVersionSource: {
+        kind: "url",
+        url: "https://cursor.com/install",
+        pattern: /downloads\.cursor\.com\/lab\/([^/\s]+)\//,
+      },
     },
   },
   nativeHistory: { archives: false },
-  mcp: { writesRequireConfigVersion: false },
   acp: CURSOR_ACP_PROFILE,
 };

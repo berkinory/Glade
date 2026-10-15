@@ -83,7 +83,6 @@ export function ProviderStatusRefreshCoordinator() {
     prefetchModelsForNewThread(queryClient, {
       settings,
       serverSettings: serverSettingsQuery.data,
-      hiddenProviders: settings.hiddenProviders,
       providerStatuses: serverConfigQuery.data.providers,
       statusesReconciled: true,
       providerOrder: settings.providerOrder,
@@ -328,7 +327,6 @@ function ProviderUpdateNotifications({
   const progressToastDismissedRef = useRef(false);
   const outdatedProviders = getNotifiableProviderUpdateStatuses({
     providers: serverConfigQuery.data?.providers ?? [],
-    hiddenProviders: settings.hiddenProviders,
     serverSettings: providerUpdateServerSettings,
     liveVersionCheckCompleted,
   });

@@ -11,8 +11,6 @@ import {
   SETTINGS_SECTION_LABEL_CLASS_NAME,
   SETTINGS_STACKED_ROWS_DIVIDER_CLASS_NAME,
 } from "~/settingsPanelStyles";
-import { SelectPopup } from "~/components/ui/select";
-import { composerPickerMenuShellClassName } from "~/components/chat/composerPickerSize";
 
 export function SettingsCard({
   divided: dividedProp,
@@ -101,25 +99,6 @@ export function SettingsEmptyState({
   );
 }
 
-export function SettingsSelectPopup({
-  align: alignProp,
-  alignItemWithTrigger: alignItemWithTriggerProp,
-  shellClassName,
-  ...props
-}: Omit<ComponentProps<typeof SelectPopup>, "surface">) {
-  const align = alignProp ?? "end";
-  const alignItemWithTrigger = alignItemWithTriggerProp ?? false;
-  return (
-    <SelectPopup
-      align={align}
-      alignItemWithTrigger={alignItemWithTrigger}
-      surface="settings"
-      shellClassName={cn(composerPickerMenuShellClassName(), shellClassName)}
-      {...props}
-    />
-  );
-}
-
 export function SettingsListRow({
   title,
   description,
@@ -171,6 +150,7 @@ export function SettingsRow({
   control,
   children,
   onClick,
+  disabled,
 }: {
   title: ReactNode;
   id?: string;
@@ -180,6 +160,8 @@ export function SettingsRow({
   control?: ReactNode;
   children?: ReactNode;
   onClick?: () => void;
+  // Unavailable until another setting enables it: the row stays visible but dimmed and inert.
+  disabled?: boolean;
 }) {
   const anchorId = id ?? (typeof title === "string" ? settingRowAnchorId(title) : undefined);
   return (
@@ -187,11 +169,13 @@ export function SettingsRow({
       id={anchorId}
       className={cn(SETTINGS_CARD_ROW_CLASS_NAME, anchorId && "scroll-mt-24")}
       data-slot="settings-row"
+      aria-disabled={disabled || undefined}
     >
       <div
         className={cn(
           "flex flex-col gap-2.5 sm:flex-row sm:items-center sm:justify-between",
           onClick && "cursor-pointer",
+          disabled && "pointer-events-none opacity-50",
         )}
         onClick={onClick}
       >

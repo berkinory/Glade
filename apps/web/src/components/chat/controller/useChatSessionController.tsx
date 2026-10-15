@@ -1,4 +1,5 @@
 import { ThreadId } from "@glade/contracts/core/baseSchemas";
+import { resolveFallbackProvider } from "~/providerOrdering";
 import { type ModelSelection } from "@glade/contracts/provider/sessionPolicy";
 import { type LegendListRef } from "@legendapp/list/react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
@@ -76,8 +77,6 @@ export function useChatSessionController(props: ChatViewProps) {
   const setComposerDraftModelSelectionAndSticky = useComposerDraftStore(
     (store) => store.setModelSelectionAndSticky,
   );
-
-  const timestampFormat = settings.timestampFormat;
 
   const {
     overlayRef: composerOverlayRef,
@@ -251,13 +250,14 @@ export function useChatSessionController(props: ChatViewProps) {
     useMemo(() => createProjectSelector(fallbackDraftProjectId), [fallbackDraftProjectId]),
   );
 
+  const fallbackProvider = resolveFallbackProvider(settings);
   const draftFallbackModelSelection = useMemo<ModelSelection>(
     () =>
       resolveDraftFallbackModelSelection({
         projectDefault: fallbackDraftProject?.defaultModelSelection,
-        settingsDefaultProvider: settings.defaultProvider,
+        settingsDefaultProvider: fallbackProvider,
       }),
-    [fallbackDraftProject?.defaultModelSelection, settings.defaultProvider],
+    [fallbackDraftProject?.defaultModelSelection, fallbackProvider],
   );
 
   const [isDragOverComposer, setIsDragOverComposer] = useState(false);
@@ -410,7 +410,6 @@ export function useChatSessionController(props: ChatViewProps) {
     desktopTopBarTrafficLightGutterClassName,
     desktopTopBarWindowControlsGutterClassName,
     setComposerDraftModelSelectionAndSticky,
-    timestampFormat,
     composerOverlayRef,
     composerOverlayBottomClearancePx,
     composerTranscriptInsetPx,

@@ -9,23 +9,12 @@ import * as React from "react";
 import { cn } from "~/lib/utils";
 import { UI_MOTION_POPUP_CLASS } from "~/lib/uiMotion";
 import {
-  APP_TRANSLUCENT_POPUP_SURFACE_BASE_CLASS_NAME,
   COMPOSER_PICKER_MENU_POPUP_BODY_CLASS_NAME,
   COMPOSER_PICKER_MENU_POPUP_VIEWPORT_CLASS_NAME,
   COMPOSER_PICKER_MENU_SURFACE_CLASS_NAME,
-  COMPOSER_PICKER_OPTION_RADIUS_CLASS_NAME,
   COMPOSER_PICKER_SELECT_OPTION_CLASS_NAME,
-  COMPOSER_SURFACE_SHADOW_CLASS_NAME,
 } from "../chat/composerPickerStyles";
 const Select = SelectPrimitive.Root;
-
-// Every select popup uses a shared picker shell: "composer" is the app-wide
-// frosted picker (ComposerPickerSelectPopup), "settings" the settings variant
-// (SettingsSelectPopup). The legacy unstyled default surface was removed on
-// purpose — do not add it back.
-type SelectPopupSurface = "composer" | "settings";
-const settingsSelectOptionClassName = `[&>svg]:-mx-0.5 flex cursor-default select-none items-center ${COMPOSER_PICKER_OPTION_RADIUS_CLASS_NAME} text-ui text-[var(--color-text-foreground)] outline-none data-disabled:pointer-events-none data-highlighted:bg-[var(--color-background-button-secondary-hover)] data-highlighted:text-[var(--color-text-foreground)] data-disabled:opacity-64 [&>svg:not([class*='opacity-'])]:opacity-80 [&>svg]:pointer-events-none [&>svg]:shrink-0 [&_svg:not([class*='size-'])]:size-[1.077em] grid in-data-[side=none]:min-w-[calc(var(--anchor-width)+1.25rem)]`;
-const SelectPopupSurfaceContext = React.createContext<SelectPopupSurface>("composer");
 
 // Keep neutral select chrome on the same token families Codex uses for menus and list hover.
 const selectTriggerVariants = cva(
@@ -137,7 +126,6 @@ function SelectPopup({
   alignOffset: alignOffsetProp,
   alignItemWithTrigger: alignItemWithTriggerProp,
   anchor,
-  surface,
   ...props
 }: SelectPrimitive.Popup.Props & {
   side?: SelectPrimitive.Positioner.Props["side"];
@@ -146,7 +134,6 @@ function SelectPopup({
   alignOffset?: SelectPrimitive.Positioner.Props["alignOffset"];
   alignItemWithTrigger?: SelectPrimitive.Positioner.Props["alignItemWithTrigger"];
   anchor?: SelectPrimitive.Positioner.Props["anchor"];
-  surface: SelectPopupSurface;
   /** Size/shell classes applied to the composer picker viewport wrapper. */
   shellClassName?: string;
 }) {
@@ -157,13 +144,7 @@ function SelectPopup({
   const alignItemWithTrigger = alignItemWithTriggerProp ?? true;
   const viewportClassName = cn(
     COMPOSER_PICKER_MENU_POPUP_VIEWPORT_CLASS_NAME,
-    surface === "settings"
-      ? cn(
-          APP_TRANSLUCENT_POPUP_SURFACE_BASE_CLASS_NAME,
-          "rounded-lg",
-          COMPOSER_SURFACE_SHADOW_CLASS_NAME,
-        )
-      : COMPOSER_PICKER_MENU_SURFACE_CLASS_NAME,
+    COMPOSER_PICKER_MENU_SURFACE_CLASS_NAME,
     shellClassName,
   );
   const listClassName = cn(
@@ -171,63 +152,58 @@ function SelectPopup({
     "max-h-[min(var(--available-height),28rem)]",
     className,
   );
-  const scrollArrowSurfaceClassName =
-    surface === "settings"
-      ? "before:from-[var(--app-settings-surface)]"
-      : "before:from-[var(--composer-surface)]";
+  const scrollArrowSurfaceClassName = "before:from-[var(--composer-surface)]";
   return (
-    <SelectPopupSurfaceContext.Provider value={surface}>
-      <SelectPrimitive.Portal>
-        <SelectPrimitive.Positioner
-          align={align}
-          alignItemWithTrigger={alignItemWithTrigger}
-          alignOffset={alignOffset}
-          anchor={anchor}
-          className="z-50 select-none"
-          data-slot="select-positioner"
-          side={side}
-          sideOffset={sideOffset}
+    <SelectPrimitive.Portal>
+      <SelectPrimitive.Positioner
+        align={align}
+        alignItemWithTrigger={alignItemWithTrigger}
+        alignOffset={alignOffset}
+        anchor={anchor}
+        className="z-50 select-none"
+        data-slot="select-positioner"
+        side={side}
+        sideOffset={sideOffset}
+      >
+        <SelectPrimitive.Popup
+          className={cn(
+            "origin-(--transform-origin) text-[var(--color-text-foreground)]",
+            UI_MOTION_POPUP_CLASS,
+          )}
+          data-slot="select-popup"
+          {...props}
         >
-          <SelectPrimitive.Popup
+          <SelectPrimitive.ScrollUpArrow
             className={cn(
-              "origin-(--transform-origin) text-[var(--color-text-foreground)]",
-              UI_MOTION_POPUP_CLASS,
+              "top-0 z-50 flex h-6 w-full cursor-default items-center justify-center before:pointer-events-none before:absolute before:inset-x-px before:top-px before:h-[200%] before:rounded-t-[calc(var(--radius-lg)-1px)] before:bg-linear-to-b before:from-50%",
+              scrollArrowSurfaceClassName,
             )}
-            data-slot="select-popup"
-            {...props}
+            data-slot="select-scroll-up-arrow"
           >
-            <SelectPrimitive.ScrollUpArrow
-              className={cn(
-                "top-0 z-50 flex h-6 w-full cursor-default items-center justify-center before:pointer-events-none before:absolute before:inset-x-px before:top-px before:h-[200%] before:rounded-t-[calc(var(--radius-lg)-1px)] before:bg-linear-to-b before:from-50%",
-                scrollArrowSurfaceClassName,
-              )}
-              data-slot="select-scroll-up-arrow"
-            >
-              <ChevronUpIcon className="relative size-4.5 sm:size-4" />
-            </SelectPrimitive.ScrollUpArrow>
-            {/* Keep a hard popup viewport cap so long theme lists can always scroll
+            <ChevronUpIcon className="relative size-4.5 sm:size-4" />
+          </SelectPrimitive.ScrollUpArrow>
+          {/* Keep a hard popup viewport cap so long theme lists can always scroll
                 fully to both edges even when the positioner reports a tight height. */}
-            <div className={viewportClassName}>
-              <SelectPrimitive.List
-                className={cn(listClassName, "relative z-1")}
-                data-slot="menu-popup-body"
-              >
-                {children}
-              </SelectPrimitive.List>
-            </div>
-            <SelectPrimitive.ScrollDownArrow
-              className={cn(
-                "bottom-0 z-50 flex h-6 w-full cursor-default items-center justify-center before:pointer-events-none before:absolute before:inset-x-px before:bottom-px before:h-[200%] before:rounded-b-[calc(var(--radius-lg)-1px)] before:bg-linear-to-t before:from-50%",
-                scrollArrowSurfaceClassName,
-              )}
-              data-slot="select-scroll-down-arrow"
+          <div className={viewportClassName}>
+            <SelectPrimitive.List
+              className={cn(listClassName, "relative z-1")}
+              data-slot="menu-popup-body"
             >
-              <ChevronDownIcon className="relative size-4.5 sm:size-4" />
-            </SelectPrimitive.ScrollDownArrow>
-          </SelectPrimitive.Popup>
-        </SelectPrimitive.Positioner>
-      </SelectPrimitive.Portal>
-    </SelectPopupSurfaceContext.Provider>
+              {children}
+            </SelectPrimitive.List>
+          </div>
+          <SelectPrimitive.ScrollDownArrow
+            className={cn(
+              "bottom-0 z-50 flex h-6 w-full cursor-default items-center justify-center before:pointer-events-none before:absolute before:inset-x-px before:bottom-px before:h-[200%] before:rounded-b-[calc(var(--radius-lg)-1px)] before:bg-linear-to-t before:from-50%",
+              scrollArrowSurfaceClassName,
+            )}
+            data-slot="select-scroll-down-arrow"
+          >
+            <ChevronDownIcon className="relative size-4.5 sm:size-4" />
+          </SelectPrimitive.ScrollDownArrow>
+        </SelectPrimitive.Popup>
+      </SelectPrimitive.Positioner>
+    </SelectPrimitive.Portal>
   );
 }
 function SelectItem({
@@ -239,15 +215,10 @@ function SelectItem({
   hideIndicator?: boolean;
 }) {
   const hideIndicator = hideIndicatorProp ?? false;
-  const popupSurface = React.useContext(SelectPopupSurfaceContext);
-  const optionBaseClassName =
-    popupSurface === "settings"
-      ? settingsSelectOptionClassName
-      : COMPOSER_PICKER_SELECT_OPTION_CLASS_NAME;
   return (
     <SelectPrimitive.Item
       className={cn(
-        optionBaseClassName,
+        COMPOSER_PICKER_SELECT_OPTION_CLASS_NAME,
         hideIndicator ? "grid-cols-[1fr] ps-3 pe-3" : "grid-cols-[1fr_auto] gap-3 px-2.5",
         className,
       )}

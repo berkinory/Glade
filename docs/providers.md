@@ -101,7 +101,7 @@ local. If native deletion fails, Glade still deletes the chat and records the fa
 
 Turning a provider off in **Settings > Providers** keeps it out of the model picker, `/model`
 search, the default provider and Git generation choices, usage settings and the Environment usage
-row, the plugin library, and the Skills, MCP servers and Plugins settings. Glade does not start its
+row, and the Skills settings. Glade does not start its
 CLI to discover models, skills, plugins or tools, and does not poll its usage. Its row stays in Settings > Providers so it can be
 turned back on. Saved preferences, such as the default provider or Git generation model, existing
 chats and running turns are kept; a saved choice shows as disabled until the provider returns. With
@@ -188,28 +188,19 @@ cache remains valid. See Anthropic's
 [prompt caching documentation](https://code.claude.com/docs/en/prompt-caching) and
 [context configuration](https://code.claude.com/docs/en/model-config#context-window-and-auto-compaction).
 
-### Claude Artifacts, `/design` and `/slides`
+### Claude Artifacts
 
-Claude Code keeps [Artifacts](https://code.claude.com/docs/en/artifacts) off by default for Agent
-SDK sessions, so `/design` and `/slides` cannot publish until the host opts in. Turn on **Settings →
-Providers → Claude → Artifacts, /design and /slides** and start a new session; Glade then launches
-Claude with `CLAUDE_CODE_ARTIFACT=1`. Claude's own requirements still apply: a claude.ai login on a
-Pro, Max, Team, or Enterprise plan, Claude Code 2.1.234 or later, and an organization policy that
-allows Artifacts. While Artifacts are off or unavailable, the composer marks both commands with a
-warning that explains what is missing. Published pages are hosted on claude.ai; Claude returns the
-link in its reply.
+Glade keeps Claude [Artifacts](https://code.claude.com/docs/en/artifacts) off. It removes an
+inherited `CLAUDE_CODE_ARTIFACT` from every Claude process it launches, so `/design` and `/slides`
+do not appear in the composer and nothing publishes to claude.ai.
 
 ## Native tools and extensions
 
-**Settings > MCP servers** shows native server status for the selected provider, workspace or active session. Supported actions include authentication, reconnect, enable/disable and scoped configuration changes. Claude enable/disable applies only to the selected session; persisted changes apply to a later session. Codex reconnect reloads its provider MCP runtime. Concurrent Codex configuration edits require a refresh rather than overwriting a newer native configuration. The managed Glade gateway cannot be removed or disabled here.
-
-**Settings > Plugins** separates installed plugins from plugins loaded in the selected session. Claude changes use the native CLI and reload API. The Codex plugin library retains marketplace and detail views. Native reload failures remain visible even when installation succeeded.
-
 Shared skills load through each provider's native loader. Claude uses a local skills-only plugin bridge that links the original folders, preserving bundled resources; Codex receives additional native skill roots. Skill contents are not pasted into outgoing prompts. Claude enablement controls apply to Glade sessions, with changes taking effect in a new session. The allowlist governs Skill tool invocation; it does not restrict filesystem access through other tools.
 
-OpenCode, Grok Build and Cursor load their own MCP servers, plugins and skills from their own
-configuration; the Settings pages above manage Codex and Claude. Glade's own tools reach every
-provider.
+Every provider loads its own MCP servers and plugins from its native configuration; Glade does not
+manage them. OpenCode, Grok Build and Cursor also load their own skills. Glade's own tools reach
+every provider.
 
 Glade reads a skill's name, description, short description (top level or under `metadata`) and `disable-model-invocation` from its `SKILL.md` YAML frontmatter, including block scalars. Only top-level string and boolean values count. Frontmatter that is not valid YAML falls back to unindented single-line `key: value` pairs. Frontmatter that does not close within the first 64 KiB, or that expands too many aliases, is ignored, and the skill is listed under its folder name.
 

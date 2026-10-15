@@ -9,7 +9,6 @@ import {
 import {
   describeRemoteEnvironment,
   remoteHostAvailability,
-  remoteMachineSettingsSection,
   type RemoteEnvironmentStatus,
 } from "~/environments/remoteEnvironmentStatus";
 import { CloudServerIcon, ServerIcon } from "~/lib/icons";
@@ -74,7 +73,7 @@ export function RemoteEnvironmentStatus({ variant }: { variant: "composer" | "pa
     ? () =>
         void navigate({
           to: "/settings",
-          search: { section: remoteMachineSettingsSection(environment.kind) },
+          search: { section: "connections" },
         })
     : status.reachable
       ? null

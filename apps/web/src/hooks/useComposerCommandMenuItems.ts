@@ -1,7 +1,6 @@
 import type { ProjectEntry } from "@glade/contracts/workspace/project";
 import type {
   ProviderAgentDescriptor,
-  ProviderArtifactsState,
   ProviderNativeCommandDescriptor,
   ProviderMentionReference,
   ProviderPluginDescriptor,
@@ -33,7 +32,6 @@ import { threadMentionPathForThreadId } from "@glade/shared/threads/threadMentio
 
 import type { ComposerCommandItem } from "../components/chat/ComposerCommandMenu";
 import type { ProviderModelOption } from "../providerModelOptions";
-import { getClaudeArtifactCommandNotice } from "../lib/claudeArtifactCommands";
 import { compareProvidersByOrder } from "../providerOrdering";
 import type { ComposerThreadMentionSource, Project } from "../types";
 
@@ -235,14 +233,10 @@ export function buildSearchableModelOptions(input: {
   providerOptions: ReadonlyArray<{ value: ProviderKind; label: string }>;
   modelOptionsByProvider: Record<ProviderKind, ReadonlyArray<ProviderModelOption>>;
   providerOrder: readonly ProviderKind[];
-  hiddenProviders: readonly ProviderKind[];
   disabledProviders: readonly ProviderKind[];
-  protectedProviders: readonly ProviderKind[];
   lockedProvider?: ProviderKind | null;
 }): SearchableModelOption[] {
-  const hiddenProviderSet = new Set(input.hiddenProviders);
   const disabledProviderSet = new Set(input.disabledProviders);
-  const protectedProviderSet = new Set(input.protectedProviders);
   return input.providerOptions
     .toSorted((left, right) =>
       compareProvidersByOrder(input.providerOrder, left.value, right.value),
@@ -250,9 +244,7 @@ export function buildSearchableModelOptions(input: {
     .filter(
       (option) =>
         !disabledProviderSet.has(option.value) &&
-        (input.lockedProvider
-          ? option.value === input.lockedProvider
-          : protectedProviderSet.has(option.value) || !hiddenProviderSet.has(option.value)),
+        (!input.lockedProvider || option.value === input.lockedProvider),
     )
     .flatMap((option) =>
       input.modelOptionsByProvider[option.value].map(
@@ -278,7 +270,6 @@ export function useComposerCommandMenuItems(input: {
     providerNativeCommands: readonly ProviderNativeCommandDescriptor[];
     providerSkills: readonly ProviderSkillDescriptor[];
     searchableModelOptions: readonly SearchableModelOption[];
-    providerArtifacts?: ProviderArtifactsState | undefined;
     dynamicAgents: readonly ProviderAgentDescriptor[];
   };
   references: {
@@ -306,7 +297,6 @@ export function useComposerCommandMenuItems(input: {
     providerNativeCommands,
     providerSkills,
     searchableModelOptions,
-    providerArtifacts,
     dynamicAgents,
   } = input.catalog;
   const { workspaceEntries, threadMentionSources } = input.references;
@@ -456,11 +446,6 @@ export function useComposerCommandMenuItems(input: {
       command: command.name,
       label: `/${command.name}`,
       description: command.description ?? `Run ${provider} native command`,
-      notice: getClaudeArtifactCommandNotice({
-        provider,
-        command: command.name,
-        artifacts: providerArtifacts,
-      }),
     }));
 
     const skillItems: ComposerCommandItem[] = rankProviderDiscoveryItems(

@@ -13,7 +13,6 @@ import { type EditorId } from "@glade/contracts/settings/editor";
 import { type ResolvedKeybindingsConfig } from "@glade/contracts/settings/keybindings";
 import { LegendList, type LegendListRef } from "@legendapp/list/react";
 import { type ComponentProps, type ReactNode, type RefObject } from "react";
-import { type TimestampFormat } from "~/appSettings";
 import { type CrossTaskOrigin } from "~/components/chat/CrossTaskOriginLabel";
 import { ExpandedImagePreview } from "~/components/chat/ExpandedImagePreview";
 import { type ForkSourceReference } from "~/components/chat/ForkSourceDivider";
@@ -287,7 +286,6 @@ export interface MessagesTimelineProps {
   markdownCwd: string | undefined;
   resolvedTheme: "light" | "dark";
   chatFontSizePx?: number;
-  timestampFormat: TimestampFormat;
   workspaceRoot: string | undefined;
   keybindings?: ResolvedKeybindingsConfig;
   availableEditors?: ReadonlyArray<EditorId>;

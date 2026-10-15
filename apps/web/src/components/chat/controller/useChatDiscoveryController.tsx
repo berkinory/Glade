@@ -57,7 +57,6 @@ export function useChatDiscoveryController({
     providerSkills,
     workspaceEntries,
     canCompactThread,
-    providerArtifacts,
     threadWorkspaceCwd,
     turnDiffSummaries,
   } = transcript;
@@ -186,7 +185,6 @@ export function useChatDiscoveryController({
       providerNativeCommands,
       providerSkills,
       searchableModelOptions,
-      providerArtifacts,
       dynamicAgents,
     },
     references: {

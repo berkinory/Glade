@@ -18,9 +18,17 @@ function Layer(props: { className?: string; style?: CSSProperties; children: Rea
   );
 }
 
+// Containers such as Button style every descendant svg as an icon (negative inline margin, reduced
+// opacity). Applied to each stacked layer, that offsets the layers and brightens the blended arc
+// seams, so the layers opt out: the class names an opacity and the inline margin outranks the rule.
 function Glyph({ children }: { children: ReactNode }) {
   return (
-    <svg viewBox="-12 -12 24 24" fill="none" className="block size-full overflow-visible">
+    <svg
+      viewBox="-12 -12 24 24"
+      fill="none"
+      className="block size-full overflow-visible opacity-100"
+      style={{ margin: 0 }}
+    >
       {children}
     </svg>
   );

@@ -39,7 +39,6 @@ import {
 import type { IconComponent } from "~/lib/iconComponent";
 import { SubagentReplyNotice } from "./SubagentReplyNotice";
 import { ProviderTransitionDivider } from "./ProviderTransitionDivider";
-import type { TimestampFormat } from "../../appSettings";
 import type { AgentActivityDetail } from "./agentActivity.logic";
 import { AgentActivityDetails } from "./AgentActivityDetails";
 import { hasToolCallDetailsContent } from "./ToolCallDetailsDialog.logic";
@@ -418,7 +417,6 @@ type TimelineWorkEntryRowProps = {
   markdownCwd: string | undefined;
   onImageExpand: (preview: ExpandedImagePreview) => void;
   activityDetail?: AgentActivityDetail | undefined;
-  timestampFormat: TimestampFormat;
 };
 
 // An async subagent launch returns before its subagents report, so while its turn still runs and
@@ -475,7 +473,6 @@ function ToolWorkEntryRow(props: TimelineWorkEntryRowProps & { launchStarting: b
     markdownCwd,
     onImageExpand,
     activityDetail,
-    timestampFormat,
   } = props;
   const textFontSizePx = textFontSizePxProp ?? chatMetaFontSizePx;
   const isPlainRuntimeNoticeRow = isPlainRuntimeNoticeWorkEntry(workEntry);
@@ -723,7 +720,6 @@ function ToolWorkEntryRow(props: TimelineWorkEntryRowProps & { launchStarting: b
                     <MonitorEventDetails
                       notification={monitorNotification}
                       createdAt={workEntry.createdAt}
-                      timestampFormat={timestampFormat}
                     />
                   ) : providerContextLifecycle ? (
                     <ProviderContextLifecycleDetails info={providerContextLifecycle} />

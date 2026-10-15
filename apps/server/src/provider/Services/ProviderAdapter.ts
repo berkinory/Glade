@@ -1,13 +1,5 @@
 import type { NativeThreadHistoryInput } from "../core/nativeThreadHistory.ts";
 import type {
-  ProviderManagementContext,
-  ProviderListMcpServersResult,
-  ProviderManageMcpServerInput,
-  ProviderManagementResult,
-  ProviderPluginInventoryResult,
-  ProviderManagePluginInput,
-} from "@glade/contracts/provider/providerManagement";
-import type {
   ApprovalRequestId,
   ProviderKind,
   ThreadId,
@@ -23,8 +15,6 @@ import type {
   ProviderListModelsResult,
   ProviderListPluginsInput,
   ProviderListPluginsResult,
-  ProviderReadPluginInput,
-  ProviderReadPluginResult,
   ProviderListSkillsResult,
   ProviderListSkillsInput,
 } from "@glade/contracts/provider/providerDiscovery";
@@ -119,18 +109,6 @@ export interface ProviderAdapterShape<TError> {
   readonly structuredRequest?: (
     input: ProviderStructuredRequestInput,
   ) => Effect.Effect<unknown, TError>;
-  readonly listMcpServers?: (
-    input: ProviderManagementContext,
-  ) => Effect.Effect<ProviderListMcpServersResult, TError>;
-  readonly manageMcpServer?: (
-    input: ProviderManageMcpServerInput,
-  ) => Effect.Effect<ProviderManagementResult, TError>;
-  readonly pluginInventory?: (
-    input: ProviderManagementContext,
-  ) => Effect.Effect<ProviderPluginInventoryResult, TError>;
-  readonly managePlugin?: (
-    input: ProviderManagePluginInput,
-  ) => Effect.Effect<ProviderManagementResult, TError>;
 
   readonly startSession: (
     input: ProviderSessionStartInput,
@@ -232,10 +210,6 @@ export interface ProviderAdapterShape<TError> {
   readonly listPlugins?: (
     input: ProviderListPluginsInput,
   ) => Effect.Effect<ProviderListPluginsResult, TError>;
-
-  readonly readPlugin?: (
-    input: ProviderReadPluginInput,
-  ) => Effect.Effect<ProviderReadPluginResult, TError>;
 
   readonly listModels?: (
     input: ProviderListModelsInput,

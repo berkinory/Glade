@@ -57,7 +57,7 @@ iTerm2 preserves the original vector with a dark terminal, gray frame and green 
 
 ## MCP artwork
 
-Tool rows and the plugin library share `serviceBrandArtwork.ts`. MCP icons are
+Tool rows take service logos from `serviceBrandArtwork.ts`. MCP icons are
 selected from explicit app metadata, a qualified `mcp__server__tool` name, or a
 separate server identity. Connector tool prefixes are used only within the
 `codex_apps` namespace. Unknown MCPs retain `McpServerIcon`; generic tool approval

@@ -1,51 +1,14 @@
 import type { SlashCommand } from "@anthropic-ai/claude-agent-sdk";
-import {
-  type ProviderArtifactsState,
-  type ProviderListCommandsResult,
-} from "@glade/contracts/provider/providerDiscovery";
+import { type ProviderListCommandsResult } from "@glade/contracts/provider/providerDiscovery";
 
-const CLAUDE_ARTIFACT_TOOL_NAME = "Artifact";
-
-const CLAUDE_ARTIFACT_PROBE_COMMAND = "slides";
-
-export function resolveClaudeArtifactsState(input: {
-  readonly artifactsEnabled: boolean;
-  readonly commands: readonly SlashCommand[];
-  readonly initToolNames?: ReadonlySet<string> | undefined;
-}): ProviderArtifactsState {
-  if (!input.artifactsEnabled) return "disabled";
-  const available = input.initToolNames
-    ? input.initToolNames.has(CLAUDE_ARTIFACT_TOOL_NAME)
-    : input.commands.some((command) => command.name === CLAUDE_ARTIFACT_PROBE_COMMAND);
-  return available ? "available" : "unavailable";
-}
-
-const CLAUDE_ARTIFACT_COMMANDS = [
-  { name: "design", description: "Make a new Design artifact from a brief" },
-  { name: "slides", description: "Make a new Slides deck artifact from a brief" },
-] as const;
-
-export function mapSupportedCommands(
-  commands: SlashCommand[],
-  artifacts: ProviderArtifactsState,
-): ProviderListCommandsResult {
-  const missingArtifactCommands =
-    artifacts === "available"
-      ? []
-      : CLAUDE_ARTIFACT_COMMANDS.filter(
-          (known) => !commands.some((command) => command.name === known.name),
-        );
+export function mapSupportedCommands(commands: SlashCommand[]): ProviderListCommandsResult {
   return {
-    commands: [
-      ...commands
-        .filter((command) => command.name !== "goal" && command.name !== "plan")
-        .map((cmd) => ({
-          name: cmd.name,
-          description: cmd.description.trim() || undefined,
-        })),
-      ...missingArtifactCommands,
-    ],
-    artifacts,
+    commands: commands
+      .filter((command) => command.name !== "goal" && command.name !== "plan")
+      .map((cmd) => ({
+        name: cmd.name,
+        description: cmd.description.trim() || undefined,
+      })),
     source: "claudeAgent",
     cached: false,
   };

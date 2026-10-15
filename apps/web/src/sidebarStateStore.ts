@@ -110,7 +110,7 @@ function normalizeRecentView(input: unknown): RecentView | null {
     const section = normalizeOptionalId(record.section);
     return { kind: "settings", ...(section ? { section } : {}) };
   }
-  return record.kind === "plugins" ? { kind: "plugins" } : null;
+  return null;
 }
 
 function normalizeRecentViews(input: unknown): RecentView[] {

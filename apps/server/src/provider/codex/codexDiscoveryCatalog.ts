@@ -3,14 +3,12 @@ import type {
   ProviderListModelsResult,
   ProviderListPluginsResult,
   ProviderPluginDescriptor,
-  ProviderPluginDetail,
   ProviderSkillDescriptor,
 } from "@glade/contracts/provider/providerDiscovery";
 import type { ModelListResponse } from "./protocol/generated/types/v2/ModelListResponse";
 import type { SkillsListResponse } from "./protocol/generated/types/v2/SkillsListResponse";
 import type { SkillMetadata } from "./protocol/generated/types/v2/SkillMetadata";
 import type { PluginListResponse } from "./protocol/generated/types/v2/PluginListResponse";
-import type { PluginReadResponse } from "./protocol/generated/types/v2/PluginReadResponse";
 import type { PluginSummary } from "./protocol/generated/types/v2/PluginSummary";
 import type { PluginInterface } from "./protocol/generated/types/v2/PluginInterface";
 
@@ -117,44 +115,6 @@ export function parseCodexPluginListResponse(
     })),
     remoteSyncError: null,
     featuredPluginIds: response.featuredPluginIds ?? [],
-  };
-}
-
-export function parseCodexPluginReadResponse(response: PluginReadResponse): ProviderPluginDetail {
-  const plugin = response.plugin;
-  return {
-    marketplaceName: plugin.marketplaceName,
-    marketplacePath: plugin.marketplacePath ?? null,
-    summary: pluginDescriptor(plugin.summary),
-    ...optionalText("description", plugin.description),
-    skills: plugin.skills.flatMap((skill) =>
-      skill.path
-        ? [
-            {
-              name: skill.name,
-              path: skill.path,
-              enabled: skill.enabled,
-              ...optionalText("description", skill.description),
-              ...(skill.interface
-                ? {
-                    interface: {
-                      ...optionalText("displayName", skill.interface.displayName),
-                      ...optionalText("shortDescription", skill.interface.shortDescription),
-                    },
-                  }
-                : {}),
-            },
-          ]
-        : [],
-    ),
-    apps: plugin.apps.map((app) => ({
-      id: app.id,
-      name: app.name,
-      ...optionalText("description", app.description),
-      ...optionalText("installUrl", app.installUrl),
-      needsAuth: false,
-    })),
-    mcpServers: plugin.mcpServers,
   };
 }
 

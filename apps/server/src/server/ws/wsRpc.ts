@@ -1,6 +1,5 @@
 import { AppPresentation } from "../../agentGateway/Services/AppPresentation";
 import { readGitSidebarSummary } from "../../git/gitSidebarSummary";
-import { ProviderManagement } from "../../provider/Services/ProviderManagement.ts";
 import { sourceControlActions } from "../../git/sourceControlActions.ts";
 import { gitFailureReason, trustRepository } from "../../git/gitRepositoryAccess.ts";
 import { execFile } from "node:child_process";
@@ -409,7 +408,6 @@ const makeWsRpcHandlersLayer = () =>
       const projectionReadModelQuery = yield* ProjectionSnapshotQuery;
       const providerAdapterRegistry = yield* ProviderAdapterRegistry;
       const providerDiscoveryService = yield* ProviderDiscoveryService;
-      const providerManagement = yield* ProviderManagement;
       const providerHealth = yield* ProviderHealth;
       const providerService = yield* ProviderService;
       const lifecycleEvents = yield* ServerLifecycleEvents;
@@ -633,6 +631,7 @@ const makeWsRpcHandlersLayer = () =>
           chatWorkspaceRoot: config.chatWorkspaceRoot,
           worktreesDir: config.worktreesDir,
           keybindingsConfigPath: config.keybindingsConfigPath,
+          settingsPath: config.settingsPath,
           keybindings: keybindingsConfig.keybindings,
           issues: keybindingsConfig.issues,
           providers: providerStatuses,
@@ -1458,7 +1457,12 @@ const makeWsRpcHandlersLayer = () =>
           rpcEffect(gitManager.resolvePullRequest(input), "Failed to resolve pull request"),
         [WS_METHODS.gitGithubConnection]: () =>
           github.getViewer().pipe(
-            Effect.map(({ login }) => ({ state: "connected" as const, login })),
+            Effect.map(({ login, name, avatarUrl }) => ({
+              state: "connected" as const,
+              login,
+              name,
+              avatarUrl,
+            })),
             Effect.catchTag("GitHubError", (error) =>
               Effect.succeed(
                 error.reason === "not-installed"
@@ -2107,18 +2111,8 @@ const makeWsRpcHandlersLayer = () =>
             ),
             "Failed to list the skills catalog",
           ),
-        [WS_METHODS.providerListMcpServers]: (input) =>
-          rpcEffect(providerManagement.listMcpServers(input), "Provider management failed"),
-        [WS_METHODS.providerManageMcpServer]: (input) =>
-          rpcEffect(providerManagement.manageMcpServer(input), "Provider management failed"),
-        [WS_METHODS.providerPluginInventory]: (input) =>
-          rpcEffect(providerManagement.pluginInventory(input), "Provider management failed"),
-        [WS_METHODS.providerManagePlugin]: (input) =>
-          rpcEffect(providerManagement.managePlugin(input), "Provider management failed"),
         [WS_METHODS.providerListPlugins]: (input) =>
           rpcEffect(providerDiscoveryService.listPlugins(input), "Failed to list plugins"),
-        [WS_METHODS.providerReadPlugin]: (input) =>
-          rpcEffect(providerDiscoveryService.readPlugin(input), "Failed to read plugin"),
         [WS_METHODS.providerListModels]: (input) =>
           rpcEffect(providerDiscoveryService.listModels(input), "Failed to list models"),
         [WS_METHODS.providerListAgents]: (input) =>

@@ -1,6 +1,6 @@
 import { MUTED_LABEL_TEXT_CLASS_NAME } from "~/surfaceStyles";
 
-export const COMPOSER_SURFACE_SHADOW_CLASS_NAME =
+const COMPOSER_SURFACE_SHADOW_CLASS_NAME =
   "shadow-[0_4px_18px_-6px_color-mix(in_srgb,var(--foreground)_7%,transparent)] dark:shadow-[0_6px_24px_-10px_rgba(0,0,0,0.30)]";
 
 export const COMPOSER_PICKER_TRIGGER_TEXT_CLASS_NAME =

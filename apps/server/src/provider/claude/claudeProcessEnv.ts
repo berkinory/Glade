@@ -127,6 +127,9 @@ export function buildClaudeProcessEnv(input?: {
   readonly hasClaudeCliCredentials?: boolean;
 }): NodeJS.ProcessEnv {
   const env = { ...(input?.env ?? process.env) };
+  // Glade keeps Claude Artifacts off, so a value inherited from the shell that launched Glade must not
+  // let a session publish to claude.ai.
+  delete env.CLAUDE_CODE_ARTIFACT;
   if (input?.homeDir) {
     env.HOME = input.homeDir;
   }
@@ -148,16 +151,4 @@ export function buildClaudeProcessEnv(input?: {
     credentialGrants: CLAUDE_CREDENTIAL_GRANTS,
     baseEnv: env,
   });
-}
-
-export function withClaudeArtifactOptIn(
-  env: NodeJS.ProcessEnv,
-  enableArtifacts: boolean | undefined,
-): NodeJS.ProcessEnv {
-  if (enableArtifacts === true) return { ...env, CLAUDE_CODE_ARTIFACT: "1" };
-  // The setting is authoritative: a value inherited from the shell that launched Glade must not
-  // publish while Settings and discovery report Artifacts as off.
-  if (env.CLAUDE_CODE_ARTIFACT === undefined) return env;
-  const { CLAUDE_CODE_ARTIFACT: _inherited, ...rest } = env;
-  return rest;
 }

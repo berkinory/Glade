@@ -93,7 +93,7 @@ export function SshHostsSettingsPanel() {
   return (
     <div className="space-y-6">
       <SettingsSectionShell
-        title="Hosts"
+        title="SSH hosts"
         action={
           <Button size="xs" variant="outline" onClick={() => setDialog({ host: null })}>
             <PlusIcon aria-hidden />

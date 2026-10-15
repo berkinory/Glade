@@ -6,10 +6,7 @@ import { WS_STREAM_OVERFLOW_CODE } from "@glade/contracts/transport/ws/rpcErrors
 import { type ServerConfig } from "@glade/contracts/server/server";
 import { type ServerSettingsView } from "@glade/contracts/settings/settings";
 import { defaultTerminalTitleForCliKind } from "@glade/shared/threads/terminalThreads";
-import {
-  didProviderCommandDiscoverySettingsChange,
-  didProviderEnablementChange,
-} from "../appSettings";
+import { didProviderEnablementChange } from "../appSettings";
 import { toastManager } from "../components/ui/toast";
 import { resolveAndPersistPreferredEditor } from "../editorPreferences";
 import { providerModelDiscoveryInvalidationFingerprint } from "../lib/providerDiscoveryInvalidation";
@@ -478,8 +475,6 @@ export function subscribeStreamEvents(
       if (didProviderEnablementChange(previousSettings, payload.settings)) {
         void context.queryClient.invalidateQueries({ queryKey: providerDiscoveryQueryKeys.all });
         void invalidateProviderUsageQueries(context.queryClient);
-      } else if (didProviderCommandDiscoverySettingsChange(previousSettings, payload.settings)) {
-        void context.queryClient.invalidateQueries({ queryKey: providerDiscoveryQueryKeys.all });
       }
       void context.queryClient.invalidateQueries({
         queryKey: serverSettingsQueryOptions().queryKey,

@@ -98,20 +98,13 @@ export interface ManagedWorktreeThreadRef {
 // Policies only ever reclaim worktrees whose chats are archived; an open chat keeps its workspace.
 export interface ManagedWorktreeCleanupPolicy {
   readonly deleteMerged: boolean;
-  readonly archivedMaxAgeMs: number | null;
-  readonly nowMs: number;
 }
 
-const COUNT_ONLY_POLICY: Omit<ManagedWorktreeCleanupPolicy, "nowMs"> = {
+const COUNT_ONLY_POLICY: ManagedWorktreeCleanupPolicy = {
   deleteMerged: false,
-  archivedMaxAgeMs: null,
 };
 
-type ManagedWorktreeRemovalReason =
-  | "deleted"
-  | "archived-retention"
-  | "archived-merged"
-  | "archived-expired";
+type ManagedWorktreeRemovalReason = "deleted" | "archived-retention" | "archived-merged";
 
 interface ManagedWorktreeRemovalCandidate {
   readonly entry: ServerManagedWorktree;
@@ -318,14 +311,6 @@ function classifyManagedWorktreeRemovalCandidates(input: {
   ): ManagedWorktreeRemovalReason | null => {
     if (input.policy.deleteMerged && thread.lastKnownPr?.state === "merged")
       return "archived-merged";
-    const archivedAtMs = Date.parse(thread.archivedAt ?? "");
-    if (
-      input.policy.archivedMaxAgeMs !== null &&
-      Number.isFinite(archivedAtMs) &&
-      input.policy.nowMs - archivedAtMs > input.policy.archivedMaxAgeMs
-    ) {
-      return "archived-expired";
-    }
     return index >= MANAGED_WORKTREE_RETENTION_COUNT ? "archived-retention" : null;
   };
   const archivedCandidates = archivedKeepers.flatMap(
@@ -490,7 +475,7 @@ export function pruneArchivedManagedWorktrees(input: {
       inventory,
       threads: input.threads,
       canonicalByRecordedPath,
-      policy: input.policy ?? { ...COUNT_ONLY_POLICY, nowMs: Date.now() },
+      policy: input.policy ?? COUNT_ONLY_POLICY,
     });
     const removedPaths = new Set<string>();
     if (removalCandidates.length > 0) {
@@ -560,11 +545,6 @@ export function pruneProjectedArchivedManagedWorktrees(input: {
       git: input.git,
       policy: {
         deleteMerged: settings.deleteMergedArchivedWorktrees,
-        archivedMaxAgeMs:
-          settings.archivedWorktreeMaxAgeDays === null
-            ? null
-            : settings.archivedWorktreeMaxAgeDays * 24 * 60 * 60 * 1000,
-        nowMs: Date.now(),
       },
     });
   });

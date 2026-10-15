@@ -1,10 +1,7 @@
 import { useNavigate } from "@tanstack/react-router";
 import { LOCAL_ENVIRONMENT, type EnvironmentKey } from "~/environments/environmentKey";
 import { useRemoteEnvironments, type RemoteEnvironment } from "~/environments/remoteEnvironments";
-import {
-  remoteHostAvailability,
-  remoteMachineSettingsSection,
-} from "~/environments/remoteEnvironmentStatus";
+import { remoteHostAvailability } from "~/environments/remoteEnvironmentStatus";
 import type { IconComponent } from "~/lib/iconComponent";
 import { ComputerTerminal01Icon, CloudServerIcon, PlusIcon, ServerIcon } from "~/lib/icons";
 import { HostStatusDot } from "../HostStatusDot";
@@ -39,7 +36,7 @@ export function EnvironmentMenuItems(props: {
         const openSettings = () =>
           void navigate({
             to: "/settings",
-            search: { section: remoteMachineSettingsSection(group.kind) },
+            search: { section: "connections" },
           });
         return (
           <MenuSub key={group.kind}>

@@ -28,10 +28,10 @@ import {
   SettingsCard,
 } from "../settings/SettingsPanelPrimitives";
 import { BrowserContentBlockerRow } from "../browser/BrowserContentBlockerRow";
+import { SettingsStatusButton, SettingsStatus } from "../settings/SettingsStatus";
 import { Button } from "../ui/button";
 import { Switch } from "../ui/switch";
 import { toastManager } from "../ui/toast";
-import { ComputerKillSwitchKbd } from "./ComputerKillSwitchKbd";
 import { useComputerState } from "./computerUseState";
 
 const SCOPE_LABEL: Record<ComputerAccessScope, string> = {
@@ -150,14 +150,14 @@ function PermissionRows() {
       title: "Accessibility",
       description: "Lets the agent read app interfaces and send input.",
       granted: permissions?.accessibility ?? null,
-      action: { label: "Request", run: () => run(bridge.requestPermissions) },
+      action: { label: "Allow", run: () => run(bridge.requestPermissions) },
     },
     {
       key: "screen-recording",
       title: "Screen Recording",
       description: "Lets the agent take window screenshots. Add Glade in System Settings.",
       granted: permissions?.screenRecording ?? null,
-      action: { label: "Open System Settings", run: () => run(bridge.openSettings) },
+      action: { label: "Open system settings", run: () => run(bridge.openSettings) },
     },
   ] as const;
   return rows.map((row) => (
@@ -165,14 +165,16 @@ function PermissionRows() {
       key={row.key}
       title={row.title}
       description={row.description}
-      status={row.granted === null ? "Checking…" : row.granted ? "Granted" : "Not granted"}
-      control={
-        row.granted === false ? (
-          <Button size="sm" variant="outline" onClick={row.action.run}>
-            {row.action.label}
-          </Button>
-        ) : undefined
+      status={
+        row.granted === null ? (
+          <SettingsStatus tone="checking" label="Checking permission" />
+        ) : row.granted ? (
+          <SettingsStatus tone="granted" label="Allowed" />
+        ) : (
+          <SettingsStatus tone="needed" label="Not allowed" />
+        )
       }
+      control={row.granted === false ? <SettingsStatusButton action={row.action} /> : undefined}
     />
   ));
 }
@@ -231,12 +233,6 @@ export function ComputerSettings() {
       <SettingsSection title="Computer Use">
         <AllowComputerUseRow />
         <DriverRow status={state?.status ?? null} />
-        <SettingsRow
-          id="setting-computer-kill-switch"
-          title="Stop shortcut"
-          description="Stops Computer Use in every chat from any app, even while the agent is using the pointer."
-          control={<ComputerKillSwitchKbd />}
-        />
         {isMac ? null : (
           <SettingsRow
             id="setting-computer-platform"

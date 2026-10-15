@@ -143,6 +143,7 @@ export const ServerConfig = Schema.Struct({
   chatWorkspaceRoot: Schema.optional(TrimmedNonEmptyString),
   worktreesDir: TrimmedNonEmptyString,
   keybindingsConfigPath: TrimmedNonEmptyString,
+  settingsPath: TrimmedNonEmptyString,
   keybindings: ResolvedKeybindingsConfig,
   issues: ServerConfigIssues,
   providers: ServerProviderStatuses,

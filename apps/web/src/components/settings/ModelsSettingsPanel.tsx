@@ -1,5 +1,4 @@
 import { normalizeModelSlug } from "@glade/shared/provider/model";
-import { PROVIDER_DISPLAY_NAMES } from "@glade/contracts/provider/model";
 import { type ProviderKind } from "@glade/contracts/core/baseSchemas";
 
 import { useQuery } from "@tanstack/react-query";
@@ -121,7 +120,6 @@ export function ModelsSettingsPanel({
                 });
               }}
               ariaLabel="Git text generation model"
-              triggerClassName="w-full sm:w-52"
               valueContent={
                 <ProviderOptionLabel
                   provider={currentGitTextGenerationProvider}
@@ -135,10 +133,7 @@ export function ModelsSettingsPanel({
                   key={`${option.provider}:${option.slug}`}
                   value={`${option.provider}:${option.slug}`}
                 >
-                  <ProviderOptionLabel
-                    provider={option.provider}
-                    label={`${PROVIDER_DISPLAY_NAMES[option.provider]} / ${option.name}`}
-                  />
+                  <ProviderOptionLabel provider={option.provider} label={option.name} />
                 </SelectItem>
               ))}
             </SettingsSelectControl>

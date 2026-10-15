@@ -1,3 +1,4 @@
+import { isElectron } from "~/env";
 import type { ResolvedKeybindingsConfig } from "@glade/contracts/settings/keybindings";
 import { useEffect, useRef, useState } from "react";
 import {
@@ -58,6 +59,7 @@ function ShortcutsDialogContent(props: {
   }, []);
 
   const sections = buildShortcutSheetSections({
+    desktop: isElectron,
     keybindings: props.keybindings,
     platform: props.platform,
     context: props.context,
