@@ -9,5 +9,10 @@
       "~/*": ["./src/*"]
     }
   },
-  "include": ["src", "scripts/production-assets*.ts", "vite.config.ts"]
+  "include": [
+    "src",
+    "scripts/production-assets*.ts",
+    "vite.config.ts",
+    "../../scripts/lib/asciiOnlyChunks.ts"
+  ]
 }

@@ -10,6 +10,7 @@ import { tanstackRouter } from "@tanstack/router-plugin/vite";
 import { defineConfig, type Plugin } from "vite";
 import pkg from "./package.json" with { type: "json" };
 import { listFiles } from "./scripts/production-assets";
+import { asciiOnlyChunks } from "../../scripts/lib/asciiOnlyChunks";
 
 const port = Number(process.env.PORT ?? 5733);
 const sourcemapEnv = process.env.GLADE_WEB_SOURCEMAP?.trim().toLowerCase();
@@ -126,8 +127,12 @@ export default defineConfig(({ mode }) => ({
       presets: [reactCompilerPreset()],
     }),
     tailwindcss(),
+    asciiOnlyChunks({ enabled: !buildSourcemap }),
     ...(mode === "desktop-dev" ? [] : [precompressPlugin()]),
   ],
+  worker: {
+    plugins: () => [asciiOnlyChunks({ enabled: !buildSourcemap })],
+  },
   optimizeDeps: {
     include: ["@pierre/diffs", "@pierre/diffs/react", "@pierre/diffs/worker/worker.js"],
   },

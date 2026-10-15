@@ -17,6 +17,7 @@
 - Diffs, code previews and pull request reviews release their memory sooner after you close them.
 - File search frees its index and cached file contents when you stop searching.
 - Switching between many chats no longer keeps every recently opened chat in memory.
+- Glade's own code takes up less memory in every process.
 
 ### Fixed
 

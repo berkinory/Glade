@@ -13,6 +13,7 @@
     "tsdown.config.ts",
     "scripts",
     "integration",
+    "../../scripts/lib/asciiOnlyChunks.ts",
     "../../scripts/lib/brand-assets.ts",
     "../../scripts/lib/resolve-catalog.ts"
   ]

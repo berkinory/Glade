@@ -16,8 +16,10 @@ const JSON_STRING = String.raw`"(?:[^"\\]|\\.)*"`;
 // a page cannot guess; the ref works with browser_* tools on the same tab until the page navigates.
 const BLOCK_SOURCE = String.raw`--- PAGE_CONTENT nonce=([0-9a-f]{16}) picked element[^\n]*\n([^\n]+)\n((?:  [^\n]*\n)*?)--- END PAGE_CONTENT nonce=\1 ---(?=\s|$)`;
 const HEADER = new RegExp(String.raw`^(\S+)(?: (${JSON_STRING}))?`, "u");
+// The separator is the regex escape for "·": a raw template cannot be rewritten to keep the bundle
+// ASCII-only.
 const PAGE_LINE = new RegExp(
-  String.raw`^  page: (${JSON_STRING}) ${JSON_STRING} · ref (e[1-9]\d*) \(tab (t[1-9]\d*)\)$`,
+  String.raw`^  page: (${JSON_STRING}) ${JSON_STRING} \u00b7 ref (e[1-9]\d*) \(tab (t[1-9]\d*)\)$`,
   "mu",
 );
 

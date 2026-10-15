@@ -1,4 +1,5 @@
 import { defineConfig } from "tsdown";
+import { asciiOnlyChunks } from "../../scripts/lib/asciiOnlyChunks.ts";
 
 const sourcemapEnv = process.env.GLADE_SERVER_SOURCEMAP?.trim().toLowerCase();
 const buildSourcemap = sourcemapEnv === "1" || sourcemapEnv === "true";
@@ -14,6 +15,7 @@ export default defineConfig({
 
   external: [/^bun:/u],
   sourcemap: buildSourcemap,
+  plugins: [asciiOnlyChunks({ enabled: !buildSourcemap })],
   clean: true,
   noExternal: (id) => id.startsWith("@glade/") || id === "@pierre/diffs",
   inlineOnly: false,

@@ -1,4 +1,5 @@
 import { defineConfig } from "tsdown";
+import { asciiOnlyChunks } from "../../scripts/lib/asciiOnlyChunks.ts";
 
 const sourcemapEnv = process.env.GLADE_DESKTOP_SOURCEMAP?.trim().toLowerCase();
 const buildSourcemap = sourcemapEnv === "1" || sourcemapEnv === "true";
@@ -7,6 +8,7 @@ const shared = {
   format: "cjs" as const,
   outDir: "dist-electron",
   sourcemap: buildSourcemap,
+  plugins: [asciiOnlyChunks({ enabled: !buildSourcemap })],
   outExtensions: () => ({ js: ".js" }),
 };
 
