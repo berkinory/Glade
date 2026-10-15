@@ -755,6 +755,7 @@ export function projectProviderRuntimeActivities(
             ...(event.payload.tokenAccountingVersion === 1
               ? { tokenAccountingVersion: 1, mainLoopTokens: event.payload.mainLoopTokens }
               : {}),
+            ...(event.payload.restoredUsageExcluded ? { restoredUsageExcluded: true } : {}),
             ...(modelUsage ? { modelUsage } : {}),
             ...(typeof event.payload.totalCostUsd === "number"
               ? { totalCostUsd: event.payload.totalCostUsd }

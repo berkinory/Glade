@@ -24,6 +24,7 @@
 - Switching providers warns before it stops background tasks that are still running.
 - Ask for approval mode now always asks before Claude acts, even when Claude settings choose a different default.
 - Claude subagents interrupted by a failed turn no longer stay running forever.
+- Profile no longer overcounts Claude token usage after a chat resumes.
 
 ## 0.2.8 - 2026-10-15
 

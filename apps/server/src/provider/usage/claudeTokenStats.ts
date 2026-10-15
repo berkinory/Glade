@@ -18,7 +18,7 @@ export function claudeTokenActivityCtes(
         ${scope ? sql`AND a.thread_id = ${scope.threadId}` : sql.literal("")}
     ),
     claude_completed_ranked AS (
-      SELECT a.thread_id, a.turn_id, a.activity_id, a.created_at, a.payload_json,
+      SELECT a.thread_id, a.turn_id, a.activity_id, a.sequence, a.created_at, a.payload_json,
         COALESCE(tm.model, 'unknown') AS model,
         pm.dispatch_origin,
         ROW_NUMBER() OVER (
@@ -62,8 +62,9 @@ export function claudeTokenActivityCtes(
             THEN json_extract(th.model_selection_json, '$.provider') END
         ) = 'claudeAgent'
     ),
-    claude_completed AS (
+    claude_turn_results AS (
       SELECT c.*,
+        json_extract(payload_json, '$.restoredUsageExcluded') IS 1 AS restored_usage_excluded,
         CASE WHEN json_extract(payload_json, '$.tokenAccountingVersion') = 1
           AND json_type(payload_json, '$.modelUsage') = 'object'
           THEN json_extract(payload_json, '$.modelUsage') END AS models,
@@ -73,7 +74,6 @@ export function claudeTokenActivityCtes(
           THEN CAST(json_extract(payload_json, '$.mainLoopTokens') AS INTEGER)
         END AS main_tokens
       FROM claude_completed_ranked c
-      WHERE rank = 1 AND (dispatch_origin IS NULL OR dispatch_origin = 'user')
     ),
     claude_model_usage_entries AS (
       SELECT c.activity_id, c.thread_id, c.turn_id, c.created_at, c.model AS fallback_model,
@@ -81,7 +81,7 @@ export function claudeTokenActivityCtes(
         CASE WHEN json_valid(m.value) THEN
           CASE WHEN json_type(m.value) = 'object' THEN m.value ELSE '{}' END
         ELSE '{}' END AS usage
-      FROM claude_completed c, json_each(c.models) m
+      FROM claude_turn_results c, json_each(c.models) m
     ),
     claude_model_token_candidates AS (
       SELECT activity_id, thread_id, turn_id, created_at,
@@ -118,15 +118,62 @@ export function claudeTokenActivityCtes(
       FROM claude_model_token_candidates
       WHERE tokens > 0
     ),
+    -- Claude Code restores a resumed session's saved totals into the first result of a new
+    -- process. Results written before the adapter withheld that result (no restoredUsageExcluded)
+    -- still carry it, and nothing stored marks a process start. Such a result's usage beyond its
+    -- own main loop then matches the recorded usage of the results right before it, the previous
+    -- process, so the turn counts its main loop instead. A turn without a result breakdown adds
+    -- its usage to the next result of its process, or to the restored totals when its process
+    -- ended, so a span is checked both with and without those turns' main loops. On real data
+    -- restored results matched exactly or within 0.15% (turn work beyond the main loop), while
+    -- the nearest coincidental span of an ordinary result was 0.5% away, hence 0.25%.
+    claude_result_usage AS (
+      SELECT r.thread_id, r.activity_id, r.restored_usage_excluded,
+        COALESCE(m.tokens, 0) AS model_tokens,
+        COALESCE(r.main_tokens, 0) AS main_tokens,
+        ROW_NUMBER() OVER ordered AS position,
+        COALESCE(SUM(COALESCE(m.tokens, 0)) OVER earlier, 0) AS recorded_before,
+        COALESCE(SUM(COALESCE(m.tokens, r.main_tokens, 0)) OVER earlier, 0) AS observed_before
+      FROM claude_turn_results r
+      LEFT JOIN (
+        SELECT activity_id, SUM(tokens) AS tokens FROM claude_model_token_rows GROUP BY activity_id
+      ) m ON m.activity_id = r.activity_id
+      WINDOW ordered AS (PARTITION BY r.thread_id ORDER BY r.sequence, r.created_at, r.activity_id),
+        earlier AS (ordered ROWS BETWEEN UNBOUNDED PRECEDING AND 1 PRECEDING)
+    ),
+    claude_restored_results AS (
+      SELECT DISTINCT activity_id
+      FROM (
+        SELECT k.activity_id, k.model_tokens - k.main_tokens AS excess,
+          k.recorded_before - i.recorded_before AS recorded_span,
+          k.observed_before - i.observed_before AS observed_span
+        FROM claude_result_usage k
+        JOIN claude_result_usage i ON i.thread_id = k.thread_id AND i.position < k.position
+        WHERE NOT k.restored_usage_excluded AND k.model_tokens > k.main_tokens
+      )
+      WHERE (recorded_span > 0 AND excess BETWEEN recorded_span AND recorded_span * 401 / 400)
+        OR (observed_span > 0 AND excess BETWEEN observed_span AND observed_span * 401 / 400)
+    ),
+    claude_completed AS (
+      SELECT r.*, restored.activity_id IS NOT NULL AS restored_totals
+      FROM claude_turn_results r
+      LEFT JOIN claude_restored_results restored ON restored.activity_id = r.activity_id
+      WHERE r.rank = 1 AND (r.dispatch_origin IS NULL OR r.dispatch_origin = 'user')
+    ),
     claude_token_rows AS (
-      SELECT thread_id, created_at, model, tokens
-      FROM claude_model_token_rows
+      SELECT m.thread_id, m.created_at, m.model, m.tokens
+      FROM claude_model_token_rows m
+      JOIN claude_completed c ON c.activity_id = m.activity_id
+      WHERE NOT c.restored_totals
       UNION ALL
       SELECT c.thread_id, c.created_at, c.model, CAST(c.main_tokens AS INTEGER) AS tokens
       FROM claude_completed c
       WHERE c.main_tokens > 0
-        AND NOT EXISTS (
-          SELECT 1 FROM claude_model_token_rows m WHERE m.activity_id = c.activity_id
+        AND (
+          c.restored_totals
+          OR NOT EXISTS (
+            SELECT 1 FROM claude_model_token_rows m WHERE m.activity_id = c.activity_id
+          )
         )
     )
   `;

@@ -214,6 +214,9 @@ export interface ClaudeSessionPendingInteractions {
 
 export interface ClaudeSessionUsageCache {
   resultUsageBaseline?: ClaudeResultUsageBaseline;
+  // Claude Code restores a resumed session's saved totals into the first result of a new process,
+  // so until a result sets the baseline, a result's modelUsage may span earlier turns.
+  resultUsageMayIncludeRestoredTotals?: boolean;
   lastKnownContextWindow: number | undefined;
   currentAlwaysThinkingEnabled: boolean | undefined;
   currentEffort: string | null;

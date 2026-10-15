@@ -145,10 +145,19 @@ export function makeClaudeTurnCompletion(input: {
         });
       }
 
-      const turnResultUsage = result
-        ? claudeTurnResultUsage(result, context.resultUsageBaseline)
-        : undefined;
-      if (result) context.resultUsageBaseline = result;
+      // The first result of a resumed process may also carry the session's restored totals, so it
+      // only sets the baseline and the turn counts its main loop. A crash result can report zeroed
+      // usage, which is no baseline for the restored totals.
+      const turnResultUsage =
+        result && context.resultUsageMayIncludeRestoredTotals !== true
+          ? claudeTurnResultUsage(result, context.resultUsageBaseline)
+          : undefined;
+      if (result) {
+        context.resultUsageBaseline = result;
+        if (Object.keys(result.modelUsage ?? {}).length > 0) {
+          context.resultUsageMayIncludeRestoredTotals = false;
+        }
+      }
       const liveContextUsage = yield* readClaudeContextUsage(context);
       const resultContextWindow = maxClaudeContextWindowFromModelUsage(result?.modelUsage);
       const liveRawContextWindow = asPositiveFiniteNumber(liveContextUsage?.rawMaxTokens);
@@ -281,9 +290,10 @@ export function makeClaudeTurnCompletion(input: {
             ...(result?.usage ? { usage: result.usage } : {}),
             ...(turnResultUsage ? { modelUsage: turnResultUsage.modelUsage } : {}),
             tokenAccountingVersion: 1,
+            restoredUsageExcluded: true,
             mainLoopTokens,
-            ...(typeof result?.total_cost_usd === "number"
-              ? { totalCostUsd: turnResultUsage?.totalCostUsd ?? result.total_cost_usd }
+            ...(turnResultUsage && typeof result?.total_cost_usd === "number"
+              ? { totalCostUsd: turnResultUsage.totalCostUsd }
               : {}),
             ...(errorMessage ? { errorMessage } : {}),
             ...(status === "failed" &&
@@ -461,9 +471,10 @@ export function makeClaudeTurnCompletion(input: {
           ...(result?.usage ? { usage: result.usage } : {}),
           ...(turnResultUsage ? { modelUsage: turnResultUsage.modelUsage } : {}),
           tokenAccountingVersion: 1,
+          restoredUsageExcluded: true,
           mainLoopTokens,
-          ...(typeof result?.total_cost_usd === "number"
-            ? { totalCostUsd: turnResultUsage?.totalCostUsd ?? result.total_cost_usd }
+          ...(turnResultUsage && typeof result?.total_cost_usd === "number"
+            ? { totalCostUsd: turnResultUsage.totalCostUsd }
             : {}),
           ...(errorMessage ? { errorMessage } : {}),
           ...(status === "failed" &&

@@ -11,6 +11,8 @@ import {
   emitAssistantUsage,
 } from "./adapterTestFixtures";
 
+const RESTORED_SESSION_ID = "6f1c2a3e-0b4d-4e5f-8a9b-1c2d3e4f5a6b";
+
 describe("Claude tokenUsage", () => {
   it.effect("reconciles Claude request accounting at turn completion", () => {
     const harness = makeHarness();
@@ -226,6 +228,62 @@ describe("Claude tokenUsage", () => {
       );
     },
   );
+
+  it.effect("does not count a resumed session's restored totals as one turn", () => {
+    const harness = makeHarness();
+    return Effect.gen(function* () {
+      const adapter = yield* ClaudeAdapter;
+      yield* adapter.startSession({
+        threadId: THREAD_ID,
+        provider: "claudeAgent",
+        runtimeMode: "full-access",
+        resumeCursor: { threadId: THREAD_ID, resume: RESTORED_SESSION_ID },
+      });
+      const completeTurn = (input: string, uuid: string, restoredPlusTurn: number) =>
+        Effect.gen(function* () {
+          const completed = yield* adapter.streamEvents.pipe(
+            Stream.takeUntil((event) => event.type === "turn.completed"),
+            Stream.runCollect,
+            Effect.forkChild,
+          );
+          yield* adapter.sendTurn({ threadId: THREAD_ID, input, attachments: [] });
+          harness.query.emit({
+            type: "result",
+            subtype: "success",
+            is_error: false,
+            errors: [],
+            session_id: RESTORED_SESSION_ID,
+            uuid,
+            usage: { input_tokens: 10 },
+            modelUsage: {
+              "claude-model": {
+                inputTokens: restoredPlusTurn,
+                outputTokens: 0,
+                cacheReadInputTokens: 0,
+                cacheCreationInputTokens: 0,
+                webSearchRequests: 0,
+                costUSD: restoredPlusTurn / 1000,
+              },
+            },
+            total_cost_usd: restoredPlusTurn / 1000,
+          } as unknown as SDKMessage);
+          const events = Array.from(yield* Fiber.join(completed));
+          return events.find((event) => event.type === "turn.completed")!.payload;
+        });
+
+      const first = yield* completeTurn("continue", "restored-result", 5_010);
+      assert.equal(first.mainLoopTokens, 10);
+      assert.equal(first.modelUsage, undefined);
+      assert.equal(first.totalCostUsd, undefined);
+
+      const next = yield* completeTurn("next", "next-result", 5_040);
+      assert.deepInclude(next.modelUsage?.["claude-model"], { inputTokens: 30 });
+      assert.closeTo(next.totalCostUsd ?? 0, 0.03, 1e-9);
+    }).pipe(
+      Effect.provideService(Random.Random, makeDeterministicRandomService()),
+      Effect.provide(harness.layer),
+    );
+  });
 
   it.effect("resumes cumulative token accounting from the durable cursor", () => {
     const harness = makeHarness();

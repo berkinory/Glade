@@ -180,6 +180,7 @@ export function makeClaudeSdkStream(input: {
           return;
         case "conversation_reset":
           delete context.resultUsageBaseline;
+          context.resultUsageMayIncludeRestoredTotals = false;
           context.requestUsage.reset();
           context.compactionMessageId = undefined;
           context.processedTokenTurnBaseline = context.processedTokenTotal;

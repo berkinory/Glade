@@ -212,3 +212,43 @@ for (const [orderName, deleteOrder] of deleteOrders) {
     );
   });
 }
+
+it.layer(layer)("resumed Claude results", (it) => {
+  it.effect("counts the main loop of a stored result that restored earlier totals", () =>
+    Effect.gen(function* () {
+      const sql = yield* SqlClient.SqlClient;
+      const stats = yield* ProfileStatsQuery;
+      yield* sql`INSERT INTO projection_projects
+        (project_id, title, workspace_root, scripts_json, created_at, updated_at)
+        VALUES ('project', 'Resume fixture', '/nonexistent-resume-fixture', '[]', ${date}, ${date})`;
+      yield* sql`INSERT INTO projection_threads
+        (thread_id, project_id, title, model_selection_json, created_at, updated_at)
+        VALUES ('resumed', 'project', 'Resumed',
+          ${JSON.stringify({ provider: "claudeAgent", model: "model" })}, ${date}, ${date})`;
+      const results = [
+        { modelUsage: 300, mainLoopTokens: 250 },
+        { modelUsage: 200, mainLoopTokens: 200 },
+        // A resumed process's first result also carries the 500 restored from the previous one.
+        { modelUsage: 650, mainLoopTokens: 150 },
+        // Background work beyond the main loop that matches no earlier span still counts.
+        { modelUsage: 500, mainLoopTokens: 100 },
+        // The adapter now withholds restored totals, so a marked result is never reinterpreted.
+        { modelUsage: 600, mainLoopTokens: 100, restoredUsageExcluded: true },
+      ];
+      for (const [index, { modelUsage, ...result }] of results.entries()) {
+        const payload = {
+          provider: "claudeAgent",
+          tokenAccountingVersion: 1,
+          modelUsage: { model: { totalTokens: modelUsage } },
+          ...result,
+        };
+        yield* sql`INSERT INTO projection_thread_activities
+          (activity_id, thread_id, turn_id, tone, kind, summary, payload_json, sequence, created_at)
+          VALUES (${`result-${index}`}, 'resumed', ${`turn-${index}`}, 'info', 'turn.completed',
+            'usage', ${JSON.stringify(payload)}, ${index}, ${date})`;
+      }
+      const { lifetimeTotalTokens } = yield* stats.getProfileTokenStats({ utcOffsetMinutes: 0 });
+      expect(lifetimeTotalTokens).toBe(300 + 200 + 150 + 500 + 600);
+    }),
+  );
+});

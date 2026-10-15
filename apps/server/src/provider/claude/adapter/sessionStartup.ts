@@ -438,6 +438,7 @@ export function makeClaudeSessionStartup(input: {
           availableModels: initialization.models,
           fastModeState: initialization.fast_mode_state,
           fastModeDisabledReason: initialization.fast_mode_disabled_reason,
+          ...(existingResumeSessionId ? { resultUsageMayIncludeRestoredTotals: true } : {}),
           lastKnownContextWindow: undefined,
           currentAlwaysThinkingEnabled: thinking,
           currentEffort: effectiveEffort,

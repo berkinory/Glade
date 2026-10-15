@@ -164,6 +164,9 @@ export const TurnCompletedPayload = Schema.Struct({
   usage: Schema.optional(Schema.Unknown),
   modelUsage: Schema.optional(UnknownRecordSchema),
   tokenAccountingVersion: Schema.optional(Schema.Literal(1)),
+  // Claude: modelUsage never includes the totals a resumed session restores. Results without it
+  // may, so Profile Stats checks those against earlier results.
+  restoredUsageExcluded: Schema.optional(Schema.Literal(true)),
 
   mainLoopTokens: Schema.optional(NonNegativeInt),
   totalCostUsd: Schema.optional(Schema.Number),
