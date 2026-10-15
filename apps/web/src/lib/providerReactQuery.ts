@@ -132,7 +132,7 @@ export function checkpointDiffQueryOptions(input: CheckpointDiffQueryInput) {
     },
     enabled: (input.enabled ?? true) && !!input.threadId && decodedRequest._tag === "Some",
     staleTime: Infinity,
-    gcTime: input.live ? 0 : 5 * 60_000,
+    gcTime: input.live ? 0 : 60_000,
     retry: (failureCount, error) => {
       if (isRpcCapacityExceededError(error)) {
         return shouldRetryExpensiveRead(failureCount, error);

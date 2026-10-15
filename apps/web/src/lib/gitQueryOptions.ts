@@ -560,6 +560,8 @@ export function gitPullRequestDiffQueryOptions(cwd: string, number: number, enab
     queryFn: () => ensureNativeApi().git.pullRequestDiff({ cwd, number }),
     enabled,
     staleTime: 60_000,
+    // A whole PR patch; keep it only briefly once its view closes.
+    gcTime: 60_000,
     retry: false,
   });
 }
@@ -660,6 +662,8 @@ export function gitWorkingTreeDiffQueryOptions(input: {
       });
     },
     enabled: (input.enabled ?? true) && input.cwd !== null && (scope !== "ref" || !!compareRef),
+    // Patches run up to 16MB; keep them only briefly once their view closes.
+    gcTime: 60_000,
     staleTime: GIT_WORKING_TREE_DIFF_STALE_TIME_MS,
     ...(refetchInterval !== undefined ? { refetchInterval } : {}),
     refetchOnWindowFocus: true,

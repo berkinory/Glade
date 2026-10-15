@@ -82,7 +82,9 @@ export function DiffWorkerPoolProvider({ children }: { children?: ReactNode }) {
           {
             workerFactory: () => new DiffsWorker(),
             poolSize: DIFF_WORKER_POOL_SIZE,
-            totalASTLRUCacheSize: 240,
+            // Each entry is a whole highlighted file or diff held on the main thread, and every
+            // editor revision is its own key; the virtualized views only revisit a window of them.
+            totalASTLRUCacheSize: 48,
           },
           { theme: themeRef.current, tokenizeMaxLineLength: 1_000 },
         );
