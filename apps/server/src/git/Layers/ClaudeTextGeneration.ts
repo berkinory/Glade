@@ -115,7 +115,7 @@ const makeClaudeTextGeneration = Effect.gen(function* () {
               options: {
                 cwd,
                 ...(input.model ? { model: input.model } : {}),
-                ...(input.binaryPath ? { pathToClaudeCodeExecutable: input.binaryPath } : {}),
+                pathToClaudeCodeExecutable: input.binaryPath ?? "claude",
                 env: buildClaudeProcessEnv(),
                 persistSession: false,
                 settingSources: [],
