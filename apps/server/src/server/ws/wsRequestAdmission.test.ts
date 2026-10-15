@@ -54,8 +54,14 @@ describe("WsRequestAdmission", () => {
     await Effect.runPromise(
       Effect.gen(function* () {
         const admission = yield* makeWsRequestAdmission;
-        const clientOne = yield* admission.acquire(1, ORCHESTRATION_WS_METHODS.getThreadDetailSnapshot);
-        const clientTwo = yield* admission.acquire(2, ORCHESTRATION_WS_METHODS.getThreadDetailSnapshot);
+        const clientOne = yield* admission.acquire(
+          1,
+          ORCHESTRATION_WS_METHODS.getThreadDetailSnapshot,
+        );
+        const clientTwo = yield* admission.acquire(
+          2,
+          ORCHESTRATION_WS_METHODS.getThreadDetailSnapshot,
+        );
 
         const failed = yield* admission
           .guard(1, WS_METHODS.gitStatus, Effect.fail("expected"))
