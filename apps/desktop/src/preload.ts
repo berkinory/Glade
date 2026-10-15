@@ -20,6 +20,10 @@ function getDesktopWsUrl(): string | null {
 
 contextBridge.exposeInMainWorld("desktopBridge", {
   getWsUrl: getDesktopWsUrl,
+  getHourCycle: () => {
+    const hourCycle = ipcRenderer.sendSync(IPC.hourCycle);
+    return hourCycle === "h12" || hourCycle === "h23" ? hourCycle : null;
+  },
   sshHosts: {
     list: () => ipcRenderer.invoke(IPC.sshHostsList),
     discover: () => ipcRenderer.invoke(IPC.sshHostsDiscover),

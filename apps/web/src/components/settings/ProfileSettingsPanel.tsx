@@ -24,6 +24,7 @@ import { useProfileName } from "../profile/useProfileName";
 import { useProfileAvatarColor } from "../profile/useProfileAvatarColor";
 import { useProfileAvatarImage } from "../profile/useProfileAvatarImage";
 import { ProfileAvatar } from "../profile/ProfileAvatar";
+import { formatHourOfDay } from "~/timestampFormat";
 import { PROVIDER_DISPLAY_NAMES } from "@glade/contracts/provider/model";
 import {
   formatCompact,
@@ -313,14 +314,8 @@ function InsightRow({ label, value }: { label: string; value: string }) {
     </div>
   );
 }
-function formatHour(hour: number): string {
-  const normalized = ((hour % 24) + 24) % 24;
-  if (normalized === 0) return "12 AM";
-  if (normalized === 12) return "12 PM";
-  return normalized < 12 ? `${normalized} AM` : `${normalized - 12} PM`;
-}
 function formatPeakHourLabel(startHour: number | null): string {
-  return startHour === null ? "—" : formatHour(startHour);
+  return startHour === null ? "—" : formatHourOfDay(startHour);
 }
 function formatMostWorkedProjectLabel(project: ProfileStats["mostWorkedProject"]): string {
   if (!project) {

@@ -1,13 +1,27 @@
-const timeFormatter = new Intl.DateTimeFormat(undefined, { hour: "numeric", minute: "2-digit" });
+// Chromium's UI language decides the clock otherwise, which ignores the system's 24-hour setting.
+const hourCycle = window.desktopBridge?.getHourCycle() ?? undefined;
+
+const timeFormatter = new Intl.DateTimeFormat(undefined, {
+  hour: "numeric",
+  minute: "2-digit",
+  hourCycle,
+});
 
 const timeWithSecondsFormatter = new Intl.DateTimeFormat(undefined, {
   hour: "numeric",
   minute: "2-digit",
   second: "2-digit",
+  hourCycle,
 });
 
 export function formatTimestamp(isoDate: string): string {
   return timeWithSecondsFormatter.format(new Date(isoDate));
+}
+
+export function formatHourOfDay(hour: number): string {
+  const date = new Date();
+  date.setHours(((hour % 24) + 24) % 24, 0, 0, 0);
+  return timeFormatter.format(date);
 }
 
 const dayLabelFormatterCache = new Map<string, Intl.DateTimeFormat>();

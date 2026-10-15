@@ -32,6 +32,7 @@ export const DESKTOP_IPC_CHANNELS = {
   notificationsIsSupported: "desktop:notifications-is-supported",
   notificationsShow: "desktop:notifications-show",
   zoomFactor: "desktop:zoom-factor",
+  hourCycle: "desktop:hour-cycle",
   zoomFactorChanged: "desktop:zoom-factor-changed",
   wsUrl: "desktop:get-ws-url",
   sshHostsList: "desktop:ssh-hosts-list",

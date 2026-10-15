@@ -39,6 +39,7 @@ import {
 import { registerNotificationPermissionIpc } from "./notificationPermissions";
 import { registerBrowserViewIpc } from "./browserViewIpc";
 import { registerComputerPermissionsIpc } from "./computerPermissionsIpc";
+import { resolveSystemHourCycle } from "./systemHourCycle";
 import type { DesktopHost } from "../../hostRpc/startDesktopHost";
 import type { ComputerPermissions } from "../../computer/cuaPermissions";
 
@@ -112,6 +113,11 @@ export function createRegisterDesktopIpc({
     ipcMain.removeAllListeners(DESKTOP_IPC_CHANNELS.zoomFactor);
     ipcMain.on(DESKTOP_IPC_CHANNELS.zoomFactor, (event: IpcMainEvent) => {
       event.returnValue = event.sender.getZoomFactor();
+    });
+
+    ipcMain.removeAllListeners(DESKTOP_IPC_CHANNELS.hourCycle);
+    ipcMain.on(DESKTOP_IPC_CHANNELS.hourCycle, (event: IpcMainEvent) => {
+      event.returnValue = resolveSystemHourCycle();
     });
 
     ipcMain.removeHandler(DESKTOP_IPC_CHANNELS.pickFolder);

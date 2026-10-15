@@ -387,8 +387,11 @@ export interface DesktopClipboardFile {
   kind: "file" | "directory";
 }
 
+export type DesktopHourCycle = "h12" | "h23";
+
 export interface DesktopBridge {
   getWsUrl: () => string | null;
+  getHourCycle: () => DesktopHourCycle | null;
   sshHosts?: {
     list: () => Promise<ReadonlyArray<DesktopSshHost>>;
     discover: () => Promise<ReadonlyArray<DesktopSshDiscoveredHost>>;
