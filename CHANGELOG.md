@@ -12,6 +12,7 @@
 - Model names are shorter where the provider is already shown.
 - Codex chats use much less memory.
 - The background server keeps a smaller database cache, so it uses less memory after long sessions.
+- The built-in browser's ad blocker updates its lists in the background without freezing the window or holding on to extra memory.
 
 ### Fixed
 

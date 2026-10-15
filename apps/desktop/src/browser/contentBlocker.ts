@@ -5,6 +5,8 @@ import {
   type OnBeforeRequestListenerDetails,
   type OnHeadersReceivedListenerDetails,
   type Session,
+  utilityProcess,
+  type UtilityProcess,
 } from "electron";
 import * as FS from "node:fs";
 import * as Path from "node:path";
@@ -32,13 +34,18 @@ const RETRY_AFTER_MS = 60 * 60 * 1000;
 // by the engine's own Request) next to the on/off setting. Every request and cosmetic injection
 // of a page on such a site is let through, including its third-party ones.
 //
-// The serialized engine is cached on disk and rebuilt from the lists in the background once a
-// day. Nothing loads until the first tab needs it, and no tab waits for the network: until an
-// engine is loaded, nothing is blocked.
+// The serialized engine is cached on disk and rebuilt from the lists once a day in a short-lived
+// utility process, so the main process only holds the deserialized engine. Nothing loads until the
+// first tab needs it while blocking is on, and no tab waits for the network: until an engine is
+// loaded, nothing is blocked.
 export class ContentBlocker {
   private engine: ElectronBlocker | null = null;
   private loaded = false;
+  // Bumped on unload so a refresh that finishes afterwards does not revive the engine.
+  private generation = 0;
+  private requested = false;
   private stopped = false;
+  private refresher: UtilityProcess | null = null;
   private preloadId: string | null = null;
   private timer: NodeJS.Timeout | null = null;
   private on: boolean;
@@ -57,7 +64,8 @@ export class ContentBlocker {
   // Loads the cached engine and starts the daily refresh. Tabs call this before their first page
   // so blocking and element hiding apply from its first request.
   load(): void {
-    if (this.loaded || this.stopped) return;
+    this.requested = true;
+    if (this.loaded || this.stopped || !this.on) return;
     const { ElectronBlocker: Engine } = blockerEngine();
     this.loaded = true;
     this.loadCached(Engine);
@@ -66,10 +74,7 @@ export class ContentBlocker {
 
   stop(): void {
     this.stopped = true;
-    if (this.timer) clearTimeout(this.timer);
-    this.timer = null;
-    this.engine = null;
-    this.applyCosmetics();
+    this.unload();
   }
 
   enabled(): boolean {
@@ -79,7 +84,8 @@ export class ContentBlocker {
   setEnabled(enabled: boolean): boolean {
     this.on = enabled;
     this.save();
-    this.applyCosmetics();
+    if (!enabled) this.unload();
+    else if (this.requested) this.load();
     return enabled;
   }
 
@@ -156,21 +162,53 @@ export class ContentBlocker {
       }
     })();
     if (this.engine && age < REFRESH_AFTER_MS) return this.schedule(REFRESH_AFTER_MS - age);
+    const generation = this.generation;
     try {
-      const { ElectronBlocker: Engine } = blockerEngine();
-      const engine = await Engine.fromPrebuiltFull((url: string) => this.session.fetch(url));
-      const temporary = `${this.files.cache}.${process.pid}.tmp`;
-      FS.mkdirSync(Path.dirname(this.files.cache), { recursive: true });
-      FS.writeFileSync(temporary, engine.serialize());
-      FS.renameSync(temporary, this.files.cache);
-      this.use(engine);
+      await this.rebuildCache();
+      if (generation !== this.generation) return;
+      this.loadCached(blockerEngine().ElectronBlocker);
       this.schedule(REFRESH_AFTER_MS);
     } catch (error) {
+      if (generation !== this.generation) return;
       this.log(
         `content blocker lists unavailable message=${error instanceof Error ? error.message : String(error)}`,
       );
       this.schedule(RETRY_AFTER_MS);
     }
+  }
+
+  private rebuildCache(): Promise<void> {
+    return new Promise((resolve, reject) => {
+      const child = utilityProcess.fork(
+        Path.join(__dirname, "contentBlockerRefresh.js"),
+        [this.files.cache],
+        { serviceName: "Glade Content Blocker Lists", stdio: "ignore" },
+      );
+      this.refresher = child;
+      let failure = `exited before writing ${Path.basename(this.files.cache)}`;
+      child.on("message", (message: unknown) => {
+        const error: unknown =
+          typeof message === "object" && message !== null ? Reflect.get(message, "error") : null;
+        if (typeof error === "string") failure = error;
+      });
+      child.once("exit", (code) => {
+        if (this.refresher === child) this.refresher = null;
+        if (code === 0) resolve();
+        else reject(new Error(failure));
+      });
+    });
+  }
+
+  // Drops the engine and its refresh; the next load deserializes the cache again in milliseconds.
+  private unload(): void {
+    this.generation += 1;
+    if (this.timer) clearTimeout(this.timer);
+    this.timer = null;
+    this.refresher?.kill();
+    this.refresher = null;
+    this.engine = null;
+    this.loaded = false;
+    this.applyCosmetics();
   }
 
   private schedule(delayMs: number): void {

@@ -37,8 +37,10 @@ is still being assembled; callbacks become usable after all domains are connecte
 
 The backend is the slowest part of startup, so bootstrap spawns it as soon as the host RPC
 server listens and opens the window next. The computer host, updater configuration and Dock
-icon start after that, and the agent browser's content blocker loads with its first tab.
-electron-updater and Ghostery are required at first use rather than when the main bundle loads.
+icon start after that, and the agent browser's content blocker loads with its first tab while
+blocking is on. electron-updater and Ghostery are required at first use rather than when the main
+bundle loads. The daily filter-list rebuild runs in a short-lived utility process
+(`contentBlockerRefresh.js`), so the main process only deserializes the cached engine.
 
 IPC channel values, preload methods, environment variables, stored paths and data
 formats are unchanged. Moving a source file does not authorize changing one of

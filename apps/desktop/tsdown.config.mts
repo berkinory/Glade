@@ -30,4 +30,8 @@ export default defineConfig([
     ...shared,
     entry: ["src/preload.ts"],
   },
+  {
+    ...shared,
+    entry: ["src/browser/contentBlockerRefresh.ts"],
+  },
 ]);
