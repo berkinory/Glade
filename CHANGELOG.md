@@ -7,6 +7,7 @@
 - Videos in file and Git previews play with full controls instead of showing a still frame, including larger files, and formats that can't play show a clear preview-unavailable state. ([2a3d780c9](https://github.com/berkinory/Glade/commit/2a3d780c94af888a4218d509a6b6966367c75a9d), [47c73c779](https://github.com/berkinory/Glade/commit/47c73c779d31d43c3aa68db8a8fd1f460b169db8))
 - Preview HTML files rendered alongside their source, just like Markdown. ([9773c8f9c](https://github.com/berkinory/Glade/commit/9773c8f9cf6ba9d9401093b1245b43ade36600ab))
 - Agents can reply with native charts, tables, checklists and clickable follow-up choices.
+- Connectors: connect services like Supabase, Linear, Notion and GitHub once in Settings, and agents in every new chat can use their tools, whichever provider runs it. ([6b42cbd9a](https://github.com/berkinory/Glade/commit/6b42cbd9a78bfb97684fcf2200bbac11df0b0735))
 
 ### Improved
 
