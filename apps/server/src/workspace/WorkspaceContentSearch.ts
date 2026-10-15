@@ -35,9 +35,24 @@ function abortable<A>(promise: Promise<A>, signal: AbortSignal): Promise<A> {
   });
 }
 
+// File contents are re-read cheaply once searching resumes; holding up to 32MB between bursts of
+// typing is not worth it.
+const RELEASE_AFTER_IDLE_MS = 5 * 60_000;
+
 export class WorkspaceContentSearch {
   private readonly files = new Map<string, CachedContent>();
   private bytes = 0;
+  private releaseTimer: ReturnType<typeof setTimeout> | null = null;
+
+  private releaseWhenIdle() {
+    if (this.releaseTimer) clearTimeout(this.releaseTimer);
+    this.releaseTimer = setTimeout(() => {
+      this.releaseTimer = null;
+      this.files.clear();
+      this.bytes = 0;
+    }, RELEASE_AFTER_IDLE_MS);
+    this.releaseTimer.unref();
+  }
 
   private remember(key: string, value: CachedContent) {
     this.bytes -= this.files.get(key)?.bytes ?? 0;
@@ -106,6 +121,7 @@ export class WorkspaceContentSearch {
     const query = input.query.trim();
     if (query.length < PROJECT_SEARCH_CONTENT_MIN_QUERY_LENGTH)
       return { matches: [], truncated: false };
+    this.releaseWhenIdle();
     const timeout = AbortSignal.timeout(4_000);
     const signal = externalSignal ? AbortSignal.any([externalSignal, timeout]) : timeout;
     const matches: ProjectSearchContentResult["matches"][number][] = [];

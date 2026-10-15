@@ -31,6 +31,14 @@ function trim(): void {
   }
 }
 
+// An index older than MAX_STALE_MS is never served again (the next request waits for a rebuild),
+// so it is dropped rather than held, and rebuilt on every invalidation, for the process lifetime.
+function expireWhenStale(cwd: string, slot: CacheSlot, index: CachedWorkspaceIndex): void {
+  setTimeout(() => {
+    if (slots.get(cwd) === slot && slot.index === index && !slot.pending) slots.delete(cwd);
+  }, MAX_STALE_MS).unref();
+}
+
 function build(
   cwd: string,
   slot: CacheSlot,
@@ -45,6 +53,7 @@ function build(
         delete slot.failed;
         slots.delete(cwd);
         slots.set(cwd, slot);
+        expireWhenStale(cwd, slot, result);
       }
       return result;
     })
