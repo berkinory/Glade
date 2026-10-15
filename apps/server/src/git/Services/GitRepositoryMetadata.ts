@@ -4,6 +4,7 @@ import type { GitCommandError } from "../Errors";
 export interface RepositoryMetadata {
   readonly commonDir: string;
   readonly configValue: (key: string) => string | undefined;
+  // Branches and remote-tracking refs only.
   readonly hasRef: (ref: string) => boolean;
   readonly primaryRemote: string | null;
   readonly defaultBranch: string | null;

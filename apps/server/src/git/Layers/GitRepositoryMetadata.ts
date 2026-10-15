@@ -161,9 +161,13 @@ const makeMetadata = Effect.gen(function* () {
         for (const entry of refEntries) {
           if (entry.isDirectory()) paths.add(path.join(entry.parentPath, entry.name));
         }
+        // Only branches and remote-tracking refs are ever looked up; Glade's own checkpoint refs can
+        // outnumber them a hundredfold and would be cached for every worktree.
         const refOutput = yield* readStdout("GitRepositoryMetadata.refs", cwd, [
           "for-each-ref",
           "--format=%(refname)%00%(symref)",
+          "refs/heads",
+          "refs/remotes",
         ]);
         const refs = new Map(
           refOutput
