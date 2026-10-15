@@ -1,5 +1,6 @@
 import { formatModelDisplayName } from "@glade/shared/provider/model";
 import {
+  PROVIDER_DISPLAY_NAMES,
   type ProviderOptionSelections,
   type ProviderOptionValue,
 } from "@glade/contracts/provider/model";
@@ -31,6 +32,35 @@ export function formatProviderModelOptionName(slug: string): string {
   }
 
   return formatModelDisplayName(trimmedSlug) ?? trimmedSlug;
+}
+
+function withoutProviderName(provider: ProviderKind, name: string): string | null {
+  const providerName = PROVIDER_DISPLAY_NAMES[provider].toLowerCase();
+  const trimmed = name.trim();
+  if (!trimmed.toLowerCase().startsWith(providerName)) return null;
+  const rest = trimmed.slice(providerName.length);
+  return /^\s+\p{L}/u.test(rest) ? rest.trimStart() : null;
+}
+
+// Only for surfaces that show the provider beside the name. Drops a leading provider name the
+// provider's icon already says ("Claude Opus 5" reads "Opus 5"). The full name stays when the
+// rest would not start with a word (a bare version or a parenthetical) or would read the same
+// as another model in the provider's catalog.
+export function formatProviderScopedModelName(
+  provider: ProviderKind,
+  name: string,
+  catalogNames: ReadonlyArray<string>,
+): string {
+  const shortName = withoutProviderName(provider, name);
+  if (shortName === null) return name;
+  const key = shortName.toLowerCase();
+  const collides = catalogNames.some(
+    (other) =>
+      other !== name &&
+      (other.trim().toLowerCase() === key ||
+        withoutProviderName(provider, other)?.toLowerCase() === key),
+  );
+  return collides ? name : shortName;
 }
 
 export function mergeDynamicModelOptions(input: {

@@ -78,7 +78,14 @@ export function ComposerModelPickerRow(props: {
         />
       ) : null}
       <span className={cn("truncate", row.detail !== null && "max-w-[62%] shrink-0")}>
-        {row.name}
+        {row.displayName === row.name ? (
+          row.name
+        ) : (
+          <>
+            <span aria-hidden="true">{row.displayName}</span>
+            <span className="sr-only">{row.name}</span>
+          </>
+        )}
       </span>
       <span className={cn("min-w-0 flex-1 truncate", COMPOSER_MUTED_ACCENT_TEXT_CLASS_NAME)}>
         {row.detail}

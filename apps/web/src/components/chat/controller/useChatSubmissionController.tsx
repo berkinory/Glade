@@ -233,7 +233,7 @@ export function useChatSubmissionController({
   );
 
   const composerFooterPlanInputsKey = [
-    composerFooterModelLabel,
+    composerFooterModelLabel.displayName,
     composerFooterTraitsSummary.summaryText,
     Boolean(runtimeUsageContextWindow),
   ].join(":");

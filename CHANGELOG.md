@@ -7,6 +7,10 @@
 - Videos in file and Git previews play with full controls instead of showing a still frame, including larger files, and formats that can't play show a clear preview-unavailable state. ([2a3d780c9](https://github.com/berkinory/Glade/commit/2a3d780c94af888a4218d509a6b6966367c75a9d), [47c73c779](https://github.com/berkinory/Glade/commit/47c73c779d31d43c3aa68db8a8fd1f460b169db8))
 - Preview HTML files rendered alongside their source, just like Markdown. ([9773c8f9c](https://github.com/berkinory/Glade/commit/9773c8f9cf6ba9d9401093b1245b43ade36600ab))
 
+### Improved
+
+- Model names are shorter where the provider is already shown.
+
 ### Fixed
 
 - Chat status indicators in the sidebar stay at the right edge for chats on SSH and remote hosts. ([eb8b56261](https://github.com/berkinory/Glade/commit/eb8b5626180b0395fab8d8729dee3cba84d68e56))

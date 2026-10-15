@@ -5,6 +5,7 @@ import { resolveSelectableModel } from "@glade/shared/provider/model";
 import { type ProviderPickerKind, PROVIDER_OPTIONS } from "../../session-logic";
 import {
   formatProviderModelOptionName,
+  formatProviderScopedModelName,
   type ProviderModelOption,
 } from "../../providerModelOptions";
 import { compareProvidersByOrder } from "../../providerOrdering";
@@ -70,7 +71,7 @@ function providerIconClassName(
   return provider === "claudeAgent" ? "text-foreground" : fallbackClassName;
 }
 
-function resolveSelectedModelLabel(input: {
+function resolveSelectedModelName(input: {
   provider: ProviderKind;
   model: string;
   options: ReadonlyArray<ProviderModelOption>;
@@ -85,18 +86,29 @@ function resolveSelectedModelLabel(input: {
   return formatProviderModelOptionName(input.model);
 }
 
+// `displayName` is for beside the provider icon; `name` is for assistive tech and tooltips.
+export interface ProviderModelLabel {
+  name: string;
+  displayName: string;
+}
+
 export function resolveProviderModelLabel(input: {
   provider: ProviderKind;
   lockedProvider: ProviderKind | null;
   model: ModelSlug;
   modelOptionsByProvider: Record<ProviderKind, ReadonlyArray<ProviderModelOption>>;
-}): string {
+}): ProviderModelLabel {
   const activeProvider = input.lockedProvider ?? input.provider;
-  return resolveSelectedModelLabel({
-    provider: activeProvider,
-    model: input.model,
-    options: input.modelOptionsByProvider[activeProvider],
-  });
+  const options = input.modelOptionsByProvider[activeProvider];
+  const name = resolveSelectedModelName({ provider: activeProvider, model: input.model, options });
+  return {
+    name,
+    displayName: formatProviderScopedModelName(
+      activeProvider,
+      name,
+      options.map((option) => option.name),
+    ),
+  };
 }
 
 export function getProviderIconClassName(

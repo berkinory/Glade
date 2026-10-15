@@ -8,10 +8,10 @@ import { MenuTrigger } from "../ui/menu";
 import { ShortcutKbd } from "../ui/kbd";
 import { Tooltip, TooltipPopup, TooltipTrigger } from "../ui/tooltip";
 import { COMPOSER_PICKER_TRIGGER_TEXT_CLASS_NAME } from "./composerPickerStyles";
-import { getProviderIconClassName } from "./ProviderModelPicker";
+import { getProviderIconClassName, type ProviderModelLabel } from "./ProviderModelPicker";
 export function ComposerModelMenuTrigger(props: {
   provider: ProviderKind;
-  modelLabel: string;
+  modelLabel: ProviderModelLabel;
   hideModelLabel?: boolean | undefined;
   disabled?: boolean | undefined;
   isMenuOpen: boolean;
@@ -28,8 +28,10 @@ export function ComposerModelMenuTrigger(props: {
         "min-w-0 shrink-0 justify-start gap-1.5 whitespace-nowrap ps-1.5 pe-1 sm:ps-2 [&_svg]:mx-0",
         COMPOSER_PICKER_TRIGGER_TEXT_CLASS_NAME,
       )}
-      aria-label={props.loading ? "Loading models" : `Change model, currently ${props.modelLabel}`}
-      {...(props.hideModelLabel ? { title: props.modelLabel } : {})}
+      aria-label={
+        props.loading ? "Loading models" : `Change model, currently ${props.modelLabel.name}`
+      }
+      {...(props.hideModelLabel ? { title: props.modelLabel.name } : {})}
     />
   );
   const triggerContent = (
@@ -46,10 +48,12 @@ export function ComposerModelMenuTrigger(props: {
         />
       )}
       {props.hideModelLabel ? (
-        <span className="sr-only">{props.modelLabel}</span>
+        <span className="sr-only">{props.modelLabel.name}</span>
       ) : (
         <span className="relative min-w-0 truncate text-[var(--color-text-foreground)]">
-          <span className={props.loading ? "invisible" : undefined}>{props.modelLabel}</span>
+          <span className={props.loading ? "invisible" : undefined}>
+            {props.modelLabel.displayName}
+          </span>
           {props.loading ? <span className="absolute inset-0 truncate">Loading models</span> : null}
         </span>
       )}

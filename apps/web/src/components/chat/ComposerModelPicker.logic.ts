@@ -10,6 +10,7 @@ import { resolveSelectableModel } from "@glade/shared/provider/model";
 import { type StarredModel, starredModelKey } from "~/lib/starredModels";
 import {
   formatProviderModelOptionName,
+  formatProviderScopedModelName,
   groupProviderModelOptions,
   type ProviderModelOption,
   type ProviderOptionPatch,
@@ -127,7 +128,9 @@ export type ComposerModelPickerRow = {
   provider: ProviderKind;
   model: string;
   selectableModel: ModelSlug | null;
+  // Search, star labels and assistive tech use `name`; rows show `displayName` by the provider.
   name: string;
+  displayName: string;
 
   detail: string | null;
   selected: boolean;
@@ -143,6 +146,7 @@ export function buildProviderTabRows(input: {
   selectedModel: string | null;
 }): ComposerModelPickerRow[] {
   const { provider, query } = input;
+  const catalogNames = input.options.map((option) => option.name);
   const filteredOptions =
     query.length > 0
       ? input.options.filter((option) =>
@@ -160,6 +164,7 @@ export function buildProviderTabRows(input: {
       model: option.slug,
       selectableModel: option.slug,
       name: option.name,
+      displayName: formatProviderScopedModelName(provider, option.name, catalogNames),
       detail: null,
       selected: option.slug === input.selectedModel,
       groupLabel: group.label,
@@ -204,6 +209,11 @@ export function buildStarredTabRows(input: {
         model: entry.model,
         selectableModel,
         name,
+        displayName: formatProviderScopedModelName(
+          entry.provider,
+          name,
+          options.map((option) => option.name),
+        ),
         detail: selectableModel === null ? "Unavailable" : traitsLabel || null,
         selected:
           selectableModel !== null &&
