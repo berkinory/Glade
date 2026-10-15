@@ -200,6 +200,10 @@ export function useSidebarRows(context: ReturnType<typeof useSidebarPanelEffects
               <SidebarMetaChipStack chips={input.metadata.chips} />
             </div>
           ) : null}
+          {input.metadata.host}
+          {!input.threadJumpLabel && input.pr ? (
+            <div className={THREAD_ROW_META_CHIP_HOVER_FADE_CLASS_NAME}>{input.pr}</div>
+          ) : null}
           {input.threadJumpLabel ? (
             <ShortcutKbd
               shortcutLabel={input.threadJumpLabel}
@@ -218,10 +222,6 @@ export function useSidebarRows(context: ReturnType<typeof useSidebarPanelEffects
             </span>
           ) : null}
           {!trailingStatus && input.draftIndicator}
-          {input.metadata.host}
-          {!input.threadJumpLabel && input.pr ? (
-            <div className={THREAD_ROW_META_CHIP_HOVER_FADE_CLASS_NAME}>{input.pr}</div>
-          ) : null}
         </div>
         {input.hoverActions}
       </div>
