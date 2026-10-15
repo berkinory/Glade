@@ -175,7 +175,7 @@ export interface ClaudeSessionQuery {
   readonly processOwner: ClaudeProcessOwner;
   stopDeferred?: Deferred.Deferred<void, ProviderAdapterProcessError>;
   streamFiber: Fiber.Fiber<void, Error> | undefined;
-  readonly basePermissionMode: PermissionMode | undefined;
+  readonly basePermissionMode: PermissionMode;
   readonly spawnPermissionMode: PermissionMode;
   firstTurnSpawnModeAuthoritative: boolean;
   currentApiModelId: string | undefined;

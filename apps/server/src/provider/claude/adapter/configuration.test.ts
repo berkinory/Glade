@@ -59,7 +59,7 @@ describe("Claude configuration", () => {
 
   it.effect.each([
     { runtimeMode: "full-access", permissionMode: "bypassPermissions", skipPermissions: true },
-    { runtimeMode: "approval-required", permissionMode: undefined, skipPermissions: undefined },
+    { runtimeMode: "approval-required", permissionMode: "default", skipPermissions: undefined },
   ] as const)(
     "loads Claude filesystem settings and the Glade prompt for $runtimeMode sessions",
     ({ runtimeMode, permissionMode, skipPermissions }) => {

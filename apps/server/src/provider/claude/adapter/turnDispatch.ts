@@ -63,7 +63,7 @@ export function makeClaudeTurnDispatch(input: {
   // Native tools may change SDK state, so restore the runtime permission policy before each turn.
   const applyRuntimePermission = (context: ClaudeSessionContext, threadId: ThreadId) =>
     Effect.gen(function* () {
-      const desiredPermissionMode = context.basePermissionMode ?? "default";
+      const desiredPermissionMode = context.basePermissionMode;
       if (
         context.firstTurnSpawnModeAuthoritative &&
         desiredPermissionMode === context.spawnPermissionMode

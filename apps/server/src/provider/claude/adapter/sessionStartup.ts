@@ -152,11 +152,13 @@ export function makeClaudeSessionStartup(input: {
       const thinking = selectedOptions.thinking;
       const effectiveEffort = selectedOptions.effort ?? null;
       const ultracode = selectedOptions.ultracode;
+      // Always pass a mode: when omitted, Claude Code starts in the settings'
+      // `permissions.defaultMode`, which could silently skip the approvals this mode promises.
       const permissionMode =
         input.runtimeMode === "auto"
           ? "auto"
           : (toPermissionMode(providerOptions?.permissionMode) ??
-            (input.runtimeMode === "full-access" ? "bypassPermissions" : undefined));
+            (input.runtimeMode === "full-access" ? "bypassPermissions" : "default"));
       const settings = {
         ...(typeof thinking === "boolean" ? { alwaysThinkingEnabled: thinking } : {}),
         ...(fastMode !== undefined ? { fastMode } : {}),
@@ -256,7 +258,7 @@ export function makeClaudeSessionStartup(input: {
           ...(snapshotSupported ? { snapshot: true } : {}),
         },
 
-        ...(permissionMode ? { permissionMode } : {}),
+        permissionMode,
         ...(permissionMode === "bypassPermissions"
           ? { allowDangerouslySkipPermissions: true }
           : {}),
@@ -420,9 +422,7 @@ export function makeClaudeSessionStartup(input: {
           ...(claudeConfigDir ? { claudeConfigDir } : {}),
           monitorEventCursor: makeClaudeMonitorEventCursor(),
           basePermissionMode: permissionMode,
-          // A fresh CLI starts in `permissionMode` when queryOptions provides one, otherwise the SDK's
-          // "default" mode (queryOptions omits it).
-          spawnPermissionMode: permissionMode ?? "default",
+          spawnPermissionMode: permissionMode,
           firstTurnSpawnModeAuthoritative: true,
 
           currentApiModelId: apiModelId,
@@ -503,7 +503,7 @@ export function makeClaudeSessionStartup(input: {
                 ...(apiModelId ? { apiModelId } : {}),
                 ...(input.cwd ? { cwd: input.cwd } : {}),
                 ...(effectiveEffort ? { effort: effectiveEffort } : {}),
-                ...(permissionMode ? { permissionMode } : {}),
+                permissionMode,
                 ...(providerOptions?.maxThinkingTokens !== undefined
                   ? { maxThinkingTokens: providerOptions.maxThinkingTokens }
                   : {}),
