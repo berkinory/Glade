@@ -27,3 +27,20 @@ The background plates were edited with the built-in image generator: preserve
 the approved palette and composition, remove the baked-in seal, reduce the light
 sweep by another 45%, and modestly increase crisp ordered dither coverage in the
 midtones. Keep the twilight peach/lavender curve and midnight-blue diagonal sweep.
+
+## DMG background
+
+`brand/artwork/dmg.png` is the installer scene: a dithered Elysian passage at
+twilight, with a wing-carved stone gateway, muted lavender and peach, and quiet
+space behind the existing app and Applications positions. It was generated with
+the built-in image tool without text or UI; the export adds a crisp arrow and
+installation instruction.
+
+```sh
+node scripts/generate-dmg-background.ts
+```
+
+The export keeps the 642×406 window layout and produces both `dmg-background.png`
+and its 1284×812 `@2x` sibling. The DMG builder automatically combines these into
+a Retina background. The artwork and installation text are independent of the
+Finder icon labels.

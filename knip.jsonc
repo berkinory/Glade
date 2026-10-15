@@ -28,6 +28,7 @@
       // Artwork and release visuals are documented in docs/release.md; notarization is a builder hook.
       "entry": [
         "generate-brand-assets.ts",
+        "generate-dmg-background.ts",
         "release-bento/render.ts",
         "release-bento/releases/*.ts",
         "notarize-mac-app.ts",
