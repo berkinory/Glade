@@ -1,16 +1,4 @@
-export const VISUAL_REPLY_CSP = [
-  "default-src 'none'",
-  "script-src 'unsafe-inline' https: http:",
-  "style-src 'unsafe-inline' https: http:",
-  "img-src data: https: http:",
-  "font-src data: https: http:",
-  "media-src data: https: http:",
-  "connect-src https: http: wss: ws:",
-  "frame-src 'none'",
-  "object-src 'none'",
-  "base-uri 'none'",
-  "form-action 'none'",
-].join("; ");
+import { embedSandboxSettings, sandboxedHtmlHead } from "./sandboxedHtmlDocument";
 
 export interface VisualReplyTheme {
   readonly background: string;
@@ -86,10 +74,7 @@ export function visualReplyDocument(input: {
   readonly channel: string;
   readonly theme: VisualReplyTheme;
 }): string {
-  const settings = JSON.stringify({ channel: input.channel, theme: input.theme }).replaceAll(
-    "<",
-    "\\u003c",
-  );
+  const settings = embedSandboxSettings({ channel: input.channel, theme: input.theme });
   const bootstrap = `<script>(() => {
     const settings = ${settings};
     const applyTheme = theme => {
@@ -101,21 +86,9 @@ export function visualReplyDocument(input: {
       root.style.colorScheme = theme.colorScheme;
     };
     applyTheme(settings.theme);
-    const reportError = message => parent.postMessage({ channel: settings.channel, kind: 'script-error', message: String(message).slice(0, 500) }, '*');
-    addEventListener('error', event => { if (event.message) reportError(event.message); });
-    addEventListener('unhandledrejection', event => reportError(event.reason?.message ?? 'An interaction failed.'));
     addEventListener('message', event => {
       if (event.source === parent && event.data?.channel === settings.channel && event.data?.kind === 'theme') applyTheme(event.data.theme);
     });
-    addEventListener('click', event => {
-      const link = event.composedPath().find(node => node instanceof HTMLAnchorElement);
-      if (!link) return;
-      if (link.getAttribute('href')?.startsWith('#')) return;
-      event.preventDefault();
-      if (event.isTrusted && navigator.userActivation.isActive && /^https?:/.test(link.href)) {
-        parent.postMessage({ channel: settings.channel, kind: 'open-link', url: link.href }, '*');
-      }
-    }, true);
     // Gestures over the frame never reach the transcript, so the host would keep following a
     // live reply the reader is scrolling away from. One message per frame keeps the channel quiet.
     let intentQueued = false;
@@ -171,7 +144,7 @@ export function visualReplyDocument(input: {
         `--glade-${name.replace(/[A-Z]/g, (c) => "-" + c.toLowerCase()).replace(/([a-z])([0-9])/g, "$1-$2")}:${cssValue(value)}`,
     )
     .join(";");
-  const head = `<meta http-equiv="Content-Security-Policy" content="${VISUAL_REPLY_CSP}"><meta name="referrer" content="no-referrer"><meta name="viewport" content="width=device-width, initial-scale=1"><style>:root{${themeCss};color-scheme:${input.theme.colorScheme}}html{color:var(--glade-foreground);background:var(--glade-background);font-family:var(--glade-font-family);font-size:var(--glade-font-size);line-height:1.5;-webkit-font-smoothing:antialiased;scrollbar-width:none}html::-webkit-scrollbar{display:none}body{margin:0;padding:0;box-sizing:border-box}*,*::before,*::after{box-sizing:border-box}code,kbd,pre,samp{font-family:var(--glade-font-mono)}img,svg,canvas{max-width:100%}</style>${bootstrap}`;
+  const head = `${sandboxedHtmlHead(input.channel)}<meta name="viewport" content="width=device-width, initial-scale=1"><style>:root{${themeCss};color-scheme:${input.theme.colorScheme}}html{color:var(--glade-foreground);background:var(--glade-background);font-family:var(--glade-font-family);font-size:var(--glade-font-size);line-height:1.5;-webkit-font-smoothing:antialiased;scrollbar-width:none}html::-webkit-scrollbar{display:none}body{margin:0;padding:0;box-sizing:border-box}*,*::before,*::after{box-sizing:border-box}code,kbd,pre,samp{font-family:var(--glade-font-mono)}img,svg,canvas{max-width:100%}</style>${bootstrap}`;
   // Place policy before all untrusted tokens. A string replacement could hit a comment or
   // miss an attributed head, leaving the document without its security policy.
   return `<!doctype html><html><head>${head}</head><body>${input.html}</body></html>`;

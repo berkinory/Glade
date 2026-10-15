@@ -1,11 +1,10 @@
-import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   visualReplyDocument,
   visualReplyThemeForAppearance,
   type VisualReplyTheme,
 } from "@glade/shared/attachments/visualReplyDocument";
-import { openExternalLink } from "~/lib/linkChips";
-import { requireHttpExternalUrl } from "~/lib/externalUrl";
+import { SandboxedHtmlFrame, type SandboxedHtmlMessage } from "../SandboxedHtmlFrame";
 
 export function VisualReplyFrame({
   html,
@@ -18,12 +17,9 @@ export function VisualReplyFrame({
   readonly onContentHeight?: ((height: number) => void) | undefined;
   readonly onScrollGesture?: ((upward: boolean) => void) | undefined;
 }) {
-  const frame = useRef<HTMLIFrameElement>(null);
+  const frameWindow = useRef<Window | null>(null);
   const [channel] = useState(() => crypto.randomUUID());
   const [theme, setTheme] = useState<VisualReplyTheme | null>(null);
-  const [navigated, setNavigated] = useState(false);
-  const [scriptError, setScriptError] = useState<string | null>(null);
-  const loadedWindow = useRef<Window | null>(null);
   const [initialDocument, setInitialDocument] = useState<string | null>(null);
   useEffect(() => {
     const root = document.documentElement;
@@ -58,83 +54,36 @@ export function VisualReplyFrame({
     });
     return () => observer.disconnect();
   }, []);
-  // A fast page can report its size before passive effects run.
-  useLayoutEffect(() => {
-    const receive = (event: MessageEvent) => {
-      if (
-        event.source !== frame.current?.contentWindow ||
-        !event.data ||
-        typeof event.data !== "object" ||
-        event.data.channel !== channel
-      )
-        return;
-      if (event.data.kind === "script-error" && typeof event.data.message === "string") {
-        setScriptError(event.data.message.slice(0, 500));
-      } else if (
-        event.data.kind === "height" &&
-        typeof event.data.height === "number" &&
-        Number.isFinite(event.data.height) &&
-        event.data.height >= 0
-      ) {
-        onContentHeight?.(event.data.height);
-      } else if (event.data.kind === "scroll-intent" && typeof event.data.upward === "boolean") {
-        onScrollGesture?.(event.data.upward);
-      } else if (
-        event.data.kind === "open-link" &&
-        typeof event.data.url === "string" &&
-        document.activeElement === frame.current &&
-        navigator.userActivation.isActive
-      ) {
-        try {
-          openExternalLink(requireHttpExternalUrl(event.data.url));
-        } catch {
-          // A sandbox can send arbitrary messages; only HTTP(S) user clicks leave the frame.
-        }
-      }
-    };
-    window.addEventListener("message", receive);
-    return () => window.removeEventListener("message", receive);
-  }, [channel, onContentHeight, onScrollGesture]);
+  const receive = (message: SandboxedHtmlMessage) => {
+    if (
+      message.kind === "height" &&
+      typeof message.height === "number" &&
+      Number.isFinite(message.height) &&
+      message.height >= 0
+    ) {
+      onContentHeight?.(message.height);
+    } else if (message.kind === "scroll-intent" && typeof message.upward === "boolean") {
+      onScrollGesture?.(message.upward);
+    }
+  };
   useEffect(() => {
     if (!theme) return;
     if (initialDocument === null) setInitialDocument(visualReplyDocument({ html, channel, theme }));
-    frame.current?.contentWindow?.postMessage({ channel, kind: "theme", theme }, "*");
+    frameWindow.current?.postMessage({ channel, kind: "theme", theme }, "*");
   }, [theme, initialDocument, html, channel]);
   if (initialDocument === null) return null;
-  if (navigated)
-    return (
-      <p className="p-4 text-ui-sm text-muted-foreground">
-        This visual tried to navigate away. Close and reopen it to reset.
-      </p>
-    );
   return (
-    <div className="flex h-full flex-col">
-      {scriptError && (
-        <p role="alert" className="shrink-0 border-b border-border p-3 text-ui-sm text-destructive">
-          This visual's interaction failed: {scriptError}
-        </p>
-      )}
-      <iframe
-        ref={frame}
-        title={title}
-        srcDoc={initialDocument}
-        sandbox="allow-scripts"
-        referrerPolicy="no-referrer"
-        style={{ colorScheme: theme?.colorScheme, borderRadius: theme?.radius }}
-        allow="camera 'none'; microphone 'none'; geolocation 'none'; clipboard-read 'none'; clipboard-write 'none'; payment 'none'; usb 'none'; serial 'none'; bluetooth 'none'; fullscreen 'none'"
-        className="block min-h-0 w-full flex-1 border-0 bg-transparent"
-        onLoad={() => {
-          // A timeline reflow can move the iframe, which gives it a new browsing context that
-          // reloads the same document. Only a second load in the same context is a navigation.
-          const contentWindow = frame.current?.contentWindow ?? null;
-          if (contentWindow && contentWindow === loadedWindow.current) {
-            setNavigated(true);
-            return;
-          }
-          loadedWindow.current = contentWindow;
-          contentWindow?.postMessage({ channel, kind: "theme", theme }, "*");
-        }}
-      />
-    </div>
+    <SandboxedHtmlFrame
+      document={initialDocument}
+      channel={channel}
+      title={title}
+      className="bg-transparent"
+      style={{ colorScheme: theme?.colorScheme, borderRadius: theme?.radius }}
+      onMessage={receive}
+      onFrameLoad={(contentWindow) => {
+        frameWindow.current = contentWindow;
+        contentWindow.postMessage({ channel, kind: "theme", theme }, "*");
+      }}
+    />
   );
 }

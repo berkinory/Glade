@@ -36,7 +36,7 @@ interface WorkspaceFilePreviewHeaderProps {
     dirty?: boolean;
     readOnlyReason?: string | null;
   };
-  markdownView?:
+  renderedView?:
     | {
         enabled: boolean;
         onChange: (rendered: boolean) => void;
@@ -50,7 +50,7 @@ interface WorkspaceFilePreviewHeaderProps {
     | undefined;
   onReferenceInChat?: ((reference: ChatFileReference) => void) | undefined;
 }
-const MARKDOWN_VIEW_SEGMENTS = [
+const RENDERED_VIEW_SEGMENTS = [
   {
     rendered: false,
     label: "Source",
@@ -60,7 +60,7 @@ const MARKDOWN_VIEW_SEGMENTS = [
   {
     rendered: true,
     label: "Preview",
-    title: "Rendered preview — browse and toggle task lists",
+    title: "Rendered preview",
     Icon: ViewIcon,
   },
 ] as const;
@@ -196,7 +196,7 @@ export const WorkspaceFilePreviewHeader = function WorkspaceFilePreviewHeader(
   props: WorkspaceFilePreviewHeaderProps,
 ) {
   const { path: filePath, workspaceRoot, contentsForCopy } = props.file;
-  const { markdownView } = props;
+  const { renderedView } = props;
   const relativeSegments = filePath
     .replace(/\\/g, "/")
     .split("/")
@@ -243,14 +243,14 @@ export const WorkspaceFilePreviewHeader = function WorkspaceFilePreviewHeader(
 
       <div className="flex shrink-0 items-center gap-1.5">
         {props.actions}
-        {markdownView ? (
+        {renderedView ? (
           <div
             role="radiogroup"
-            aria-label="Markdown view"
+            aria-label="File view"
             className="flex h-7 shrink-0 items-center rounded-lg bg-[var(--color-background-elevated-secondary)] p-0.5"
           >
-            {MARKDOWN_VIEW_SEGMENTS.map((segment) => {
-              const selected = segment.rendered === markdownView.enabled;
+            {RENDERED_VIEW_SEGMENTS.map((segment) => {
+              const selected = segment.rendered === renderedView.enabled;
               return (
                 <button
                   key={segment.label}
@@ -264,7 +264,7 @@ export const WorkspaceFilePreviewHeader = function WorkspaceFilePreviewHeader(
                       ? "bg-[var(--color-background-button-secondary)] text-[var(--color-text-foreground)]"
                       : "text-muted-foreground hover:text-foreground",
                   )}
-                  onClick={() => markdownView.onChange(segment.rendered)}
+                  onClick={() => renderedView.onChange(segment.rendered)}
                 >
                   <segment.Icon className="size-3.5 shrink-0" />
                   <span className="sr-only">{segment.label}</span>

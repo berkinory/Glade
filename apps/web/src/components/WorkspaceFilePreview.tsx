@@ -58,6 +58,7 @@ import {
   FilePreviewLoadingState,
 } from "./WorkspaceFileContents";
 import { DiffTruncationWarning } from "./DiffTruncationWarning";
+import { HtmlFilePreview } from "./HtmlFilePreview";
 import { PanelStateMessage } from "./chat/PanelStateMessage";
 import { WorkspaceFilePreviewHeader } from "./chat/WorkspaceFilePreviewHeader";
 import { LocalVideoThumbnail } from "./LocalVideoThumbnail";
@@ -66,11 +67,17 @@ import { LocalImagePreview } from "./LocalImagePreview";
 import { PdfFilePreview } from "./PdfFilePreview";
 import { UnsupportedFilePreview } from "./UnsupportedFilePreview";
 
-const MARKDOWN_PREVIEW_EXTENSIONS = new Set([".markdown", ".md", ".mdx"]);
+const RENDERED_PREVIEW_KIND_BY_EXTENSION = new Map<string, "markdown" | "html">([
+  [".markdown", "markdown"],
+  [".md", "markdown"],
+  [".mdx", "markdown"],
+  [".html", "html"],
+  [".htm", "html"],
+]);
 
-function isMarkdownPreviewablePath(filePath: string): boolean {
+function renderedPreviewKindOf(filePath: string): "markdown" | "html" | null {
   const extension = lowerCaseExtensionOf(filePath);
-  return extension !== null && MARKDOWN_PREVIEW_EXTENSIONS.has(extension);
+  return extension === null ? null : (RENDERED_PREVIEW_KIND_BY_EXTENSION.get(extension) ?? null);
 }
 
 function parentDirectoryFromPath(path: string): string | null {
@@ -102,11 +109,6 @@ export interface WorkspaceFilePreviewProps {
   workspaceRoot: string | null;
 
   filePath: string | null;
-
-  markdownPreviewDefault?: boolean;
-
-  markdownPreviewEnabled?: boolean;
-  onMarkdownPreviewChange?: (rendered: boolean) => void;
 
   editable?: boolean;
   onEdit?: () => void;
@@ -141,7 +143,6 @@ export function WorkspaceFilePreview(props: WorkspaceFilePreviewProps) {
   const [manualFileReload, setManualFileReload] = useState<{ key: string } | null>(null);
   const filePath = relocatedFullPath ?? requestedFilePath;
   const { settings, updateSettings } = useAppSettings();
-  const markdownPreviewDefault = props.markdownPreviewDefault ?? settings.markdownPreviewEnabled;
   const fileIsImage = filePath !== null && isSupportedLocalImagePath(filePath);
   const fileIsVideo = filePath !== null && isSupportedLocalVideoPath(filePath);
   const fileIsPdf = filePath !== null && isSupportedLocalPdfPath(filePath);
@@ -153,20 +154,19 @@ export function WorkspaceFilePreview(props: WorkspaceFilePreviewProps) {
     isScratchWorkspacePath(filePath);
   const fileNeedsLocalPreviewGrant =
     filePath !== null && fileIsLocalAbsolute && !fileIsScratchBinaryPreview;
-  const fileIsMarkdown = filePath !== null && isMarkdownPreviewablePath(filePath);
+  const renderedPreviewKind = filePath === null ? null : renderedPreviewKindOf(filePath);
 
-  const [markdownPreviewOverride, setMarkdownPreviewOverride] = useState<{
+  const [renderedPreviewOverride, setRenderedPreviewOverride] = useState<{
     filePath: string | null;
     rendered: boolean;
   } | null>(null);
   useEffect(() => {
-    if (props.revealPosition) setMarkdownPreviewOverride({ filePath, rendered: false });
+    if (props.revealPosition) setRenderedPreviewOverride({ filePath, rendered: false });
   }, [props.revealPosition, filePath]);
-  const markdownPreviewEnabled =
-    props.markdownPreviewEnabled ??
-    (markdownPreviewOverride !== null && markdownPreviewOverride.filePath === filePath
-      ? markdownPreviewOverride.rendered
-      : markdownPreviewDefault);
+  const renderedPreviewEnabled =
+    renderedPreviewOverride !== null && renderedPreviewOverride.filePath === filePath
+      ? renderedPreviewOverride.rendered
+      : settings.markdownPreviewEnabled;
   const localPreviewGrantQuery = useQuery(
     projectLocalPreviewGrantQueryOptions({
       path: filePath,
@@ -294,7 +294,7 @@ export function WorkspaceFilePreview(props: WorkspaceFilePreviewProps) {
   }, [relocationRequestKey]);
 
   const fileContents = fileQuery.data?.contents ?? "";
-  const showMarkdownPreview = fileIsMarkdown && markdownPreviewEnabled;
+  const showRenderedPreview = renderedPreviewKind !== null && renderedPreviewEnabled;
   const editor = useWorkspaceFileEditorBuffer({
     cwd: workspaceRoot,
     filePath,
@@ -325,7 +325,7 @@ export function WorkspaceFilePreview(props: WorkspaceFilePreviewProps) {
     editor.state.format?.expectedVersion !== editableDocument.version;
   const displayedFileContents = activeEditBuffer?.contents ?? fileContents;
   useEffect(() => {
-    if (!props.revealPosition || editableDocument || showMarkdownPreview || !fileQuery.data) return;
+    if (!props.revealPosition || editableDocument || showRenderedPreview || !fileQuery.data) return;
     const container = contentsRef.current;
     const pre = container?.querySelector("pre");
     if (!container || !pre) return;
@@ -340,11 +340,11 @@ export function WorkspaceFilePreview(props: WorkspaceFilePreviewProps) {
         Number.parseFloat(style.paddingTop) -
         container.clientHeight / 2,
     );
-  }, [props.revealPosition, editableDocument, showMarkdownPreview, fileQuery.data, fileContents]);
+  }, [props.revealPosition, editableDocument, showRenderedPreview, fileQuery.data, fileContents]);
   const lineCount =
     displayedFileContents.length === 0 ? 0 : displayedFileContents.split("\n").length;
   const readOnlyReason =
-    !props.editable || showMarkdownPreview || fileQuery.data === undefined
+    !props.editable || showRenderedPreview || fileQuery.data === undefined
       ? null
       : !fileIsWorkspaceRelative
         ? "Only files inside the project can be edited."
@@ -381,7 +381,7 @@ export function WorkspaceFilePreview(props: WorkspaceFilePreviewProps) {
     !fileIsImage &&
     !fileIsVideo &&
     !fileIsPdf &&
-    !showMarkdownPreview &&
+    !showRenderedPreview &&
     editableDocument === null;
   const workingTreeDiffQuery = useQuery(
     gitWorkingTreeDiffQueryOptions({
@@ -397,7 +397,7 @@ export function WorkspaceFilePreview(props: WorkspaceFilePreviewProps) {
   );
 
   const readPreviewSelection = (container: HTMLElement): Omit<ChatFileReference, "path"> | null =>
-    showMarkdownPreview ? getSelectionSnippetWithin(container) : getSelectionWithin(container);
+    showRenderedPreview ? getSelectionSnippetWithin(container) : getSelectionWithin(container);
   // Right-click references the selection (line range in the source view, quoted snippet in the
   // rendered-markdown view), otherwise the whole file.
   const handleContentsContextMenu = (event: ReactMouseEvent<HTMLDivElement>) => {
@@ -490,10 +490,9 @@ export function WorkspaceFilePreview(props: WorkspaceFilePreviewProps) {
       });
     void taskWriteQueueRef.current;
   };
-  const handleMarkdownPreviewChange = (rendered: boolean) => {
-    setMarkdownPreviewOverride(null);
+  const handleRenderedPreviewChange = (rendered: boolean) => {
+    setRenderedPreviewOverride(null);
     updateSettings({ markdownPreviewEnabled: rendered });
-    props.onMarkdownPreviewChange?.(rendered);
   };
 
   const canToggleTasks =
@@ -605,9 +604,9 @@ export function WorkspaceFilePreview(props: WorkspaceFilePreviewProps) {
           dirty: editBufferDirty,
           readOnlyReason,
         }}
-        markdownView={
-          fileIsMarkdown
-            ? { enabled: showMarkdownPreview, onChange: handleMarkdownPreviewChange }
+        renderedView={
+          renderedPreviewKind
+            ? { enabled: showRenderedPreview, onChange: handleRenderedPreviewChange }
             : undefined
         }
         onReferenceInChat={onReferenceInChat}
@@ -737,7 +736,7 @@ export function WorkspaceFilePreview(props: WorkspaceFilePreviewProps) {
               path={filePath}
               contents={activeEditBuffer.contents}
               cacheKey={activeEditBuffer.key}
-              hidden={showMarkdownPreview}
+              hidden={showRenderedPreview}
               themeName={diffThemeName}
               theme={resolvedTheme}
               saving={activeEditBuffer.saving}
@@ -748,16 +747,18 @@ export function WorkspaceFilePreview(props: WorkspaceFilePreviewProps) {
               }}
             />
           ) : null}
-          {!activeEditBuffer || !editableDocument || showMarkdownPreview ? (
+          {showRenderedPreview && renderedPreviewKind === "html" ? (
+            <HtmlFilePreview html={displayedFileContents} title={basenameOfPath(filePath)} />
+          ) : !activeEditBuffer || !editableDocument || showRenderedPreview ? (
             <div
               ref={contentsRef}
               className={cn(
                 "editor-file-viewer min-h-0 flex-1 overflow-auto",
-                showMarkdownPreview && "editor-file-viewer--markdown-preview",
+                showRenderedPreview && "editor-file-viewer--markdown-preview",
               )}
               onContextMenu={handleContentsContextMenu}
             >
-              {showMarkdownPreview ? (
+              {showRenderedPreview ? (
                 <div className="editor-markdown-preview">
                   <ChatMarkdown
                     text={displayedFileContents}
@@ -776,10 +777,10 @@ export function WorkspaceFilePreview(props: WorkspaceFilePreviewProps) {
                   themeName={diffThemeName}
                 />
               )}
-              {!showMarkdownPreview && changeRanges.length > 0 ? (
+              {!showRenderedPreview && changeRanges.length > 0 ? (
                 <FilePreviewChangeGutter ranges={changeRanges} subtle={changeGutterSubtle} />
               ) : null}
-              {!showMarkdownPreview && lineCount > 0 ? (
+              {!showRenderedPreview && lineCount > 0 ? (
                 <span className="sr-only">{lineCount} lines</span>
               ) : null}
             </div>
