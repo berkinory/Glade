@@ -230,6 +230,12 @@ export interface TurnFailureRecovery {
   readonly onContinue: (turnId: TurnId) => void;
   readonly onChangeModel: () => void;
 }
+/** Follow-up choices in visual replies, offered while their turn is the thread's settled latest. */
+interface VisualReplyFollowUp {
+  readonly turnId: TurnId;
+  readonly disabled: boolean;
+  readonly onChoose: (turnId: TurnId, message: string) => Promise<boolean>;
+}
 export interface MessagesTimelineProps {
   hasMessages: boolean;
   isWorking: boolean;
@@ -240,6 +246,7 @@ export interface MessagesTimelineProps {
   worktreeSetupPendingAction?: WorktreeSetupResolutionAction | null;
   onResolveWorktreeSetup?: (action: WorktreeSetupResolutionAction) => void;
   turnFailureRecovery?: TurnFailureRecovery | null;
+  visualFollowUp?: VisualReplyFollowUp | null;
   followLiveOutput?: boolean;
   emptyStateContent?: ReactNode;
   listRef?: RefObject<LegendListRef | null>;

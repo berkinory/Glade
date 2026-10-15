@@ -1,3 +1,4 @@
+import type { PublishedVisualReply } from "@glade/contracts/orchestration/visualComponents";
 import { deepEqualJson } from "../../storeNormalization.shared";
 import type { TurnDiffSummary } from "../../types";
 import type { WorkLogEntry } from "../../workLog.types";
@@ -254,6 +255,11 @@ function turnDiffSummariesEqual(
   );
 }
 
+// An activity's published spec never changes, so a components reply needs no deep comparison.
+function visualReplySource(reply: PublishedVisualReply): string {
+  return "format" in reply ? reply.format : `${reply.attachmentId}:${reply.previewAttachmentId}`;
+}
+
 function isRowUnchanged(a: MessagesTimelineRow, b: MessagesTimelineRow): boolean {
   if (a.kind !== b.kind || a.id !== b.id) return false;
 
@@ -262,9 +268,9 @@ function isRowUnchanged(a: MessagesTimelineRow, b: MessagesTimelineRow): boolean
       const visual = b as typeof a;
       return (
         a.createdAt === visual.createdAt &&
-        a.reply.attachmentId === visual.reply.attachmentId &&
-        a.reply.previewAttachmentId === visual.reply.previewAttachmentId &&
-        a.reply.title === visual.reply.title
+        a.turnId === visual.turnId &&
+        a.reply.title === visual.reply.title &&
+        visualReplySource(a.reply) === visualReplySource(visual.reply)
       );
     }
     case "turn-failure": {

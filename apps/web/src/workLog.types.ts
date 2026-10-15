@@ -1,4 +1,4 @@
-import type { VisualReply } from "@glade/contracts/orchestration/visualReply";
+import type { PublishedVisualReply } from "@glade/contracts/orchestration/visualComponents";
 import type { ToolLifecycleItemType } from "@glade/contracts/provider/runtimeMetadata";
 import type { ProviderFailureKind } from "@glade/contracts/provider/providerFailure";
 import type { OrchestrationThreadActivity } from "@glade/contracts/orchestration/threadEntities";
@@ -84,7 +84,7 @@ export interface WorkLogEntry {
   // Set on the one transcript entry that stands in for a batch of subagent launches.
   subagentRun?: WorkLogSubagentRun;
   gladeThreadCreation?: WorkLogGladeThreadCreation;
-  visualReply?: VisualReply;
+  visualReply?: PublishedVisualReply;
   // Durable provider failure of this entry's turn; session readiness never clears it.
   turnFailure?: { message: string };
   // Marks where a stopped turn ended; the transcript folds it into that turn's header.

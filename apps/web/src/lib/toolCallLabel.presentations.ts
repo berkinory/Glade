@@ -117,6 +117,11 @@ export const GLADE_MCP_TOOL_PRESENTATIONS = {
     completed: "Created visual",
     failed: "Couldn't create visual",
   },
+  glade_components_render: {
+    running: "Creating visual",
+    completed: "Created visual",
+    failed: "Couldn't create visual",
+  },
   glade_context: {
     running: "Glade is checking its context",
     completed: "Glade checked its context",
@@ -273,7 +278,8 @@ export function extractGladeMcpToolName(normalizedCandidate: string): string | n
   if (
     normalizedCandidate === "html_begin" ||
     normalizedCandidate === "html_preview" ||
-    normalizedCandidate === "html_render"
+    normalizedCandidate === "html_render" ||
+    normalizedCandidate === "components_render"
   ) {
     return `glade_${normalizedCandidate}`;
   }

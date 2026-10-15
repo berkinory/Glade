@@ -227,6 +227,7 @@ export function ChatControllerSurface({ controller }: { controller: ChatControll
     onEditUserMessage,
     onRewindToMessage,
     onContinueFailedTurn,
+    onSendVisualChoice,
   } = controller.submission;
   if (!activeThread) {
     return (
@@ -287,18 +288,31 @@ export function ChatControllerSurface({ controller }: { controller: ChatControll
     ? renderComposerFooterControls({ iconOnly: true })
     : null;
   const latestTurnFailure = findLatestTurnFailure(timelineEntries);
+  const followUpBlocked =
+    isWorking ||
+    isRevertingCheckpoint ||
+    hasLiveTurn ||
+    isSendBusy ||
+    isConnecting ||
+    pendingApprovals.length > 0 ||
+    pendingUserInputs.length > 0;
+  const latestTurnId = activeThread?.latestTurn?.turnId ?? null;
+  const visualFollowUp = latestTurnId
+    ? {
+        turnId: latestTurnId,
+        disabled: followUpBlocked,
+        onChoose: (turnId: TurnId, message: string) =>
+          onSendVisualChoice(turnId, message).catch((error: unknown) => {
+            reportChatActionFailure(error);
+            return false;
+          }),
+      }
+    : null;
   const turnFailureRecovery =
-    latestTurnFailure?.turnId && latestTurnFailure.turnId === activeThread?.latestTurn?.turnId
+    latestTurnFailure?.turnId && latestTurnFailure.turnId === latestTurnId
       ? {
           turnId: latestTurnFailure.turnId,
-          disabled:
-            isWorking ||
-            isRevertingCheckpoint ||
-            hasLiveTurn ||
-            isSendBusy ||
-            isConnecting ||
-            pendingApprovals.length > 0 ||
-            pendingUserInputs.length > 0,
+          disabled: followUpBlocked,
           onContinue: (turnId: TurnId) => {
             void onContinueFailedTurn(turnId).catch(reportChatActionFailure);
           },
@@ -531,6 +545,7 @@ export function ChatControllerSurface({ controller }: { controller: ChatControll
                     worktreeSetupPendingAction={worktreeSetupPendingAction}
                     onResolveWorktreeSetup={onResolveWorktreeSetup}
                     turnFailureRecovery={turnFailureRecovery}
+                    visualFollowUp={visualFollowUp}
                     activeTurnInProgress={activeTurnInProgress}
                     listRef={legendListRef}
                     timelineControllerRef={timelineControllerRef}

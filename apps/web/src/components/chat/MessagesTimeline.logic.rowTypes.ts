@@ -1,4 +1,4 @@
-import type { VisualReply } from "@glade/contracts/orchestration/visualReply";
+import type { PublishedVisualReply } from "@glade/contracts/orchestration/visualComponents";
 import type { MessageId, TurnId } from "@glade/contracts/core/baseSchemas";
 import type { WorkLogEntry, WorkLogUserInputExchangeItem } from "../../workLog.types";
 import { normalizeCompactToolLabel as normalizeCompactToolLabelValue } from "../../lib/toolCallLabel.presentations";
@@ -148,7 +148,13 @@ interface TimelineDiffMessage {
 }
 
 export type MessagesTimelineRow =
-  | { kind: "visual-reply"; id: string; createdAt: string; reply: VisualReply }
+  | {
+      kind: "visual-reply";
+      id: string;
+      createdAt: string;
+      turnId: TurnId | null;
+      reply: PublishedVisualReply;
+    }
   | { kind: "turn-failure"; id: string; createdAt: string; turnId: TurnId | null; message: string }
   | {
       kind: "turn-stop";

@@ -16,6 +16,7 @@ import {
   VisualReply,
   VISUAL_REPLY_ACTIVITY_KIND,
 } from "@glade/contracts/orchestration/visualReply";
+import { PublishedVisualReply } from "@glade/contracts/orchestration/visualComponents";
 import { OrchestrationEngineLive } from "../orchestration/Layers/OrchestrationEngine";
 import { OrchestrationProjectionPipelineLive } from "../orchestration/Layers/ProjectionPipeline";
 import { OrchestrationProjectionSnapshotQueryLive } from "../orchestration/Layers/ProjectionSnapshotQuery";
@@ -31,7 +32,7 @@ import type { ToolContext } from "../agentGateway/toolRuntime";
 import { VisualReplyPreviewLive } from "./Layers/VisualReplyPreview";
 import { VisualReplyPreview } from "./Services/VisualReplyPreview";
 
-it("publishes owned HTML atomically, retains it through replay and forks, and prunes it with its turn", async () => {
+it("publishes owned HTML and component specs, retains them through replay and forks, and prunes them with their turn", async () => {
   const workspace = await fs.mkdtemp(path.join(os.tmpdir(), "glade-visual-persistence-"));
   const runtime = ManagedRuntime.make(
     OrchestrationEngineLive.pipe(
@@ -128,9 +129,33 @@ it("publishes owned HTML atomically, retains it through replay and forks, and pr
       assertCallerTurnActive: () => Effect.void,
       jsonRpcRequestId: 1,
     };
-    const render = makeVisualReplyTools({ preview, snapshots, engine, attachments, config }).find(
-      (tool) => tool.definition.name === "html_render",
-    )!;
+    const tools = makeVisualReplyTools({ preview, snapshots, engine, attachments, config });
+    const render = tools.find((tool) => tool.definition.name === "html_render")!;
+    const renderComponents = tools.find((tool) => tool.definition.name === "components_render")!;
+    const blocks = [
+      { type: "stats", items: [{ label: "Pass rate", value: "98%" }] },
+      { type: "choices", options: [{ label: "Fix the flaky test" }] },
+    ];
+    const rejected = await runtime.runPromise(
+      renderComponents.handler(
+        { title: "Spec", blocks: [{ type: "table", columns: ["A"], rows: [["a", "b"]] }] },
+        context,
+      ),
+    );
+    expect(rejected.isError).toBe(true);
+    const published = await runtime.runPromise(
+      renderComponents.handler({ title: "Spec", blocks }, context),
+    );
+    expect(published.isError, JSON.stringify(published)).not.toBe(true);
+    const componentReplies = (id: ThreadId) =>
+      runtime.runPromise(snapshots.getThreadDetailById(id)).then((thread) =>
+        Option.getOrThrow(thread).activities.flatMap((entry) => {
+          if (entry.kind !== VISUAL_REPLY_ACTIVITY_KIND) return [];
+          const reply = Schema.decodeUnknownSync(PublishedVisualReply)(entry.payload);
+          return "format" in reply ? [reply] : [];
+        }),
+      );
+    expect(await componentReplies(threadId)).toMatchObject([{ threadId, title: "Spec", blocks }]);
     const result = await runtime.runPromise(
       render.handler(
         {
@@ -144,7 +169,9 @@ it("publishes owned HTML atomically, retains it through replay and forks, and pr
     expect(result.isError, JSON.stringify(result)).not.toBe(true);
     const activity = Option.getOrThrow(
       await runtime.runPromise(snapshots.getThreadDetailById(threadId)),
-    ).activities.find((entry) => entry.kind === VISUAL_REPLY_ACTIVITY_KIND)!;
+    ).activities.find(
+      (entry) => entry.kind === VISUAL_REPLY_ACTIVITY_KIND && Schema.is(VisualReply)(entry.payload),
+    )!;
     const reply = Schema.decodeUnknownSync(VisualReply)(activity.payload);
     expect(reply.height).toBe(340);
     const claimed = Option.getOrThrow(
@@ -231,9 +258,14 @@ it("publishes owned HTML atomically, retains it through replay and forks, and pr
     );
     const forkActivity = Option.getOrThrow(
       await runtime.runPromise(snapshots.getThreadDetailById(forkThreadId)),
-    ).activities.find((entry) => entry.kind === VISUAL_REPLY_ACTIVITY_KIND)!;
+    ).activities.find(
+      (entry) => entry.kind === VISUAL_REPLY_ACTIVITY_KIND && Schema.is(VisualReply)(entry.payload),
+    )!;
     const forkReply = Schema.decodeUnknownSync(VisualReply)(forkActivity.payload);
     expect(forkReply.threadId).toBe(forkThreadId);
+    expect(await componentReplies(forkThreadId)).toMatchObject([
+      { threadId: forkThreadId, blocks },
+    ]);
     const forkBlob = Option.getOrThrow(
       await runtime.runPromise(
         attachments.findClaimedById({ attachmentId: forkReply.attachmentId }),
@@ -265,6 +297,7 @@ it("publishes owned HTML atomically, retains it through replay and forks, and pr
         await runtime.runPromise(snapshots.getThreadDetailById(threadId)),
       ).activities.some((entry) => entry.id === activity.id),
     ).toBe(false);
+    expect(await componentReplies(threadId)).toEqual([]);
     expect(
       Option.isSome(
         await runtime.runPromise(

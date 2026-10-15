@@ -1,7 +1,5 @@
-import {
-  VisualReply,
-  VISUAL_REPLY_ACTIVITY_KIND,
-} from "@glade/contracts/orchestration/visualReply";
+import { VISUAL_REPLY_ACTIVITY_KIND } from "@glade/contracts/orchestration/visualReply";
+import { PublishedVisualReply } from "@glade/contracts/orchestration/visualComponents";
 import { Schema, Option } from "effect";
 import { CommandId, ProviderKind } from "@glade/contracts/core/baseSchemas";
 import {
@@ -490,7 +488,7 @@ function normalizeWorkLogActivity(activity: OrchestrationThreadActivity): Derive
     else entry.label = "Background task finished";
   }
   if (activity.kind === VISUAL_REPLY_ACTIVITY_KIND) {
-    const reply = Schema.decodeUnknownOption(VisualReply)(activity.payload);
+    const reply = Schema.decodeUnknownOption(PublishedVisualReply)(activity.payload);
     if (Option.isSome(reply)) entry.visualReply = reply.value;
   }
   if (activity.kind === "provider.transition") {

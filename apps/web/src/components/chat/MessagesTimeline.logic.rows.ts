@@ -106,6 +106,7 @@ export function deriveMessagesTimelineRows(input: {
         kind: "visual-reply",
         id: timelineEntry.entry.id,
         createdAt: timelineEntry.createdAt,
+        turnId: timelineEntry.entry.turnId ?? null,
         reply: timelineEntry.entry.visualReply,
       });
       continue;

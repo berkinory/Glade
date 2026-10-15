@@ -1,3 +1,4 @@
+import { VisualComponentsCard } from "~/components/visual-replies/VisualComponentsCard";
 import { VisualReplyCard } from "~/components/visual-replies/VisualReplyCard";
 import { Spinner } from "~/components/ui/spinner";
 import { LegendList } from "@legendapp/list/react";
@@ -67,6 +68,7 @@ export function TimelineControllerSurface({ controller }: { controller: Timeline
 
     onResolveWorktreeSetup,
     turnFailureRecovery,
+    visualFollowUp,
     hasMessages,
     emptyStateContent,
     onMessagesClickCapture,
@@ -119,13 +121,29 @@ export function TimelineControllerSurface({ controller }: { controller: Timeline
       }
     >
       {forkDividerBeforeRowId === row.id ? forkSourceDivider : null}
-      {row.kind === "visual-reply" && (
-        <VisualReplyCard
-          reply={row.reply}
-          activityId={row.id}
-          onScrollGesture={onMessagesScrollGesture}
-        />
-      )}
+      {row.kind === "visual-reply" &&
+        ("format" in row.reply ? (
+          <VisualComponentsCard
+            reply={row.reply}
+            activityId={row.id}
+            followUp={{
+              enabled:
+                visualFollowUp != null &&
+                !visualFollowUp.disabled &&
+                row.turnId === visualFollowUp.turnId,
+              onChoose: (message) =>
+                row.turnId && visualFollowUp
+                  ? visualFollowUp.onChoose(row.turnId, message)
+                  : Promise.resolve(false),
+            }}
+          />
+        ) : (
+          <VisualReplyCard
+            reply={row.reply}
+            activityId={row.id}
+            onScrollGesture={onMessagesScrollGesture}
+          />
+        ))}
       {row.kind === "turn-stop" && (
         <div
           className={cn("pl-[2px]", MUTED_LABEL_TEXT_CLASS_NAME)}

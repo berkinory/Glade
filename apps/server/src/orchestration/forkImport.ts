@@ -7,10 +7,8 @@ import type {
   OrchestrationThreadActivity,
   PinnedMessage,
 } from "@glade/contracts/orchestration/threadEntities";
-import {
-  VisualReply,
-  VISUAL_REPLY_ACTIVITY_KIND,
-} from "@glade/contracts/orchestration/visualReply";
+import { VISUAL_REPLY_ACTIVITY_KIND } from "@glade/contracts/orchestration/visualReply";
+import { PublishedVisualReply } from "@glade/contracts/orchestration/visualComponents";
 import {
   derivedManagedAttachmentId,
   isManagedAttachmentId,
@@ -18,7 +16,7 @@ import {
 
 interface ForkVisualReply {
   readonly activity: OrchestrationThreadActivity;
-  readonly reply: VisualReply;
+  readonly reply: PublishedVisualReply;
 }
 
 export interface ForkImport {
@@ -47,7 +45,7 @@ export function selectForkImport(
     ) {
       return [];
     }
-    const reply = Schema.decodeUnknownOption(VisualReply)(activity.payload);
+    const reply = Schema.decodeUnknownOption(PublishedVisualReply)(activity.payload);
     return Option.isSome(reply) ? [{ activity, reply: reply.value }] : [];
   });
   const messageIds = new Set(messages.map((message) => message.id));
@@ -76,7 +74,8 @@ export function forkMessageAttachment(
     : attachment;
 }
 
-export function forkVisualReplyPayload(forkThreadId: ThreadId, reply: VisualReply) {
+export function forkVisualReplyPayload(forkThreadId: ThreadId, reply: PublishedVisualReply) {
+  if ("format" in reply) return { ...reply, threadId: forkThreadId };
   return {
     version: reply.version,
     threadId: forkThreadId,
@@ -96,10 +95,11 @@ export function forkImportSourceAttachmentIds(forkImport: ForkImport): ReadonlyA
       ...forkImport.messages.flatMap((message) =>
         (message.attachments ?? []).filter(isCopiedAttachment).map((attachment) => attachment.id),
       ),
-      ...forkImport.visualReplies.flatMap(({ reply }) => [
-        reply.attachmentId,
-        ...(reply.previewAttachmentId ? [reply.previewAttachmentId] : []),
-      ]),
+      ...forkImport.visualReplies.flatMap(({ reply }) =>
+        "format" in reply
+          ? []
+          : [reply.attachmentId, ...(reply.previewAttachmentId ? [reply.previewAttachmentId] : [])],
+      ),
     ]),
   ];
 }

@@ -323,8 +323,8 @@ export function useChatTurnFollowUps({
 
   // Sent as its own message so the composer draft stays untouched. Eligibility is re-read from the
   // store at click time: the turn, session or pending interactions may have moved on since render.
-  const onContinueFailedTurn = useCallback(
-    async (turnId: TurnId): Promise<boolean> => {
+  const sendTurnFollowUp = useCallback(
+    async (turnId: TurnId, prompt: string): Promise<boolean> => {
       const current = activeThreadId
         ? getThreadFromState(useStore.getState(), activeThreadId)
         : undefined;
@@ -345,8 +345,8 @@ export function useChatTurnFollowUps({
         id: randomUUID(),
         kind: "chat",
         createdAt: new Date().toISOString(),
-        previewText: CONTINUE_FAILED_TURN_PROMPT,
-        prompt: CONTINUE_FAILED_TURN_PROMPT,
+        previewText: prompt,
+        prompt,
         images: [],
         files: [],
         assistantSelections: [],
@@ -372,6 +372,8 @@ export function useChatTurnFollowUps({
       turnDispatchSettings,
     ],
   );
+  const onContinueFailedTurn = (turnId: TurnId) =>
+    sendTurnFollowUp(turnId, CONTINUE_FAILED_TURN_PROMPT);
 
   const onResumeWorkflowRun = useCallback(async () => {
     if (!workflowRunState?.scriptPath || !workflowRunState.runId) return;
@@ -417,6 +419,7 @@ export function useChatTurnFollowUps({
     onEditUserMessage,
     onRewindToMessage,
     onContinueFailedTurn,
+    onSendVisualChoice: sendTurnFollowUp,
     onResumeWorkflowRun,
   };
 }

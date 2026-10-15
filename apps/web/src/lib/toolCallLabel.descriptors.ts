@@ -83,7 +83,8 @@ export function isGladeVisualToolCall(input: GladeMcpToolTitleInput): boolean {
   ]);
   return (
     presentation === GLADE_MCP_TOOL_PRESENTATIONS.glade_html_preview ||
-    presentation === GLADE_MCP_TOOL_PRESENTATIONS.glade_html_render
+    presentation === GLADE_MCP_TOOL_PRESENTATIONS.glade_html_render ||
+    presentation === GLADE_MCP_TOOL_PRESENTATIONS.glade_components_render
   );
 }
 

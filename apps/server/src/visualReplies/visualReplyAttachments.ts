@@ -4,6 +4,7 @@ import {
   VISUAL_REPLY_ACTIVITY_KIND,
   VISUAL_REPLY_MAX_DOCUMENT_BYTES,
 } from "@glade/contracts/orchestration/visualReply";
+import { PublishedVisualReply } from "@glade/contracts/orchestration/visualComponents";
 import type { OrchestrationCommand } from "@glade/contracts/orchestration/commands";
 import type { ManagedAttachmentRepositoryShape } from "../persistence/Services/ManagedAttachments";
 import type { ManagedAttachmentPrincipal } from "../attachments/managedAttachmentPrincipal";
@@ -29,11 +30,12 @@ export function claimVisualReplyAttachments(input: {
     if (command.activity.kind !== VISUAL_REPLY_ACTIVITY_KIND) return;
     const invalid = (detail: string) =>
       new OrchestrationCommandInvariantError({ commandType: command.type, detail });
-    const reply = yield* Schema.decodeUnknownEffect(VisualReply)(command.activity.payload).pipe(
-      Effect.mapError(() => invalid("Invalid visual reply payload.")),
-    );
+    const reply = yield* Schema.decodeUnknownEffect(PublishedVisualReply)(
+      command.activity.payload,
+    ).pipe(Effect.mapError(() => invalid("Invalid visual reply payload.")));
     if (reply.threadId !== command.threadId)
       return yield* invalid("Visual reply belongs to another thread.");
+    if ("format" in reply) return;
     const attachmentIds = visualReplyAttachmentIds(reply);
     const now = new Date().toISOString();
     for (const [index, attachmentId] of attachmentIds.entries()) {
