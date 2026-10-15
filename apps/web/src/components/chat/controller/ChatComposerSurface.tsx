@@ -19,6 +19,7 @@ import { ComposerQueuedHeader } from "~/components/chat/ComposerQueuedHeader";
 import { ComputerComposerPanel } from "~/components/computer/ComputerComposerPanel";
 import { ComposerReferenceAttachments } from "~/components/chat/ComposerReferenceAttachments";
 import { ComposerConnectionNotice } from "~/components/chat/ComposerConnectionNotice";
+import { ComposerProviderSwitchNotice } from "~/components/chat/ComposerProviderSwitchNotice";
 import { ContextWindowMeter } from "~/components/chat/ContextWindowMeter";
 import { WorkflowRunCard } from "~/components/chat/WorkflowRunCard";
 import {
@@ -176,6 +177,7 @@ export function ChatComposerSurface({
     isSendBusy,
     isConnecting,
     isPreparingWorktree,
+    activeBackgroundTasks,
   } = controller.provider;
   const {
     isThreadDragOverComposer,
@@ -215,6 +217,14 @@ export function ChatComposerSurface({
   const footerControls = relocateComposerLeadingControls
     ? null
     : renderComposerFooterControls({ iconOnly: false });
+  // Once a delivery was attempted the source is already parked and its tasks are gone.
+  const switchStopsTasks =
+    activeThread?.handoff?.stage === "pending" &&
+    activeThread.handoff.deliveryMessageId === undefined &&
+    activeThread.session?.provider === activeThread.handoff.sourceModelSelection.provider &&
+    activeBackgroundTasks !== null
+      ? { handoff: activeThread.handoff, runningTaskCount: activeBackgroundTasks.activeCount }
+      : null;
   const heldMessageId = activeThread?.claudeCacheReview?.messageId;
   const heldMessage = activeThread?.messages.find((message) => message.id === heldMessageId);
   if (isNativeSubagent && !activePendingApproval && pendingUserInputs.length === 0) {
@@ -306,6 +316,9 @@ export function ChatComposerSurface({
               threadId={threadId}
               transcriptShowsSyncFailure={controller.transcript.threadDetailHydration === "failed"}
             />
+            {switchStopsTasks ? (
+              <ComposerProviderSwitchNotice threadId={threadId} {...switchStopsTasks} />
+            ) : null}
             {settledThreadBranchMismatch ? (
               <div className="pb-2">
                 <ComposerBranchMismatchBanner {...settledThreadBranchMismatch} />

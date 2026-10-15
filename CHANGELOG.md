@@ -16,6 +16,7 @@
 - Editing a Claude message you stopped before it replied resends it instead of failing. ([c931d56ef](https://github.com/berkinory/Glade/commit/c931d56ef35e831d18a1b14cee9b993c509e7001))
 - Generating commit messages, branch names and pull requests with Claude works again in the desktop app. ([a4a1244db](https://github.com/berkinory/Glade/commit/a4a1244db5585ecdadac2f1f708e473eca5b15cf))
 - Message times follow your system's 12- or 24-hour clock setting. ([8fb1c1d4d](https://github.com/berkinory/Glade/commit/8fb1c1d4d2a7ac034a26549ff0419b9bc8330dd0))
+- Switching providers warns before it stops background tasks that are still running.
 
 ## 0.2.8 - 2026-10-15
 
