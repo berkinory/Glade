@@ -40,31 +40,20 @@ import type { ErrorNotification } from "./generated/types/v2/ErrorNotification";
 type PinnedSchema = Parameters<typeof z.fromJSONSchema>[0];
 type Validator = ReturnType<typeof z.fromJSONSchema>;
 
-const validators = new Map<object, Validator>();
-
-// Compiling the generated documents costs tens of megabytes of heap, so each one is compiled on
-// first use and kept for the life of the process.
-function validatorFor(document: object): Validator {
-  const cached = validators.get(document);
-  if (cached) return cached;
-  // JSON imports widen literal schema keywords; the pinned generator supplies Draft-07 documents.
-  const validator = z.fromJSONSchema(document as PinnedSchema);
-  validators.set(document, validator);
-  return validator;
+interface ProtocolDocument {
+  readonly definitions?: Readonly<Record<string, unknown>>;
 }
 
 // A message's `method` selects exactly one `oneOf` variant, so validating against that variant
 // alone (with the shared definitions) accepts and rejects the same payloads as the whole union.
-function documentsByMethod(union: {
+function variantsByMethod(union: {
   readonly oneOf: ReadonlyArray<{
     readonly properties: { readonly method: { readonly enum: ReadonlyArray<string> } };
   }>;
 }): ReadonlyMap<string, object> {
   return new Map(
     union.oneOf.flatMap((variant) =>
-      variant.properties.method.enum.map(
-        (method) => [method, { ...union, oneOf: [variant] }] as const,
-      ),
+      variant.properties.method.enum.map((method) => [method, variant] as const),
     ),
   );
 }
@@ -95,8 +84,70 @@ const responseDocuments: Readonly<Record<string, object>> = {
   "config/read": configReadSchema,
 };
 
-const notificationDocuments = documentsByMethod(serverNotificationSchema);
-const requestDocuments = documentsByMethod(serverRequestSchema);
+const notificationVariants = variantsByMethod(serverNotificationSchema);
+const requestVariants = variantsByMethod(serverRequestSchema);
+
+const standaloneDocuments: ReadonlyArray<object> = [
+  ...Object.values(responseDocuments),
+  jsonRpcErrorSchema,
+  errorNotificationSchema,
+  guardianReviewSchema,
+];
+
+let validators: ReadonlyMap<object, Validator> | null = null;
+
+// Every generated document repeats the shared protocol definitions, and zod only reuses a compiled
+// definition within one conversion. Compiling all roots as one document shares a single type graph;
+// compiling each root on its own retained over 100MB of duplicate validators.
+function compileValidators(): ReadonlyMap<object, Validator> {
+  const definitions: Record<string, unknown> = {};
+  const mergeDefinitions = (document: ProtocolDocument) => {
+    for (const [name, definition] of Object.entries(document.definitions ?? {})) {
+      const existing = definitions[name];
+      if (existing !== undefined && JSON.stringify(existing) !== JSON.stringify(definition)) {
+        throw new Error(`Codex protocol documents disagree on definition ${name}.`);
+      }
+      definitions[name] = definition;
+    }
+  };
+  const roots: object[] = [...serverNotificationSchema.oneOf, ...serverRequestSchema.oneOf];
+  mergeDefinitions(serverNotificationSchema);
+  mergeDefinitions(serverRequestSchema);
+  const rootSchemas: unknown[] = [...roots];
+  for (const document of standaloneDocuments) {
+    mergeDefinitions(document);
+    const {
+      definitions: _definitions,
+      $schema: _schema,
+      ...root
+    } = document as ProtocolDocument & {
+      readonly $schema?: string;
+    };
+    roots.push(document);
+    rootSchemas.push(root);
+  }
+  const rootNames = rootSchemas.map((_, index) => `__glade_root_${index}`);
+  rootSchemas.forEach((root, index) => {
+    definitions[rootNames[index]!] = root;
+  });
+  // JSON imports widen literal schema keywords; the pinned generator supplies Draft-07 documents.
+  const union = z.fromJSONSchema({
+    $schema: "http://json-schema.org/draft-07/schema#",
+    definitions,
+    anyOf: rootNames.map((name) => ({ $ref: `#/definitions/${name}` })),
+  } as PinnedSchema);
+  if (!(union instanceof z.ZodUnion) || union.options.length !== roots.length) {
+    throw new Error("Codex protocol roots did not compile to one validator each.");
+  }
+  return new Map(roots.map((root, index) => [root, union.options[index] as Validator]));
+}
+
+function validatorFor(root: object): Validator {
+  validators ??= compileValidators();
+  const validator = validators.get(root);
+  if (!validator) throw new Error("Codex protocol root was not compiled.");
+  return validator;
+}
 
 class CodexProtocolError extends Error {
   constructor(
@@ -109,12 +160,12 @@ class CodexProtocolError extends Error {
 }
 
 function decode<T>(
-  document: object,
+  root: object,
   value: unknown,
   method: string,
   direction: CodexProtocolError["direction"],
 ): T {
-  const parsed = validatorFor(document).safeParse(value);
+  const parsed = validatorFor(root).safeParse(value);
   if (!parsed.success) throw new CodexProtocolError(method, direction);
   return parsed.data as T;
 }
@@ -139,9 +190,9 @@ export function decodeCodexNotification(value: {
   method: string;
   params?: unknown;
 }): "unknown" | "valid" {
-  const document = notificationDocuments.get(value.method);
-  if (!document) return "unknown";
-  decode(document, value, value.method, "notification");
+  const variant = notificationVariants.get(value.method);
+  if (!variant) return "unknown";
+  decode(variant, value, value.method, "notification");
   return "valid";
 }
 
@@ -149,9 +200,9 @@ export function decodeCodexServerRequest(value: {
   method: string;
   params?: unknown;
 }): "unknown" | "valid" {
-  const document = requestDocuments.get(value.method);
-  if (!document) return "unknown";
-  decode(document, value, value.method, "request");
+  const variant = requestVariants.get(value.method);
+  if (!variant) return "unknown";
+  decode(variant, value, value.method, "request");
   return "valid";
 }
 

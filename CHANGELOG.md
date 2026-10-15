@@ -10,6 +10,7 @@
 ### Improved
 
 - Model names are shorter where the provider is already shown.
+- Codex chats use much less memory.
 
 ### Fixed
 
