@@ -4,13 +4,13 @@ import { useSyncExternalStore } from "react";
 import { useStore } from "./store";
 import type { AppState } from "./storeState";
 
-const THREAD_DETAIL_RETENTION_EVICTION_MS = 15 * 60 * 1000;
-// This is a client-side memory cache, not a stream budget: concurrent server subscriptions stay
-// capped at `WS_STREAM_LIMITS.threadPerClient` by `resolveThreadDetailSubscriptionLeaseIds`, so a
-// larger cache never widens admission. It must exceed everything that retains at once (sidebar
-// prewarm window + split-view threads + a parent's live subagent children), otherwise the map sits
-// permanently over capacity and evicts warm detail on every store write.
-const MAX_CACHED_THREAD_DETAIL_SUBSCRIPTIONS = 32;
+const THREAD_DETAIL_RETENTION_EVICTION_MS = 10 * 60 * 1000;
+// A client-side memory cache, not a stream budget: concurrent server subscriptions stay capped at
+// `WS_STREAM_LIMITS.threadPerClient` by `resolveThreadDetailSubscriptionLeaseIds`. Only idle
+// entries count (released, hidden and not live), so threads that are retained, visible or running
+// never compete for these slots. A full thread holds up to a few MB of messages and activity
+// payloads, so this keeps the recently left threads warm without hoarding a whole session's worth.
+const MAX_IDLE_THREAD_DETAILS = 8;
 
 type RetainedThreadEntry = {
   refCount: number;
@@ -160,20 +160,24 @@ function scheduleEviction(threadId: ThreadId, entry: RetainedThreadEntry): void 
   }, remainingMs);
 }
 
+function idleEntries(): [ThreadId, RetainedThreadEntry][] {
+  return [...retainedThreadEntries.entries()].filter((entry) =>
+    shouldEvictEntry(entry[0], entry[1]),
+  );
+}
+
 function evictIdleEntriesToCapacity(): void {
-  if (retainedThreadEntries.size <= MAX_CACHED_THREAD_DETAIL_SUBSCRIPTIONS) {
+  const candidates = idleEntries();
+  if (candidates.length <= MAX_IDLE_THREAD_DETAILS) {
     return;
   }
 
-  const idleEntries = [...retainedThreadEntries.entries()]
-    .filter((entry): entry is [ThreadId, RetainedThreadEntry] =>
-      shouldEvictEntry(entry[0], entry[1]),
-    )
-    .toSorted((left, right) => left[1].lastAccessedAt - right[1].lastAccessedAt);
-
   let changed = false;
-  for (const [threadId] of idleEntries) {
-    if (retainedThreadEntries.size <= MAX_CACHED_THREAD_DETAIL_SUBSCRIPTIONS) {
+  for (const [threadId] of candidates.toSorted(
+    (left, right) => left[1].lastAccessedAt - right[1].lastAccessedAt,
+  )) {
+    // Eviction re-enters through the store subscriber, so the live count is re-read every step.
+    if (idleEntries().length <= MAX_IDLE_THREAD_DETAILS) {
       break;
     }
     const entry = retainedThreadEntries.get(threadId);
