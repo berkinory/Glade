@@ -1,16 +1,17 @@
-import { useCallback } from "react";
+import { useCallback, useContext } from "react";
+import { createPortal } from "react-dom";
 import { providerCapabilities } from "@glade/shared/provider/providerMetadata";
 import { useNavigate } from "@tanstack/react-router";
 import type { ThreadId, TurnId } from "@glade/contracts/core/baseSchemas";
 import BranchToolbar from "~/components/BranchToolbar";
 import { resolveWorkingLabel } from "../../ChatView.logic.dispatch";
-import { GladeLogo } from "~/components/GladeLogo";
 import { PullRequestThreadDialog } from "~/components/PullRequestThreadDialog";
 import { RenameThreadDialog } from "~/components/RenameThreadDialog";
 import { SidebarHeaderNavigationControls } from "~/components/SidebarHeaderNavigationControls";
 import { ChatErrorNotice } from "~/components/chat/ChatErrorNotice";
 import { ChatHeader } from "~/components/chat/ChatHeader";
 import { ChatSurfaceHeader } from "~/components/chat/ChatSurfaceHeader";
+import { WorkspaceHeaderContext } from "~/components/chat/WorkspaceHeaderContext";
 import { ChatTranscriptPane } from "~/components/chat/ChatTranscriptPane";
 import { ExpandedImageOverlay } from "~/components/chat/ExpandedImageOverlay";
 import { ProjectPicker } from "~/components/chat/ProjectPicker";
@@ -45,6 +46,7 @@ import { createChatPresentation } from "./chatPresentation";
 import { MAX_DISMISSED_PROVIDER_HEALTH_BANNERS } from "./chatViewSupport";
 import type { ChatController } from "./useChatController";
 export function ChatControllerSurface({ controller }: { controller: ChatController }) {
+  const workspaceHeader = useContext(WorkspaceHeaderContext);
   const {
     activeThread,
     desktopTopBarTrafficLightGutterClassName,
@@ -348,17 +350,28 @@ export function ChatControllerSurface({ controller }: { controller: ChatControll
       />
     </>
   );
+  const landingBackdrop = isCenteredEmptyLanding ? workspaceHeader?.backdrop : null;
   return (
     <div
       className={cn(
         "relative flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden",
-        CHAT_BACKGROUND_CLASS_NAME,
+        // The landing artwork sits behind this surface in the workspace backdrop.
+        landingBackdrop ? "bg-transparent" : CHAT_BACKGROUND_CLASS_NAME,
       )}
       onDragEnter={onComposerDragEnter}
       onDragOver={onComposerDragOver}
       onDragLeave={onComposerDragLeave}
       onDrop={onComposerDrop}
     >
+      {landingBackdrop
+        ? createPortal(
+            <>
+              <div aria-hidden="true" className="landing-horizon" />
+              <div aria-hidden="true" className="landing-dither" />
+            </>,
+            landingBackdrop,
+          )
+        : null}
       <div
         aria-hidden
         className={cn(
@@ -454,11 +467,10 @@ export function ChatControllerSurface({ controller }: { controller: ChatControll
                 <div className="relative flex min-h-0 flex-1 items-center justify-center">
                   <div
                     className={cn(
-                      "flex flex-col items-center gap-4 px-6 text-center select-none",
+                      "mt-40 flex flex-col items-center px-6 text-center select-none",
                       CHAT_COLUMN_FRAME_CLASS_NAME,
                     )}
                   >
-                    <GladeLogo aria-label="Glade logo" className="size-10" />
                     <h2
                       data-testid="empty-landing-heading"
                       // A combobox adds its value, not its text, to the heading's name, which
@@ -468,7 +480,7 @@ export function ChatControllerSurface({ controller }: { controller: ChatControll
                           ? undefined
                           : `What should we do in ${activeProjectDisplayName ?? "this folder"}?`
                       }
-                      className="text-[26px] font-normal leading-[1.15] tracking-[-0.015em] text-foreground/95 sm:text-[30px]"
+                      className="text-2xl font-medium leading-tight tracking-tight text-foreground"
                     >
                       {isEmptyChatLanding ? (
                         "What should we work on?"

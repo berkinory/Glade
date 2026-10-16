@@ -21,7 +21,6 @@
   --text-chat-code: var(--app-font-size-chat-code);
   --text-chat-meta: var(--app-font-size-chat-meta);
   --text-chat-tiny: var(--app-font-size-chat-tiny);
-  --font-display: var(--font-display-family);
   --font-mono: var(--font-mono-family);
   --color-warning-foreground: var(--warning-foreground);
   --color-warning: var(--warning);
@@ -106,6 +105,139 @@
 }
 
 @layer components {
+  /* Empty-landing artwork in the workspace backdrop, behind the header and the composer. */
+  .landing-horizon {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    background: url("/artwork/landing-light.webp") center top / cover no-repeat;
+    mix-blend-mode: multiply;
+    opacity: 0.42;
+    /* Multiply turns the dark trees near-black on a light surface; lift the shadows. */
+    filter: contrast(0.7) brightness(1.15);
+    /* Eased fades toward the composer and both sides. The dark artwork is baked to
+       black at the bottom, so the crossing fades leave no visible corner. */
+    mask-image:
+      linear-gradient(
+        to bottom,
+        rgb(0 0 0 / 1) 0%,
+        rgb(0 0 0 / 1) 35%,
+        rgb(0 0 0 / 0.83) 40%,
+        rgb(0 0 0 / 0.67) 46%,
+        rgb(0 0 0 / 0.53) 51%,
+        rgb(0 0 0 / 0.41) 57%,
+        rgb(0 0 0 / 0.31) 62%,
+        rgb(0 0 0 / 0.22) 68%,
+        rgb(0 0 0 / 0.15) 73%,
+        rgb(0 0 0 / 0.09) 78%,
+        rgb(0 0 0 / 0.05) 84%,
+        rgb(0 0 0 / 0.02) 89%,
+        rgb(0 0 0 / 0) 95%,
+        rgb(0 0 0 / 0) 100%
+      ),
+      linear-gradient(
+        to right,
+        rgb(0 0 0 / 0) 0%,
+        rgb(0 0 0 / 0.01) 3%,
+        rgb(0 0 0 / 0.04) 6%,
+        rgb(0 0 0 / 0.1) 8%,
+        rgb(0 0 0 / 0.21) 11%,
+        rgb(0 0 0 / 0.35) 14%,
+        rgb(0 0 0 / 0.5) 17%,
+        rgb(0 0 0 / 0.65) 20%,
+        rgb(0 0 0 / 0.79) 23%,
+        rgb(0 0 0 / 0.9) 26%,
+        rgb(0 0 0 / 0.96) 28%,
+        rgb(0 0 0 / 0.99) 31%,
+        rgb(0 0 0 / 1) 34%,
+        rgb(0 0 0 / 1) 66%,
+        rgb(0 0 0 / 0.99) 69%,
+        rgb(0 0 0 / 0.96) 72%,
+        rgb(0 0 0 / 0.9) 74%,
+        rgb(0 0 0 / 0.79) 77%,
+        rgb(0 0 0 / 0.65) 80%,
+        rgb(0 0 0 / 0.5) 83%,
+        rgb(0 0 0 / 0.35) 86%,
+        rgb(0 0 0 / 0.21) 89%,
+        rgb(0 0 0 / 0.1) 92%,
+        rgb(0 0 0 / 0.04) 94%,
+        rgb(0 0 0 / 0.01) 97%,
+        rgb(0 0 0 / 0) 100%
+      );
+    mask-composite: intersect;
+  }
+
+  .dark .landing-horizon {
+    background-image: url("/artwork/landing-dark.webp");
+    mix-blend-mode: normal;
+    opacity: 0.24;
+    filter: none;
+    /* The dark artwork's bright lower fog is faded out here, not baked into the file:
+       baking it toward black left too few 8-bit levels and the contours stepped. */
+    mask-image:
+      linear-gradient(
+        to bottom,
+        rgb(0 0 0 / 1) 0%,
+        rgb(0 0 0 / 1) 35%,
+        rgb(0 0 0 / 0.868) 39.1%,
+        rgb(0 0 0 / 0.72) 43.1%,
+        rgb(0 0 0 / 0.535) 47.2%,
+        rgb(0 0 0 / 0.388) 51.2%,
+        rgb(0 0 0 / 0.274) 55.3%,
+        rgb(0 0 0 / 0.187) 59.4%,
+        rgb(0 0 0 / 0.123) 63.4%,
+        rgb(0 0 0 / 0.077) 67.5%,
+        rgb(0 0 0 / 0.045) 71.6%,
+        rgb(0 0 0 / 0.024) 75.6%,
+        rgb(0 0 0 / 0.012) 79.7%,
+        rgb(0 0 0 / 0.005) 83.8%,
+        rgb(0 0 0 / 0.002) 87.8%,
+        rgb(0 0 0 / 0) 91.9%,
+        rgb(0 0 0 / 0) 95.9%,
+        rgb(0 0 0 / 0) 100%
+      ),
+      linear-gradient(
+        to right,
+        rgb(0 0 0 / 0) 0%,
+        rgb(0 0 0 / 0.01) 3%,
+        rgb(0 0 0 / 0.04) 6%,
+        rgb(0 0 0 / 0.1) 8%,
+        rgb(0 0 0 / 0.21) 11%,
+        rgb(0 0 0 / 0.35) 14%,
+        rgb(0 0 0 / 0.5) 17%,
+        rgb(0 0 0 / 0.65) 20%,
+        rgb(0 0 0 / 0.79) 23%,
+        rgb(0 0 0 / 0.9) 26%,
+        rgb(0 0 0 / 0.96) 28%,
+        rgb(0 0 0 / 0.99) 31%,
+        rgb(0 0 0 / 1) 34%,
+        rgb(0 0 0 / 1) 66%,
+        rgb(0 0 0 / 0.99) 69%,
+        rgb(0 0 0 / 0.96) 72%,
+        rgb(0 0 0 / 0.9) 74%,
+        rgb(0 0 0 / 0.79) 77%,
+        rgb(0 0 0 / 0.65) 80%,
+        rgb(0 0 0 / 0.5) 83%,
+        rgb(0 0 0 / 0.35) 86%,
+        rgb(0 0 0 / 0.21) 89%,
+        rgb(0 0 0 / 0.1) 92%,
+        rgb(0 0 0 / 0.04) 94%,
+        rgb(0 0 0 / 0.01) 97%,
+        rgb(0 0 0 / 0) 100%
+      );
+  }
+
+  /* Mean-neutral noise over the whole backdrop, unmasked: the faint fades step one
+     8-bit level at a time and each step reads as a line. Overlay with mid-gray leaves
+     the average tone unchanged on both light and dark surfaces. */
+  .landing-dither {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    background: url("/artwork/landing-dither.png") 0 0 / 128px 128px repeat;
+    mix-blend-mode: overlay;
+  }
+
   .sidebar-icon-button {
     @apply items-center justify-center rounded-sm p-0.5 text-muted-foreground/60 hover:text-foreground/82 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring;
     background: transparent;
@@ -597,9 +729,6 @@
     system-ui,
     sans-serif
   );
-  /* Display/wordmark face: Cal Sans ships as a single semibold-looking cut, so
-     consumers should pair it with a normal font-weight. */
-  --font-display-family: "Cal Sans", var(--font-ui-family);
   --font-mono-family: var(
     --theme-font-code-family,
     "JetBrains Mono Variable",
@@ -647,7 +776,7 @@
   --chart-4: oklch(0.371 0 0);
   --chart-5: oklch(0.269 0 0);
   --info: var(--color-text-accent, var(--color-blue-500));
-  --info-foreground: var(--color-text-accent, #526fff);
+  --info-foreground: var(--color-text-accent, #5d50bd);
   --success: var(--color-emerald-500);
   --success-foreground: var(--color-emerald-700);
   /* Status tints — the one source of color for status indicators (PR state glyphs, check
@@ -713,7 +842,7 @@
     --chart-4: oklch(0.371 0 0);
     --chart-5: oklch(0.269 0 0);
     --info: var(--color-text-accent, var(--color-blue-500));
-    --info-foreground: var(--color-text-accent, #6073cc);
+    --info-foreground: var(--color-text-accent, #9387e0);
     --success: var(--color-emerald-500);
     --success-foreground: var(--color-emerald-400);
     --status-success: color-mix(in srgb, var(--success) 72%, var(--color-white));

@@ -236,7 +236,9 @@ export function SidebarView({ context }: { context: ReturnType<typeof useSidebar
 
       <div className="flex h-[82px] shrink-0 items-end px-4 pb-2">
         <h2 className="flex h-8 min-w-0 items-center gap-1.5">
-          <span className="font-display min-w-0 truncate text-[17px] text-foreground">Glade</span>
+          <span className="min-w-0 truncate text-[17px] font-semibold tracking-[-0.01em] text-foreground">
+            Glade
+          </span>
           <GladeLogo aria-hidden className="size-4 text-foreground" />
         </h2>
       </div>

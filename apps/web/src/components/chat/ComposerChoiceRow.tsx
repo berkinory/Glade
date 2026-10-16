@@ -27,7 +27,7 @@ const CHIP_TONE_CLASS_NAME: Record<ComposerChoiceTone, string> = {
   neutral:
     "border border-[color:var(--color-border)] text-[var(--color-text-foreground-secondary)] group-hover:text-[var(--color-text-foreground)]",
   primary:
-    "border border-[color:color-mix(in_srgb,var(--color-accent-blue)_50%,var(--color-border))] text-[var(--color-accent-blue)] group-hover:border-[color:color-mix(in_srgb,var(--color-accent-blue)_78%,var(--color-border))]",
+    "border border-[color:color-mix(in_srgb,var(--color-text-accent)_50%,var(--color-border))] text-[var(--color-text-accent)] group-hover:border-[color:color-mix(in_srgb,var(--color-text-accent)_78%,var(--color-border))]",
   destructive:
     "border border-[color:color-mix(in_srgb,var(--destructive)_42%,var(--color-border))] text-destructive group-hover:border-[color:color-mix(in_srgb,var(--destructive)_68%,var(--color-border))]",
 };

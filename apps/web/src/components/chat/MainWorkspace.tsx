@@ -94,6 +94,7 @@ export function MainWorkspace(props: {
   const chatProvider = draftProvider ?? provider ?? "codex";
   const chatLabel = PROVIDER_DISPLAY_NAMES[chatProvider];
   const [headerHost, setHeaderHost] = useState<HTMLDivElement | null>(null);
+  const [backdrop, setBackdrop] = useState<HTMLDivElement | null>(null);
   const queryClient = useQueryClient();
   const subscribeDirty = useCallback(
     (listener: () => void) => subscribeDirtyWorkspaceEditors(queryClient, listener),
@@ -231,11 +232,17 @@ export function MainWorkspace(props: {
     <WorkspaceHeaderContext
       value={{
         host: headerHost,
+        backdrop,
         tabs: tabBar,
       }}
     >
-      <div className="flex h-full min-h-0 min-w-0 flex-1 flex-col">
-        <div ref={setHeaderHost} className="shrink-0" />
+      <div className="relative flex h-full min-h-0 min-w-0 flex-1 flex-col">
+        <div
+          ref={setBackdrop}
+          className={cn("pointer-events-none absolute inset-0", resolvedId !== "chat" && "hidden")}
+        />
+        {/* Positioned so it paints above the absolutely positioned backdrop. */}
+        <div ref={setHeaderHost} className="relative shrink-0" />
         <div className="relative min-h-0 min-w-0 flex-1">
           <div
             className={cn(

@@ -90,6 +90,9 @@ export const WARNING_COLOR_BY_VARIANT: Record<ThemeVariant, string> = {
   light: "#d97706",
 };
 
+// Terminal ANSI blue and cyan stay blue whatever the brand accent is.
+export const TERMINAL_ANSI_BLUE = "#0169cc";
+
 export const PANEL_BASE_ALPHA: Record<ThemeVariant, number> = {
   dark: 0.03,
   light: 0.18,
@@ -102,20 +105,20 @@ export const PANEL_CONTRAST_STEP: Record<ThemeVariant, number> = {
 
 export const CHROME_THEME_BY_VARIANT: Record<ThemeVariant, ChromeTheme> = {
   dark: {
-    accent: "#0169cc",
+    accent: "#9387e0",
     contrast: 0,
     fonts: { code: null, ui: null },
-    ink: "#fcfcfc",
+    ink: "#f5f2ea",
     semanticColors: { diffAdded: "#00a240", diffRemoved: "#e02e2a", skill: "#b06dff" },
     surface: "#111111",
   },
   light: {
-    accent: "#0169cc",
+    accent: "#5d50bd",
     contrast: 0,
     fonts: { code: null, ui: null },
-    ink: "#242628",
+    ink: "#26232f",
     semanticColors: { diffAdded: "#008534", diffRemoved: "#ba2623", skill: "#751ed9" },
-    surface: "#e2e3e5",
+    surface: "#e9e7e2",
   },
 };
 
