@@ -27,6 +27,7 @@ import { interruptThreadTurn } from "./chatTaskActions";
 import { SubagentAvatar } from "./SubagentAvatar";
 import {
   WORK_ROW_BLOCK_CLASS_NAME,
+  WORK_ROW_CHEVRON_CLASS_NAME,
   WORK_ROW_GAP_CLASS_NAME,
   WORK_ROW_ICON_CLASS_NAME,
   WORK_ROW_ICON_SLOT_CLASS_NAME,
@@ -146,7 +147,7 @@ export function SubagentRunCard({
             <WorkTextShimmer active={live}>{describeRunHeader(members)}</WorkTextShimmer>
             {elapsed ? <span> · {elapsed}</span> : null}
           </span>
-          <DisclosureChevron open={open} className="text-muted-foreground/70" />
+          <DisclosureChevron open={open} className={WORK_ROW_CHEVRON_CLASS_NAME} />
         </button>
         {runningThreadIds.length > 1 ? (
           <SubagentStopAllButton threadIds={runningThreadIds} />

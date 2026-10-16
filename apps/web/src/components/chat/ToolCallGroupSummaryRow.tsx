@@ -27,6 +27,7 @@ import {
 } from "./TimelineWorkEntryRow";
 import {
   WORK_ROW_BLOCK_CLASS_NAME,
+  WORK_ROW_CHEVRON_CLASS_NAME,
   WORK_ROW_GAP_CLASS_NAME,
   WORK_ROW_ICON_CLASS_NAME,
   WORK_ROW_ICON_SLOT_CLASS_NAME,
@@ -119,7 +120,7 @@ export function ToolCallGroupSummaryRow(props: {
           <WorkTextShimmer active={live}>{summary.label}</WorkTextShimmer>
           {summary.latestStep ? <span> · {summary.latestStep}</span> : null}
         </span>
-        <DisclosureChevron open={open} className="text-muted-foreground/70" />
+        <DisclosureChevron open={open} className={WORK_ROW_CHEVRON_CLASS_NAME} />
       </button>
       <DisclosureRegion open={open} lazy>
         <div className="tool-group-tree">{renderChildren()}</div>

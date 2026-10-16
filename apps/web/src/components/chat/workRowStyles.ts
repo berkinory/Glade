@@ -7,6 +7,9 @@ export const WORK_ROW_ICON_SLOT_CLASS_NAME = "flex size-4 shrink-0 items-center 
 
 export const WORK_ROW_ICON_CLASS_NAME = "size-3.5";
 
+// The chevron box centers on the line box, but lowercase labels sit optically lower than that.
+export const WORK_ROW_CHEVRON_CLASS_NAME = "translate-y-px text-muted-foreground/70";
+
 export const WORK_ROW_GAP_CLASS_NAME = "gap-1.5";
 
 // Every work row has the same height whatever it shows, so rows keep one rhythm down the transcript.

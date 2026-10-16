@@ -4,7 +4,11 @@ import { useState, type ReactNode } from "react";
 import { formatTimestamp } from "../../timestampFormat";
 import type { WorkLogEntry, WorkLogMonitorNotification } from "../../workLog.types";
 import { cn } from "~/lib/utils";
-import { WORK_ROW_DETAILS_INSET_CLASS_NAME, WORK_ROW_GAP_CLASS_NAME } from "./workRowStyles";
+import {
+  WORK_ROW_CHEVRON_CLASS_NAME,
+  WORK_ROW_DETAILS_INSET_CLASS_NAME,
+  WORK_ROW_GAP_CLASS_NAME,
+} from "./workRowStyles";
 import { ToolCallDetailsContent } from "./ToolCallDetailsDialog";
 import { DisclosureChevron } from "../ui/DisclosureChevron";
 import { DisclosureRegion } from "../ui/DisclosureRegion";
@@ -164,7 +168,10 @@ export function ToolDetailsDisclosure(props: {
       {props.children}
       <DisclosureChevron
         open={open}
-        className="text-muted-foreground/70 group-hover/tool-row:text-foreground group-hover/file-row:text-foreground group-focus-visible/tool-row:text-foreground group-focus-visible/file-row:text-foreground"
+        className={cn(
+          WORK_ROW_CHEVRON_CLASS_NAME,
+          "group-hover/tool-row:text-foreground group-hover/file-row:text-foreground group-focus-visible/tool-row:text-foreground group-focus-visible/file-row:text-foreground",
+        )}
       />
     </button>
   );
