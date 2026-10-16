@@ -35,6 +35,7 @@
 - Profile no longer overcounts Claude token usage after a chat resumes.
 - Recovering a missing chat after a restart no longer briefly uses up to a gigabyte of memory on large histories.
 - Chat costs and Profile now count each Claude turn's usage once, including resumed sessions, subagents and failed turns.
+- A message sent right after rewinding a chat is no longer lost, and the chat no longer stays loading forever when a message fails to start. ([dc17a44e1](https://github.com/berkinory/Glade/commit/dc17a44e1e4c35aaa1d9f99e4c1b502fd056964a))
 
 ## 0.2.8 - 2026-10-15
 
