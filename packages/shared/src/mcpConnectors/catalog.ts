@@ -1,5 +1,6 @@
 // Every preset was checked against its live server: "none" servers answer without credentials,
-// "oauth" servers accepted a dynamic client registration with Glade's loopback redirect, and
+// "oauth" servers accepted Glade's client metadata document or a dynamic client registration with
+// its loopback redirect, and
 // "token" servers take a bearer token. Vendors that need a pre-registered OAuth app are left out.
 export type McpConnectorPresetAuth = "none" | "oauth" | "token";
 
@@ -217,6 +218,13 @@ export const MCP_CONNECTOR_PRESETS: ReadonlyArray<McpConnectorPreset> = [
       url: "https://mcp.upstash.com/mcp",
       homepage: "https://upstash.com",
     },
+    {
+      id: "mongodb",
+      name: "MongoDB Atlas",
+      description: "Clusters, databases and queries",
+      url: "https://mcp.mongodb.com/mcp",
+      homepage: "https://www.mongodb.com",
+    },
   ]),
   ...shelf("infrastructure", "token", [
     {
@@ -314,6 +322,13 @@ export const MCP_CONNECTOR_PRESETS: ReadonlyArray<McpConnectorPreset> = [
       url: "https://mcp.clerk.com/mcp",
       homepage: "https://clerk.com",
     },
+    {
+      id: "inngest",
+      name: "Inngest",
+      description: "Functions, events, runs and traces",
+      url: "https://api.inngest.com/mcp",
+      homepage: "https://www.inngest.com",
+    },
   ]),
   ...shelf("observability", "oauth", [
     {
@@ -379,6 +394,13 @@ export const MCP_CONNECTOR_PRESETS: ReadonlyArray<McpConnectorPreset> = [
       url: "https://api.braintrust.dev/mcp",
       homepage: "https://www.braintrust.dev",
     },
+    {
+      id: "tableau",
+      name: "Tableau Cloud",
+      description: "Data sources, workbooks, views and Pulse",
+      url: "https://mcp.tableau.com",
+      homepage: "https://www.tableau.com",
+    },
   ]),
   ...shelf("ai", "oauth", [
     {
@@ -415,6 +437,13 @@ export const MCP_CONNECTOR_PRESETS: ReadonlyArray<McpConnectorPreset> = [
       description: "Upload, transform and manage media assets",
       url: "https://asset-management.mcp.cloudinary.com/mcp",
       homepage: "https://cloudinary.com",
+    },
+    {
+      id: "elevenlabs",
+      name: "ElevenLabs",
+      description: "Voice agents, speech and audio",
+      url: "https://api.elevenlabs.io/v1/mcp",
+      homepage: "https://elevenlabs.io",
     },
   ]),
   ...shelf("design", "oauth", [

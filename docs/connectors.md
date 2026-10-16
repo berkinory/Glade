@@ -56,10 +56,12 @@ Glade's OAuth client identity is `https://useglade.dev/oauth/client.json`, serve
 `apps/landing/public/oauth/client.json`. A vendor that supports Client ID Metadata Documents fetches
 it instead of registering a client. The URL must never change: vendors bind grants to it.
 
-The document lists portless loopback redirects, while Glade's callback carries a per-launch port.
-OAuth 2.1 tells servers to accept any port for loopback redirects, but vendors have not been
-checked against that yet. Until they are, Glade uses the document only when a server does not
-offer dynamic client registration.
+Glade presents the document whenever a server advertises
+`client_id_metadata_document_supported`, and registers a client only when it does not. The
+document lists portless loopback redirects while the callback carries a per-launch port; OAuth 2.1
+has servers accept any port for loopback redirects. A full Linear sign-in confirmed this on
+2026-10-16, and ElevenLabs, Inngest, MongoDB Atlas and Tableau Cloud accept the document up to
+their sign-in page. Those four offer no registration, so they work only through the document.
 
 Serving it:
 
@@ -75,6 +77,7 @@ Serving it:
 
 - Managing connectors is owner-only (`access:write`), because the OAuth redirect targets this
   machine's browser. Paired devices cannot add or remove them.
-- The callback URL carries the server's current port, so every sign-in registers a fresh client.
-  Refreshing tokens does not depend on the port.
+- Servers without metadata document support get a fresh client registration on every sign-in,
+  because the callback URL carries the server's current port. Refreshing tokens does not depend on
+  the port.
 - Connectors belong to this machine's server. Chats that run on an SSH host do not receive them.

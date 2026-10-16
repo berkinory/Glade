@@ -110,11 +110,11 @@ export async function beginOAuthSignIn(input: {
     );
   }
   const scope = input.challenge.scope ?? info.resourceMetadata?.scopes_supported?.join(" ");
-  // Registration stays first until vendors are shown to accept the metadata document's portless
-  // loopback redirects, since the callback port changes with every launch.
-  const clientInformation = metadata.registration_endpoint
-    ? await registerGladeClient(info.authorizationServerUrl, metadata, input, scope)
-    : { client_id: GLADE_CLIENT_METADATA_URL };
+  // The metadata document first, as the MCP spec orders it: one stable identity at every vendor
+  // instead of a new registration per sign-in. Registration remains the fallback.
+  const clientInformation = metadataDocument
+    ? { client_id: GLADE_CLIENT_METADATA_URL }
+    : await registerGladeClient(info.authorizationServerUrl, metadata, input, scope);
   const resource = info.resourceMetadata?.resource
     ? new URL(info.resourceMetadata.resource)
     : undefined;
