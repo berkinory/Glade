@@ -221,7 +221,7 @@ export function useSidebarRows(context: ReturnType<typeof useSidebarPanelEffects
               <SidebarStatusTrailingGlyph status={trailingStatus} />
             </span>
           ) : null}
-          {!trailingStatus && input.draftIndicator}
+          {!trailingStatus && !input.threadJumpLabel && input.draftIndicator}
         </div>
         {input.hoverActions}
       </div>
