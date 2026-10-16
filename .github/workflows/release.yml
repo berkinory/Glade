@@ -82,6 +82,8 @@ jobs:
       - uses: ./.github/actions/setup-workspace
         with:
           turbo: "true"
+      - name: Verify the bundled MCP catalog is signed and current
+        run: bun scripts/catalog/publish.ts --check
       - name: Build desktop, server and web bundles
         run: bun run build:desktop
       - name: Upload portable bundles

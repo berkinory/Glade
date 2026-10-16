@@ -1,0 +1,63 @@
+name: Sign MCP catalog
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - "packages/catalog/brands/**"
+      - "packages/catalog/brands.json"
+      - "packages/catalog/mcp-servers.json"
+      - "scripts/catalog/**"
+      - "apps/server/src/mcpCatalog/catalogEnvelope.ts"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+# Each run signs the next version; two runs at once would sign the same version twice.
+concurrency:
+  group: sign-mcp-catalog
+  cancel-in-progress: false
+
+jobs:
+  sign:
+    name: Sign and commit the catalog
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          ref: main
+      - uses: ./.github/actions/setup-workspace
+      # The key reaches only this step, after dependencies are installed, and is deleted after use.
+      - name: Sign
+        shell: bash
+        env:
+          SIGNING_KEY: ${{ secrets.GLADE_CATALOG_SIGNING_KEY }}
+        run: |
+          set -euo pipefail
+          if [[ -z "$SIGNING_KEY" ]]; then
+            echo "::error::Missing repository secret GLADE_CATALOG_SIGNING_KEY"
+            exit 1
+          fi
+          key_file="$RUNNER_TEMP/catalog-signing-key.pem"
+          trap 'rm -f "$key_file"' EXIT
+          (umask 077 && printf '%s\n' "$SIGNING_KEY" > "$key_file")
+          GLADE_CATALOG_SIGNING_KEY="$key_file" bun scripts/catalog/publish.ts
+      - name: Commit the signed catalog
+        shell: bash
+        run: |
+          set -euo pipefail
+          if git diff --quiet -- packages/catalog/signed apps/landing/public/catalog; then
+            echo "The signed catalog is already current."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add packages/catalog/signed apps/landing/public/catalog
+          git commit -m "chore(catalog): sign MCP server catalog"
+          git pull --rebase origin main
+          git push origin HEAD:main
