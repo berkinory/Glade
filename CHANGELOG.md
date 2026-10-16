@@ -19,6 +19,7 @@
 - MCP servers connected in Glade can serve only the agents you choose, and the catalog adds OpenRouter, Superhuman, Craft, OpenStatus, Databuddy, Scalar and Browserbase. ([db5bd2da2](https://github.com/berkinory/Glade/commit/db5bd2da2bb1f3a33c490fe9f223dec08e66bdf2), [e4e22ade7](https://github.com/berkinory/Glade/commit/e4e22ade7221faf61451fdab2e1905f003d94254))
 - Pairing codes stop working as soon as the pairing dialog closes or shows a new code.
 - While remote access is on, the Mac no longer idle-sleeps, so paired devices can still reach it.
+- Skills named after a known service, such as HyperFrames or Vercel, show its icon when an agent loads them, and HyperFrames MCP servers get their icon too.
 - Model names are shorter where the provider is already shown.
 - Codex chats use much less memory.
 - The background server keeps a smaller database cache, so it uses less memory after long sessions.

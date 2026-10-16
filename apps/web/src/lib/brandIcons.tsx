@@ -99,6 +99,7 @@ export const ZapierIcon = createBrandIcon("/brands/zapier.svg", true);
 export const ElevenLabsIcon = createBrandIcon("/brands/elevenlabs.svg", true);
 export const OnePasswordIcon = createBrandIcon("/brands/onepassword.svg", true);
 export const OpenRouterIcon = createBrandIcon("/brands/openrouter.svg", true);
+export const HyperFramesIcon = createBrandIcon("/brands/hyperframes.svg");
 export const TldrawIcon = createBrandIcon("/brands/tldraw.svg");
 export const AmplitudeIcon = createBrandIcon("/brands/amplitude.png");
 export const MixpanelIcon = createBrandIcon("/brands/mixpanel.svg", true);
