@@ -107,6 +107,8 @@ const RETIRED_LEGACY_KEYBINDING_COMMANDS = new Set([
   "chat.split",
   "sidebar.importThread",
   "chat.newGemini",
+  "chat.newClaude",
+  "chat.newCodex",
   "chat.newTerminal",
   "diff.change.next",
   "diff.change.previous",
@@ -147,8 +149,6 @@ const CREATION_COMMANDS_WITH_TERMINAL_ESCAPE = new Set<KeybindingRule["command"]
   "chat.newLatestProject",
   "chat.newChat",
   "chat.newLocal",
-  "chat.newClaude",
-  "chat.newCodex",
 ]);
 
 export function readKeybindingEntryCommand(entry: unknown): string | null {

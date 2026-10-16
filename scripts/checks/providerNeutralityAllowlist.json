@@ -30,7 +30,6 @@
   "apps/web/src/lib/projectCreation.ts": 1,
   "apps/web/src/lib/providerDiscoveryReactQuery.ts": 1,
   "apps/web/src/lib/starredModels.ts": 3,
-  "apps/web/src/routes/_chat.tsx": 2,
   "apps/web/src/terminalStateNormalization.ts": 2,
   "packages/contracts/src/settings/settings.ts": 3,
   "packages/contracts/src/terminal/terminal.ts": 1,

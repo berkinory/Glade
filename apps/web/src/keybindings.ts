@@ -127,18 +127,8 @@ const DEFAULT_SHORTCUT_FALLBACKS: ResolvedKeybindingsConfig = [
     whenAst: whenModChordAllowed,
   },
   {
-    command: "chat.newClaude",
-    shortcut: commandShortcut("c", { altKey: true }),
-    whenAst: whenModChordAllowed,
-  },
-  {
     command: "chat.newChat",
     shortcut: commandShortcut("n", { altKey: true }),
-    whenAst: whenModChordAllowed,
-  },
-  {
-    command: "chat.newCodex",
-    shortcut: commandShortcut("x", { altKey: true }),
     whenAst: whenModChordAllowed,
   },
 

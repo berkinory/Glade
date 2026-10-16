@@ -56,25 +56,3 @@ export function resolveLatestProjectTargetIdWithFallback(
     null
   );
 }
-
-export interface NewThreadTarget {
-  readonly projectId: ProjectId;
-
-  readonly inheritContext: boolean;
-}
-
-// Single rule for which project a global "new thread" action targets: the focused project when one
-// is usable, otherwise the most recently used project. Shared by click, palette, and keyboard entry
-// points so they never disagree on the fallback.
-export function resolveNewThreadTarget(input: {
-  currentProjectId: ProjectId | null;
-  latestUsableProjectId: ProjectId | null;
-}): NewThreadTarget | null {
-  if (input.currentProjectId) {
-    return { projectId: input.currentProjectId, inheritContext: true };
-  }
-  if (input.latestUsableProjectId) {
-    return { projectId: input.latestUsableProjectId, inheritContext: false };
-  }
-  return null;
-}

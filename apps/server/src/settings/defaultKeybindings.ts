@@ -48,8 +48,8 @@ export const DEFAULT_KEYBINDINGS: ReadonlyArray<KeybindingRule> = [
   { key: "alt+[", command: "model.previous", when: "!terminalFocus" },
   { key: "mod+shift+e", command: "traitsPicker.toggle", when: "!terminalFocus" },
   { key: "mod+shift+u", command: "settings.usage", when: "!terminalFocus" },
-  // New thread (chat.new) is the primary create action; it falls back to the most recent project when
-  // no project is active. These new-surface chords use `!terminalFocus || isMac`: on macOS `mod` is
+  // New thread (chat.new) is the primary create action; it starts a projectless chat when no project
+  // is active. These new-surface chords use `!terminalFocus || isMac`: on macOS `mod` is
   // Cmd and xterm never forwards a Cmd-chord to the PTY, so the bare `!terminalFocus` guard just
   // dropped the chord while the terminal had focus (you couldn't open a new chat/terminal from the
   // terminal). The `|| isMac` escape hatch fires them on macOS regardless of focus, while
@@ -57,8 +57,6 @@ export const DEFAULT_KEYBINDINGS: ReadonlyArray<KeybindingRule> = [
   { key: "mod+n", command: "chat.new", when: "!terminalFocus || isMac" },
   { key: "mod+shift+n", command: "chat.newLatestProject", when: "!terminalFocus || isMac" },
   { key: "mod+alt+n", command: "chat.newChat", when: "!terminalFocus || isMac" },
-  { key: "mod+alt+c", command: "chat.newClaude", when: "!terminalFocus || isMac" },
-  { key: "mod+alt+x", command: "chat.newCodex", when: "!terminalFocus || isMac" },
 
   { key: "ctrl+tab", command: "view.recent.next" },
   { key: "ctrl+shift+tab", command: "view.recent.previous" },

@@ -87,7 +87,7 @@ const AVAILABLE_NOW_DEFINITIONS: readonly ShortcutDefinition[] = [
   {
     command: "chat.new",
     label: "New chat",
-    description: "Start a fresh chat in the current project, or the most recent one.",
+    description: "Start a fresh chat in the current project, or a projectless chat outside one.",
   },
   {
     command: "chat.newLatestProject",
@@ -98,16 +98,6 @@ const AVAILABLE_NOW_DEFINITIONS: readonly ShortcutDefinition[] = [
     command: ["chat.newChat", "chat.newLocal"],
     label: "New chat",
     description: "Open the empty chat landing view.",
-  },
-  {
-    command: "chat.newClaude",
-    label: "New Claude chat",
-    description: "Start a fresh chat with Claude selected.",
-  },
-  {
-    command: "chat.newCodex",
-    label: "New Codex chat",
-    description: "Start a fresh chat with Codex selected.",
   },
   {
     command: "view.recent.previous",

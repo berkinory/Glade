@@ -1,4 +1,3 @@
-import { useActiveEnvironment } from "~/environments/activeEnvironment";
 import { isShortcutComposition } from "@glade/shared/settings/shortcutEvent";
 import { hasOpenKeyboardOverlay } from "~/lib/keyboardOverlay";
 import type { ResolvedKeybindingsConfig } from "@glade/contracts/settings/keybindings";
@@ -25,7 +24,6 @@ import {
   resolveCurrentProjectTargetId,
   resolveLatestProjectTargetId,
   resolveLatestProjectTargetIdWithFallback,
-  resolveNewThreadTarget,
 } from "../lib/projectShortcutTargets";
 import { isTerminalFocused } from "../lib/terminalFocus";
 import { serverConfigQueryOptions } from "../lib/serverReactQuery";
@@ -38,9 +36,6 @@ import { selectThreadTerminalState, useTerminalStateStore } from "../terminalSta
 import { useSidebarStateStore } from "../sidebarStateStore";
 import { onServerMaintenanceUpdated } from "../wsNativeApi";
 import { useWorkspacePathsStore } from "../workspacePathsStore";
-import { useProviderStatusesForLocalConfig } from "~/hooks/useProviderStatusesForLocalConfig";
-import { useRefreshProviderStatusesNow } from "~/hooks/useProviderStatusRefresh";
-import { resolveProviderSendAvailabilityWithRefresh } from "~/lib/providerAvailability";
 import { toastManager } from "~/components/ui/toast";
 import {
   Sidebar,
@@ -239,8 +234,6 @@ function ChatRouteGlobalShortcuts() {
   const serverConfigQuery = useQuery(serverConfigQueryOptions());
   const keybindings = serverConfigQuery.data?.keybindings ?? EMPTY_KEYBINDINGS;
   const platform = getNavigatorPlatform();
-  const providerStatuses = useProviderStatusesForLocalConfig(useActiveEnvironment());
-  const refreshProviderStatuses = useRefreshProviderStatusesNow();
   const activeThreadTerminalState = activeContextThreadId
     ? selectThreadTerminalState(terminalStateByThreadId, activeContextThreadId)
     : null;
@@ -393,38 +386,11 @@ function ChatRouteGlobalShortcuts() {
         return;
       }
 
-      if (command === "chat.newClaude" || command === "chat.newCodex") {
-        const provider = command === "chat.newClaude" ? "claudeAgent" : "codex";
-        const target = resolveNewThreadTarget({ currentProjectId, latestUsableProjectId });
-        if (!target) return;
-        event.preventDefault();
-        event.stopPropagation();
-        void (async () => {
-          const providerAvailability = await resolveProviderSendAvailabilityWithRefresh({
-            provider,
-            statuses: providerStatuses,
-            refreshStatuses: () => refreshProviderStatuses({ silent: true }),
-          });
-          if (!providerAvailability.usable) {
-            toastManager.add({
-              type: "error",
-              title: "Provider unavailable",
-              description: providerAvailability.unavailableReason,
-            });
-            return;
-          }
-          await handleNewThread(target.projectId, { provider });
-        })();
-        return;
-      }
-
       if (command !== "chat.new") return;
 
-      const target = resolveNewThreadTarget({ currentProjectId, latestUsableProjectId });
-      if (!target) return;
       event.preventDefault();
       event.stopPropagation();
-      void handleNewThread(target.projectId);
+      void (currentProjectId ? handleNewThread(currentProjectId) : handleNewChatForActiveSurface());
     };
 
     window.addEventListener("keydown", onWindowKeyDown, { capture: true });
@@ -444,8 +410,6 @@ function ChatRouteGlobalShortcuts() {
     latestUsableProjectId,
     openOrAdvanceRecentSwitcher,
     platform,
-    providerStatuses,
-    refreshProviderStatuses,
     recentSwitcherState,
     selectedThreadIdsSize,
     terminalOpen,
