@@ -32,6 +32,7 @@
 - Switching providers warns before it stops background tasks that are still running.
 - Ask for approval mode now always asks before Claude acts, even when Claude settings choose a different default.
 - Claude subagents interrupted by a failed turn no longer stay running forever.
+- Claude replies you watched arrive can be forked again, including earlier replies while a turn is still running.
 - Profile no longer overcounts Claude token usage after a chat resumes.
 - Recovering a missing chat after a restart no longer briefly uses up to a gigabyte of memory on large histories.
 - Chat costs and Profile now count each Claude turn's usage once, including resumed sessions, subagents and failed turns.

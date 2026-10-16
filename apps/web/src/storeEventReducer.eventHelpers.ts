@@ -592,6 +592,8 @@ function mergeStreamingMessage(
       ? incomingMessage.startsNewTurn
       : existingMessage.startsNewTurn;
   const nextSource = incomingMessage.source ?? existingMessage.source;
+  const nextProviderMessageId =
+    incomingMessage.providerMessageId ?? existingMessage.providerMessageId;
   const advancedTextSegments = advanceMessageTextSegments(existingMessage.textSegments, {
     streaming: incomingMessage.streaming,
     deltaText: incomingMessage.text,
@@ -623,7 +625,8 @@ function mergeStreamingMessage(
     existingMessage.startsNewTurn === nextStartsNewTurn &&
     existingMessage.modelSelection ===
       (existingMessage.modelSelection ?? incomingMessage.modelSelection) &&
-    existingMessage.source === nextSource
+    existingMessage.source === nextSource &&
+    existingMessage.providerMessageId === nextProviderMessageId
   ) {
     return null;
   }
@@ -648,6 +651,7 @@ function mergeStreamingMessage(
     ...(nextDispatchOrigin !== undefined ? { dispatchOrigin: nextDispatchOrigin } : {}),
     ...(nextStartsNewTurn !== undefined ? { startsNewTurn: nextStartsNewTurn } : {}),
     ...(nextSource !== undefined ? { source: nextSource } : {}),
+    ...(nextProviderMessageId ? { providerMessageId: nextProviderMessageId } : {}),
     ...(nextCompletedAt !== undefined ? { completedAt: nextCompletedAt } : {}),
   };
 }

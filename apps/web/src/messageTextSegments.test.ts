@@ -16,7 +16,13 @@ const segment = (sequence: number, text: string) => ({
   endedAt: at,
   text,
 });
-const messageSent = (sequence: number, text: string, streaming: boolean, opensSegment = false) =>
+const messageSent = (
+  sequence: number,
+  text: string,
+  streaming: boolean,
+  opensSegment = false,
+  providerMessageId?: string,
+) =>
   makeDomainEvent(
     "thread.message-sent",
     {
@@ -25,6 +31,7 @@ const messageSent = (sequence: number, text: string, streaming: boolean, opensSe
       role: "assistant",
       text,
       ...(opensSegment ? { segmentStartedAt: at, segmentSequence: sequence } : {}),
+      ...(providerMessageId ? { providerMessageId } : {}),
       turnId,
       streaming,
       source: "native",
@@ -68,4 +75,16 @@ it("keeps a segmented reply's text segments in step with deltas after a mid-stre
     " world!",
     " Next part",
   ]);
+});
+
+it("keeps the native message id a live reply's completion carries", () => {
+  let state = applyOrchestrationEvents(makeState(makeThread()), [
+    messageSent(1, "Hello", true),
+    messageSent(2, " world", true),
+  ]);
+  state = applyOrchestrationEvents(state, [
+    messageSent(3, "Hello world", false, false, "native-message-1"),
+  ]);
+
+  expect(getThreadsFromState(state)[0]!.messages[0]!.providerMessageId).toBe("native-message-1");
 });
