@@ -25,7 +25,11 @@ import { WS_METHODS } from "@glade/contracts/transport/ws/ws";
 import { WsBootstrapRpcGroup } from "@glade/contracts/transport/ws/bootstrapRpc";
 import { WsFeatureRpcGroup } from "@glade/contracts/transport/ws/rpc";
 import { COMPUTER_WS_METHODS } from "@glade/contracts/transport/ws/computerRpc";
-import { WS_STREAM_OVERFLOW_CODE, WsRpcError } from "@glade/contracts/transport/ws/rpcErrors";
+import {
+  WORKSPACE_FILE_NOT_TEXT_CODE,
+  WS_STREAM_OVERFLOW_CODE,
+  WsRpcError,
+} from "@glade/contracts/transport/ws/rpcErrors";
 import {
   type GitRemoveWorktreeInput,
   type GitWorktreeSetupProgressEvent,
@@ -143,6 +147,7 @@ import { WorkspaceEntries } from "../../workspace/Services/WorkspaceEntries";
 import {
   WorkspaceFileConflictError,
   WorkspaceFileDeletedError,
+  WorkspaceFileNotTextError,
   WorkspaceFileSystem,
 } from "../../workspace/Services/WorkspaceFileSystem";
 import {
@@ -341,6 +346,14 @@ function toWsRpcError(cause: unknown, fallbackMessage: string) {
       code: Schema.is(OrchestrationCommandIdentityCollisionError)(cause)
         ? "ORCHESTRATION_COMMAND_IDENTITY_COLLISION"
         : "ORCHESTRATION_COMMAND_ADMISSION_REJECTED",
+      retryable: false,
+      cause,
+    });
+  }
+  if (Schema.is(WorkspaceFileNotTextError)(cause)) {
+    return new WsRpcError({
+      message: cause.message,
+      code: WORKSPACE_FILE_NOT_TEXT_CODE,
       retryable: false,
       cause,
     });

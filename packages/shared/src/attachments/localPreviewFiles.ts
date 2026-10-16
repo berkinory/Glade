@@ -1,17 +1,15 @@
 export const LOCAL_IMAGE_ROUTE_PATH = "/api/local-image" as const;
 
+// Only formats Chromium can decode; anything else falls through to the unsupported-file preview.
 export const SUPPORTED_LOCAL_IMAGE_EXTENSIONS = [
   ".avif",
   ".bmp",
   ".gif",
-  ".heic",
-  ".heif",
   ".ico",
   ".jpeg",
   ".jpg",
   ".png",
   ".svg",
-  ".tiff",
   ".webp",
 ] as const;
 

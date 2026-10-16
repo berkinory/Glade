@@ -25,6 +25,22 @@ export class WorkspaceFileSystemError extends Schema.TaggedErrorClass<WorkspaceF
   }
 }
 
+export class WorkspaceFileNotTextError extends Schema.TaggedErrorClass<WorkspaceFileNotTextError>()(
+  "WorkspaceFileNotTextError",
+  {
+    cwd: Schema.String,
+    relativePath: Schema.String,
+    reason: Schema.Literals(["binary", "encoding"]),
+    cause: Schema.optional(Schema.Defect),
+  },
+) {
+  override get message(): string {
+    return this.reason === "binary"
+      ? "This is a binary file. Open it in another app to view it."
+      : "This file's text encoding isn't supported. Open it in another app to view it.";
+  }
+}
+
 export class WorkspaceFileConflictError extends Schema.TaggedErrorClass<WorkspaceFileConflictError>()(
   "WorkspaceFileConflictError",
   {
@@ -54,7 +70,7 @@ export interface WorkspaceFileSystemShape {
     input: ProjectReadFileInput,
   ) => Effect.Effect<
     ProjectReadFileResult,
-    WorkspaceFileSystemError | WorkspacePathOutsideRootError
+    WorkspaceFileNotTextError | WorkspaceFileSystemError | WorkspacePathOutsideRootError
   >;
   readonly writeFile: (
     input: ProjectWriteFileInput,

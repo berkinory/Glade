@@ -9,7 +9,7 @@ import { ChecklistBlock } from "./blocks/ChecklistBlock";
 import { ChoicesBlock } from "./blocks/ChoicesBlock";
 import { InputsBlock } from "./blocks/InputsBlock";
 import { StatsBlock } from "./blocks/StatsBlock";
-import { TableBlock } from "./blocks/TableBlock";
+import { DataTable } from "../DataTable";
 import { TabsBlock } from "./blocks/TabsBlock";
 import type { VisualFollowUp } from "./blocks/visualBlockTypes";
 import { resolveVisualBlock } from "./VisualComponentsCard.logic";
@@ -39,7 +39,16 @@ export function VisualComponentsCard({
       case "chart":
         return <ChartBlock key={key} block={resolved} />;
       case "table":
-        return <TableBlock key={key} block={resolved} />;
+        return (
+          <DataTable
+            key={key}
+            columns={resolved.columns}
+            rows={resolved.rows}
+            caption={resolved.title}
+            text="chat"
+            className="max-h-[32rem] rounded-lg border border-border"
+          />
+        );
       case "checklist":
         return <ChecklistBlock key={key} block={resolved} />;
       case "choices":

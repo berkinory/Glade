@@ -13,6 +13,7 @@ import { openRegularFileForRead } from "../../platform/filesystem/openRegularFil
 import {
   WorkspaceFileConflictError,
   WorkspaceFileDeletedError,
+  WorkspaceFileNotTextError,
   WorkspaceFileSystem,
   WorkspaceFileSystemError,
   type WorkspaceFileSystemShape,
@@ -407,11 +408,10 @@ const makeWorkspaceFileSystem = Effect.gen(function* () {
       });
 
       if (isBinaryLike(bytes)) {
-        return yield* new WorkspaceFileSystemError({
+        return yield* new WorkspaceFileNotTextError({
           cwd: input.cwd,
           relativePath: input.relativePath,
-          operation: "workspaceFileSystem.readFile",
-          detail: "File appears to be binary.",
+          reason: "binary",
         });
       }
 
@@ -433,11 +433,10 @@ const makeWorkspaceFileSystem = Effect.gen(function* () {
       try {
         decodedContents = new TextDecoder("utf-8", { fatal: true }).decode(textBytes);
       } catch (cause) {
-        return yield* new WorkspaceFileSystemError({
+        return yield* new WorkspaceFileNotTextError({
           cwd: input.cwd,
           relativePath: input.relativePath,
-          operation: "workspaceFileSystem.readFile",
-          detail: "File encoding is not supported for text editing.",
+          reason: "encoding",
           cause,
         });
       }

@@ -1,4 +1,5 @@
 import { isSupportedLocalVideoPath } from "@glade/shared/attachments/localVideoFiles";
+import { WORKSPACE_FILE_NOT_TEXT_CODE } from "@glade/contracts/transport/ws/rpcErrors";
 import type {
   ProjectFileChangeEvent,
   ProjectReadFileResult,
@@ -58,6 +59,7 @@ import {
   FilePreviewLoadingState,
 } from "./WorkspaceFileContents";
 import { DiffTruncationWarning } from "./DiffTruncationWarning";
+import { CsvFilePreview } from "./CsvFilePreview";
 import { HtmlFilePreview } from "./HtmlFilePreview";
 import { PanelStateMessage } from "./chat/PanelStateMessage";
 import { WorkspaceFilePreviewHeader } from "./chat/WorkspaceFilePreviewHeader";
@@ -67,15 +69,19 @@ import { LocalImagePreview } from "./LocalImagePreview";
 import { PdfFilePreview } from "./PdfFilePreview";
 import { UnsupportedFilePreview } from "./UnsupportedFilePreview";
 
-const RENDERED_PREVIEW_KIND_BY_EXTENSION = new Map<string, "markdown" | "html">([
+type RenderedPreviewKind = "markdown" | "html" | "csv";
+
+const RENDERED_PREVIEW_KIND_BY_EXTENSION = new Map<string, RenderedPreviewKind>([
   [".markdown", "markdown"],
   [".md", "markdown"],
   [".mdx", "markdown"],
   [".html", "html"],
   [".htm", "html"],
+  [".csv", "csv"],
+  [".tsv", "csv"],
 ]);
 
-function renderedPreviewKindOf(filePath: string): "markdown" | "html" | null {
+function renderedPreviewKindOf(filePath: string): RenderedPreviewKind | null {
   const extension = lowerCaseExtensionOf(filePath);
   return extension === null ? null : (RENDERED_PREVIEW_KIND_BY_EXTENSION.get(extension) ?? null);
 }
@@ -583,11 +589,7 @@ export function WorkspaceFilePreview(props: WorkspaceFilePreviewProps) {
   const hasFileContents = fileQuery.data !== undefined;
   const fileReadError = fileQuery.error;
   const fileReadCapacityError = isRpcCapacityExceededError(fileReadError);
-  const unsupportedFilePreview =
-    fileReadError instanceof Error &&
-    /file appears to be binary|file encoding is not supported for text editing/i.test(
-      fileReadError.message,
-    );
+  const unsupportedFilePreview = isWorkspaceFileNotTextError(fileReadError);
   const showFileReadErrorIndicator =
     hasFileContents && fileReadError !== null && !activeEditBuffer?.error;
 
@@ -755,6 +757,12 @@ export function WorkspaceFilePreview(props: WorkspaceFilePreviewProps) {
           ) : null}
           {showRenderedPreview && renderedPreviewKind === "html" ? (
             <HtmlFilePreview html={displayedFileContents} title={basenameOfPath(filePath)} />
+          ) : showRenderedPreview && renderedPreviewKind === "csv" ? (
+            <CsvFilePreview
+              filePath={filePath}
+              contents={displayedFileContents}
+              truncated={fileQuery.data?.truncated ?? false}
+            />
           ) : !activeEditBuffer || !editableDocument || showRenderedPreview ? (
             <div
               ref={contentsRef}
@@ -797,11 +805,18 @@ export function WorkspaceFilePreview(props: WorkspaceFilePreviewProps) {
   );
 }
 
+function isWorkspaceFileNotTextError(error: unknown): boolean {
+  return (
+    typeof error === "object" &&
+    error !== null &&
+    "code" in error &&
+    error.code === WORKSPACE_FILE_NOT_TEXT_CODE
+  );
+}
+
 function formatWorkspaceFileError(error: unknown): string {
   if (!(error instanceof Error)) return "Could not read file.";
   const detail = error.message.replace(/^workspaceFileSystem\.[\w]+ failed for .*?:\s*/u, "");
-  if (/file appears to be binary/i.test(detail))
-    return "This is a binary file. Open it in another app to view it.";
   if (/EISDIR|is a directory/i.test(detail))
     return "This is a folder. Select a file to preview it.";
   if (/ENOENT|no such file|not found/i.test(detail))
