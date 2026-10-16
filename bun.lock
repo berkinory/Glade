@@ -80,6 +80,7 @@
       },
       "devDependencies": {
         "@effect/vitest": "catalog:",
+        "@glade/catalog": "workspace:*",
         "@glade/contracts": "workspace:*",
         "@glade/shared": "workspace:*",
         "@glade/web": "workspace:*",
@@ -101,6 +102,7 @@
         "@dnd-kit/sortable": "^10.0.0",
         "@dnd-kit/utilities": "^3.2.2",
         "@fontsource-variable/jetbrains-mono": "^5.2.8",
+        "@glade/catalog": "workspace:*",
         "@glade/contracts": "workspace:*",
         "@glade/shared": "workspace:*",
         "@hugeicons/core-free-icons": "4.3.5",
@@ -158,6 +160,10 @@
         "vite": "^8.1.4",
         "vitest": "catalog:",
       },
+    },
+    "packages/catalog": {
+      "name": "@glade/catalog",
+      "version": "0.0.0",
     },
     "packages/contracts": {
       "name": "@glade/contracts",
@@ -488,6 +494,8 @@
     "@ghostery/adblocker-extended-selectors": ["@ghostery/adblocker-extended-selectors@2.18.2", "", {}, "sha512-doKNShBk3+czQL08UkrysHkCPeG/kNPlXvz3DH7SXxD9Y78ovWkEAhjeR+upoan3fomJJuK3dD+IrlofnjckYw=="],
 
     "@ghostery/url-parser": ["@ghostery/url-parser@1.3.1", "", { "dependencies": { "tldts-experimental": "^7.0.8" } }, "sha512-QKqGi+7aDQ4RcyHyCwgEk6B9vWnsBP4Q7htaN0zPJV3ATqTKEQDtSTb9c/AN586oJUDs24YXKcwFYwNweY/YjQ=="],
+
+    "@glade/catalog": ["@glade/catalog@workspace:packages/catalog"],
 
     "@glade/cli": ["@glade/cli@workspace:apps/server"],
 

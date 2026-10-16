@@ -1,3 +1,4 @@
+import { BunIcon } from "./brandIcons";
 import { createBrandIcon } from "./createBrandIcon";
 import type { IconComponent } from "./iconComponent";
 
@@ -12,7 +13,7 @@ export const SCRIPT_INTERPRETER_ICONS: Readonly<Record<string, IconComponent>> =
   python3: PythonIcon,
   node: symbol("node"),
   // Bun's own mark from svgl in its colors: as a one-color mask its face disappears into the bun.
-  bun: createBrandIcon("/brands/bun.svg"),
+  bun: BunIcon,
   deno: symbol("deno"),
   ruby: RubyIcon,
   perl: symbol("perl"),

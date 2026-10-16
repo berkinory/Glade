@@ -11,6 +11,7 @@
   "include": [
     "**/*.ts",
     "../apps/server/src/device/helperSandbox.ts",
+    "../apps/server/src/mcpCatalog/catalogEnvelope.ts",
     "../apps/server/src/server/cliFlags.ts",
     "../apps/desktop/src/main/updates/windowsCertificate.ts",
     "../apps/web/src/assets/gladeMark.ts",

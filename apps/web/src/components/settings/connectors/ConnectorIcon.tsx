@@ -1,7 +1,9 @@
+import type { McpCatalogIcon } from "@glade/contracts/server/mcpCatalog";
 import type { CSSProperties } from "react";
 
 import { SiteFavicon } from "~/components/SiteFavicon";
-import { resolveServiceBrand } from "~/lib/serviceBrandArtwork";
+import { resolveServiceBrand } from "~/lib/brandIcons";
+import { BrandImage } from "~/lib/createBrandIcon";
 import { cn } from "~/lib/utils";
 
 const TILE_CLASS_NAMES = {
@@ -13,67 +15,22 @@ const TILE_CLASS_NAMES = {
 const GLYPH_SHARE = 0.6;
 const MAX_GLYPH_SHARE = 0.86;
 
-// Measured from the artwork itself. Badges carry their own background and fill the tile edge to
-// edge instead of sitting as a smaller square inside it.
-const BADGE_ARTWORK = new Set([
-  "context7",
-  "exa",
-  "clickhouse",
-  "mongodb",
-  "netlify",
-  "fly",
-  "honeycomb",
-  "tavily",
-  "brightdata",
-  "fal",
-  "canva",
-  "miro",
-  "21st-dev",
-  "todoist",
-  "circleback",
-  "intercom",
-  "intercom-eu",
-  "ramp",
-  "autumn",
-  "customerio",
-  "customerio-eu",
-  "dodopayments",
-  "eachlabs",
-  "openseo",
-  "postman",
-  "wiro",
-  "browserbase",
-  "superhuman",
-]);
-
-// How much of its own canvas a padded glyph covers; it is enlarged to match the others.
-const GLYPH_COVERAGE: Readonly<Record<string, number>> = {
-  apify: 0.86,
-  render: 0.5,
-  resend: 0.5,
-  sanity: 0.73,
-  mixpanel: 0.76,
-  braintrust: 0.78,
-  perplexity: 0.83,
-  stripe: 0.88,
-  ahrefs: 0.88,
-};
-
 // Every connector sits on the same white tile, the way app icons do, so artwork drawn for light
-// pages reads on either theme and monochrome marks are drawn dark.
+// pages reads on either theme and monochrome marks are drawn dark. Catalog presets bring their own
+// artwork; other servers are matched to a bundled brand by name.
 export function ConnectorIcon(props: {
-  readonly presetId: string | null;
+  readonly icon: McpCatalogIcon | undefined;
   readonly name: string;
   readonly url: string;
   readonly size?: "md" | "lg";
 }) {
-  const Icon = (resolveServiceBrand(props.presetId) ?? resolveServiceBrand(props.name))?.icon;
-  const badge = Icon !== undefined && props.presetId !== null && BADGE_ARTWORK.has(props.presetId);
-  const share = Math.min(
-    GLYPH_SHARE / (props.presetId ? (GLYPH_COVERAGE[props.presetId] ?? 1) : 1),
-    MAX_GLYPH_SHARE,
-  );
-  const glyphStyle: CSSProperties = { width: `${share * 100}%`, height: `${share * 100}%` };
+  const brand = props.icon ? undefined : resolveServiceBrand(props.name);
+  const badge = props.icon?.badge ?? brand?.badge ?? false;
+  const coverage = props.icon?.coverage ?? brand?.coverage ?? 1;
+  const share = Math.min(GLYPH_SHARE / coverage, MAX_GLYPH_SHARE);
+  const glyph = badge
+    ? { className: "size-full" }
+    : { style: { width: `${share * 100}%`, height: `${share * 100}%` } satisfies CSSProperties };
   return (
     <span
       aria-hidden="true"
@@ -82,8 +39,14 @@ export function ConnectorIcon(props: {
         TILE_CLASS_NAMES[props.size ?? "md"],
       )}
     >
-      {Icon ? (
-        <Icon className={badge ? "size-full" : undefined} style={badge ? undefined : glyphStyle} />
+      {props.icon ? (
+        <BrandImage
+          source={props.icon.src}
+          monochrome={props.icon.monochrome === true}
+          {...glyph}
+        />
+      ) : brand ? (
+        <brand.icon {...glyph} />
       ) : (
         <SiteFavicon url={props.url} className="size-[60%]" />
       )}

@@ -1,13 +1,16 @@
 import type { NativeApi } from "@glade/contracts/ipc/ipc";
+import type { McpConnectorPreset } from "@glade/contracts/server/mcpCatalog";
 import type {
   McpConnector,
   McpConnectorSignIn,
   McpConnectorsState,
 } from "@glade/contracts/transport/ws/mcpConnectorsRpc";
+import { useQuery } from "@tanstack/react-query";
 import { type ReactNode, useDeferredValue, useEffect, useState } from "react";
 
 import { BotIcon, Delete02Icon, EllipsisIcon, PlusIcon, RefreshCwIcon } from "~/lib/icons";
 import { LOCAL_ENVIRONMENT } from "~/environments/environmentKey";
+import { mcpCatalogQueryOptions } from "~/lib/mcpCatalogReactQuery";
 import { ensureEnvironmentNativeApi } from "~/nativeApi";
 import { Button } from "../../ui/button";
 import { Menu, MenuItem, MenuTrigger } from "../../ui/menu";
@@ -55,18 +58,20 @@ function RowText(props: { readonly title: string; readonly description: ReactNod
 
 function ConnectedRow(props: {
   readonly connector: McpConnector;
+  readonly presets: ReadonlyArray<McpConnectorPreset>;
   readonly onReconnect: () => void;
   readonly onChooseAgents: () => void;
   readonly onDisconnect: () => void;
 }) {
   const { connector } = props;
+  const preset = connectorPreset(connector, props.presets);
   const needsSignIn = connector.status === "needs-sign-in";
   return (
     <div className={ROW_CLASS_NAME}>
       <ConnectorIcon
-        presetId={connector.presetId}
+        icon={preset?.icon}
         name={connector.name}
-        url={connectorIconUrl(connector)}
+        url={connectorIconUrl(connector, props.presets)}
       />
       <RowText
         title={connector.name}
@@ -74,7 +79,7 @@ function ConnectedRow(props: {
           needsSignIn ? (
             <span className="text-destructive">Signed out. Reconnect to keep using it.</span>
           ) : (
-            (connectorPreset(connector)?.description ?? connectorHost(connector.url))
+            (preset?.description ?? connectorHost(connector.url))
           )
         }
       />
@@ -160,6 +165,9 @@ function MachineConnectors(props: { readonly machine: SettingsMachine; readonly 
   const localApi = ensureEnvironmentNativeApi(LOCAL_ENVIRONMENT);
   const api = props.api.mcpConnectors;
   const state = useConnectorsState(api);
+  const catalogQuery = useQuery(mcpCatalogQueryOptions(machine.key));
+  const catalog = catalogQuery.data;
+  const presets = catalog?.presets ?? [];
   const [search, setSearch] = useState("");
   const query = useDeferredValue(search).trim().toLowerCase();
   const [target, setTarget] = useState<ConnectorTarget | null>(null);
@@ -189,14 +197,19 @@ function MachineConnectors(props: { readonly machine: SettingsMachine; readonly 
   };
 
   const connectors = state?.connectors ?? [];
-  const connected = filterConnected(connectors, query);
+  const connected = filterConnected(connectors, presets, query);
   const signIns = (state?.signIns ?? []).filter((signIn) =>
     signIn.name.toLowerCase().includes(query),
   );
-  const shelves = catalogShelves(
-    query,
-    new Set(connectors.flatMap((connector) => (connector.presetId ? [connector.presetId] : []))),
-  );
+  const shelves = catalog
+    ? catalogShelves(
+        catalog,
+        query,
+        new Set(
+          connectors.flatMap((connector) => (connector.presetId ? [connector.presetId] : [])),
+        ),
+      )
+    : [];
 
   return (
     <div className="space-y-6">
@@ -239,7 +252,8 @@ function MachineConnectors(props: { readonly machine: SettingsMachine; readonly 
               <ConnectedRow
                 key={connector.connectorId}
                 connector={connector}
-                onReconnect={() => setTarget(targetForConnector(connector))}
+                presets={presets}
+                onReconnect={() => setTarget(targetForConnector(connector, presets))}
                 onChooseAgents={() => setChoosingAgents(connector)}
                 onDisconnect={() => void disconnect(connector)}
               />
@@ -251,6 +265,7 @@ function MachineConnectors(props: { readonly machine: SettingsMachine; readonly 
       <AgentMcpServersSection
         machine={machine}
         connectors={connectors}
+        presets={presets}
         query={query}
         removing={removal.removing}
         onRemove={(row) => void removal.remove(row)}
@@ -261,7 +276,14 @@ function MachineConnectors(props: { readonly machine: SettingsMachine; readonly 
         }}
       />
 
-      {shelves.length === 0 && query ? (
+      {catalogQuery.isError ? (
+        <SettingsEmptyState layout="status" tone="destructive">
+          {machine.label} did not send its MCP server catalog. Add servers by URL, or update Glade
+          there.
+        </SettingsEmptyState>
+      ) : null}
+
+      {catalog && shelves.length === 0 && query ? (
         <SettingsEmptyState>
           Nothing in the catalog matches “{search.trim()}”. Add it with its server URL instead.
         </SettingsEmptyState>
@@ -277,7 +299,7 @@ function MachineConnectors(props: { readonly machine: SettingsMachine; readonly 
                 onClick={() => setTarget({ kind: "preset", preset })}
                 className="group flex min-w-0 items-center gap-3 rounded-lg px-2.5 py-2 text-left outline-none hover:bg-[var(--color-background-elevated-secondary)] focus-visible:ring-1 focus-visible:ring-ring/60"
               >
-                <ConnectorIcon presetId={preset.id} name={preset.name} url={preset.homepage} />
+                <ConnectorIcon icon={preset.icon} name={preset.name} url={preset.homepage} />
                 <RowText title={preset.name} description={preset.description} />
                 <PlusIcon
                   aria-hidden

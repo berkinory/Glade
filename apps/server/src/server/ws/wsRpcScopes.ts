@@ -129,6 +129,7 @@ export const WS_RPC_REQUIRED_SCOPES: Record<WsFeatureRpcTag, AuthScope> = {
   // Owner only: sign-ins redirect to this machine's loopback, and connectors give every agent
   // session access to the user's accounts.
   [MCP_CONNECTORS_WS_METHODS.subscribe]: "access:write",
+  [MCP_CONNECTORS_WS_METHODS.getCatalog]: "access:write",
   [MCP_CONNECTORS_WS_METHODS.connect]: "access:write",
   [MCP_CONNECTORS_WS_METHODS.setProviders]: "access:write",
   // Searching and previewing make requests from this computer; installing writes skill folders.

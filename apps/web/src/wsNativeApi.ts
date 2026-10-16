@@ -521,6 +521,7 @@ function buildNativeApi(transport: WsTransport, listeners: NativeApiListeners): 
     mcpConnectors: {
       onState: (callback) =>
         transport.subscribeStateStream(MCP_CONNECTORS_WS_METHODS.subscribe, callback),
+      getCatalog: () => transport.request(MCP_CONNECTORS_WS_METHODS.getCatalog, {}),
       // Probing the server and starting OAuth discovery can take a few vendor round trips.
       connect: (input) =>
         transport.request(MCP_CONNECTORS_WS_METHODS.connect, input, { timeoutMs: 120_000 }),

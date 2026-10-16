@@ -51,6 +51,7 @@
   },
   "devDependencies": {
     "@effect/vitest": "catalog:",
+    "@glade/catalog": "workspace:*",
     "@glade/contracts": "workspace:*",
     "@glade/shared": "workspace:*",
     "@glade/web": "workspace:*",

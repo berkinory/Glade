@@ -1,180 +1,94 @@
-import openaiMark from "../assets/brands/openai.svg?url";
-import grokMark from "../assets/brands/grok.svg?url";
-import opencodeMark from "../assets/brands/opencode.svg?url";
-import { createBrandIcon } from "./createBrandIcon";
+import brandManifest from "@glade/catalog/brands.json";
 
-export const AndroidStudioIcon = createBrandIcon("/brands/androidstudio-original.svg");
-export const ClaudeIcon = createBrandIcon("/brands/claude-ai-icon.svg");
-export const CLionIcon = createBrandIcon("/brands/clion-original.svg");
-export const CursorIcon = createBrandIcon("/brands/cursor_light.svg", true);
-export const DataGripIcon = createBrandIcon("/brands/datagrip-original.svg");
-export const LinkedInIcon = createBrandIcon("/brands/linkedin.svg");
-export const GhosttyIcon = createBrandIcon("/brands/ghostty.svg");
-export const GitHubIcon = createBrandIcon("/brands/github_light.svg", true);
-export const GoLandIcon = createBrandIcon("/brands/goland.svg", true);
-export const IntelliJIdeaIcon = createBrandIcon("/brands/intellijidea.svg");
-export const Iterm2Icon = createBrandIcon("/brands/iterm2-color.svg");
-export const OpenAIIcon = createBrandIcon(openaiMark, true);
-export const OpenCodeIcon = createBrandIcon(opencodeMark, true);
-export const GrokIcon = createBrandIcon(grokMark, true);
-export const PhpStormIcon = createBrandIcon("/brands/phpstorm.svg");
-export const PyCharmIcon = createBrandIcon("/brands/pycharm.svg");
-export const RiderIcon = createBrandIcon("/brands/rider.svg");
-export const RubyMineIcon = createBrandIcon("/brands/rubymine.svg");
-export const CanvaIcon = createBrandIcon("/brands/canva.svg");
-export const FigmaIcon = createBrandIcon("/brands/figma.svg");
-export const GmailIcon = createBrandIcon("/brands/gmail.svg");
-export const GoogleCalendarIcon = createBrandIcon("/brands/google-calendar.svg");
-export const GoogleDriveIcon = createBrandIcon("/brands/drive.svg");
-export const HuggingFaceIcon = createBrandIcon("/brands/hugging_face.svg");
-export const LinearIcon = createBrandIcon("/brands/linear.svg");
-export const NotionIcon = createBrandIcon("/brands/notion.svg");
-export const RedditIcon = createBrandIcon("/brands/reddit.svg");
-export const SlackIcon = createBrandIcon("/brands/slack.svg");
-export const StripeIcon = createBrandIcon("/brands/stripe.svg");
-export const VercelIcon = createBrandIcon("/brands/vercel.svg", true);
-export const XBrandIcon = createBrandIcon("/brands/x.svg", true);
-export const SublimeTextIcon = createBrandIcon("/brands/sublimetext.svg");
-export const TerminalAppIcon = createBrandIcon("/brands/terminalapp.svg");
-export const VSCodeIcon = createBrandIcon("/brands/vscode.svg");
-export const VscodiumIcon = createBrandIcon("/brands/vscodium.svg");
-export const WarpIcon = createBrandIcon("/brands/warp.svg");
-export const WebStormIcon = createBrandIcon("/brands/webstorm.svg");
-export const WindsurfIcon = createBrandIcon("/brands/windsurf-light.svg", true);
-export const XcodeIcon = createBrandIcon("/brands/xcode-original.svg");
-export const ZedIcon = createBrandIcon("/brands/zed-logo.svg", true);
-export const Context7Icon = createBrandIcon("/brands/context7.png");
-export const ExaIcon = createBrandIcon("/brands/exa.png");
-export const BrowserbaseIcon = createBrandIcon("/brands/browserbase.svg");
-export const PenDevIcon = createBrandIcon("/brands/pendev.png");
-export const FirecrawlIcon = createBrandIcon("/brands/firecrawl.svg");
-export const PlaywrightIcon = createBrandIcon("/brands/playwright.svg");
-export const ChromeDevToolsIcon = createBrandIcon("/brands/chrome.svg");
-export const SupabaseIcon = createBrandIcon("/brands/supabase.svg");
-export const CloudflareIcon = createBrandIcon("/brands/cloudflare.svg");
-export const AwsIcon = createBrandIcon("/brands/aws.svg", true);
-export const RailwayIcon = createBrandIcon("/brands/railway.svg", true);
-export const ConvexIcon = createBrandIcon("/brands/convex.svg");
-export const AtlassianIcon = createBrandIcon("/brands/atlassian.svg");
-export const SentryIcon = createBrandIcon("/brands/sentry.svg", true);
-export const DatadogIcon = createBrandIcon("/brands/datadog.svg");
-export const PostHogIcon = createBrandIcon("/brands/posthog.svg");
-export const N8nIcon = createBrandIcon("/brands/n8n.svg");
-export const BlenderIcon = createBrandIcon("/brands/blender.svg");
-export const PenpotIcon = createBrandIcon("/brands/penpot.svg", true);
-export const DrawioIcon = createBrandIcon("/brands/diagramsdotnet.svg", true);
-export const ExcalidrawIcon = createBrandIcon("/brands/excalidraw.svg", true);
-export const CalComIcon = createBrandIcon("/brands/calcom.svg", true);
-export const ShopifyIcon = createBrandIcon("/brands/shopify.svg");
-export const BraveSearchIcon = createBrandIcon("/brands/brave.svg");
-export const PaperIcon = createBrandIcon("/brands/paper.svg", true);
-export const NeonIcon = createBrandIcon("/brands/neon.svg");
-export const MongoDBIcon = createBrandIcon("/brands/mongodb.svg");
-export const GrafanaIcon = createBrandIcon("/brands/grafana.svg");
-export const AxiomIcon = createBrandIcon("/brands/axiom.svg", true);
-export const PlanetScaleIcon = createBrandIcon("/brands/planetscale.svg", true);
-export const TursoIcon = createBrandIcon("/brands/turso.svg", true);
-export const ClerkIcon = createBrandIcon("/brands/clerk.svg");
-export const PrismaIcon = createBrandIcon("/brands/prisma.svg", true);
-export const ResendIcon = createBrandIcon("/brands/resend.svg", true);
-export const SanityIcon = createBrandIcon("/brands/sanity.svg", true);
-export const GitLabIcon = createBrandIcon("/brands/gitlab.svg");
-export const AzureIcon = createBrandIcon("/brands/azure.svg");
-export const JetBrainsIcon = createBrandIcon("/brands/jetbrains.svg");
-export const FirebaseIcon = createBrandIcon("/brands/firebase.svg");
-export const NetlifyIcon = createBrandIcon("/brands/netlify.svg");
-export const RenderIcon = createBrandIcon("/brands/render.svg", true);
-export const RedisIcon = createBrandIcon("/brands/redis.svg");
-export const Auth0Icon = createBrandIcon("/brands/auth0.svg");
-export const PerplexityIcon = createBrandIcon("/brands/perplexity.svg", true);
-export const AsanaIcon = createBrandIcon("/brands/asana.svg");
-export const TrelloIcon = createBrandIcon("/brands/trello.svg");
-export const DatabuddyIcon = createBrandIcon("/brands/databuddy.svg", true);
-export const UmamiIcon = createBrandIcon("/brands/umami.svg", true);
-export const FalAiIcon = createBrandIcon("/brands/falai.png");
-export const UpstashIcon = createBrandIcon("/brands/upstash.png");
-export const ClickHouseIcon = createBrandIcon("/brands/clickhouse.svg");
-export const TavilyIcon = createBrandIcon("/brands/tavily.svg");
-export const ZapierIcon = createBrandIcon("/brands/zapier.svg", true);
-export const ElevenLabsIcon = createBrandIcon("/brands/elevenlabs.svg", true);
-export const OnePasswordIcon = createBrandIcon("/brands/onepassword.svg", true);
-export const OpenRouterIcon = createBrandIcon("/brands/openrouter.svg", true);
-export const HyperFramesIcon = createBrandIcon("/brands/hyperframes.svg");
-export const TldrawIcon = createBrandIcon("/brands/tldraw.svg");
-export const AmplitudeIcon = createBrandIcon("/brands/amplitude.png");
-export const MixpanelIcon = createBrandIcon("/brands/mixpanel.svg", true);
-export const GoogleAnalyticsIcon = createBrandIcon("/brands/google-analytics.svg");
-export const IntercomIcon = createBrandIcon("/brands/intercom.png");
-export const MiroIcon = createBrandIcon("/brands/miro.png");
-export const GranolaIcon = createBrandIcon("/brands/granola.svg", true);
-export const DocusignIcon = createBrandIcon("/brands/docusign.png");
-export const SpotifyIcon = createBrandIcon("/brands/spotify.svg");
-export const CalendlyIcon = createBrandIcon("/brands/calendly.svg");
-export const UnityIcon = createBrandIcon("/brands/unity.svg", true);
-export const SuperhumanIcon = createBrandIcon("/brands/superhuman.svg", true);
-export const MercuryIcon = createBrandIcon("/brands/mercury.svg", true);
-export const CraftIcon = createBrandIcon("/brands/craft.png", true);
-export const BrowserUseIcon = createBrandIcon("/brands/browseruse.png");
-export const MintlifyIcon = createBrandIcon("/brands/mintlify.svg");
-export const OpenStatusIcon = createBrandIcon("/brands/openstatus.png");
-export const PolarIcon = createBrandIcon("/brands/polar.svg");
-export const ScalarIcon = createBrandIcon("/brands/scalar.svg", true);
-export const AsideIcon = createBrandIcon("/brands/aside.png");
-export const BetterStackIcon = createBrandIcon("/brands/betterstack.png");
-export const ExecutorIcon = createBrandIcon("/brands/executor.png");
-export const AstroAsoIcon = createBrandIcon("/brands/astroaso.png");
-export const MobbinIcon = createBrandIcon("/brands/mobbin.png", true);
-export const AhrefsIcon = createBrandIcon("/brands/ahrefs.svg");
-export const AirtableIcon = createBrandIcon("/brands/airtable.svg", true);
-export const AstroFrameworkIcon = createBrandIcon("/brands/astro-framework.svg", true);
-export const BraintrustIcon = createBrandIcon("/brands/braintrust.png");
-export const BrevoIcon = createBrandIcon("/brands/brevo.svg", true);
-export const BrightDataIcon = createBrandIcon("/brands/brightdata.png");
-export const BufferIcon = createBrandIcon("/brands/buffer.svg", true);
-export const CirclebackIcon = createBrandIcon("/brands/circleback.png");
-export const CloudinaryIcon = createBrandIcon("/brands/cloudinary.svg");
-export const CoinbaseIcon = createBrandIcon("/brands/coinbase.svg");
-export const ComposioIcon = createBrandIcon("/brands/composio.png");
-export const ContentfulIcon = createBrandIcon("/brands/contentful.svg", true);
-export const DigitalOceanIcon = createBrandIcon("/brands/digitalocean.svg", true);
-export const EgnyteIcon = createBrandIcon("/brands/egnyte.png");
-export const ExpoIcon = createBrandIcon("/brands/expo.svg", true);
-export const FathomIcon = createBrandIcon("/brands/fathom.png");
-export const FlyIoIcon = createBrandIcon("/brands/flyio.svg");
-export const FramerIcon = createBrandIcon("/brands/framer.svg", true);
-export const GitMcpIcon = createBrandIcon("/brands/gitmcp.png", true);
-export const GreenhouseIcon = createBrandIcon("/brands/greenhouse.svg", true);
-export const HerokuIcon = createBrandIcon("/brands/heroku.svg", true);
-export const HoneycombIcon = createBrandIcon("/brands/honeycomb.png");
-export const HostingerIcon = createBrandIcon("/brands/hostinger.svg", true);
-export const KlaviyoIcon = createBrandIcon("/brands/klaviyo.png");
-export const LovableIcon = createBrandIcon("/brands/lovable.svg");
-export const LucidIcon = createBrandIcon("/brands/lucid.svg", true);
-export const MicrosoftIcon = createBrandIcon("/brands/microsoft.svg");
-export const MondayIcon = createBrandIcon("/brands/monday.png");
-export const PayPalIcon = createBrandIcon("/brands/paypal.svg");
-export const PulumiIcon = createBrandIcon("/brands/pulumi.svg");
-export const RampIcon = createBrandIcon("/brands/ramp.png");
-export const SquareIcon = createBrandIcon("/brands/square.svg", true);
-export const SvelteIcon = createBrandIcon("/brands/svelte.svg");
-export const TodoistIcon = createBrandIcon("/brands/todoist.svg");
-export const TwentyFirstDevIcon = createBrandIcon("/brands/21st-dev.png");
-export const TwilioIcon = createBrandIcon("/brands/twilio.svg");
-export const WebflowIcon = createBrandIcon("/brands/webflow.svg");
-export const WixIcon = createBrandIcon("/brands/wix.svg", true);
-export const WolframIcon = createBrandIcon("/brands/wolfram.svg", true);
-export const WorkOSIcon = createBrandIcon("/brands/workos.svg");
-export const WorkatoIcon = createBrandIcon("/brands/workato.png");
-export const ApifyIcon = createBrandIcon("/brands/apify.svg");
-export const AutumnIcon = createBrandIcon("/brands/autumn.png");
-export const CircleCIIcon = createBrandIcon("/brands/circleci.svg", true);
-export const ClickUpIcon = createBrandIcon("/brands/clickup.svg");
-export const CustomerIoIcon = createBrandIcon("/brands/customerio.svg");
-export const DodoPaymentsIcon = createBrandIcon("/brands/dodopayments.svg");
-export const EachlabsIcon = createBrandIcon("/brands/eachlabs.png");
-export const LoopsIcon = createBrandIcon("/brands/loops.svg", true);
-export const OpenSeoIcon = createBrandIcon("/brands/openseo.png");
-export const PaddleIcon = createBrandIcon("/brands/paddle.svg", true);
-export const PostmanIcon = createBrandIcon("/brands/postman.svg");
-export const SemrushIcon = createBrandIcon("/brands/semrush.svg", true);
-export const WiroIcon = createBrandIcon("/brands/wiro.png");
+import { createBrandIcon } from "./createBrandIcon";
+import type { IconComponent } from "./iconComponent";
+import { Folder02Icon } from "./icons";
+
+interface BrandEntry {
+  readonly monochrome?: boolean;
+  readonly aliases?: ReadonlyArray<string>;
+  readonly badge?: boolean;
+  readonly coverage?: number;
+}
+
+export interface BrandArtwork {
+  readonly icon: IconComponent;
+  // The artwork carries its own background and fills a tile edge to edge.
+  readonly badge: boolean;
+  // How much of its own canvas the glyph covers.
+  readonly coverage: number;
+}
+
+const manifest: Readonly<Record<string, BrandEntry>> = brandManifest;
+const files = import.meta.glob<string>("../../../../packages/catalog/brands/*", {
+  query: "?no-inline",
+  import: "default",
+  eager: true,
+});
+
+const BRANDS = new Map<string, BrandArtwork>();
+const ALIASES = new Map<string, string>();
+for (const [file, url] of Object.entries(files)) {
+  const id = file.slice(file.lastIndexOf("/") + 1, file.lastIndexOf("."));
+  const entry = manifest[id];
+  if (!entry) throw new Error(`Brand artwork ${id} is missing from brands.json.`);
+  BRANDS.set(id, {
+    icon: createBrandIcon(url, entry.monochrome === true),
+    badge: entry.badge === true,
+    coverage: entry.coverage ?? 1,
+  });
+  for (const alias of entry.aliases ?? []) ALIASES.set(alias, id);
+}
+// Services without a mark of their own.
+BRANDS.set("filesystem", { icon: Folder02Icon, badge: false, coverage: 1 });
+ALIASES.set("serverfilesystem", "filesystem");
+
+function brandIcon(id: string): IconComponent {
+  const brand = BRANDS.get(id);
+  if (!brand) throw new Error(`Unknown brand ${id}.`);
+  return brand.icon;
+}
+
+// Matches an MCP server, connector or service name to its artwork.
+export function resolveServiceBrand(value: string | null | undefined): BrandArtwork | undefined {
+  const normalized = (value ?? "")
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]/g, "");
+  // Connectors reach agents as `<name>_connector` servers.
+  const key = normalized.endsWith("connector")
+    ? normalized.slice(0, -"connector".length)
+    : normalized;
+  return BRANDS.get(ALIASES.get(key) ?? key);
+}
+
+export const AndroidStudioIcon = brandIcon("androidstudio");
+export const BunIcon = brandIcon("bun");
+export const ClaudeIcon = brandIcon("claude");
+export const CLionIcon = brandIcon("clion");
+export const CursorIcon = brandIcon("cursor");
+export const DataGripIcon = brandIcon("datagrip");
+export const GhosttyIcon = brandIcon("ghostty");
+export const GitHubIcon = brandIcon("github");
+export const GoLandIcon = brandIcon("goland");
+export const GrokIcon = brandIcon("xaigrok");
+export const IntelliJIdeaIcon = brandIcon("intellijidea");
+export const Iterm2Icon = brandIcon("iterm2");
+export const LinkedInIcon = brandIcon("linkedin");
+export const OpenAIIcon = brandIcon("openai");
+export const OpenCodeIcon = brandIcon("opencodeai");
+export const PhpStormIcon = brandIcon("phpstorm");
+export const PyCharmIcon = brandIcon("pycharm");
+export const RedditIcon = brandIcon("reddit");
+export const RiderIcon = brandIcon("rider");
+export const RubyMineIcon = brandIcon("rubymine");
+export const SublimeTextIcon = brandIcon("sublimetext");
+export const TerminalAppIcon = brandIcon("terminalapp");
+export const VSCodeIcon = brandIcon("vscode");
+export const VscodiumIcon = brandIcon("vscodium");
+export const WarpIcon = brandIcon("warp");
+export const WebStormIcon = brandIcon("webstorm");
+export const WindsurfIcon = brandIcon("windsurf");
+export const XBrandIcon = brandIcon("x");
+export const XcodeIcon = brandIcon("xcode");
+export const ZedIcon = brandIcon("zed");

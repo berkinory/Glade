@@ -27,21 +27,6 @@ export function useWorkspaceFileOpener(): WorkspaceFileOpener | null {
 
 const FILE_POSITION_SUFFIX_PATTERN = /:\d+(?::\d+)?$/;
 const TRAILING_PATH_SEPARATOR_PATTERN = /[\\/]+$/;
-const GLADE_PUBLIC_ASSET_PATH_PREFIXES = ["/brands/"] as const;
-const GLADE_WEB_PUBLIC_WORKSPACE_DIR = "apps/web/public";
-
-function resolveGladePublicAssetOpenTarget(path: string, workspaceRoot: string | null) {
-  if (!workspaceRoot) {
-    return null;
-  }
-  const normalizedPath = path.replace(/\\/g, "/");
-  if (!GLADE_PUBLIC_ASSET_PATH_PREFIXES.some((prefix) => normalizedPath.startsWith(prefix))) {
-    return null;
-  }
-  const relativePath = `${GLADE_WEB_PUBLIC_WORKSPACE_DIR}${normalizedPath}`;
-  return isWorkspaceRelativePathSafe(relativePath) ? relativePath : null;
-}
-
 export function resolveWorkspaceDirectoryOpenTarget(
   rawPath: string,
   workspaceRoot: string | null,
@@ -86,12 +71,7 @@ export function resolveWorkspaceFileOpenTarget(
   if (!workspaceRoot) {
     return null;
   }
-  const workspaceRelativePath = workspaceRelativePathOf(withoutPosition, workspaceRoot);
-  if (workspaceRelativePath) {
-    return workspaceRelativePath;
-  }
-
-  return resolveGladePublicAssetOpenTarget(withoutPosition, workspaceRoot);
+  return workspaceRelativePathOf(withoutPosition, workspaceRoot);
 }
 
 function resolveScratchPreviewFileOpenTarget(rawPath: string): string | null {

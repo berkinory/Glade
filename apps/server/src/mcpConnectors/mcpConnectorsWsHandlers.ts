@@ -1,3 +1,4 @@
+import type { McpCatalog } from "@glade/contracts/server/mcpCatalog";
 import {
   MCP_CONNECTORS_WS_METHODS,
   type McpConnectorConnectInput,
@@ -35,6 +36,7 @@ export function makeMcpConnectorsWsHandlers(input: {
         { key: "mcpConnectors.state" },
         connectors.streamState,
       ),
+    [MCP_CONNECTORS_WS_METHODS.getCatalog]: (): Effect.Effect<McpCatalog> => connectors.catalog,
     [MCP_CONNECTORS_WS_METHODS.connect]: (
       payload: McpConnectorConnectInput,
     ): Effect.Effect<McpConnectorConnectResult, WsRpcError> =>

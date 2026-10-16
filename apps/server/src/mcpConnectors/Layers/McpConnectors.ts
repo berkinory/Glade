@@ -6,10 +6,8 @@ import type {
   McpConnectorProviders,
   McpConnectorsState,
 } from "@glade/contracts/transport/ws/mcpConnectorsRpc";
-import {
-  findMcpConnectorPreset,
-  normalizeMcpConnectorUrl,
-} from "@glade/shared/mcpConnectors/catalog";
+import type { McpCatalog as McpCatalogDocument } from "@glade/contracts/server/mcpCatalog";
+import { normalizeMcpConnectorUrl } from "@glade/shared/mcpConnectors/connectorUrl";
 import { Clock, Data, Effect, Layer, Ref, Semaphore, SubscriptionRef } from "effect";
 
 import { version as clientVersion } from "../../../package.json" with { type: "json" };
@@ -17,6 +15,8 @@ import { AgentGatewayCredentialsWithSecretsLive } from "../../agentGateway/Layer
 import { AgentGatewayCredentials } from "../../agentGateway/Services/AgentGatewayCredentials.ts";
 import { ServerSecretStoreLive } from "../../auth/Layers/ServerSecretStore.ts";
 import { ServerSecretStore } from "../../auth/Services/ServerSecretStore.ts";
+import { McpCatalogLive } from "../../mcpCatalog/Layers/McpCatalog.ts";
+import { McpCatalog } from "../../mcpCatalog/Services/McpCatalog.ts";
 import {
   type ConnectorsDocument,
   decodeConnectorsDocument,
@@ -107,7 +107,10 @@ function loopbackOrigin(value: string): string | null {
   }
 }
 
-function resolveTarget(input: McpConnectorConnectInput): ConnectorTarget | McpConnectorsError {
+function resolveTarget(
+  input: McpConnectorConnectInput,
+  catalog: McpCatalogDocument,
+): ConnectorTarget | McpConnectorsError {
   if (input.providers?.length === 0) {
     return new McpConnectorsError({ message: "Choose at least one agent." });
   }
@@ -115,7 +118,7 @@ function resolveTarget(input: McpConnectorConnectInput): ConnectorTarget | McpCo
     return new McpConnectorsError({ message: "Choose a connector or enter a server URL." });
   }
   if (input.presetId !== undefined) {
-    const preset = findMcpConnectorPreset(input.presetId);
+    const preset = catalog.presets.find((entry) => entry.id === input.presetId);
     if (!preset) return new McpConnectorsError({ message: "Glade does not know this connector." });
     if (preset.auth === "token" && !input.token?.trim()) {
       return new McpConnectorsError({ message: `Enter a ${preset.name} token.` });
@@ -131,6 +134,7 @@ function resolveTarget(input: McpConnectorConnectInput): ConnectorTarget | McpCo
 const make = Effect.gen(function* () {
   const secrets = yield* ServerSecretStore;
   const credentials = yield* AgentGatewayCredentials;
+  const catalog = yield* McpCatalog;
 
   const loaded = yield* secrets.get(SECRET_NAME).pipe(
     Effect.flatMap((bytes) =>
@@ -262,7 +266,7 @@ const make = Effect.gen(function* () {
 
   const connect: McpConnectorsShape["connect"] = (input) =>
     Effect.gen(function* () {
-      const target = resolveTarget(input);
+      const target = resolveTarget(input, yield* catalog.current);
       if (target instanceof McpConnectorsError) return yield* target;
       const document = yield* Ref.get(documentRef);
       const reconnecting = document.connectors.some((connector) => connector.url === target.url);
@@ -602,6 +606,7 @@ const make = Effect.gen(function* () {
 
   return {
     streamState: SubscriptionRef.changes(view),
+    catalog: catalog.current,
     connect,
     cancelSignIn,
     disconnect,
@@ -614,4 +619,5 @@ const make = Effect.gen(function* () {
 export const McpConnectorsLive = Layer.effect(McpConnectors, make).pipe(
   Layer.provide(AgentGatewayCredentialsWithSecretsLive),
   Layer.provide(ServerSecretStoreLive),
+  Layer.provide(McpCatalogLive),
 );

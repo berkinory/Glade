@@ -1,0 +1,1116 @@
+{
+  "categories": [
+    {
+      "id": "docs",
+      "label": "Docs & knowledge"
+    },
+    {
+      "id": "data",
+      "label": "Databases"
+    },
+    {
+      "id": "infrastructure",
+      "label": "Code & infrastructure"
+    },
+    {
+      "id": "observability",
+      "label": "Monitoring & analytics"
+    },
+    {
+      "id": "ai",
+      "label": "AI & search"
+    },
+    {
+      "id": "design",
+      "label": "Web & design"
+    },
+    {
+      "id": "work",
+      "label": "Projects & notes"
+    },
+    {
+      "id": "business",
+      "label": "Payments & business"
+    }
+  ],
+  "presets": [
+    {
+      "id": "context7",
+      "name": "Context7",
+      "description": "Current docs and code examples for libraries",
+      "url": "https://mcp.context7.com/mcp",
+      "homepage": "https://context7.com",
+      "category": "docs",
+      "auth": "none",
+      "tokenUrl": "https://context7.com/dashboard",
+      "icon": "context7"
+    },
+    {
+      "id": "exa",
+      "name": "Exa",
+      "description": "Web search and page contents",
+      "url": "https://mcp.exa.ai/mcp",
+      "homepage": "https://exa.ai",
+      "category": "docs",
+      "auth": "none",
+      "tokenUrl": "https://dashboard.exa.ai/api-keys",
+      "icon": "exa"
+    },
+    {
+      "id": "huggingface",
+      "name": "Hugging Face",
+      "description": "Models, datasets, Spaces and papers",
+      "url": "https://huggingface.co/mcp",
+      "homepage": "https://huggingface.co",
+      "category": "docs",
+      "auth": "none",
+      "tokenUrl": "https://huggingface.co/settings/tokens",
+      "icon": "huggingface"
+    },
+    {
+      "id": "cloudflare-docs",
+      "name": "Cloudflare Docs",
+      "description": "Search Cloudflare's developer documentation",
+      "url": "https://docs.mcp.cloudflare.com/mcp",
+      "homepage": "https://developers.cloudflare.com",
+      "category": "docs",
+      "auth": "none",
+      "icon": "cloudflare"
+    },
+    {
+      "id": "microsoft-learn",
+      "name": "Microsoft Learn",
+      "description": "Microsoft and Azure documentation",
+      "url": "https://learn.microsoft.com/api/mcp",
+      "homepage": "https://learn.microsoft.com",
+      "category": "docs",
+      "auth": "none",
+      "icon": "microsoftlearn"
+    },
+    {
+      "id": "openai-docs",
+      "name": "OpenAI Docs",
+      "description": "OpenAI API and platform documentation",
+      "url": "https://developers.openai.com/mcp",
+      "homepage": "https://developers.openai.com",
+      "category": "docs",
+      "auth": "none",
+      "icon": "openai"
+    },
+    {
+      "id": "aws-knowledge",
+      "name": "AWS Knowledge",
+      "description": "AWS documentation, guidance and regional availability",
+      "url": "https://knowledge-mcp.global.api.aws",
+      "homepage": "https://aws.amazon.com",
+      "category": "docs",
+      "auth": "none",
+      "icon": "aws"
+    },
+    {
+      "id": "auth0-docs",
+      "name": "Auth0 Docs",
+      "description": "Search the Auth0 documentation",
+      "url": "https://auth0.com/docs/mcp",
+      "homepage": "https://auth0.com",
+      "category": "docs",
+      "auth": "none",
+      "icon": "auth0"
+    },
+    {
+      "id": "svelte",
+      "name": "Svelte",
+      "description": "Svelte and SvelteKit documentation",
+      "url": "https://mcp.svelte.dev/mcp",
+      "homepage": "https://svelte.dev",
+      "category": "docs",
+      "auth": "none",
+      "icon": "svelte"
+    },
+    {
+      "id": "astro-docs",
+      "name": "Astro Docs",
+      "description": "Astro framework documentation",
+      "url": "https://mcp.docs.astro.build/mcp",
+      "homepage": "https://astro.build",
+      "category": "docs",
+      "auth": "none",
+      "icon": "astrodocs"
+    },
+    {
+      "id": "wolfram",
+      "name": "Wolfram",
+      "description": "Computation, math and curated data",
+      "url": "https://agenttools.wolfram.com/mcp",
+      "homepage": "https://www.wolfram.com",
+      "category": "docs",
+      "auth": "none",
+      "icon": "wolfram"
+    },
+    {
+      "id": "scalar",
+      "name": "Scalar",
+      "description": "Scalar docs for API references and clients",
+      "url": "https://scalar.com/mcp",
+      "homepage": "https://scalar.com",
+      "category": "docs",
+      "auth": "none",
+      "icon": "scalar"
+    },
+    {
+      "id": "supabase",
+      "name": "Supabase",
+      "description": "Projects, SQL, migrations and edge functions",
+      "url": "https://mcp.supabase.com/mcp",
+      "homepage": "https://supabase.com",
+      "category": "data",
+      "auth": "oauth",
+      "icon": "supabase"
+    },
+    {
+      "id": "neon",
+      "name": "Neon",
+      "description": "Serverless Postgres projects, branches and queries",
+      "url": "https://mcp.neon.tech/mcp",
+      "homepage": "https://neon.com",
+      "category": "data",
+      "auth": "oauth",
+      "icon": "neon"
+    },
+    {
+      "id": "prisma",
+      "name": "Prisma Postgres",
+      "description": "Databases, schemas, migrations and backups",
+      "url": "https://mcp.prisma.io/mcp",
+      "homepage": "https://www.prisma.io",
+      "category": "data",
+      "auth": "oauth",
+      "icon": "prisma"
+    },
+    {
+      "id": "planetscale",
+      "name": "PlanetScale",
+      "description": "Databases, branches, schema and Insights",
+      "url": "https://mcp.pscale.dev/mcp/planetscale",
+      "homepage": "https://planetscale.com",
+      "category": "data",
+      "auth": "oauth",
+      "icon": "planetscale"
+    },
+    {
+      "id": "turso",
+      "name": "Turso",
+      "description": "Databases, groups and SQL on Turso Cloud",
+      "url": "https://mcp.turso.ai/mcp",
+      "homepage": "https://turso.tech",
+      "category": "data",
+      "auth": "oauth",
+      "icon": "turso"
+    },
+    {
+      "id": "clickhouse",
+      "name": "ClickHouse Cloud",
+      "description": "Services, queries and analytics data",
+      "url": "https://mcp.clickhouse.cloud/mcp",
+      "homepage": "https://clickhouse.com",
+      "category": "data",
+      "auth": "oauth",
+      "icon": "clickhouse"
+    },
+    {
+      "id": "upstash",
+      "name": "Upstash",
+      "description": "Redis databases, vector indexes and queues",
+      "url": "https://mcp.upstash.com/mcp",
+      "homepage": "https://upstash.com",
+      "category": "data",
+      "auth": "oauth",
+      "icon": "upstash"
+    },
+    {
+      "id": "mongodb",
+      "name": "MongoDB Atlas",
+      "description": "Clusters, databases and queries",
+      "url": "https://mcp.mongodb.com/mcp",
+      "homepage": "https://www.mongodb.com",
+      "category": "data",
+      "auth": "oauth",
+      "icon": "mongodb"
+    },
+    {
+      "id": "github",
+      "name": "GitHub",
+      "description": "Repositories, issues, pull requests and Actions",
+      "url": "https://api.githubcopilot.com/mcp/",
+      "homepage": "https://github.com",
+      "category": "infrastructure",
+      "auth": "token",
+      "tokenUrl": "https://github.com/settings/personal-access-tokens",
+      "icon": "github"
+    },
+    {
+      "id": "render",
+      "name": "Render",
+      "description": "Services, deploys, logs and metrics",
+      "url": "https://mcp.render.com/mcp",
+      "homepage": "https://render.com",
+      "category": "infrastructure",
+      "auth": "token",
+      "tokenUrl": "https://dashboard.render.com/u/settings#api-keys",
+      "icon": "render"
+    },
+    {
+      "id": "cloudflare",
+      "name": "Cloudflare",
+      "description": "Workers, storage, DNS and the whole Cloudflare API",
+      "url": "https://mcp.cloudflare.com/mcp",
+      "homepage": "https://www.cloudflare.com",
+      "category": "infrastructure",
+      "auth": "oauth",
+      "icon": "cloudflare"
+    },
+    {
+      "id": "gitlab",
+      "name": "GitLab",
+      "description": "Projects, issues, merge requests and pipelines",
+      "url": "https://gitlab.com/api/v4/mcp",
+      "homepage": "https://gitlab.com",
+      "category": "infrastructure",
+      "auth": "oauth",
+      "icon": "gitlab"
+    },
+    {
+      "id": "postman",
+      "name": "Postman",
+      "description": "Collections, requests and API workspaces",
+      "url": "https://mcp.postman.com/mcp",
+      "homepage": "https://www.postman.com",
+      "category": "infrastructure",
+      "auth": "oauth",
+      "icon": "postman"
+    },
+    {
+      "id": "circleci",
+      "name": "CircleCI",
+      "description": "Pipelines, builds, test results and logs",
+      "url": "https://mcp.circleci.com/v1/mcp",
+      "homepage": "https://circleci.com",
+      "category": "infrastructure",
+      "auth": "oauth",
+      "icon": "circleci"
+    },
+    {
+      "id": "netlify",
+      "name": "Netlify",
+      "description": "Sites, deploys and project settings",
+      "url": "https://netlify-mcp.netlify.app/mcp",
+      "homepage": "https://www.netlify.com",
+      "category": "infrastructure",
+      "auth": "oauth",
+      "icon": "netlify"
+    },
+    {
+      "id": "railway",
+      "name": "Railway",
+      "description": "Projects, services, variables and deploys",
+      "url": "https://mcp.railway.com/",
+      "homepage": "https://railway.com",
+      "category": "infrastructure",
+      "auth": "oauth",
+      "icon": "railway"
+    },
+    {
+      "id": "fly",
+      "name": "Fly.io",
+      "description": "Apps, machines and deployments",
+      "url": "https://mcp.fly.io/mcp",
+      "homepage": "https://fly.io",
+      "category": "infrastructure",
+      "auth": "oauth",
+      "icon": "flyio"
+    },
+    {
+      "id": "digitalocean",
+      "name": "DigitalOcean",
+      "description": "Apps, droplets, databases and networking",
+      "url": "https://mcp.digitalocean.com/mcp",
+      "homepage": "https://www.digitalocean.com",
+      "category": "infrastructure",
+      "auth": "oauth",
+      "icon": "digitalocean"
+    },
+    {
+      "id": "heroku",
+      "name": "Heroku",
+      "description": "Apps, dynos, add-ons and logs",
+      "url": "https://mcp.heroku.com/mcp",
+      "homepage": "https://www.heroku.com",
+      "category": "infrastructure",
+      "auth": "oauth",
+      "icon": "heroku"
+    },
+    {
+      "id": "pulumi",
+      "name": "Pulumi",
+      "description": "Stacks, resources and infrastructure insights",
+      "url": "https://mcp.ai.pulumi.com/mcp",
+      "homepage": "https://www.pulumi.com",
+      "category": "infrastructure",
+      "auth": "oauth",
+      "icon": "pulumi"
+    },
+    {
+      "id": "expo",
+      "name": "Expo",
+      "description": "EAS builds, submissions and updates",
+      "url": "https://mcp.expo.dev/mcp",
+      "homepage": "https://expo.dev",
+      "category": "infrastructure",
+      "auth": "oauth",
+      "icon": "expo"
+    },
+    {
+      "id": "hostinger",
+      "name": "Hostinger",
+      "description": "Websites, domains, DNS and VPS",
+      "url": "https://mcp.hostinger.com",
+      "homepage": "https://www.hostinger.com",
+      "category": "infrastructure",
+      "auth": "oauth",
+      "icon": "hostinger"
+    },
+    {
+      "id": "workos",
+      "name": "WorkOS",
+      "description": "Organizations, users, SSO and directory sync",
+      "url": "https://mcp.workos.com/mcp",
+      "homepage": "https://workos.com",
+      "category": "infrastructure",
+      "auth": "oauth",
+      "icon": "workos"
+    },
+    {
+      "id": "clerk",
+      "name": "Clerk",
+      "description": "Users, organizations and authentication",
+      "url": "https://mcp.clerk.com/mcp",
+      "homepage": "https://clerk.com",
+      "category": "infrastructure",
+      "auth": "oauth",
+      "icon": "clerk"
+    },
+    {
+      "id": "sentry",
+      "name": "Sentry",
+      "description": "Issues, errors, traces and releases",
+      "url": "https://mcp.sentry.dev/mcp",
+      "homepage": "https://sentry.io",
+      "category": "observability",
+      "auth": "oauth",
+      "icon": "sentry"
+    },
+    {
+      "id": "posthog",
+      "name": "PostHog",
+      "description": "Product analytics, feature flags and experiments",
+      "url": "https://mcp.posthog.com/mcp",
+      "homepage": "https://posthog.com",
+      "category": "observability",
+      "auth": "oauth",
+      "icon": "posthog"
+    },
+    {
+      "id": "datadog",
+      "name": "Datadog",
+      "description": "Logs, metrics, traces and monitors",
+      "url": "https://mcp.datadoghq.com/api/unstable/mcp-server/mcp",
+      "homepage": "https://www.datadoghq.com",
+      "category": "observability",
+      "auth": "oauth",
+      "icon": "datadog"
+    },
+    {
+      "id": "grafana",
+      "name": "Grafana Cloud",
+      "description": "Dashboards, metrics, logs and alerts",
+      "url": "https://mcp.grafana.com/mcp",
+      "homepage": "https://grafana.com",
+      "category": "observability",
+      "auth": "oauth",
+      "icon": "grafana"
+    },
+    {
+      "id": "honeycomb",
+      "name": "Honeycomb",
+      "description": "Query traces and events",
+      "url": "https://mcp.honeycomb.io/mcp",
+      "homepage": "https://www.honeycomb.io",
+      "category": "observability",
+      "auth": "oauth",
+      "icon": "honeycomb"
+    },
+    {
+      "id": "axiom",
+      "name": "Axiom",
+      "description": "Query logs, traces and events",
+      "url": "https://mcp.axiom.co/mcp",
+      "homepage": "https://axiom.co",
+      "category": "observability",
+      "auth": "oauth",
+      "icon": "axiom"
+    },
+    {
+      "id": "betterstack",
+      "name": "Better Stack",
+      "description": "Uptime, incidents, logs and telemetry",
+      "url": "https://mcp.betterstack.com",
+      "homepage": "https://betterstack.com",
+      "category": "observability",
+      "auth": "oauth",
+      "icon": "betterstack"
+    },
+    {
+      "id": "amplitude",
+      "name": "Amplitude",
+      "description": "Charts, dashboards and experiments",
+      "url": "https://mcp.amplitude.com/mcp",
+      "homepage": "https://amplitude.com",
+      "category": "observability",
+      "auth": "oauth",
+      "icon": "amplitude"
+    },
+    {
+      "id": "mixpanel",
+      "name": "Mixpanel",
+      "description": "Events, funnels and reports",
+      "url": "https://mcp.mixpanel.com/mcp",
+      "homepage": "https://mixpanel.com",
+      "category": "observability",
+      "auth": "oauth",
+      "icon": "mixpanel"
+    },
+    {
+      "id": "braintrust",
+      "name": "Braintrust",
+      "description": "AI evals, experiments and logs",
+      "url": "https://api.braintrust.dev/mcp",
+      "homepage": "https://www.braintrust.dev",
+      "category": "observability",
+      "auth": "oauth",
+      "icon": "braintrust"
+    },
+    {
+      "id": "openstatus",
+      "name": "OpenStatus",
+      "description": "Uptime monitors, incidents and status pages",
+      "url": "https://api.openstatus.dev/mcp",
+      "homepage": "https://www.openstatus.dev",
+      "category": "observability",
+      "auth": "oauth",
+      "icon": "openstatus"
+    },
+    {
+      "id": "databuddy",
+      "name": "Databuddy",
+      "description": "Privacy-first web and product analytics",
+      "url": "https://api.databuddy.cc/v1/mcp",
+      "homepage": "https://www.databuddy.cc",
+      "category": "observability",
+      "auth": "oauth",
+      "icon": "databuddy"
+    },
+    {
+      "id": "wiro",
+      "name": "Wiro",
+      "description": "Run image, video, audio and 3D models",
+      "url": "https://mcp.wiro.ai/v1",
+      "homepage": "https://wiro.ai",
+      "category": "ai",
+      "auth": "token",
+      "tokenUrl": "https://wiro.ai/panel/project",
+      "icon": "wiro"
+    },
+    {
+      "id": "browserbase",
+      "name": "Browserbase",
+      "description": "Drive cloud browsers to browse and extract pages",
+      "url": "https://mcp.browserbase.com/mcp",
+      "homepage": "https://www.browserbase.com",
+      "category": "ai",
+      "auth": "token",
+      "tokenUrl": "https://www.browserbase.com/settings",
+      "icon": "browserbase"
+    },
+    {
+      "id": "firecrawl",
+      "name": "Firecrawl",
+      "description": "Search, scrape and parse web pages",
+      "url": "https://mcp.firecrawl.dev/v2/mcp",
+      "homepage": "https://www.firecrawl.dev",
+      "category": "ai",
+      "auth": "none",
+      "tokenUrl": "https://www.firecrawl.dev/app/api-keys",
+      "icon": "firecrawl"
+    },
+    {
+      "id": "openrouter",
+      "name": "OpenRouter",
+      "description": "Models, usage and credits across AI providers",
+      "url": "https://mcp.openrouter.ai/mcp",
+      "homepage": "https://openrouter.ai",
+      "category": "ai",
+      "auth": "oauth",
+      "icon": "openrouter"
+    },
+    {
+      "id": "perplexity",
+      "name": "Perplexity",
+      "description": "Search the web with cited answers",
+      "url": "https://api.perplexity.ai/mcp",
+      "homepage": "https://www.perplexity.ai",
+      "category": "ai",
+      "auth": "oauth",
+      "icon": "perplexity"
+    },
+    {
+      "id": "tavily",
+      "name": "Tavily",
+      "description": "Web search, extraction and crawling",
+      "url": "https://mcp.tavily.com/mcp/",
+      "homepage": "https://www.tavily.com",
+      "category": "ai",
+      "auth": "oauth",
+      "icon": "tavily"
+    },
+    {
+      "id": "brightdata",
+      "name": "Bright Data",
+      "description": "Scrape and search the web at scale",
+      "url": "https://mcp.brightdata.com/mcp",
+      "homepage": "https://brightdata.com",
+      "category": "ai",
+      "auth": "oauth",
+      "icon": "brightdata"
+    },
+    {
+      "id": "apify",
+      "name": "Apify",
+      "description": "Run web scrapers and automation actors",
+      "url": "https://mcp.apify.com",
+      "homepage": "https://apify.com",
+      "category": "ai",
+      "auth": "oauth",
+      "icon": "apify"
+    },
+    {
+      "id": "fal",
+      "name": "Fal",
+      "description": "Generate images, video and audio",
+      "url": "https://mcp.fal.ai/mcp-relay",
+      "homepage": "https://fal.ai",
+      "category": "ai",
+      "auth": "oauth",
+      "icon": "falai"
+    },
+    {
+      "id": "cloudinary",
+      "name": "Cloudinary",
+      "description": "Upload, transform and manage media assets",
+      "url": "https://asset-management.mcp.cloudinary.com/mcp",
+      "homepage": "https://cloudinary.com",
+      "category": "ai",
+      "auth": "oauth",
+      "icon": "cloudinary"
+    },
+    {
+      "id": "elevenlabs",
+      "name": "ElevenLabs",
+      "description": "Voice agents, speech and audio",
+      "url": "https://api.elevenlabs.io/v1/mcp",
+      "homepage": "https://elevenlabs.io",
+      "category": "ai",
+      "auth": "oauth",
+      "icon": "elevenlabs"
+    },
+    {
+      "id": "eachlabs",
+      "name": "Eachlabs",
+      "description": "Run image, video and audio models and workflows",
+      "url": "https://mcp.eachlabs.ai/mcp",
+      "homepage": "https://www.eachlabs.ai",
+      "category": "ai",
+      "auth": "oauth",
+      "icon": "eachlabs"
+    },
+    {
+      "id": "excalidraw",
+      "name": "Excalidraw",
+      "description": "Hand-drawn diagrams and sketches",
+      "url": "https://mcp.excalidraw.com/mcp",
+      "homepage": "https://excalidraw.com",
+      "category": "design",
+      "auth": "none",
+      "icon": "excalidraw"
+    },
+    {
+      "id": "drawio",
+      "name": "draw.io",
+      "description": "Flowcharts and architecture diagrams",
+      "url": "https://mcp.draw.io/mcp",
+      "homepage": "https://www.drawio.com",
+      "category": "design",
+      "auth": "none",
+      "icon": "drawio"
+    },
+    {
+      "id": "tldraw",
+      "name": "tldraw",
+      "description": "Whiteboard canvases and diagrams",
+      "url": "https://tldraw-mcp-app.tldraw.workers.dev/mcp",
+      "homepage": "https://www.tldraw.com",
+      "category": "design",
+      "auth": "none",
+      "icon": "tldraw"
+    },
+    {
+      "id": "canva",
+      "name": "Canva",
+      "description": "Designs, assets and exports",
+      "url": "https://mcp.canva.com/mcp",
+      "homepage": "https://www.canva.com",
+      "category": "design",
+      "auth": "oauth",
+      "icon": "canva"
+    },
+    {
+      "id": "miro",
+      "name": "Miro",
+      "description": "Boards, diagrams and sticky notes",
+      "url": "https://mcp.miro.com/",
+      "homepage": "https://miro.com",
+      "category": "design",
+      "auth": "oauth",
+      "icon": "miro"
+    },
+    {
+      "id": "lucid",
+      "name": "Lucid",
+      "description": "Lucidchart and Lucidspark documents",
+      "url": "https://mcp.lucid.app/mcp",
+      "homepage": "https://lucid.co",
+      "category": "design",
+      "auth": "oauth",
+      "icon": "lucid"
+    },
+    {
+      "id": "mobbin",
+      "name": "Mobbin",
+      "description": "Real-world app screens and flows for reference",
+      "url": "https://api.mobbin.com/mcp",
+      "homepage": "https://mobbin.com",
+      "category": "design",
+      "auth": "oauth",
+      "icon": "mobbin"
+    },
+    {
+      "id": "webflow",
+      "name": "Webflow",
+      "description": "Sites, CMS collections and pages",
+      "url": "https://mcp.webflow.com/mcp",
+      "homepage": "https://webflow.com",
+      "category": "design",
+      "auth": "oauth",
+      "icon": "webflow"
+    },
+    {
+      "id": "framer",
+      "name": "Framer",
+      "description": "Projects, pages and CMS content",
+      "url": "https://mcp.framer.com/mcp",
+      "homepage": "https://www.framer.com",
+      "category": "design",
+      "auth": "oauth",
+      "icon": "framer"
+    },
+    {
+      "id": "wix",
+      "name": "Wix",
+      "description": "Sites, stores, bookings and CMS",
+      "url": "https://mcp.wix.com/mcp",
+      "homepage": "https://www.wix.com",
+      "category": "design",
+      "auth": "oauth",
+      "icon": "wix"
+    },
+    {
+      "id": "sanity",
+      "name": "Sanity",
+      "description": "Content, schemas and datasets",
+      "url": "https://mcp.sanity.io",
+      "homepage": "https://www.sanity.io",
+      "category": "design",
+      "auth": "oauth",
+      "icon": "sanity"
+    },
+    {
+      "id": "contentful",
+      "name": "Contentful",
+      "description": "Content types, entries and assets",
+      "url": "https://mcp.contentful.com/mcp",
+      "homepage": "https://www.contentful.com",
+      "category": "design",
+      "auth": "oauth",
+      "icon": "contentful"
+    },
+    {
+      "id": "mintlify",
+      "name": "Mintlify",
+      "description": "Documentation sites and pages",
+      "url": "https://mcp.mintlify.com/mcp",
+      "homepage": "https://www.mintlify.com",
+      "category": "design",
+      "auth": "oauth",
+      "icon": "mintlify"
+    },
+    {
+      "id": "lovable",
+      "name": "Lovable",
+      "description": "Lovable projects and apps",
+      "url": "https://mcp.lovable.dev/mcp",
+      "homepage": "https://lovable.dev",
+      "category": "design",
+      "auth": "oauth",
+      "icon": "lovable"
+    },
+    {
+      "id": "21st-dev",
+      "name": "21st.dev",
+      "description": "UI components and inspiration",
+      "url": "https://21st.dev/api/mcp",
+      "homepage": "https://21st.dev",
+      "category": "design",
+      "auth": "oauth",
+      "icon": "21stdev"
+    },
+    {
+      "id": "linear",
+      "name": "Linear",
+      "description": "Issues, projects, cycles and comments",
+      "url": "https://mcp.linear.app/mcp",
+      "homepage": "https://linear.app",
+      "category": "work",
+      "auth": "oauth",
+      "icon": "linear"
+    },
+    {
+      "id": "notion",
+      "name": "Notion",
+      "description": "Pages, databases and workspace search",
+      "url": "https://mcp.notion.com/mcp",
+      "homepage": "https://www.notion.com",
+      "category": "work",
+      "auth": "oauth",
+      "icon": "notion"
+    },
+    {
+      "id": "atlassian",
+      "name": "Atlassian",
+      "description": "Jira issues and Confluence pages",
+      "url": "https://mcp.atlassian.com/v2/mcp",
+      "homepage": "https://www.atlassian.com",
+      "category": "work",
+      "auth": "oauth",
+      "icon": "atlassian"
+    },
+    {
+      "id": "clickup",
+      "name": "ClickUp",
+      "description": "Tasks, docs and comments",
+      "url": "https://mcp.clickup.com/mcp",
+      "homepage": "https://clickup.com",
+      "category": "work",
+      "auth": "oauth",
+      "icon": "clickup"
+    },
+    {
+      "id": "trello",
+      "name": "Trello",
+      "description": "Boards, lists and cards",
+      "url": "https://mcp.trello.com/v1",
+      "homepage": "https://trello.com",
+      "category": "work",
+      "auth": "oauth",
+      "icon": "trello"
+    },
+    {
+      "id": "monday",
+      "name": "monday.com",
+      "description": "Boards, items and updates",
+      "url": "https://mcp.monday.com/mcp",
+      "homepage": "https://monday.com",
+      "category": "work",
+      "auth": "oauth",
+      "icon": "monday"
+    },
+    {
+      "id": "airtable",
+      "name": "Airtable",
+      "description": "Bases, tables and records",
+      "url": "https://mcp.airtable.com/mcp",
+      "homepage": "https://www.airtable.com",
+      "category": "work",
+      "auth": "oauth",
+      "icon": "airtable"
+    },
+    {
+      "id": "todoist",
+      "name": "Todoist",
+      "description": "Tasks, projects and due dates",
+      "url": "https://ai.todoist.net/mcp",
+      "homepage": "https://www.todoist.com",
+      "category": "work",
+      "auth": "oauth",
+      "icon": "todoist"
+    },
+    {
+      "id": "granola",
+      "name": "Granola",
+      "description": "Meeting notes and transcripts",
+      "url": "https://mcp.granola.ai/mcp",
+      "homepage": "https://www.granola.ai",
+      "category": "work",
+      "auth": "oauth",
+      "icon": "granola"
+    },
+    {
+      "id": "circleback",
+      "name": "Circleback",
+      "description": "Meeting notes and action items",
+      "url": "https://circleback.ai/api/mcp",
+      "homepage": "https://circleback.ai",
+      "category": "work",
+      "auth": "oauth",
+      "icon": "circleback"
+    },
+    {
+      "id": "craft",
+      "name": "Craft",
+      "description": "Docs, notes and tasks in your Craft space",
+      "url": "https://mcp.craft.do/my/mcp",
+      "homepage": "https://www.craft.do",
+      "category": "work",
+      "auth": "oauth",
+      "icon": "craft"
+    },
+    {
+      "id": "superhuman",
+      "name": "Superhuman",
+      "description": "Search, triage and draft email",
+      "url": "https://mcp.mail.superhuman.com/mcp",
+      "homepage": "https://superhuman.com",
+      "category": "work",
+      "auth": "oauth",
+      "icon": "superhuman"
+    },
+    {
+      "id": "stripe",
+      "name": "Stripe",
+      "description": "Customers, payments, subscriptions and invoices",
+      "url": "https://mcp.stripe.com/",
+      "homepage": "https://stripe.com",
+      "category": "business",
+      "auth": "oauth",
+      "icon": "stripe"
+    },
+    {
+      "id": "paypal",
+      "name": "PayPal",
+      "description": "Invoices, orders, payments and disputes",
+      "url": "https://mcp.paypal.com/mcp",
+      "homepage": "https://www.paypal.com",
+      "category": "business",
+      "auth": "oauth",
+      "icon": "paypal"
+    },
+    {
+      "id": "square",
+      "name": "Square",
+      "description": "Payments, orders, catalog and customers",
+      "url": "https://mcp.squareup.com/mcp",
+      "homepage": "https://squareup.com",
+      "category": "business",
+      "auth": "oauth",
+      "icon": "square"
+    },
+    {
+      "id": "polar",
+      "name": "Polar",
+      "description": "Products, subscriptions, customers and payouts",
+      "url": "https://mcp.polar.sh/mcp/polar-mcp",
+      "homepage": "https://polar.sh",
+      "category": "business",
+      "auth": "oauth",
+      "icon": "polar"
+    },
+    {
+      "id": "paddle",
+      "name": "Paddle",
+      "description": "Products, prices, subscriptions and transactions",
+      "url": "https://mcp.paddle.com/mcp",
+      "homepage": "https://www.paddle.com",
+      "category": "business",
+      "auth": "oauth",
+      "icon": "paddle"
+    },
+    {
+      "id": "autumn",
+      "name": "Autumn",
+      "description": "Plans, features, usage and billing",
+      "url": "https://mcp.useautumn.com/mcp",
+      "homepage": "https://useautumn.com",
+      "category": "business",
+      "auth": "oauth",
+      "icon": "autumn"
+    },
+    {
+      "id": "dodopayments",
+      "name": "Dodo Payments",
+      "description": "Products, payments, subscriptions and customers",
+      "url": "https://mcp.dodopayments.com/mcp",
+      "homepage": "https://dodopayments.com",
+      "category": "business",
+      "auth": "oauth",
+      "icon": "dodopayments"
+    },
+    {
+      "id": "ramp",
+      "name": "Ramp",
+      "description": "Spend, transactions and reimbursements",
+      "url": "https://ramp-mcp-remote.ramp.com/mcp",
+      "homepage": "https://ramp.com",
+      "category": "business",
+      "auth": "oauth",
+      "icon": "ramp"
+    },
+    {
+      "id": "mercury",
+      "name": "Mercury",
+      "description": "Bank balances, transactions and recipients",
+      "url": "https://mcp.mercury.com/mcp",
+      "homepage": "https://mercury.com",
+      "category": "business",
+      "auth": "oauth",
+      "icon": "mercury"
+    },
+    {
+      "id": "intercom",
+      "name": "Intercom",
+      "description": "Conversations and contacts in US workspaces",
+      "url": "https://mcp.intercom.com/mcp",
+      "homepage": "https://www.intercom.com",
+      "category": "business",
+      "auth": "oauth",
+      "icon": "intercom"
+    },
+    {
+      "id": "intercom-eu",
+      "name": "Intercom EU",
+      "description": "Conversations and contacts in EU workspaces",
+      "url": "https://mcp.eu.intercom.com/mcp",
+      "homepage": "https://www.intercom.com",
+      "category": "business",
+      "auth": "oauth",
+      "icon": "intercom"
+    },
+    {
+      "id": "brevo",
+      "name": "Brevo",
+      "description": "Contacts, campaigns and transactional email",
+      "url": "https://mcp.brevo.com/v1/brevo/mcp",
+      "homepage": "https://www.brevo.com",
+      "category": "business",
+      "auth": "oauth",
+      "icon": "brevo"
+    },
+    {
+      "id": "resend",
+      "name": "Resend",
+      "description": "Send email and manage domains and audiences",
+      "url": "https://mcp.resend.com/mcp",
+      "homepage": "https://resend.com",
+      "category": "business",
+      "auth": "oauth",
+      "icon": "resend"
+    },
+    {
+      "id": "loops",
+      "name": "Loops",
+      "description": "Contacts, audiences and transactional email",
+      "url": "https://mcp.loops.so",
+      "homepage": "https://loops.so",
+      "category": "business",
+      "auth": "oauth",
+      "icon": "loops"
+    },
+    {
+      "id": "customerio",
+      "name": "Customer.io",
+      "description": "Campaigns, segments and people in US workspaces",
+      "url": "https://mcp.customer.io/mcp",
+      "homepage": "https://customer.io",
+      "category": "business",
+      "auth": "oauth",
+      "icon": "customerio"
+    },
+    {
+      "id": "customerio-eu",
+      "name": "Customer.io EU",
+      "description": "Campaigns, segments and people in EU workspaces",
+      "url": "https://mcp-eu.customer.io/mcp",
+      "homepage": "https://customer.io",
+      "category": "business",
+      "auth": "oauth",
+      "icon": "customerio"
+    },
+    {
+      "id": "ahrefs",
+      "name": "Ahrefs",
+      "description": "Keywords, backlinks and site audits",
+      "url": "https://api.ahrefs.com/mcp/mcp",
+      "homepage": "https://ahrefs.com",
+      "category": "business",
+      "auth": "oauth",
+      "icon": "ahrefs"
+    },
+    {
+      "id": "semrush",
+      "name": "Semrush",
+      "description": "Keywords, domains, backlinks and traffic",
+      "url": "https://mcp.semrush.com/v2/mcp",
+      "homepage": "https://www.semrush.com",
+      "category": "business",
+      "auth": "oauth",
+      "icon": "semrush"
+    },
+    {
+      "id": "openseo",
+      "name": "OpenSEO",
+      "description": "Keyword research, rankings and Search Console data",
+      "url": "https://app.openseo.so/mcp",
+      "homepage": "https://openseo.so",
+      "category": "business",
+      "auth": "oauth",
+      "icon": "openseo"
+    },
+    {
+      "id": "calcom",
+      "name": "Cal.com",
+      "description": "Event types, availability and bookings",
+      "url": "https://mcp.cal.com/mcp",
+      "homepage": "https://cal.com",
+      "category": "business",
+      "auth": "oauth",
+      "icon": "calcom"
+    }
+  ]
+}

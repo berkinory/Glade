@@ -1,5 +1,5 @@
 import type { IconComponent } from "./iconComponent";
-import { resolveServiceBrand } from "./serviceBrandArtwork";
+import { resolveServiceBrand } from "./brandIcons";
 
 export function resolveMcpToolIcon(input: {
   toolName?: string | undefined;

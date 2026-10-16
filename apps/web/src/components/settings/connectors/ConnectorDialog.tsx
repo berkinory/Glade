@@ -3,7 +3,7 @@ import type {
   McpConnectorConnectInput,
   McpConnectorsState,
 } from "@glade/contracts/transport/ws/mcpConnectorsRpc";
-import { normalizeMcpConnectorUrl } from "@glade/shared/mcpConnectors/catalog";
+import { normalizeMcpConnectorUrl } from "@glade/shared/mcpConnectors/connectorUrl";
 import { type FormEvent, type ReactNode, useEffect, useId, useState } from "react";
 
 import {
@@ -240,7 +240,7 @@ function ConnectorDialogContent(
       <DialogHeader className="px-5 pt-5">
         <div className="mb-2">
           <ConnectorIcon
-            presetId={preset?.id ?? null}
+            icon={preset?.icon}
             name={preset?.name ?? name}
             url={preset ? targetIconUrl(target) : url.trim() || "custom"}
             size="lg"

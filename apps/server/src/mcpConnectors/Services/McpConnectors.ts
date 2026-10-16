@@ -1,3 +1,4 @@
+import type { McpCatalog } from "@glade/contracts/server/mcpCatalog";
 import type {
   McpConnectorConnectInput,
   McpConnectorConnectResult,
@@ -40,6 +41,7 @@ type McpConnectorUpstreamResult =
 
 export interface McpConnectorsShape {
   readonly streamState: Stream.Stream<McpConnectorsState>;
+  readonly catalog: Effect.Effect<McpCatalog>;
   readonly connect: (
     input: McpConnectorConnectInput,
   ) => Effect.Effect<McpConnectorConnectResult, McpConnectorsError>;

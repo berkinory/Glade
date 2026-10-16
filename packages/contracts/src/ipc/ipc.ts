@@ -30,6 +30,7 @@ import type {
   McpConnectorConnectResult,
   McpConnectorsState,
 } from "../transport/ws/mcpConnectorsRpc";
+import type { McpCatalog } from "../server/mcpCatalog";
 import type {
   SkillInstallInput,
   SkillPreview,
@@ -622,6 +623,7 @@ export interface NativeApi {
   // Remote MCP servers this machine signs in to and serves to the agents chosen for each.
   mcpConnectors: {
     onState: (callback: (state: McpConnectorsState) => void) => () => void;
+    getCatalog: () => Promise<McpCatalog>;
     connect: (input: McpConnectorConnectInput) => Promise<McpConnectorConnectResult>;
     cancelSignIn: (input: { readonly attemptId: string }) => Promise<void>;
     disconnect: (input: { readonly connectorId: string }) => Promise<void>;

@@ -65,8 +65,11 @@ JSON, so a file with comments is left for the user to edit.
 
 ## Catalog
 
-The presets live in `packages/shared/src/mcpConnectors/catalog.ts`. Each one was checked against
-its live server on 2026-10-16:
+The presets live in `packages/catalog/mcp-servers.json`; [the catalog README](../packages/catalog/README.md)
+covers editing, signing and publishing. Each machine's server serves the newest signed catalog it
+holds: the snapshot bundled with the app, or a later one fetched daily from useglade.dev. A
+connector stays connected when a catalog drops its preset. Each preset was checked against its
+live server on 2026-10-16:
 
 - **No sign-in**: the server answers `initialize` without credentials.
 - **OAuth**: the server accepted a dynamic client registration with Glade's loopback redirect and

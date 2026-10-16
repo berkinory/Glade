@@ -2,10 +2,12 @@ import { Schema } from "effect";
 import * as Rpc from "effect/unstable/rpc/Rpc";
 
 import { ProviderKind } from "../../core/baseSchemas";
+import { McpCatalog, McpConnectorAuthKind } from "../../server/mcpCatalog";
 import { WsRpcError } from "./rpcErrors";
 
 export const MCP_CONNECTORS_WS_METHODS = {
   subscribe: "mcpConnectors.subscribe",
+  getCatalog: "mcpConnectors.getCatalog",
   connect: "mcpConnectors.connect",
   cancelSignIn: "mcpConnectors.cancelSignIn",
   disconnect: "mcpConnectors.disconnect",
@@ -15,9 +17,6 @@ export const MCP_CONNECTORS_WS_METHODS = {
 // The agents a connector serves. Null means every agent, including ones added later.
 export const McpConnectorProviders = Schema.NullOr(Schema.Array(ProviderKind));
 export type McpConnectorProviders = typeof McpConnectorProviders.Type;
-
-export const McpConnectorAuthKind = Schema.Literals(["none", "oauth", "token"]);
-export type McpConnectorAuthKind = typeof McpConnectorAuthKind.Type;
 
 export const McpConnector = Schema.Struct({
   connectorId: Schema.String,
@@ -78,6 +77,12 @@ export const WsMcpConnectorsSubscribeRpc = Rpc.make(MCP_CONNECTORS_WS_METHODS.su
   success: McpConnectorsState,
   error: WsRpcError,
   stream: true,
+});
+
+export const WsMcpConnectorsGetCatalogRpc = Rpc.make(MCP_CONNECTORS_WS_METHODS.getCatalog, {
+  payload: Schema.Struct({}),
+  success: McpCatalog,
+  error: WsRpcError,
 });
 
 export const WsMcpConnectorsConnectRpc = Rpc.make(MCP_CONNECTORS_WS_METHODS.connect, {

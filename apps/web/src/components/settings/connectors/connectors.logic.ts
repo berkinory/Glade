@@ -1,12 +1,9 @@
 import type { ProviderKind } from "@glade/contracts/core/baseSchemas";
 import type { ProviderMcpServer } from "@glade/contracts/provider/providerDiscovery";
+import type { McpCatalog, McpConnectorPreset } from "@glade/contracts/server/mcpCatalog";
 import type { McpConnector } from "@glade/contracts/transport/ws/mcpConnectorsRpc";
-import {
-  findMcpConnectorPreset,
-  MCP_CONNECTOR_CATEGORIES,
-  MCP_CONNECTOR_PRESETS,
-  type McpConnectorPreset,
-} from "@glade/shared/mcpConnectors/catalog";
+
+type Presets = ReadonlyArray<McpConnectorPreset>;
 
 // What the connect dialog is for: a catalog preset, or a server the user names by URL. An empty
 // custom URL means a new custom server.
@@ -22,12 +19,17 @@ export function connectorHost(url: string): string {
   }
 }
 
-export function connectorPreset(connector: McpConnector): McpConnectorPreset | undefined {
-  return connector.presetId ? findMcpConnectorPreset(connector.presetId) : undefined;
+export function connectorPreset(
+  connector: McpConnector,
+  presets: Presets,
+): McpConnectorPreset | undefined {
+  return connector.presetId
+    ? presets.find((preset) => preset.id === connector.presetId)
+    : undefined;
 }
 
-export function targetForConnector(connector: McpConnector): ConnectorTarget {
-  const preset = connectorPreset(connector);
+export function targetForConnector(connector: McpConnector, presets: Presets): ConnectorTarget {
+  const preset = connectorPreset(connector, presets);
   return preset
     ? { kind: "preset", preset }
     : { kind: "custom", url: connector.url, name: connector.name };
@@ -42,8 +44,8 @@ export function targetIconUrl(target: ConnectorTarget): string {
   return target.kind === "preset" ? target.preset.homepage : target.url;
 }
 
-export function connectorIconUrl(connector: McpConnector): string {
-  return connectorPreset(connector)?.homepage ?? connector.url;
+export function connectorIconUrl(connector: McpConnector, presets: Presets): string {
+  return connectorPreset(connector, presets)?.homepage ?? connector.url;
 }
 
 function matches(query: string, fields: ReadonlyArray<string>): boolean {
@@ -52,6 +54,7 @@ function matches(query: string, fields: ReadonlyArray<string>): boolean {
 
 export function filterConnected(
   connectors: ReadonlyArray<McpConnector>,
+  presets: Presets,
   query: string,
 ): ReadonlyArray<McpConnector> {
   return connectors
@@ -59,7 +62,7 @@ export function filterConnected(
       matches(query, [
         connector.name,
         connectorHost(connector.url),
-        connectorPreset(connector)?.description ?? "",
+        connectorPreset(connector, presets)?.description ?? "",
       ]),
     )
     .toSorted((left, right) => left.name.localeCompare(right.name));
@@ -73,11 +76,12 @@ export interface CatalogShelf {
 
 // Connected presets leave the catalog: they are listed, with their actions, above it.
 export function catalogShelves(
+  catalog: McpCatalog,
   query: string,
   connectedPresetIds: ReadonlySet<string>,
 ): ReadonlyArray<CatalogShelf> {
-  return MCP_CONNECTOR_CATEGORIES.flatMap((category) => {
-    const presets = MCP_CONNECTOR_PRESETS.filter(
+  return catalog.categories.flatMap((category) => {
+    const presets = catalog.presets.filter(
       (preset) =>
         preset.category === category.id &&
         !connectedPresetIds.has(preset.id) &&
@@ -105,13 +109,17 @@ export interface AgentServerRow {
 
 const normalizedName = (value: string) => value.toLowerCase().replace(/[^a-z0-9]/gu, "");
 
-function presetFor(name: string, origin: string | null): McpConnectorPreset | undefined {
+function presetFor(
+  name: string,
+  origin: string | null,
+  presets: Presets,
+): McpConnectorPreset | undefined {
   const byOrigin = origin
-    ? MCP_CONNECTOR_PRESETS.find((preset) => new URL(preset.url).origin === origin)
+    ? presets.find((preset) => connectorOrigin(preset.url) === origin)
     : undefined;
   if (byOrigin) return byOrigin;
   const key = normalizedName(name);
-  return MCP_CONNECTOR_PRESETS.find(
+  return presets.find(
     (preset) => normalizedName(preset.id) === key || normalizedName(preset.name) === key,
   );
 }
@@ -119,6 +127,7 @@ function presetFor(name: string, origin: string | null): McpConnectorPreset | un
 export function agentServerRows(
   sources: ReadonlyArray<AgentServerSource>,
   connectors: ReadonlyArray<McpConnector>,
+  presets: Presets,
 ): ReadonlyArray<AgentServerRow> {
   const byName = new Map<string, AgentServerSource[]>();
   for (const source of sources) {
@@ -131,7 +140,7 @@ export function agentServerRows(
       if (!first) return [];
       const name = first.server.name;
       const origin = group.find((entry) => entry.server.origin)?.server.origin ?? null;
-      const preset = presetFor(name, origin);
+      const preset = presetFor(name, origin, presets);
       const connector = connectors.find(
         (entry) =>
           (preset !== undefined && entry.presetId === preset.id) ||

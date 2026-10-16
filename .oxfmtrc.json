@@ -9,7 +9,9 @@
     "*.tsbuildinfo",
     "**/routeTree.gen.ts",
     "apps/server/src/provider/codex/protocol/generated/**",
-    "apps/web/public/mockServiceWorker.js"
+    "apps/web/public/mockServiceWorker.js",
+    "apps/landing/public/catalog",
+    "packages/catalog/signed"
   ],
   "sortPackageJson": {}
 }

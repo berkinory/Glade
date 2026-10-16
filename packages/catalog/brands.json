@@ -1,0 +1,431 @@
+{
+  "1password": {
+    "monochrome": true,
+    "aliases": ["1pass", "onepassword"]
+  },
+  "21stdev": {
+    "badge": true
+  },
+  "ahrefs": {
+    "coverage": 0.88
+  },
+  "airtable": {
+    "monochrome": true
+  },
+  "amplitude": {},
+  "androidstudio": {},
+  "apify": {
+    "coverage": 0.86
+  },
+  "asana": {},
+  "aside": {
+    "aliases": ["asidecom"]
+  },
+  "astroaso": {
+    "aliases": ["astro", "tryastro", "tryastroapp"]
+  },
+  "astrodocs": {
+    "monochrome": true
+  },
+  "atlassian": {
+    "aliases": ["mcpatlassian"]
+  },
+  "auth0": {
+    "aliases": ["auth0docs"]
+  },
+  "autumn": {
+    "badge": true
+  },
+  "aws": {
+    "monochrome": true,
+    "aliases": ["awsdocumentation", "awsknowledge"]
+  },
+  "axiom": {
+    "monochrome": true
+  },
+  "azure": {
+    "aliases": ["azdevops", "azuredevops", "azuremcpserver"]
+  },
+  "betterstack": {},
+  "blender": {},
+  "braintrust": {
+    "coverage": 0.78
+  },
+  "bravesearch": {
+    "aliases": ["brave", "mcpserverbravesearch"]
+  },
+  "brevo": {
+    "monochrome": true
+  },
+  "brightdata": {
+    "badge": true
+  },
+  "browserbase": {
+    "aliases": ["browserbasemcp"],
+    "badge": true
+  },
+  "browseruse": {
+    "aliases": ["browserharnessmcp"]
+  },
+  "buffer": {
+    "monochrome": true
+  },
+  "bun": {},
+  "calcom": {
+    "monochrome": true,
+    "aliases": ["cal"]
+  },
+  "calendly": {},
+  "canva": {
+    "badge": true
+  },
+  "chromedevtools": {
+    "aliases": ["chrome", "chromedevtoolsmcp"]
+  },
+  "circleback": {
+    "badge": true
+  },
+  "circleci": {
+    "monochrome": true
+  },
+  "claude": {},
+  "clerk": {},
+  "clickhouse": {
+    "aliases": ["clickhousecloud"],
+    "badge": true
+  },
+  "clickup": {},
+  "clion": {},
+  "cloudflare": {
+    "aliases": ["cf", "cloudflaredocs"]
+  },
+  "cloudinary": {},
+  "coinbase": {
+    "aliases": ["coinbasecdpdocs"]
+  },
+  "composio": {},
+  "contentful": {
+    "monochrome": true
+  },
+  "context7": {
+    "aliases": ["context7mcp"],
+    "badge": true
+  },
+  "convex": {},
+  "craft": {
+    "monochrome": true,
+    "aliases": ["craftdo"]
+  },
+  "cursor": {
+    "monochrome": true
+  },
+  "customerio": {
+    "aliases": ["customerioeu"],
+    "badge": true
+  },
+  "databuddy": {
+    "monochrome": true
+  },
+  "datadog": {},
+  "datagrip": {},
+  "digitalocean": {
+    "monochrome": true
+  },
+  "docusign": {},
+  "dodopayments": {
+    "aliases": ["dodo"],
+    "badge": true
+  },
+  "drawio": {
+    "monochrome": true,
+    "aliases": ["diagramsnet"]
+  },
+  "eachlabs": {
+    "badge": true
+  },
+  "egnyte": {},
+  "elevenlabs": {
+    "monochrome": true,
+    "aliases": ["elevenlabsmcp"]
+  },
+  "exa": {
+    "badge": true
+  },
+  "excalidraw": {
+    "monochrome": true
+  },
+  "executor": {
+    "aliases": ["executorsh"]
+  },
+  "expo": {
+    "monochrome": true
+  },
+  "falai": {
+    "aliases": ["fal"],
+    "badge": true
+  },
+  "fathom": {},
+  "figma": {},
+  "firebase": {
+    "aliases": ["firebasemcpserver"]
+  },
+  "firecrawl": {
+    "aliases": ["firecrawlmcp"]
+  },
+  "flyio": {
+    "aliases": ["fly"],
+    "badge": true
+  },
+  "framer": {
+    "monochrome": true
+  },
+  "ghostty": {},
+  "github": {
+    "monochrome": true
+  },
+  "gitlab": {},
+  "gitmcp": {
+    "monochrome": true
+  },
+  "gmail": {},
+  "goland": {
+    "monochrome": true
+  },
+  "googleanalytics": {
+    "aliases": ["analyticsmcp", "ga4", "googleanalyticsmcp"]
+  },
+  "googlecalendar": {},
+  "googledrive": {},
+  "grafana": {
+    "aliases": ["grafanacloud"]
+  },
+  "granola": {
+    "monochrome": true
+  },
+  "greenhouse": {
+    "monochrome": true
+  },
+  "heroku": {
+    "monochrome": true
+  },
+  "honeycomb": {
+    "badge": true
+  },
+  "hostinger": {
+    "monochrome": true
+  },
+  "huggingface": {},
+  "hyperframes": {},
+  "intellijidea": {},
+  "intercom": {
+    "aliases": ["intercomeu"],
+    "badge": true
+  },
+  "iterm2": {},
+  "jetbrains": {},
+  "klaviyo": {},
+  "linear": {},
+  "linkedin": {},
+  "loops": {
+    "monochrome": true
+  },
+  "lovable": {},
+  "lucid": {
+    "monochrome": true
+  },
+  "mercury": {
+    "monochrome": true
+  },
+  "microsoftlearn": {},
+  "mintlify": {},
+  "miro": {
+    "aliases": ["mirocom"],
+    "badge": true
+  },
+  "mixpanel": {
+    "monochrome": true,
+    "coverage": 0.76
+  },
+  "mobbin": {
+    "monochrome": true
+  },
+  "monday": {
+    "aliases": ["mondaycom"]
+  },
+  "mongodb": {
+    "aliases": ["mongodbatlas", "mongodbatlasmcpremote", "mongodbmcpserver"],
+    "badge": true
+  },
+  "n8n": {},
+  "neon": {},
+  "netlify": {
+    "badge": true
+  },
+  "notion": {},
+  "openai": {
+    "monochrome": true,
+    "aliases": ["openaidocs"]
+  },
+  "opencodeai": {
+    "monochrome": true
+  },
+  "openrouter": {
+    "monochrome": true,
+    "aliases": ["openroutermcp"]
+  },
+  "openseo": {
+    "badge": true
+  },
+  "openstatus": {},
+  "paddle": {
+    "monochrome": true
+  },
+  "paper": {
+    "monochrome": true,
+    "aliases": ["paperdesktop"]
+  },
+  "paypal": {},
+  "pendev": {
+    "aliases": ["pen", "pencil"]
+  },
+  "penpot": {
+    "monochrome": true
+  },
+  "perplexity": {
+    "monochrome": true,
+    "coverage": 0.83
+  },
+  "phpstorm": {},
+  "planetscale": {
+    "monochrome": true,
+    "aliases": ["planetscaleinsightsonly"]
+  },
+  "playwright": {
+    "aliases": ["playwrightmcp"]
+  },
+  "polar": {
+    "aliases": ["polarsandbox", "polarsh"]
+  },
+  "posthog": {},
+  "postman": {
+    "badge": true
+  },
+  "prisma": {
+    "monochrome": true,
+    "aliases": ["prismapostgres"]
+  },
+  "pulumi": {},
+  "pycharm": {},
+  "railway": {
+    "monochrome": true
+  },
+  "ramp": {
+    "badge": true
+  },
+  "reddit": {},
+  "redis": {},
+  "render": {
+    "monochrome": true,
+    "coverage": 0.5
+  },
+  "resend": {
+    "monochrome": true,
+    "coverage": 0.5
+  },
+  "rider": {},
+  "rubymine": {},
+  "sanity": {
+    "monochrome": true,
+    "coverage": 0.73
+  },
+  "scalar": {
+    "monochrome": true
+  },
+  "semrush": {
+    "monochrome": true
+  },
+  "sentry": {
+    "monochrome": true
+  },
+  "shopify": {},
+  "slack": {},
+  "spotify": {},
+  "square": {
+    "monochrome": true
+  },
+  "stripe": {
+    "coverage": 0.88
+  },
+  "sublimetext": {},
+  "supabase": {
+    "aliases": ["supabasemcp"]
+  },
+  "superhuman": {
+    "monochrome": true,
+    "aliases": ["superhumanmail"],
+    "badge": true
+  },
+  "svelte": {},
+  "tavily": {
+    "badge": true
+  },
+  "terminalapp": {},
+  "tldraw": {
+    "aliases": ["tldrawlocal"]
+  },
+  "todoist": {
+    "badge": true
+  },
+  "trello": {},
+  "turso": {
+    "monochrome": true,
+    "aliases": ["tursodb"]
+  },
+  "twilio": {
+    "aliases": ["twiliodocs"]
+  },
+  "umami": {
+    "monochrome": true
+  },
+  "unity": {
+    "monochrome": true
+  },
+  "upstash": {
+    "aliases": ["upstashredis"]
+  },
+  "vercel": {
+    "monochrome": true
+  },
+  "vscode": {},
+  "vscodium": {},
+  "warp": {},
+  "webflow": {},
+  "webstorm": {},
+  "windsurf": {
+    "monochrome": true
+  },
+  "wiro": {
+    "badge": true
+  },
+  "wix": {
+    "monochrome": true
+  },
+  "wolfram": {
+    "monochrome": true
+  },
+  "workato": {},
+  "workos": {},
+  "x": {
+    "monochrome": true
+  },
+  "xaigrok": {
+    "monochrome": true
+  },
+  "xcode": {},
+  "zapier": {
+    "monochrome": true
+  },
+  "zed": {
+    "monochrome": true
+  }
+}

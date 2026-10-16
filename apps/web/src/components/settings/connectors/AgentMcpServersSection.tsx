@@ -1,3 +1,4 @@
+import type { McpConnectorPreset } from "@glade/contracts/server/mcpCatalog";
 import type { McpConnector } from "@glade/contracts/transport/ws/mcpConnectorsRpc";
 import { PROVIDER_DISPLAY_NAMES } from "@glade/contracts/provider/model";
 import { useQueries, useQueryClient } from "@tanstack/react-query";
@@ -39,6 +40,7 @@ function rowSummary(row: AgentServerRow): { text: string; problem: boolean } {
 export function AgentMcpServersSection(props: {
   readonly machine: SettingsMachine;
   readonly connectors: ReadonlyArray<McpConnector>;
+  readonly presets: ReadonlyArray<McpConnectorPreset>;
   readonly query: string;
   readonly removing: string | null;
   readonly onRemove: (row: AgentServerRow) => void;
@@ -64,7 +66,7 @@ export function AgentMcpServersSection(props: {
   const sources = DEFAULT_PROVIDER_ORDER.flatMap((provider, index) =>
     (results[index]?.data?.servers ?? []).map((server) => ({ provider, server })),
   );
-  const rows = agentServerRows(sources, props.connectors).filter(
+  const rows = agentServerRows(sources, props.connectors, props.presets).filter(
     (row) => !props.query || row.name.toLowerCase().includes(props.query),
   );
 
@@ -106,11 +108,7 @@ export function AgentMcpServersSection(props: {
             const summary = rowSummary(row);
             return (
               <div key={row.name} className="flex min-w-0 items-center gap-3 px-3 py-2.5">
-                <ConnectorIcon
-                  presetId={row.preset?.id ?? null}
-                  name={row.name}
-                  url={row.origin ?? ""}
-                />
+                <ConnectorIcon icon={row.preset?.icon} name={row.name} url={row.origin ?? ""} />
                 <span className="min-w-0 flex-1">
                   <span className="block truncate text-ui font-medium text-foreground">
                     {row.name}
