@@ -1,5 +1,3 @@
-import { formatVisualNumber } from "./visualNumber";
-
 export const SERIES_COLORS = [
   "var(--info)",
   "var(--warning)",
@@ -8,8 +6,14 @@ export const SERIES_COLORS = [
   "var(--status-merged)",
 ] as const;
 
+const chartNumberFormats = [0, 2, 4].map(
+  (digits) => new Intl.NumberFormat(undefined, { maximumFractionDigits: digits }),
+);
+
+// Labels round by magnitude because formula series rarely land on round numbers.
 export function formatChartValue(value: number, unit: string | undefined): string {
-  const text = formatVisualNumber(value);
+  const magnitude = Math.abs(value);
+  const text = chartNumberFormats[magnitude >= 100 ? 0 : magnitude >= 1 ? 1 : 2]!.format(value);
   return unit ? `${text} ${unit}` : text;
 }
 

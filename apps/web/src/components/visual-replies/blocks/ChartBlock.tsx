@@ -6,6 +6,7 @@ import {
   SERIES_COLORS,
 } from "./ChartBlock.logic";
 import type { ResolvedBlockOf } from "./visualBlockTypes";
+import { formatVisualNumber } from "./visualNumber";
 
 type Chart = ResolvedBlockOf<"chart">;
 
@@ -141,7 +142,7 @@ function ChartDataTable({ block }: { readonly block: Chart }) {
           <tr key={labelIndex}>
             <th scope="row">{label}</th>
             {block.series.map((series, seriesIndex) => (
-              <td key={seriesIndex}>{series.values[labelIndex]}</td>
+              <td key={seriesIndex}>{formatVisualNumber(series.values[labelIndex]!)}</td>
             ))}
           </tr>
         ))}
