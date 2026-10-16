@@ -118,8 +118,14 @@ import {
   WsMcpConnectorsCancelSignInRpc,
   WsMcpConnectorsConnectRpc,
   WsMcpConnectorsDisconnectRpc,
+  WsMcpConnectorsSetProvidersRpc,
   WsMcpConnectorsSubscribeRpc,
 } from "./mcpConnectorsRpc";
+import {
+  WsSkillsDirectoryInstallRpc,
+  WsSkillsDirectoryPreviewRpc,
+  WsSkillsDirectorySearchRpc,
+} from "./skillsDirectoryRpc";
 import {
   WsServerGetConfigRpc,
   WsServerGetEnvironmentRpc,
@@ -276,6 +282,10 @@ export const WsFeatureRpcGroup = RpcGroup.make(
   WsMcpConnectorsConnectRpc,
   WsMcpConnectorsCancelSignInRpc,
   WsMcpConnectorsDisconnectRpc,
+  WsMcpConnectorsSetProvidersRpc,
+  WsSkillsDirectorySearchRpc,
+  WsSkillsDirectoryPreviewRpc,
+  WsSkillsDirectoryInstallRpc,
   WsServerGetConfigRpc,
   WsServerGetEnvironmentRpc,
   WsServerGetSettingsRpc,

@@ -26,6 +26,7 @@ import {
 } from "../../ui/dialog";
 import { Input } from "../../ui/input";
 import { Spinner } from "../../ui/spinner";
+import { type AgentTarget, AgentTargetPicker } from "../AgentTargetPicker";
 import { ConnectorIcon } from "./ConnectorIcon";
 import { connectorHost, type ConnectorTarget, targetIconUrl, targetName } from "./connectors.logic";
 
@@ -103,6 +104,15 @@ function ConnectorDialogContent(
   const [url, setUrl] = useState(target.kind === "custom" ? target.url : "");
   const [name, setName] = useState(target.kind === "custom" ? target.name : "");
   const [token, setToken] = useState("");
+  // A reconnect starts from the agents the connector already serves.
+  const [providers, setProviders] = useState<AgentTarget>(
+    () =>
+      state?.connectors.find((connector) =>
+        target.kind === "preset"
+          ? connector.presetId === target.preset.id
+          : connector.url === target.url,
+      )?.providers ?? null,
+  );
   // The state stream learns about a sign-in a moment after `connect` returns; until it has listed
   // the attempt, its absence does not mean the sign-in ended.
   const [listedAttempt, setListedAttempt] = useState<string | null>(null);
@@ -149,6 +159,10 @@ function ConnectorDialogContent(
   const submit = (event: FormEvent) => {
     event.preventDefault();
     const trimmedToken = token.trim();
+    if (providers !== null && providers.length === 0) {
+      setPhase({ kind: "failed", message: "Choose at least one agent." });
+      return;
+    }
     let input: McpConnectorConnectInput;
     let targetUrl: string;
     if (preset) {
@@ -156,7 +170,11 @@ function ConnectorDialogContent(
         setPhase({ kind: "failed", message: `Enter a ${preset.name} token.` });
         return;
       }
-      input = { presetId: preset.id, ...(trimmedToken ? { token: trimmedToken } : {}) };
+      input = {
+        presetId: preset.id,
+        providers,
+        ...(trimmedToken ? { token: trimmedToken } : {}),
+      };
       targetUrl = preset.url;
     } else {
       const checked = normalizeMcpConnectorUrl(url);
@@ -166,6 +184,7 @@ function ConnectorDialogContent(
       }
       input = {
         url: checked.url,
+        providers,
         ...(name.trim() ? { name: name.trim() } : {}),
         ...(trimmedToken ? { token: trimmedToken } : {}),
       };
@@ -302,10 +321,11 @@ function ConnectorDialogContent(
                 />
               </Field>
             ) : null}
+            <AgentTargetPicker value={providers} onChange={setProviders} disabled={!editable} />
             <ul className="flex flex-col gap-2.5">
               <Fact icon={<BotIcon aria-hidden />}>
-                Agents in new chats can use {displayName}’s tools. Each call follows the chat’s
-                approval mode.
+                {providers === null ? "Agents" : "The chosen agents"} in new chats can use{" "}
+                {displayName}’s tools. Each call follows the chat’s approval mode.
               </Fact>
               <Fact icon={<LockKeyholeIcon aria-hidden />}>
                 {preset?.auth === "none" && !token.trim()

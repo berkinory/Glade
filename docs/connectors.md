@@ -18,6 +18,12 @@ provider runs the chat.
 Providers never see vendor tokens. A session can reach only the connectors it was granted when it
 started, and its access ends when the session's bearer is revoked.
 
+A connector serves every agent by default, including providers added later. Unchecking **Use in
+all agents** when connecting, or choosing **Choose agents** on a connected row, limits it to the
+agents picked. The choice is stored with the connector and applied when a session's grant is
+issued, so a session of another agent neither sees the server nor can call it. Changes apply to
+sessions started afterwards.
+
 Responses stream through as they arrive, including SSE, so progress notifications and requests the
 server sends during a tool call reach the provider. `GET` opens the server's notification stream
 on a separate, smaller admission gate so open streams never queue tool calls.
@@ -51,7 +57,7 @@ read from config without connecting. Project-scoped servers, claude.ai connector
 and the servers Grok imports from Claude and Cursor are not listed separately. Glade's own `glade`
 and `*_connector` servers are left out.
 
-A server that matches a catalog preset by origin or name offers **Use everywhere**. Once that service
+A server that matches a catalog preset by origin or name offers **Use in all agents**. Once that service
 connects, Glade offers to remove the agents' own entries; a server also connected in Glade offers
 **Remove from agents** for the same reason, because agents would otherwise load both. Removal needs
 confirmation and the `access:write` scope. Glade rewrites a JSON config only when it holds plain

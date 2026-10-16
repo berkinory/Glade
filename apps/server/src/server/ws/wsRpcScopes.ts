@@ -4,6 +4,7 @@ import { BROWSER_WS_METHODS } from "@glade/contracts/transport/ws/browserRpc";
 import { COMPUTER_WS_METHODS } from "@glade/contracts/transport/ws/computerRpc";
 import { REMOTE_ACCESS_WS_METHODS } from "@glade/contracts/transport/ws/remoteAccessRpc";
 import { MCP_CONNECTORS_WS_METHODS } from "@glade/contracts/transport/ws/mcpConnectorsRpc";
+import { SKILLS_DIRECTORY_WS_METHODS } from "@glade/contracts/transport/ws/skillsDirectoryRpc";
 import type { WsFeatureRpcGroup } from "@glade/contracts/transport/ws/rpc";
 import { WS_METHODS } from "@glade/contracts/transport/ws/ws";
 import type * as RpcGroup from "effect/unstable/rpc/RpcGroup";
@@ -128,6 +129,11 @@ export const WS_RPC_REQUIRED_SCOPES: Record<WsFeatureRpcTag, AuthScope> = {
   // session access to the user's accounts.
   [MCP_CONNECTORS_WS_METHODS.subscribe]: "access:write",
   [MCP_CONNECTORS_WS_METHODS.connect]: "access:write",
+  [MCP_CONNECTORS_WS_METHODS.setProviders]: "access:write",
+  // Searching and previewing make requests from this computer; installing writes skill folders.
+  [SKILLS_DIRECTORY_WS_METHODS.search]: "access:write",
+  [SKILLS_DIRECTORY_WS_METHODS.preview]: "access:write",
+  [SKILLS_DIRECTORY_WS_METHODS.install]: "access:write",
   [MCP_CONNECTORS_WS_METHODS.cancelSignIn]: "access:write",
   [MCP_CONNECTORS_WS_METHODS.disconnect]: "access:write",
 

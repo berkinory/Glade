@@ -2,6 +2,7 @@ import {
   MCP_CONNECTORS_WS_METHODS,
   type McpConnectorConnectInput,
   type McpConnectorConnectResult,
+  type McpConnectorProviders,
   type McpConnectorsState,
 } from "@glade/contracts/transport/ws/mcpConnectorsRpc";
 import { WsRpcError } from "@glade/contracts/transport/ws/rpcErrors";
@@ -45,5 +46,12 @@ export function makeMcpConnectorsWsHandlers(input: {
       readonly connectorId: string;
     }): Effect.Effect<void, WsRpcError> =>
       connectors.disconnect(payload.connectorId).pipe(Effect.mapError(toWsError)),
+    [MCP_CONNECTORS_WS_METHODS.setProviders]: (payload: {
+      readonly connectorId: string;
+      readonly providers: McpConnectorProviders;
+    }): Effect.Effect<void, WsRpcError> =>
+      connectors
+        .setProviders(payload.connectorId, payload.providers)
+        .pipe(Effect.mapError(toWsError)),
   };
 }

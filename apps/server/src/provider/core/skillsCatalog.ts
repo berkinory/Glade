@@ -308,6 +308,14 @@ export function agentSkillsDirs(homeDir: string): string[] {
     .map((origin) => nodePath.join(homeDir, origin.directory, "skills"));
 }
 
+// The home folder an agent reads its own skills from.
+export function providerSkillsDir(provider: ProviderKind, homeDir: string): string {
+  const skills = serverProviderDescriptor(provider).skills;
+  const origin = [...skills.origins, ...(skills.privateOrigins ?? [])][0];
+  if (!origin) throw new Error(`${provider} has no skills folder.`);
+  return nodePath.join(homeDir, origin.directory, "skills");
+}
+
 // Which agent each skill scope belongs to.
 export function skillScopeProviders(): Record<string, ProviderKind> {
   return Object.fromEntries(

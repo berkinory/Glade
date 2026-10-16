@@ -1,3 +1,4 @@
+import { ProviderKind } from "@glade/contracts/core/baseSchemas";
 import { Schema } from "effect";
 
 const JsonRecord = Schema.Record(Schema.String, Schema.Unknown);
@@ -32,6 +33,8 @@ const StoredConnector = Schema.Struct({
   serverName: Schema.String,
   status: Schema.Literals(["connected", "needs-sign-in"]),
   connectedAt: Schema.String,
+  // Missing or null: every agent, including ones added later.
+  providers: Schema.optionalKey(Schema.NullOr(Schema.Array(ProviderKind))),
   auth: StoredAuth,
 });
 export type StoredConnector = typeof StoredConnector.Type;

@@ -133,7 +133,7 @@ export function AgentMcpServersSection(props: {
                   </Button>
                 ) : row.preset ? (
                   <Button size="sm" variant="outline" onClick={() => props.onUseEverywhere(row)}>
-                    Use everywhere
+                    Use in all agents
                   </Button>
                 ) : null}
               </div>
@@ -142,7 +142,7 @@ export function AgentMcpServersSection(props: {
         </SettingsCard>
       )}
       <p className="px-2 text-ui-xs text-muted-foreground">
-        Read from each agent's own settings. Use everywhere connects the service once for every
+        Read from each agent's own settings. Use in all agents connects the service once for every
         agent and then offers to remove the agents' own copies.
       </p>
     </SettingsSectionShell>

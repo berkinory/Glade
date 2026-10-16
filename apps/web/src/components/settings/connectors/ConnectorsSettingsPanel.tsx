@@ -6,7 +6,7 @@ import type {
 } from "@glade/contracts/transport/ws/mcpConnectorsRpc";
 import { type ReactNode, useDeferredValue, useEffect, useState } from "react";
 
-import { Delete02Icon, EllipsisIcon, PlusIcon, RefreshCwIcon } from "~/lib/icons";
+import { BotIcon, Delete02Icon, EllipsisIcon, PlusIcon, RefreshCwIcon } from "~/lib/icons";
 import { LOCAL_ENVIRONMENT } from "~/environments/environmentKey";
 import { ensureEnvironmentNativeApi } from "~/nativeApi";
 import { Button } from "../../ui/button";
@@ -16,7 +16,9 @@ import { Spinner } from "../../ui/spinner";
 import { toastManager } from "../../ui/toast";
 import { ComposerPickerMenuPopup } from "../../chat/ComposerPickerMenuPopup";
 import { SettingsCard, SettingsEmptyState, SettingsSectionShell } from "../SettingsPanelPrimitives";
+import { ProviderStack } from "../ProviderStack";
 import { AgentMcpServersSection } from "./AgentMcpServersSection";
+import { ConnectorAgentsDialog } from "./ConnectorAgentsDialog";
 import { ConnectorDialog } from "./ConnectorDialog";
 import { ConnectorIcon } from "./ConnectorIcon";
 import { useAgentServerRemoval } from "./useAgentServerRemoval";
@@ -53,6 +55,7 @@ function RowText(props: { readonly title: string; readonly description: ReactNod
 function ConnectedRow(props: {
   readonly connector: McpConnector;
   readonly onReconnect: () => void;
+  readonly onChooseAgents: () => void;
   readonly onDisconnect: () => void;
 }) {
   const { connector } = props;
@@ -74,6 +77,7 @@ function ConnectedRow(props: {
           )
         }
       />
+      {connector.providers ? <ProviderStack providers={connector.providers} /> : null}
       {needsSignIn ? (
         <Button size="sm" variant="outline" onClick={props.onReconnect}>
           Reconnect
@@ -98,6 +102,10 @@ function ConnectedRow(props: {
               Reconnect
             </MenuItem>
           )}
+          <MenuItem onClick={props.onChooseAgents}>
+            <BotIcon aria-hidden className="size-3.5 opacity-70" />
+            Choose agents
+          </MenuItem>
           <MenuItem variant="destructive" onClick={props.onDisconnect}>
             <Delete02Icon aria-hidden className="size-3.5" />
             Disconnect
@@ -140,8 +148,9 @@ export function ConnectorsSettingsPanel() {
   const [search, setSearch] = useState("");
   const query = useDeferredValue(search).trim().toLowerCase();
   const [target, setTarget] = useState<ConnectorTarget | null>(null);
-  // The agent server picked with Use everywhere, offered for removal once the service connects.
+  // The agent server picked with Use in all agents, offered for removal once the service connects.
   const [moving, setMoving] = useState<AgentServerRow | null>(null);
+  const [choosingAgents, setChoosingAgents] = useState<McpConnector | null>(null);
   const removal = useAgentServerRemoval();
 
   const openExternal = (url: string) => {
@@ -216,6 +225,7 @@ export function ConnectorsSettingsPanel() {
                 key={connector.connectorId}
                 connector={connector}
                 onReconnect={() => setTarget(targetForConnector(connector))}
+                onChooseAgents={() => setChoosingAgents(connector)}
                 onDisconnect={() => void disconnect(connector)}
               />
             ))}
@@ -262,6 +272,14 @@ export function ConnectorsSettingsPanel() {
           </SettingsCard>
         </SettingsSectionShell>
       ))}
+
+      <ConnectorAgentsDialog
+        connector={choosingAgents}
+        api={api}
+        onOpenChange={(open) => {
+          if (!open) setChoosingAgents(null);
+        }}
+      />
 
       <ConnectorDialog
         target={target}

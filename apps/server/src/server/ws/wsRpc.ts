@@ -184,6 +184,7 @@ import { makeComputerWsHandlers } from "../../computer/computerWsHandlers";
 import { makeRemoteAccessWsHandlers } from "../../remoteAccess/remoteAccessWsHandlers";
 import { RemoteAccess } from "../../remoteAccess/Services/RemoteAccess";
 import { makeMcpConnectorsWsHandlers } from "../../mcpConnectors/mcpConnectorsWsHandlers";
+import { makeSkillsDirectoryWsHandlers } from "../../skillsDirectory/skillsDirectoryWsHandlers";
 import { McpConnectors } from "../../mcpConnectors/Services/McpConnectors";
 import { ComputerAccess } from "../../computer/Services/ComputerAccess";
 import { ComputerHost } from "../../computer/Services/ComputerHost";
@@ -896,6 +897,7 @@ const makeWsRpcHandlersLayer = () =>
         ...browserHandlers,
         ...remoteAccessHandlers,
         ...mcpConnectorsHandlers,
+        ...makeSkillsDirectoryWsHandlers({ homeDir: config.homeDir }),
         [COMPUTER_WS_METHODS.subscribe]: computerHandlers[COMPUTER_WS_METHODS.subscribe],
         [COMPUTER_WS_METHODS.revokeGrant]: computerHandlers[COMPUTER_WS_METHODS.revokeGrant],
         [ORCHESTRATION_WS_METHODS.settleTurnDispatch]: ({ command }) =>

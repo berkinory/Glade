@@ -3,6 +3,7 @@ import { randomBytes, randomUUID } from "node:crypto";
 import type {
   McpConnector,
   McpConnectorConnectInput,
+  McpConnectorProviders,
   McpConnectorsState,
 } from "@glade/contracts/transport/ws/mcpConnectorsRpc";
 import {
@@ -56,6 +57,8 @@ interface ConnectorTarget {
   readonly presetId: string | null;
   readonly name: string;
   readonly url: string;
+  // Undefined keeps the agents a reconnected connector already had.
+  readonly providers: McpConnectorProviders | undefined;
 }
 
 interface SignInAttempt {
@@ -85,10 +88,14 @@ function toContract(connector: StoredConnector): McpConnector {
     authKind: connector.auth.kind,
     status: connector.status,
     connectedAt: connector.connectedAt,
+    providers: connector.providers ?? null,
   };
 }
 
 function resolveTarget(input: McpConnectorConnectInput): ConnectorTarget | McpConnectorsError {
+  if (input.providers?.length === 0) {
+    return new McpConnectorsError({ message: "Choose at least one agent." });
+  }
   if ((input.presetId === undefined) === (input.url === undefined)) {
     return new McpConnectorsError({ message: "Choose a connector or enter a server URL." });
   }
@@ -98,12 +105,12 @@ function resolveTarget(input: McpConnectorConnectInput): ConnectorTarget | McpCo
     if (preset.auth === "token" && !input.token?.trim()) {
       return new McpConnectorsError({ message: `Enter a ${preset.name} token.` });
     }
-    return { presetId: preset.id, name: preset.name, url: preset.url };
+    return { presetId: preset.id, name: preset.name, url: preset.url, providers: input.providers };
   }
   const checked = normalizeMcpConnectorUrl(input.url ?? "");
   if (!checked.ok) return new McpConnectorsError({ message: checked.reason });
   const name = input.name?.trim().slice(0, 80) || new URL(checked.url).host;
-  return { presetId: null, name, url: checked.url };
+  return { presetId: null, name, url: checked.url, providers: input.providers };
 }
 
 const make = Effect.gen(function* () {
@@ -147,7 +154,11 @@ const make = Effect.gen(function* () {
     credentials.connectorGrants?.publish(
       document.connectors
         .filter((connector) => connector.status === "connected")
-        .map(({ connectorId, serverName }) => ({ connectorId, serverName })),
+        .map(({ connectorId, serverName, providers }) => ({
+          connectorId,
+          serverName,
+          providers: providers ?? null,
+        })),
     );
   });
 
@@ -214,6 +225,8 @@ const make = Effect.gen(function* () {
             ),
           status: "connected",
           connectedAt,
+          providers:
+            target.providers === undefined ? (existing?.providers ?? null) : target.providers,
           auth,
         };
         const others = document.connectors.filter((entry) => entry !== existing);
@@ -395,6 +408,25 @@ const make = Effect.gen(function* () {
       if (removed?.auth.kind === "oauth") yield* revokeInBackground(removed.auth);
     });
 
+  const setProviders: McpConnectorsShape["setProviders"] = (connectorId, providers) =>
+    Effect.gen(function* () {
+      if (providers?.length === 0) {
+        return yield* new McpConnectorsError({ message: "Choose at least one agent." });
+      }
+      const found = yield* commit((document) => [
+        {
+          ...document,
+          connectors: document.connectors.map((entry) =>
+            entry.connectorId === connectorId ? { ...entry, providers } : entry,
+          ),
+        },
+        document.connectors.some((entry) => entry.connectorId === connectorId),
+      ]);
+      if (!found) {
+        return yield* new McpConnectorsError({ message: "This connector is no longer connected." });
+      }
+    });
+
   const findConnector = (connectorId: string) =>
     Ref.get(documentRef).pipe(
       Effect.map((document) =>
@@ -551,6 +583,7 @@ const make = Effect.gen(function* () {
     connect,
     cancelSignIn,
     disconnect,
+    setProviders,
     completeSignIn,
     forward,
   } satisfies McpConnectorsShape;

@@ -109,7 +109,7 @@ const makeAgentGatewayCredentials = Effect.gen(function* () {
       return {
         url: endpoint.url,
         bearerToken,
-        connectors: connectorGrants.grant(bearerToken, new URL(endpoint.url).origin),
+        connectors: connectorGrants.grant(bearerToken, new URL(endpoint.url).origin, provider),
       };
     },
   } satisfies AgentGatewayCredentialsShape;

@@ -68,6 +68,8 @@ const RULES: { readonly [N in Namespace]: { readonly default: Rule } & Record<st
   computer: { default: toLocal },
   remoteAccess: { default: toLocal },
   mcpConnectors: { default: toLocal },
+  // Installs where Settings → Skills lists skills from.
+  skillsDirectory: { default: toActive },
   git: { default: byCwdInput, handoffThread: byThreadInput },
   // Settings, keybindings, auth and usage are the local server's; only thread-bound work moves.
   server: {
@@ -77,7 +79,13 @@ const RULES: { readonly [N in Namespace]: { readonly default: Rule } & Record<st
     transcribeVoice: byThreadOrCwdInput,
   },
   stats: { default: toLocal },
-  provider: { default: byThreadOrCwdInput, getComposerCapabilities: toActive },
+  provider: {
+    default: byThreadOrCwdInput,
+    getComposerCapabilities: toActive,
+    // Agent MCP servers sit next to the connectors, which are always the local server's.
+    listMcpServers: toLocal,
+    removeMcpServer: toLocal,
+  },
   orchestration: {
     default: toLocal,
     dispatchCommand: dispatchTarget,

@@ -7,6 +7,7 @@ import {
   providerDiscoveryQueryKeys,
   skillsCatalogQueryOptions,
 } from "~/lib/providerDiscoveryReactQuery";
+import { PlusIcon } from "~/lib/icons";
 import { providerNames } from "~/lib/providerNames";
 import { ensureNativeApi } from "~/nativeApi";
 import { DEFAULT_PROVIDER_ORDER } from "~/providerOrdering";
@@ -14,6 +15,7 @@ import { Button } from "../../ui/button";
 import { SearchInput } from "../../ui/search-input";
 import { toastManager } from "../../ui/toast";
 import { SettingsCard, SettingsEmptyState, SettingsSectionShell } from "../SettingsPanelPrimitives";
+import { AddSkillDialog } from "./AddSkillDialog";
 import { SkillRow } from "./SkillRow";
 import { matchesSkill, type SkillGroup, skillGroups } from "./skills.logic";
 import { useSkillToggles } from "./useSkillToggles";
@@ -52,6 +54,7 @@ export function SkillsSettingsPanel() {
   const [search, setSearch] = useState("");
   const query = useDeferredValue(search).trim().toLowerCase();
   const [sharing, setSharing] = useState<string | null>(null);
+  const [adding, setAdding] = useState(false);
   // Skills whose remaining agent copies differ from the shared one, so removing them does nothing.
   const [diverged, setDiverged] = useState<ReadonlySet<string>>(new Set());
 
@@ -115,11 +118,29 @@ export function SkillsSettingsPanel() {
 
   return (
     <div className="space-y-6">
-      <SearchInput
-        value={search}
-        onChange={(event) => setSearch(event.target.value)}
-        placeholder="Search skills"
-        aria-label="Search skills"
+      <div className="flex items-center gap-2">
+        <SearchInput
+          value={search}
+          onChange={(event) => setSearch(event.target.value)}
+          placeholder="Search skills"
+          aria-label="Search skills"
+        />
+        <Button variant="outline" className="shrink-0" onClick={() => setAdding(true)}>
+          <PlusIcon aria-hidden />
+          Add skill
+        </Button>
+      </div>
+      <AddSkillDialog
+        open={adding}
+        onOpenChange={setAdding}
+        onInstalled={(name, paths) => {
+          toastManager.add({
+            type: "success",
+            title: `Installed ${name}`,
+            description: paths.join("\n"),
+          });
+          void queryClient.invalidateQueries({ queryKey: providerDiscoveryQueryKeys.all });
+        }}
       />
 
       {catalogQuery.isError ? (
@@ -134,7 +155,7 @@ export function SkillsSettingsPanel() {
             <SettingsEmptyState layout="status">
               {query
                 ? "No shared skill matches your search."
-                : "Choose Use everywhere on a skill below and every agent gets the same copy."}
+                : "Add a skill, or choose Use in all agents on one below, and every agent gets the same copy."}
             </SettingsEmptyState>
           ) : (
             <SettingsCard>
@@ -174,7 +195,7 @@ export function SkillsSettingsPanel() {
                 <SkillRow
                   key={group.key}
                   {...rowProps(group)}
-                  action={shareButton(group, "Use everywhere")}
+                  action={shareButton(group, "Use in all agents")}
                 />
               ))}
             </SettingsCard>

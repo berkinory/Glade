@@ -46,6 +46,7 @@ import { BROWSER_WS_METHODS } from "@glade/contracts/transport/ws/browserRpc";
 import { COMPUTER_WS_METHODS } from "@glade/contracts/transport/ws/computerRpc";
 import { REMOTE_ACCESS_WS_METHODS } from "@glade/contracts/transport/ws/remoteAccessRpc";
 import { MCP_CONNECTORS_WS_METHODS } from "@glade/contracts/transport/ws/mcpConnectorsRpc";
+import { SKILLS_DIRECTORY_WS_METHODS } from "@glade/contracts/transport/ws/skillsDirectoryRpc";
 import {
   WS_THREAD_DETAIL_HEAD_CAPABILITY,
   type WsBootstrapNegotiateResult,
@@ -524,6 +525,15 @@ function buildNativeApi(transport: WsTransport, listeners: NativeApiListeners): 
         transport.request(MCP_CONNECTORS_WS_METHODS.connect, input, { timeoutMs: 120_000 }),
       cancelSignIn: (input) => transport.request(MCP_CONNECTORS_WS_METHODS.cancelSignIn, input),
       disconnect: (input) => transport.request(MCP_CONNECTORS_WS_METHODS.disconnect, input),
+      setProviders: (input) => transport.request(MCP_CONNECTORS_WS_METHODS.setProviders, input),
+    },
+    // Reading a repository and downloading a skill take several GitHub round trips.
+    skillsDirectory: {
+      search: (input) => transport.request(SKILLS_DIRECTORY_WS_METHODS.search, input),
+      preview: (input) =>
+        transport.request(SKILLS_DIRECTORY_WS_METHODS.preview, input, { timeoutMs: 60_000 }),
+      install: (input) =>
+        transport.request(SKILLS_DIRECTORY_WS_METHODS.install, input, { timeoutMs: 120_000 }),
     },
     git: {
       githubRepository: (input) => transport.request(WS_METHODS.gitGithubRepository, input),

@@ -26,9 +26,15 @@ import type {
 } from "../transport/ws/remoteAccessRpc";
 import type {
   McpConnectorConnectInput,
+  McpConnectorProviders,
   McpConnectorConnectResult,
   McpConnectorsState,
 } from "../transport/ws/mcpConnectorsRpc";
+import type {
+  SkillInstallInput,
+  SkillPreview,
+  SkillsDirectorySearchResult,
+} from "../transport/ws/skillsDirectoryRpc";
 import type {
   BrowserCapture,
   BrowserPickedElement,
@@ -612,12 +618,24 @@ export interface NativeApi {
     onDevices: (callback: (devices: RemoteAccessDevices) => void) => () => void;
     revokeDevice: (input: { readonly sessionId: AuthSessionId }) => Promise<void>;
   };
-  // Remote MCP servers this machine signs in to and serves to every agent session.
+  // Remote MCP servers this machine signs in to and serves to the agents chosen for each.
   mcpConnectors: {
     onState: (callback: (state: McpConnectorsState) => void) => () => void;
     connect: (input: McpConnectorConnectInput) => Promise<McpConnectorConnectResult>;
     cancelSignIn: (input: { readonly attemptId: string }) => Promise<void>;
     disconnect: (input: { readonly connectorId: string }) => Promise<void>;
+    setProviders: (input: {
+      readonly connectorId: string;
+      readonly providers: McpConnectorProviders;
+    }) => Promise<void>;
+  };
+  // skills.sh search and GitHub skill installs, made from the server.
+  skillsDirectory: {
+    search: (input: { readonly query: string }) => Promise<SkillsDirectorySearchResult>;
+    preview: (input: { readonly reference: string }) => Promise<SkillPreview>;
+    install: (
+      input: SkillInstallInput,
+    ) => Promise<{ readonly installedPaths: ReadonlyArray<string> }>;
   };
   git: {
     githubRepository: (input: GitHubRepositoryInput) => Promise<GitHubRepositoryResult>;

@@ -1,6 +1,7 @@
 import { Schema } from "effect";
 import * as Rpc from "effect/unstable/rpc/Rpc";
 
+import { ProviderKind } from "../../core/baseSchemas";
 import { WsRpcError } from "./rpcErrors";
 
 export const MCP_CONNECTORS_WS_METHODS = {
@@ -8,7 +9,12 @@ export const MCP_CONNECTORS_WS_METHODS = {
   connect: "mcpConnectors.connect",
   cancelSignIn: "mcpConnectors.cancelSignIn",
   disconnect: "mcpConnectors.disconnect",
+  setProviders: "mcpConnectors.setProviders",
 } as const;
+
+// The agents a connector serves. Null means every agent, including ones added later.
+export const McpConnectorProviders = Schema.NullOr(Schema.Array(ProviderKind));
+export type McpConnectorProviders = typeof McpConnectorProviders.Type;
 
 export const McpConnectorAuthKind = Schema.Literals(["none", "oauth", "token"]);
 export type McpConnectorAuthKind = typeof McpConnectorAuthKind.Type;
@@ -23,6 +29,7 @@ export const McpConnector = Schema.Struct({
   // instead of tools until the user reconnects.
   status: Schema.Literals(["connected", "needs-sign-in"]),
   connectedAt: Schema.String,
+  providers: McpConnectorProviders,
 });
 export type McpConnector = typeof McpConnector.Type;
 
@@ -48,6 +55,8 @@ export const McpConnectorConnectInput = Schema.Struct({
   url: Schema.optionalKey(Schema.String),
   name: Schema.optionalKey(Schema.String),
   token: Schema.optionalKey(Schema.String),
+  // Left out on a reconnect to keep the agents chosen before.
+  providers: Schema.optionalKey(McpConnectorProviders),
 });
 export type McpConnectorConnectInput = typeof McpConnectorConnectInput.Type;
 
@@ -82,6 +91,12 @@ export const WsMcpConnectorsCancelSignInRpc = Rpc.make(MCP_CONNECTORS_WS_METHODS
 
 export const WsMcpConnectorsDisconnectRpc = Rpc.make(MCP_CONNECTORS_WS_METHODS.disconnect, {
   payload: Schema.Struct({ connectorId: Schema.String }),
+  success: Schema.Void,
+  error: WsRpcError,
+});
+
+export const WsMcpConnectorsSetProvidersRpc = Rpc.make(MCP_CONNECTORS_WS_METHODS.setProviders, {
+  payload: Schema.Struct({ connectorId: Schema.String, providers: McpConnectorProviders }),
   success: Schema.Void,
   error: WsRpcError,
 });

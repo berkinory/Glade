@@ -1,8 +1,12 @@
+import type { ProviderKind } from "@glade/contracts/core/baseSchemas";
+
 export const AGENT_GATEWAY_CONNECTORS_PATH = "/mcp/connectors";
 
 export interface AgentGatewayConnectorRegistration {
   readonly connectorId: string;
   readonly serverName: string;
+  // Null serves every agent.
+  readonly providers: ReadonlyArray<ProviderKind> | null;
 }
 
 // One connector as a provider session sees it: an MCP server on the gateway, authenticated with
@@ -31,9 +35,16 @@ export function makeAgentGatewayConnectorGrants() {
     },
     canUse: (token: string, connectorId: string) =>
       grantsByToken.get(token)?.has(connectorId) === true,
-    grant: (token: string, gatewayOrigin: string): ReadonlyArray<AgentGatewayConnectorEndpoint> => {
-      grantsByToken.set(token, new Set(published.map((entry) => entry.connectorId)));
-      return published.map((entry) => ({
+    grant: (
+      token: string,
+      gatewayOrigin: string,
+      provider: ProviderKind,
+    ): ReadonlyArray<AgentGatewayConnectorEndpoint> => {
+      const granted = published.filter(
+        (entry) => entry.providers === null || entry.providers.includes(provider),
+      );
+      grantsByToken.set(token, new Set(granted.map((entry) => entry.connectorId)));
+      return granted.map((entry) => ({
         name: entry.serverName,
         url: agentGatewayConnectorUrl(gatewayOrigin, entry.connectorId),
       }));

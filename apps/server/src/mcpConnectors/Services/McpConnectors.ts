@@ -1,6 +1,7 @@
 import type {
   McpConnectorConnectInput,
   McpConnectorConnectResult,
+  McpConnectorProviders,
   McpConnectorsState,
 } from "@glade/contracts/transport/ws/mcpConnectorsRpc";
 import { Data, ServiceMap } from "effect";
@@ -44,6 +45,11 @@ export interface McpConnectorsShape {
   ) => Effect.Effect<McpConnectorConnectResult, McpConnectorsError>;
   readonly cancelSignIn: (attemptId: string) => Effect.Effect<void>;
   readonly disconnect: (connectorId: string) => Effect.Effect<void, McpConnectorsError>;
+  // Takes effect for sessions that start afterwards.
+  readonly setProviders: (
+    connectorId: string,
+    providers: McpConnectorProviders,
+  ) => Effect.Effect<void, McpConnectorsError>;
   // The OAuth redirect target. The browser carries no Glade session, so the single-use state
   // minted with the sign-in is the only authority.
   readonly completeSignIn: (
