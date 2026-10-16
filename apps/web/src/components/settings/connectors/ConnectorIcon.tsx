@@ -34,7 +34,6 @@ const BADGE_ARTWORK = new Set([
   "intercom",
   "intercom-eu",
   "ramp",
-  "zapier",
   "autumn",
   "customerio",
   "customerio-eu",

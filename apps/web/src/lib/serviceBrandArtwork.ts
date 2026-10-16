@@ -401,6 +401,7 @@ const SERVICE_ALIASES: Record<string, string> = {
   clickhousecloud: "clickhouse",
   grafanacloud: "grafana",
   customerioeu: "customerio",
+  mongodbatlas: "mongodb",
   dodo: "dodopayments",
 };
 export function resolveServiceBrand(

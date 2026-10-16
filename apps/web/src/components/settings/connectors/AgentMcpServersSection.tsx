@@ -65,7 +65,10 @@ export function AgentMcpServersSection(props: {
     const source = results[index]?.data?.source;
     return source !== undefined && source !== "unsupported" && source !== "disabled";
   });
-  const agentNames = reporting.map(providerDisplayName).join(" and ") || "your agents";
+  const agentNames = reporting.map(providerDisplayName).join(" and ") || "Your agents";
+  // Every agent failed to answer, as with a server too old to list them: say so rather than
+  // presenting the silence as an empty list.
+  const failed = !loading && results.every((result) => result.isError);
   const sources = DEFAULT_PROVIDER_ORDER.flatMap((provider, index) =>
     (results[index]?.data?.servers ?? []).map((server) => ({ provider, server })),
   );
@@ -99,6 +102,10 @@ export function AgentMcpServersSection(props: {
     >
       {loading ? (
         <SettingsEmptyState layout="status">Checking your agents…</SettingsEmptyState>
+      ) : failed ? (
+        <SettingsEmptyState layout="status" tone="destructive">
+          Glade could not read your agents' MCP servers. Restart Glade and check again.
+        </SettingsEmptyState>
       ) : rows.length === 0 ? (
         <SettingsEmptyState layout="status">
           {props.query

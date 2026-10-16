@@ -218,12 +218,6 @@ export function ConnectorsSettingsPanel() {
         )}
       </SettingsSectionShell>
 
-      <AgentMcpServersSection
-        connectors={connectors}
-        query={query}
-        onUseInGlade={(preset) => setTarget({ kind: "preset", preset })}
-      />
-
       {shelves.length === 0 && query ? (
         <SettingsEmptyState>
           Nothing in the catalog matches “{search.trim()}”. Add it with its server URL instead.
@@ -251,6 +245,12 @@ export function ConnectorsSettingsPanel() {
           </SettingsCard>
         </SettingsSectionShell>
       ))}
+
+      <AgentMcpServersSection
+        connectors={connectors}
+        query={query}
+        onUseInGlade={(preset) => setTarget({ kind: "preset", preset })}
+      />
 
       <ConnectorDialog
         target={target}

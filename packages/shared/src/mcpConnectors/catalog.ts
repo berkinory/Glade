@@ -12,8 +12,7 @@ export type McpConnectorCategory =
   | "ai"
   | "design"
   | "work"
-  | "business"
-  | "automation";
+  | "business";
 
 export interface McpConnectorPreset {
   readonly id: string;
@@ -41,7 +40,6 @@ export const MCP_CONNECTOR_CATEGORIES: ReadonlyArray<{
   { id: "design", label: "Web & design" },
   { id: "work", label: "Projects & notes" },
   { id: "business", label: "Payments & business" },
-  { id: "automation", label: "Automation & files" },
 ];
 
 type PresetInput = Omit<McpConnectorPreset, "category" | "auth">;
@@ -789,15 +787,6 @@ export const MCP_CONNECTOR_PRESETS: ReadonlyArray<McpConnectorPreset> = [
       description: "Event types, availability and bookings",
       url: "https://mcp.cal.com/mcp",
       homepage: "https://cal.com",
-    },
-  ]),
-  ...shelf("automation", "oauth", [
-    {
-      id: "zapier",
-      name: "Zapier",
-      description: "Run actions across thousands of apps",
-      url: "https://mcp.zapier.com/api/mcp/mcp",
-      homepage: "https://zapier.com",
     },
   ]),
 ];
