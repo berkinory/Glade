@@ -23,6 +23,7 @@ import {
   isClaudeSubagentTool,
   toolResultBlocksFromUserMessage,
   toolResultStreamKind,
+  viewedImagePath,
 } from "./toolPresentation";
 import {
   parseClaudeWorkflowLaunch,
@@ -291,8 +292,10 @@ export function makeClaudeContentMessages(input: {
         // The completion right below carries the result; repeating it on this update would store
         // the full output twice.
         const updatedToolData = toolLifecycleEventData(context, tool, stoppedState);
+        const imagePath = viewedImagePath(tool, toolResult.block);
         const toolData = toolLifecycleEventData(context, tool, {
           result: toolResult.block,
+          ...(imagePath ? { viewedImagePath: imagePath } : {}),
           ...stoppedState,
         });
 

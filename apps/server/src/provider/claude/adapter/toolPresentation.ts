@@ -10,6 +10,7 @@ import {
 } from "./sessionTypes";
 import { extractTextContent } from "./messageContent";
 import { subagentName } from "@glade/shared/threads/subagentName";
+import { isSupportedLocalImagePath } from "@glade/shared/attachments/localPreviewFiles";
 
 // Only the SDK's own launcher spawns a subagent; MCP or custom tools that mention "agent" are ordinary
 // tools and must not open child threads.
@@ -132,6 +133,21 @@ export function toolLifecycleEventData(
     ...(tool.toolName === "SendMessage" ? resumedSubagentData(context, tool) : {}),
     ...extra,
   };
+}
+
+// Claude reads an image file with its generic Read tool and gets the image back as a block that is
+// stripped at ingress, so the file it named is what the transcript can show.
+export function viewedImagePath(
+  tool: Pick<ToolInFlight, "input">,
+  result: Record<string, unknown>,
+): string | undefined {
+  const path = tool.input.file_path;
+  return typeof path === "string" &&
+    isSupportedLocalImagePath(path) &&
+    Array.isArray(result.content) &&
+    result.content.some((block) => (block as { type?: unknown } | null)?.type === "image")
+    ? path
+    : undefined;
 }
 
 // SendMessage addresses a subagent by its agent id; naming the Task call that launched it puts the

@@ -9,6 +9,7 @@ import type {
   ToolKind,
 } from "@agentclientprotocol/sdk";
 import { RuntimeItemId } from "@glade/contracts/core/baseSchemas";
+import { isSupportedLocalImagePath } from "@glade/shared/attachments/localPreviewFiles";
 import type { CanonicalItemType } from "@glade/contracts/provider/runtimeMetadata";
 import type { ProviderRuntimeEvent } from "@glade/contracts/provider/runtimeEvents";
 
@@ -27,6 +28,7 @@ interface TrackedToolCall {
   title: string;
   kind: ToolKind | undefined;
   rawInput: unknown;
+  path: string | undefined;
   completed: boolean;
 }
 
@@ -187,6 +189,7 @@ export function makeAcpTurnProjection(
       title: call.title,
       kind: call.kind ?? undefined,
       rawInput: call.rawInput,
+      path: call.locations?.[0]?.path,
       completed: false,
     };
     tools.set(call.toolCallId, tool);
@@ -219,6 +222,7 @@ export function makeAcpTurnProjection(
         ...(update.status ? { status: update.status } : {}),
         ...(update.rawInput !== undefined ? { rawInput: update.rawInput } : {}),
         ...(update.content ? { content: update.content } : {}),
+        ...(update.locations ? { locations: update.locations } : {}),
       });
     }
     if (tool.completed) return [];
@@ -227,6 +231,7 @@ export function makeAcpTurnProjection(
     if (update.kind && tool.kind === undefined) tool.itemType = acpToolItemType(update.kind);
     if (update.kind) tool.kind = update.kind;
     if (update.rawInput !== undefined) tool.rawInput = update.rawInput;
+    if (update.locations?.[0]) tool.path = update.locations[0].path;
     const inner = update.rawOutput !== undefined ? innerToolCall?.(update.rawOutput) : undefined;
     if (inner) {
       tool.title = inner.name;
@@ -236,6 +241,15 @@ export function makeAcpTurnProjection(
     const paths = changedPaths(update.content);
     const done = update.status === "completed" || update.status === "failed";
     if (done) tool.completed = true;
+    // Agents differ in whether a read's result carries the image (Cursor sends none), so a completed
+    // read of an image file is what marks it as viewed.
+    const viewedImagePath =
+      update.status === "completed" &&
+      tool.kind === "read" &&
+      tool.path !== undefined &&
+      isSupportedLocalImagePath(tool.path)
+        ? tool.path
+        : undefined;
     return [
       {
         type: done ? "item.completed" : "item.updated",
@@ -248,6 +262,7 @@ export function makeAcpTurnProjection(
           data: toolData(update.toolCallId, tool, {
             ...(update.rawOutput !== undefined ? { output: update.rawOutput } : {}),
             ...(paths.length > 0 ? { changedPaths: paths } : {}),
+            ...(viewedImagePath ? { viewedImagePath } : {}),
           }),
         },
       },
