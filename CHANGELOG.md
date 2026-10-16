@@ -1,5 +1,11 @@
 # Glade Changelog
 
+## 0.2.10 - Unreleased
+
+### Fixed
+
+- Tool calls from connected MCP servers show the service's name, like Exa or Linear, instead of a generic connector label. ([154d07882](https://github.com/berkinory/Glade/commit/154d078828c5382ad6c81a64bfc69ccb0558ff16))
+
 ## 0.2.9 - 2026-10-16
 
 ### New
