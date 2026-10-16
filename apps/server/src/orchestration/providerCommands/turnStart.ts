@@ -178,14 +178,27 @@ export function makeProviderTurnStart(input: {
 
       const message = thread.messages.find((entry) => entry.id === event.payload.messageId);
       if (!message || message.role !== "user") {
+        const detail = `User message '${event.payload.messageId}' was not found for turn start request.`;
         yield* appendProviderFailureActivity({
           threadId: event.payload.threadId,
           kind: "provider.turn.start.failed",
           summary: "Provider turn start failed",
-          detail: `User message '${event.payload.messageId}' was not found for turn start request.`,
+          detail,
           turnId: null,
           createdAt: event.payload.createdAt,
         });
+        // The decider already projected this request as a starting session, and no provider turn
+        // will ever settle it.
+        const session = thread.session;
+        if (session?.status === "starting" && session.activeTurnId === null) {
+          yield* setThreadSessionError({
+            threadId: event.payload.threadId,
+            runtimeMode: event.payload.runtimeMode,
+            detail,
+            expectedSession: { status: session.status, updatedAt: session.updatedAt },
+            createdAt: new Date().toISOString(),
+          });
+        }
         return;
       }
 

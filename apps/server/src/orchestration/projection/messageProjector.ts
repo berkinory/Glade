@@ -10,11 +10,9 @@ import { Effect, Option } from "effect";
 import { toPersistenceSqlError } from "../../persistence/Errors.ts";
 import { resolveStableMessageTurnId } from "../messageTurnId.ts";
 import { clearRemovedAsyncUserInputResponses } from "@glade/shared/threads/asyncUserInput";
+import { splitConversationRollbackTail } from "@glade/shared/threads/conversationEdit";
 import { ProjectorDefinition } from "./projectorRegistration";
-import {
-  retainProjectionMessagesAfterRevert,
-  rollbackProjectionMessagesFromMessage,
-} from "./historyPruning";
+import { retainProjectionMessagesAfterRevert } from "./historyPruning";
 import { collectThreadAttachmentRelativePaths } from "./attachmentEffects";
 
 export function makeMessageProjector(input: {
@@ -169,14 +167,17 @@ export function makeMessageProjector(input: {
               return;
             }
           } else {
-            const rollback = rollbackProjectionMessagesFromMessage(
-              existingRows,
-              event.payload.messageId,
+            const targetIndex = existingRows.findIndex(
+              (message) => message.messageId === event.payload.messageId,
             );
-            if (!rollback.changed) {
+            if (targetIndex < 0) {
               return;
             }
-            keptRows = rollback.keptRows;
+            keptRows = splitConversationRollbackTail(
+              existingRows,
+              targetIndex,
+              event.payload.replacementText === undefined,
+            ).keptMessages;
             const editedMessage = existingRows.find(
               (message) => message.messageId === event.payload.messageId,
             );

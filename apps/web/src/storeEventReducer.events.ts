@@ -10,6 +10,7 @@ import {
   setPinnedMessageDone,
   setPinnedMessageLabel,
 } from "@glade/shared/threads/pinnedMessages";
+import { splitConversationRollbackTail } from "@glade/shared/threads/conversationEdit";
 import { importedHistoryTurnIds } from "@glade/shared/threads/importedHistory";
 import { deriveThreadSummaryMetadata } from "@glade/shared/threads/threadSummary";
 import {
@@ -48,7 +49,6 @@ import {
   resolveEventUpdatedAt,
   retainThreadActivitiesAfterRevert,
   retainThreadMessagesAfterRevert,
-  rollbackThreadMessagesFromMessage,
   threadActivityUpdatesSummary,
   threadMessageUpdatesSidebarSummary,
   threadMessageUpdatesSummary,
@@ -724,11 +724,18 @@ export function applyOrchestrationEvent(
         state,
         event.payload.threadId,
         (thread) => {
-          const rollback = rollbackThreadMessagesFromMessage(
-            thread.messages,
-            event.payload.messageId,
+          const targetIndex = thread.messages.findIndex(
+            (message) => message.id === event.payload.messageId,
           );
-          let messages = rollback.messages;
+          const rollback =
+            targetIndex < 0
+              ? { keptMessages: thread.messages, removedTurnIds: new Set<string>() }
+              : splitConversationRollbackTail(
+                  thread.messages,
+                  targetIndex,
+                  event.payload.replacementText === undefined,
+                );
+          let messages = rollback.keptMessages;
           const editedMessage = thread.messages.find(
             (message) => message.id === event.payload.messageId,
           );

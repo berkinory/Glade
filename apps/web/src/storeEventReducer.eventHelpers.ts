@@ -443,31 +443,6 @@ export function retainThreadActivitiesAfterRevert(
   );
 }
 
-export function rollbackThreadMessagesFromMessage(
-  messages: ReadonlyArray<ChatMessage>,
-  messageId: string,
-): {
-  readonly messages: ChatMessage[];
-  readonly removedTurnIds: ReadonlySet<string>;
-} {
-  const targetIndex = messages.findIndex((message) => message.id === messageId);
-  if (targetIndex < 0) {
-    return { messages: [...messages], removedTurnIds: new Set() };
-  }
-
-  const removedMessages = messages.slice(targetIndex);
-  return {
-    messages: messages.slice(0, targetIndex),
-    removedTurnIds: new Set(
-      removedMessages.flatMap((message) =>
-        message.role === "system" || message.turnId === undefined || message.turnId === null
-          ? []
-          : [message.turnId],
-      ),
-    ),
-  };
-}
-
 export function applyTurnDiffSummaryToThread(
   thread: Thread,
   summary: Thread["turnDiffSummaries"][number],

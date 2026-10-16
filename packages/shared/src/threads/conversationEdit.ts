@@ -38,7 +38,7 @@ function isNativeEditableSource(source: string | undefined): boolean {
 }
 
 function collectUniqueTurnIds<TTurnId extends string>(
-  messages: ReadonlyArray<TurnMessageLike<TTurnId>>,
+  messages: ReadonlyArray<Omit<TurnMessageLike<TTurnId>, "id">>,
 ): TTurnId[] {
   return [
     ...new Set(
@@ -58,6 +58,24 @@ export function collectTailTurnIds<TTurnId extends string>(input: {
     return [];
   }
   return collectUniqueTurnIds(input.messages.slice(messageIndex));
+}
+
+// A plain rollback cancels no pending sends, so a user message after the target that has not started
+// a turn was sent while the rollback ran and its turn start is still waiting for it. Edit replays
+// cancel those sends themselves and drop the whole tail.
+export function splitConversationRollbackTail<TMessage extends Omit<TurnMessageLike, "id">>(
+  messages: ReadonlyArray<TMessage>,
+  targetIndex: number,
+  keepUnstartedSends: boolean,
+): { readonly keptMessages: TMessage[]; readonly removedTurnIds: ReadonlySet<string> } {
+  const tail = messages.slice(targetIndex);
+  const unstartedSends = keepUnstartedSends
+    ? tail.slice(1).filter((message) => message.role === "user" && !message.turnId)
+    : [];
+  return {
+    keptMessages: [...messages.slice(0, targetIndex), ...unstartedSends],
+    removedTurnIds: new Set(collectUniqueTurnIds(tail)),
+  };
 }
 
 function findLatestConversationUserMessageIndex(

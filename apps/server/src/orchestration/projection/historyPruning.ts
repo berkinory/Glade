@@ -86,30 +86,6 @@ export function retainTurnScopedProjectionRowsAfterRevert<
   return rows.filter((row) => row.turnId === null || retainedTurnIds.has(row.turnId));
 }
 
-export function rollbackProjectionMessagesFromMessage(
-  messages: ReadonlyArray<ProjectionThreadMessage>,
-  messageId: string,
-): {
-  readonly keptRows: ReadonlyArray<ProjectionThreadMessage>;
-  readonly removedTurnIds: ReadonlySet<string>;
-  readonly changed: boolean;
-} {
-  const targetIndex = messages.findIndex((message) => message.messageId === messageId);
-  if (targetIndex < 0) {
-    return { keptRows: messages, removedTurnIds: new Set(), changed: false };
-  }
-  const removedRows = messages.slice(targetIndex);
-  return {
-    keptRows: messages.slice(0, targetIndex),
-    removedTurnIds: new Set(
-      removedRows.flatMap((message) =>
-        message.role === "system" || message.turnId === null ? [] : [message.turnId],
-      ),
-    ),
-    changed: true,
-  };
-}
-
 export function retainTurnScopedProjectionRowsAfterConversationRollback<
   Row extends { readonly turnId: string | null },
 >(rows: ReadonlyArray<Row>, removedTurnIds: ReadonlySet<string>): ReadonlyArray<Row> {

@@ -13,6 +13,7 @@ import {
 } from "../Schemas.ts";
 import { maxIso } from "../turnLifecycle.ts";
 import { clearRemovedAsyncUserInputResponses } from "@glade/shared/threads/asyncUserInput";
+import { splitConversationRollbackTail } from "@glade/shared/threads/conversationEdit";
 import {
   importedHistoryTurnIds,
   isImportedHistoryMessage,
@@ -96,29 +97,6 @@ function retainThreadActivitiesAfterRevert(
   return activities.filter(
     (activity) => activity.turnId === null || retainedTurnIds.has(activity.turnId),
   );
-}
-
-function rollbackThreadMessagesFromMessage(
-  messages: ReadonlyArray<OrchestrationMessage>,
-  messageId: string,
-): {
-  readonly messages: ReadonlyArray<OrchestrationMessage>;
-  readonly removedTurnIds: ReadonlySet<string>;
-} {
-  const targetIndex = messages.findIndex((message) => message.id === messageId);
-  if (targetIndex < 0) {
-    return { messages, removedTurnIds: new Set() };
-  }
-
-  const removedMessages = messages.slice(targetIndex);
-  return {
-    messages: messages.slice(0, targetIndex),
-    removedTurnIds: new Set(
-      removedMessages.flatMap((message) =>
-        message.role === "system" || message.turnId === null ? [] : [message.turnId],
-      ),
-    ),
-  };
 }
 
 export function projectHistoryEvent(
@@ -286,12 +264,19 @@ export function projectHistoryEvent(
             return nextBase;
           }
 
-          const rollback = rollbackThreadMessagesFromMessage(thread.messages, payload.messageId);
-          if (rollback.messages === thread.messages) {
+          const targetIndex = thread.messages.findIndex(
+            (message) => message.id === payload.messageId,
+          );
+          if (targetIndex < 0) {
             return nextBase;
           }
+          const rollback = splitConversationRollbackTail(
+            thread.messages,
+            targetIndex,
+            payload.replacementText === undefined,
+          );
 
-          let messages = rollback.messages;
+          let messages = rollback.keptMessages;
           const editedMessage = thread.messages.find((message) => message.id === payload.messageId);
           if (payload.replacementText !== undefined && editedMessage) {
             messages = [
