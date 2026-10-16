@@ -11,7 +11,6 @@ import {
 import { FileNameChip } from "./FileNameChip";
 import { toolInputFilePath } from "./ToolIoDetails.logic";
 import { resolveMcpToolIcon } from "~/lib/mcpToolIcon";
-import { resolveSkillToolIcon } from "~/lib/skillToolIcon";
 import { GitHubIcon } from "~/lib/brandIcons";
 import {
   CheckmarkCircle02Icon,
@@ -288,7 +287,7 @@ function classifyWorkEntryTool(workEntry: TimelineWorkEntry) {
     fallbackLabel: workEntry.label,
     status,
   };
-  const mcpIcon = resolveMcpToolIcon(workEntry) ?? resolveSkillToolIcon(workEntry);
+  const mcpIcon = resolveMcpToolIcon(workEntry);
   return {
     status,
     mcpIcon,
