@@ -34,14 +34,6 @@ export function KeepAwakeSettingsRow() {
   }
 
   const unsupported = status?.supported === false;
-  const statusText = statusQuery.isError
-    ? "Could not read the keep-awake state."
-    : (status?.error ??
-      (status?.active
-        ? "Keeping this Mac awake now."
-        : mode === "agent" && status?.supported
-          ? "Idle until an agent starts working."
-          : undefined));
 
   return (
     <>
@@ -53,7 +45,6 @@ export function KeepAwakeSettingsRow() {
             ? "Available when the Glade server runs on macOS."
             : "Prevent idle sleep while agents work."
         }
-        status={unsupported ? undefined : statusText}
         resetAction={
           !unsupported && mode !== undefined && mode !== DEFAULT_KEEP_AWAKE_MODE ? (
             <SettingResetButton
