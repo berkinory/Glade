@@ -13,6 +13,7 @@ import {
   CursorInWindowIcon,
   CloudServerIcon,
   Plug01Icon,
+  ServerIcon,
 } from "~/lib/icons";
 import type { IconComponent } from "~/lib/iconComponent";
 const SETTINGS_SECTION_IDS = [
@@ -21,13 +22,14 @@ const SETTINGS_SECTION_IDS = [
   "notifications",
   "shortcuts",
   "profile",
-  "connections",
+  "ssh",
+  "remote",
   "archived",
   "behavior",
   "git",
   "providers",
   "skills",
-  "connectors",
+  "mcp",
   "computer",
   "usage",
 ] as const;
@@ -98,11 +100,18 @@ export const SETTINGS_NAV_ITEMS: readonly SettingsNavItem[] = [
     icon: User02Icon,
   },
   {
-    id: "connections",
+    id: "ssh",
     group: "app",
-    label: "Connections",
-    description:
-      "Run chats on other machines over SSH, and use Glade from your phone or another computer.",
+    label: "SSH hosts",
+    description: "Run chats, terminals and agents on other machines over SSH.",
+    icon: ServerIcon,
+    desktopOnly: true,
+  },
+  {
+    id: "remote",
+    group: "app",
+    label: "Remote access",
+    description: "Use Glade from your phone or another computer, and use other machines' Glade.",
     icon: CloudServerIcon,
     desktopOnly: true,
   },
@@ -144,10 +153,10 @@ export const SETTINGS_NAV_ITEMS: readonly SettingsNavItem[] = [
     icon: Book02Icon,
   },
   {
-    id: "connectors",
+    id: "mcp",
     group: "agents",
-    label: "Connectors",
-    description: "Connect a service once and every agent can use its tools.",
+    label: "MCP servers",
+    description: "Connect an MCP server once and every agent can use its tools.",
     icon: Plug01Icon,
   },
   {
@@ -181,6 +190,8 @@ export function normalizeSettingsSection(value: unknown): SettingsSectionId {
     return "general";
   }
   if (value === "models" || value === "worktrees" || value === "files") return "git";
-  if (value === "ssh" || value === "remote") return "connections";
+  // Earlier names of sections, kept so saved links and deep links still land.
+  if (value === "connections") return "ssh";
+  if (value === "connectors") return "mcp";
   return SETTINGS_SECTION_IDS.find((candidate) => candidate === value) ?? "general";
 }

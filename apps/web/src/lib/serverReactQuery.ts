@@ -180,6 +180,18 @@ export function serverSettingsQueryOptions() {
   });
 }
 
+// A machine's server settings; the local machine shares the app-wide cache entry.
+export function environmentServerSettingsQueryOptions(environmentKey: EnvironmentKey) {
+  const local = environmentKey === LOCAL_ENVIRONMENT;
+  return queryOptions({
+    queryKey: local
+      ? (serverQueryKeys.settings() as readonly string[])
+      : [...serverQueryKeys.settings(), environmentKey],
+    queryFn: () => ensureEnvironmentNativeApi(environmentKey).server.getSettings(),
+    staleTime: local ? Infinity : 30_000,
+  });
+}
+
 // Polled only while a consumer is mounted: the assertion follows agent work, not client actions.
 export function serverKeepAwakeStatusQueryOptions() {
   return queryOptions({

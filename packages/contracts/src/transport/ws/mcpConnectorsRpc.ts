@@ -57,6 +57,9 @@ export const McpConnectorConnectInput = Schema.Struct({
   token: Schema.optionalKey(Schema.String),
   // Left out on a reconnect to keep the agents chosen before.
   providers: Schema.optionalKey(McpConnectorProviders),
+  // Where the browser reaches this server when it is not on the same machine, such as an SSH
+  // tunnel's local end. Only loopback origins are accepted.
+  callbackOrigin: Schema.optionalKey(Schema.String),
 });
 export type McpConnectorConnectInput = typeof McpConnectorConnectInput.Type;
 

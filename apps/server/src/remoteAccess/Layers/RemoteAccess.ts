@@ -403,6 +403,14 @@ const make = Effect.gen(function* () {
       ),
     );
 
+  const revokePairing: RemoteAccessShape["revokePairing"] = (id) =>
+    serverAuth.revokePairingLink(id).pipe(
+      Effect.asVoid,
+      Effect.mapError(
+        (cause) => new RemoteAccessError({ message: "Could not end the pairing code.", cause }),
+      ),
+    );
+
   return {
     attach,
     streamStatus: SubscriptionRef.changes(status),
@@ -410,6 +418,7 @@ const make = Effect.gen(function* () {
     createPairing,
     streamDevices,
     revokeDevice,
+    revokePairing,
   } satisfies RemoteAccessShape;
 });
 

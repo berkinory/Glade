@@ -54,6 +54,9 @@ import {
 } from "../components/settings/SettingsPanelPrimitives";
 import { SkillsSettingsPanel } from "../components/settings/skills/SkillsSettingsPanel";
 import { ConnectorsSettingsPanel } from "../components/settings/connectors/ConnectorsSettingsPanel";
+import { MachinePicker } from "../components/settings/machine/MachinePicker";
+import { useSettingsMachine } from "../components/settings/machine/settingsMachine";
+import { HostProvidersPanel } from "../components/settings/machine/HostProvidersPanel";
 import { ThemeModePicker } from "../components/settings/ThemeModePicker";
 import { SidebarHeaderNavigationControls } from "../components/SidebarHeaderNavigationControls";
 import { KeepAwakeSettingsRow } from "../components/settings/KeepAwakeSettingsRow";
@@ -90,6 +93,7 @@ import {
   settingRowAnchorId,
   SETTINGS_NAV_ITEMS,
   SETTINGS_TARGETS,
+  type SettingsSectionId,
 } from "../settingsNavigation";
 import { SETTINGS_PAGE_BACKGROUND_CLASS_NAME } from "../settingsPanelStyles";
 import { SettingsGeneralPanel } from "./-settingsGeneralPanel";
@@ -138,9 +142,13 @@ const FOLLOW_UP_BEHAVIOR_OPTIONS = [
   { value: "steer", label: "Steer" },
 ] as const satisfies ReadonlyArray<{ value: FollowUpBehavior; label: string }>;
 
+// Sections that show one machine's agents, picked in the header.
+const MACHINE_SECTIONS: ReadonlySet<SettingsSectionId> = new Set(["providers", "skills", "mcp"]);
+
 function SettingsRouteView() {
   const routeSearch = useSearch({ strict: false }) as Record<string, unknown>;
   const activeSection = normalizeSettingsSection(routeSearch.section);
+  const machine = useSettingsMachine();
   const settingsTarget = typeof routeSearch.target === "string" ? routeSearch.target : null;
   const activeSectionItem = SETTINGS_NAV_ITEMS.find((item) => item.id === activeSection)!;
 
@@ -804,19 +812,16 @@ function SettingsRouteView() {
         return <ProfileSettingsPanel />;
       case "skills":
         return <SkillsSettingsPanel />;
-      case "connectors":
+      case "mcp":
         return <ConnectorsSettingsPanel />;
       case "usage":
         return <ProviderUsageSettingsPanel />;
       case "computer":
         return <ComputerSettings />;
-      case "connections":
-        return (
-          <div className="space-y-6">
-            <SshHostsSettingsPanel />
-            <RemoteAccessSettingsPanel />
-          </div>
-        );
+      case "ssh":
+        return <SshHostsSettingsPanel />;
+      case "remote":
+        return <RemoteAccessSettingsPanel />;
       default:
         return null;
     }
@@ -854,7 +859,7 @@ function SettingsRouteView() {
               )}
             >
               {
-                <div className="mb-8">
+                <div className="mb-8 flex items-start justify-between gap-4">
                   <div className="min-w-0">
                     <h1 className="flex items-center gap-2 text-xl font-medium tracking-tight text-foreground">
                       {activeSectionItem.label}
@@ -871,6 +876,7 @@ function SettingsRouteView() {
                       {activeSectionItem.description}
                     </p>
                   </div>
+                  {MACHINE_SECTIONS.has(activeSection) ? <MachinePicker /> : null}
                 </div>
               }
 
@@ -884,8 +890,11 @@ function SettingsRouteView() {
                   updateSettings={updateSettings}
                 />
                 <ArchivedSettingsPanel active={activeSection === "archived"} />
+                {activeSection === "providers" && machine.remote ? (
+                  <HostProvidersPanel machine={machine} />
+                ) : null}
                 <ProvidersSettingsPanel
-                  active={activeSection === "providers"}
+                  active={activeSection === "providers" && machine.remote === null}
                   settings={settings}
                   defaults={defaults}
                   updateSettings={updateSettings}

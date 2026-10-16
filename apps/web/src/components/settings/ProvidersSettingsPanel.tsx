@@ -60,7 +60,8 @@ import { ProviderIcon } from "../ProviderIcon";
 import { DebouncedSettingTextInput } from "./DebouncedSettingTextInput";
 import { SettingResetButton, useSettingsRestoreSignal } from "./SettingControls";
 import { SettingsRow, SettingsSection } from "./SettingsPanelPrimitives";
-import { SettingsStatus, type SettingsStatusTone } from "./SettingsStatus";
+import { SettingsStatus } from "./SettingsStatus";
+import { providerSetupStatus } from "./providerSetupStatus";
 import {
   type ProviderInstallField,
   type ProviderInstallSettings,
@@ -75,26 +76,6 @@ import {
   createProviderInstallResetPatch,
   setProviderListMembership,
 } from "./providerInstallationModel";
-function providerSetupStatus(input: {
-  readonly status: ServerProviderStatus | undefined;
-  readonly reconciled: boolean;
-  readonly disabled: boolean;
-}): { readonly tone: SettingsStatusTone; readonly label: string } {
-  if (input.disabled) return { tone: "off", label: "Disabled" };
-  if (!input.reconciled || !input.status) return { tone: "checking", label: "Checking setup" };
-  const status = input.status;
-  if (!status.available) return { tone: "blocked", label: "Not installed" };
-  if (status.authStatus === "unauthenticated") return { tone: "needed", label: "Needs sign-in" };
-  if (status.status === "update-required") return { tone: "needed", label: "Update required" };
-  if (status.status !== "ready") return { tone: "needed", label: "Needs attention" };
-  // A provider that runs without a sign-in, such as OpenCode's free models, names what it offers.
-  if (status.authStatus === "unknown") {
-    return status.authLabel
-      ? { tone: "granted", label: `Ready · ${status.authLabel}` }
-      : { tone: "needed", label: "Installed · sign-in not verified" };
-  }
-  return { tone: "granted", label: "Connected" };
-}
 function ProviderDocsLinks({ docs }: { docs: ProviderInstallSettings["docs"] }) {
   return (
     <div className={cn(SETTINGS_OUTLINED_SURFACE_CLASS_NAME, "px-3 py-2.5")}>

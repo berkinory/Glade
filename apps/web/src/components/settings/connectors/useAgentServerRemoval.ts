@@ -3,30 +3,39 @@ import { useState } from "react";
 
 import { mcpServersQueryOptions } from "~/lib/providerDiscoveryReactQuery";
 import { providerNames } from "~/lib/providerNames";
-import { ensureNativeApi } from "~/nativeApi";
+import { LOCAL_ENVIRONMENT, type EnvironmentKey } from "~/environments/environmentKey";
+import { ensureEnvironmentNativeApi } from "~/nativeApi";
+import type { SettingsMachine } from "../machine/settingsMachine";
 import { DEFAULT_PROVIDER_ORDER } from "~/providerOrdering";
 import { toastManager } from "../../ui/toast";
 import type { AgentServerRow } from "./connectors.logic";
 
-export function reloadAgentMcpServers(queryClient: QueryClient): Promise<unknown> {
+export function reloadAgentMcpServers(
+  queryClient: QueryClient,
+  environment: EnvironmentKey,
+): Promise<unknown> {
   return Promise.all(
     DEFAULT_PROVIDER_ORDER.map((provider) =>
-      queryClient.fetchQuery({ ...mcpServersQueryOptions(provider, true), staleTime: 0 }),
+      queryClient.fetchQuery({
+        ...mcpServersQueryOptions(environment, provider, true),
+        staleTime: 0,
+      }),
     ),
   );
 }
 
 // Removes a server from the agents' own settings once Glade connects the same service, after the
 // user confirms.
-export function useAgentServerRemoval() {
+export function useAgentServerRemoval(machine: SettingsMachine) {
   const queryClient = useQueryClient();
   const [removing, setRemoving] = useState<string | null>(null);
 
   const remove = async (row: AgentServerRow) => {
-    const api = ensureNativeApi();
+    const api = machine.api;
+    if (!api) return;
     const agents = providerNames(row.sources.map((source) => source.provider));
     const service = row.connector?.name ?? row.preset?.name ?? row.name;
-    const confirmed = await api.dialogs.confirm(
+    const confirmed = await ensureEnvironmentNativeApi(LOCAL_ENVIRONMENT).dialogs.confirm(
       `Remove ${row.name} from ${agents}?\n${service} is connected in Glade, which gives every agent its tools. Outside Glade, ${agents} will no longer load it.`,
     );
     if (!confirmed) return;
@@ -50,7 +59,7 @@ export function useAgentServerRemoval() {
           description: `Could not remove ${row.name} from ${providerNames(failed.map((source) => source.provider))}. ${reasons.join("\n") || "Try again."}`,
         });
       }
-      await reloadAgentMcpServers(queryClient);
+      await reloadAgentMcpServers(queryClient, machine.key);
     } finally {
       setRemoving(null);
     }

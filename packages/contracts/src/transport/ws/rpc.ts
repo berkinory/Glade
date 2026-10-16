@@ -110,6 +110,7 @@ import { WsComputerRevokeGrantRpc, WsComputerSubscribeRpc } from "./computerRpc"
 import {
   WsRemoteAccessCreatePairingRpc,
   WsRemoteAccessRevokeDeviceRpc,
+  WsRemoteAccessRevokePairingRpc,
   WsRemoteAccessSubscribeDevicesRpc,
   WsRemoteAccessSubscribeRpc,
   WsRemoteAccessUpdateRpc,
@@ -278,6 +279,7 @@ export const WsFeatureRpcGroup = RpcGroup.make(
   WsRemoteAccessCreatePairingRpc,
   WsRemoteAccessSubscribeDevicesRpc,
   WsRemoteAccessRevokeDeviceRpc,
+  WsRemoteAccessRevokePairingRpc,
   WsMcpConnectorsSubscribeRpc,
   WsMcpConnectorsConnectRpc,
   WsMcpConnectorsCancelSignInRpc,

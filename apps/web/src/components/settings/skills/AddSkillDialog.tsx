@@ -7,7 +7,7 @@ import { type ReactNode, useDeferredValue, useState } from "react";
 
 import { AlertCircleIcon, ArrowRight02Icon, DownloadIcon, SearchIcon } from "~/lib/icons";
 import { cn } from "~/lib/utils";
-import { ensureNativeApi } from "~/nativeApi";
+import type { NativeApi } from "@glade/contracts/ipc/ipc";
 import { Button } from "../../ui/button";
 import {
   Dialog,
@@ -42,6 +42,8 @@ function Notice(props: { readonly icon: ReactNode; readonly children: ReactNode 
 }
 
 function SearchStep(props: {
+  readonly api: NativeApi;
+  readonly machineLabel: string | null;
   readonly search: string;
   readonly onSearchChange: (search: string) => void;
   readonly picking: string | null;
@@ -53,7 +55,7 @@ function SearchStep(props: {
   const reference = isReference(typed);
   const results = useQuery({
     queryKey: ["skills-directory", "search", query],
-    queryFn: () => ensureNativeApi().skillsDirectory.search({ query }),
+    queryFn: () => props.api.skillsDirectory.search({ query }),
     enabled: query.length >= 2 && !isReference(query),
     staleTime: 5 * 60_000,
     retry: false,
@@ -142,7 +144,10 @@ function SearchStep(props: {
     <>
       <DialogHeader className="px-5 pt-5">
         <DialogTitle>Add a skill</DialogTitle>
-        <DialogDescription>Install a skill from skills.sh or GitHub.</DialogDescription>
+        <DialogDescription>
+          Install a skill from skills.sh or GitHub
+          {props.machineLabel ? ` on ${props.machineLabel}` : ""}.
+        </DialogDescription>
         <div className="mt-2">
           <SearchInput
             value={props.search}
@@ -168,6 +173,8 @@ function SearchStep(props: {
 }
 
 function AddSkillFlow(props: {
+  readonly api: NativeApi;
+  readonly machineLabel: string | null;
   readonly onClose: () => void;
   readonly onInstalled: (name: string, paths: ReadonlyArray<string>) => void;
 }) {
@@ -180,8 +187,8 @@ function AddSkillFlow(props: {
   const pick = (reference: string) => {
     setPicking(reference);
     setError(null);
-    ensureNativeApi()
-      .skillsDirectory.preview({ reference })
+    props.api.skillsDirectory
+      .preview({ reference })
       .then(setPreview)
       .catch((cause: unknown) =>
         setError(cause instanceof Error ? cause.message : "Glade could not read that skill."),
@@ -196,6 +203,8 @@ function AddSkillFlow(props: {
     >
       {preview ? (
         <SkillPreviewStep
+          api={props.api}
+          machineLabel={props.machineLabel}
           preview={preview}
           onBack={() => setPreview(null)}
           onInstalled={(paths) => props.onInstalled(preview.name, paths)}
@@ -203,6 +212,8 @@ function AddSkillFlow(props: {
       ) : (
         <>
           <SearchStep
+            api={props.api}
+            machineLabel={props.machineLabel}
             search={search}
             onSearchChange={setSearch}
             picking={picking}
@@ -221,6 +232,10 @@ function AddSkillFlow(props: {
 }
 
 export function AddSkillDialog(props: {
+  // The server of the machine the skill installs on; null while it cannot be reached.
+  readonly api: NativeApi | null;
+  // Set when that machine is not this one.
+  readonly machineLabel: string | null;
   readonly open: boolean;
   readonly onOpenChange: (open: boolean) => void;
   readonly onInstalled: (name: string, paths: ReadonlyArray<string>) => void;
@@ -229,8 +244,10 @@ export function AddSkillDialog(props: {
     <Dialog open={props.open} onOpenChange={props.onOpenChange}>
       {/* One fixed height for every step, so searching and previewing never resize the dialog. */}
       <DialogPopup className="h-[min(38rem,calc(100dvh-6rem))] max-w-lg">
-        {props.open ? (
+        {props.open && props.api ? (
           <AddSkillFlow
+            api={props.api}
+            machineLabel={props.machineLabel}
             onClose={() => props.onOpenChange(false)}
             onInstalled={(name, paths) => {
               props.onOpenChange(false);

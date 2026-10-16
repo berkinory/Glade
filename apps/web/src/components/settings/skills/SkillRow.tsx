@@ -3,6 +3,7 @@ import type { ReactNode } from "react";
 import { Book02Icon } from "~/lib/icons";
 import { Switch } from "../../ui/switch";
 import { ProviderStack } from "../ProviderStack";
+import { SettingsTile } from "../SettingsTile";
 import type { SkillGroup } from "./skills.logic";
 
 export function SkillRow(props: {
@@ -16,12 +17,9 @@ export function SkillRow(props: {
   const { group } = props;
   return (
     <div className="flex min-w-0 items-center gap-3 px-3 py-2.5">
-      <span
-        aria-hidden="true"
-        className="inline-flex size-8 shrink-0 items-center justify-center rounded-lg border border-border bg-[var(--color-background-elevated-secondary)] text-muted-foreground"
-      >
-        <Book02Icon className="size-4" />
-      </span>
+      <SettingsTile>
+        <Book02Icon />
+      </SettingsTile>
       <span className="min-w-0 flex-1">
         <span className="block truncate text-ui font-medium text-foreground">
           {group.displayName}

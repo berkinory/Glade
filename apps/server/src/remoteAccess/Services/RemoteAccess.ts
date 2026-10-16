@@ -26,6 +26,7 @@ export interface RemoteAccessShape {
   readonly createPairing: Effect.Effect<RemoteAccessPairing, RemoteAccessError>;
   readonly streamDevices: Stream.Stream<RemoteAccessDevices, RemoteAccessError>;
   readonly revokeDevice: (sessionId: AuthSessionId) => Effect.Effect<void, RemoteAccessError>;
+  readonly revokePairing: (id: string) => Effect.Effect<void, RemoteAccessError>;
 }
 
 export class RemoteAccess extends ServiceMap.Service<RemoteAccess, RemoteAccessShape>()(

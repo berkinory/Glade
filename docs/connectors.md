@@ -1,7 +1,7 @@
 # Connectors
 
 Connectors let every agent use remote MCP servers such as Supabase, Linear, Notion or GitHub.
-Connect a service once in **Settings → Connectors**; agents in new chats get its tools, whichever
+Connect a service once in **Settings → MCP servers**; agents in new chats get its tools, whichever
 provider runs the chat.
 
 ## What happens when you connect
@@ -41,7 +41,7 @@ support. Each tool call follows the chat's normal approval flow.
 
 ## Servers in your agents
 
-Settings → Connectors also lists the MCP servers agents load from their own user configuration,
+Settings → MCP servers also lists the MCP servers agents load from their own user configuration,
 merged by name with the agents that have each one:
 
 | Agent    | Read from                                                                    | Removed with                      |

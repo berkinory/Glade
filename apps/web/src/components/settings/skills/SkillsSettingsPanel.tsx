@@ -9,7 +9,9 @@ import {
 } from "~/lib/providerDiscoveryReactQuery";
 import { PlusIcon } from "~/lib/icons";
 import { providerNames } from "~/lib/providerNames";
-import { ensureNativeApi } from "~/nativeApi";
+import { LOCAL_ENVIRONMENT } from "~/environments/environmentKey";
+import { ensureEnvironmentNativeApi } from "~/nativeApi";
+import { useSettingsMachine } from "../machine/settingsMachine";
 import { DEFAULT_PROVIDER_ORDER } from "~/providerOrdering";
 import { Button } from "../../ui/button";
 import { SearchInput } from "../../ui/search-input";
@@ -46,11 +48,12 @@ function copiesNote(group: SkillGroup, diverged: boolean): string | undefined {
 }
 
 export function SkillsSettingsPanel() {
-  const api = ensureNativeApi();
+  const machine = useSettingsMachine();
+  const localApi = ensureEnvironmentNativeApi(LOCAL_ENVIRONMENT);
   const queryClient = useQueryClient();
-  const catalogQuery = useQuery(skillsCatalogQueryOptions());
+  const catalogQuery = useQuery(skillsCatalogQueryOptions(machine.key, machine.api !== null));
   const { settings } = useAppSettings();
-  const toggles = useSkillToggles();
+  const toggles = useSkillToggles(machine);
   const [search, setSearch] = useState("");
   const query = useDeferredValue(search).trim().toLowerCase();
   const [sharing, setSharing] = useState<string | null>(null);
@@ -69,11 +72,11 @@ export function SkillsSettingsPanel() {
   const own = groups.filter((group) => !group.shared);
 
   const share = async (group: SkillGroup) => {
-    if (!catalog) return;
-    if (!(await api.dialogs.confirm(shareConfirmation(group, catalog)))) return;
+    if (!catalog || !machine.api) return;
+    if (!(await localApi.dialogs.confirm(shareConfirmation(group, catalog)))) return;
     setSharing(group.key);
     try {
-      const { keptPaths } = await api.provider.shareSkill({ name: group.name });
+      const { keptPaths } = await machine.api.provider.shareSkill({ name: group.name });
       if (keptPaths.length > 0) {
         setDiverged((current) => new Set([...current, group.key]));
         toastManager.add({
@@ -112,9 +115,14 @@ export function SkillsSettingsPanel() {
     onEnabledChange: (enabled: boolean) => toggles.setEnabled(group.name, enabled),
   });
 
-  const status = catalogQuery.isLoading ? (
-    <SettingsEmptyState layout="status">Scanning skill folders…</SettingsEmptyState>
-  ) : null;
+  const status =
+    machine.api === null ? (
+      <SettingsEmptyState layout="status">
+        {machine.label} is not connected. Glade keeps trying in the background.
+      </SettingsEmptyState>
+    ) : catalogQuery.isLoading ? (
+      <SettingsEmptyState layout="status">Scanning skill folders…</SettingsEmptyState>
+    ) : null;
 
   return (
     <div className="space-y-6">
@@ -125,12 +133,19 @@ export function SkillsSettingsPanel() {
           placeholder="Search skills"
           aria-label="Search skills"
         />
-        <Button variant="outline" className="shrink-0" onClick={() => setAdding(true)}>
+        <Button
+          variant="outline"
+          className="shrink-0"
+          disabled={machine.api === null}
+          onClick={() => setAdding(true)}
+        >
           <PlusIcon aria-hidden />
           Add skill
         </Button>
       </div>
       <AddSkillDialog
+        api={machine.api}
+        machineLabel={machine.remote ? machine.label : null}
         open={adding}
         onOpenChange={setAdding}
         onInstalled={(name, paths) => {

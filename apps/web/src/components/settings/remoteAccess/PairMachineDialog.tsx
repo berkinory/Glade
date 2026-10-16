@@ -14,6 +14,9 @@ import {
   dialogFieldLabelClassName,
 } from "../../ui/dialog";
 import { Input } from "../../ui/input";
+import { CloudServerIcon, Link01Icon } from "~/lib/icons";
+import { Spinner } from "../../ui/spinner";
+import { DialogFact } from "../DialogFact";
 
 function looksLikePairingLink(value: string): boolean {
   const url = URL.parse(value);
@@ -61,12 +64,9 @@ export function PairMachineDialog(props: {
       <DialogPopup>
         <DialogHeader className="px-5 pt-5">
           <DialogTitle>Pair with a machine</DialogTitle>
-          <DialogDescription>
-            On the other machine, open Settings → Remote access, choose Pair a device and copy the
-            link. Its projects and chats appear here and stay on that machine.
-          </DialogDescription>
+          <DialogDescription>Use another computer's Glade from here.</DialogDescription>
         </DialogHeader>
-        <DialogPanel className="space-y-2 px-5">
+        <DialogPanel className="mt-2 space-y-4 px-5">
           <form
             onSubmit={(event) => {
               event.preventDefault();
@@ -99,24 +99,23 @@ export function PairMachineDialog(props: {
               {error}
             </p>
           ) : null}
+          <ul className="flex flex-col gap-2.5">
+            <DialogFact icon={<Link01Icon aria-hidden />}>
+              On the other machine, open Settings → Remote access, choose Pair a device and copy the
+              link.
+            </DialogFact>
+            <DialogFact icon={<CloudServerIcon aria-hidden />}>
+              Its projects, chats, agents and skills appear here and stay on that machine.
+            </DialogFact>
+          </ul>
         </DialogPanel>
-        <DialogFooter className="px-5 pb-5">
-          <Button
-            variant="ghost"
-            shape="capsule"
-            className="px-4 text-ui-lg sm:text-ui-lg"
-            onClick={() => props.onOpenChange(false)}
-            disabled={pending}
-          >
+        <DialogFooter>
+          <Button variant="outline" onClick={() => props.onOpenChange(false)} disabled={pending}>
             Cancel
           </Button>
-          <Button
-            variant="prominent"
-            className="px-4 text-ui-lg transition-opacity hover:scale-100 sm:text-ui-lg"
-            onClick={() => void submit()}
-            disabled={pending || link.trim().length === 0}
-          >
-            {pending ? "Pairing…" : "Pair"}
+          <Button onClick={() => void submit()} disabled={pending || link.trim().length === 0}>
+            {pending ? <Spinner className="size-4" /> : null}
+            Pair
           </Button>
         </DialogFooter>
       </DialogPopup>

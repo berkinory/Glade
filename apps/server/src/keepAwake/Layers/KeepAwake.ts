@@ -22,6 +22,7 @@ import { OrchestrationEngineService } from "../../orchestration/Services/Orchest
 import { ProjectionSnapshotQuery } from "../../orchestration/Services/ProjectionSnapshotQuery";
 import { shouldPublishThreadShellForEvent } from "../../orchestration/threadShellEvents";
 import { spawnEffectProcess } from "../../platform/effectProcessRuntime";
+import { RemoteAccess } from "../../remoteAccess/Services/RemoteAccess";
 import { ServerSettingsService } from "../../settings/serverSettings";
 import { KeepAwake, type KeepAwakeShape } from "../Services/KeepAwake";
 
@@ -53,6 +54,7 @@ const make = Effect.gen(function* () {
   const orchestrationEngine = yield* OrchestrationEngineService;
   const projectionSnapshotQuery = yield* ProjectionSnapshotQuery;
   const spawner = yield* ChildProcessSpawner.ChildProcessSpawner;
+  const remoteAccess = yield* RemoteAccess;
 
   const supported = process.platform === "darwin" && isExecutableFile(CAFFEINATE_PATH);
   const statusRef = yield* Ref.make<ServerKeepAwakeStatus>({
@@ -61,6 +63,9 @@ const make = Effect.gen(function* () {
     error: null,
   });
   const workingThreadsRef = yield* Ref.make<ReadonlySet<string>>(new Set());
+  // Paired devices can reach this Mac only while it is awake, so remote access holds idle sleep off
+  // on its own, whatever the keep-awake setting says.
+  const remoteListeningRef = yield* Ref.make(false);
   const wantedRef = yield* Ref.make<"system" | "display" | null>(null);
   const reconcileLock = yield* Semaphore.make(1);
 
@@ -122,10 +127,18 @@ const make = Effect.gen(function* () {
           ),
         );
         if (settings === null) return;
-        const mode = settings.keepAwakeMode;
-        const workingCount = (yield* Ref.get(workingThreadsRef)).size;
-        const enabled = supported && mode === "agent" && workingCount > 0;
-        const wanted = enabled ? (settings.keepDisplayAwake ? "display" : "system") : null;
+        const working =
+          settings.keepAwakeMode === "agent" && (yield* Ref.get(workingThreadsRef)).size > 0;
+        const remoteListening = yield* Ref.get(remoteListeningRef);
+        const wanted = !supported
+          ? null
+          : working
+            ? settings.keepDisplayAwake
+              ? "display"
+              : "system"
+            : remoteListening
+              ? "system"
+              : null;
         if (wanted === (yield* Ref.get(wantedRef))) return;
         yield* Ref.set(wantedRef, wanted);
         yield* FiberHandle.clear(holder);
@@ -175,6 +188,14 @@ const make = Effect.gen(function* () {
     const domainEvents = yield* orchestrationEngine.subscribeDomainEvents;
     yield* Effect.forkScoped(
       Stream.runForEach(serverSettings.streamChanges, () => reconcile(holder)),
+      { startImmediately: true },
+    );
+    yield* Effect.forkScoped(
+      Stream.runForEach(remoteAccess.streamStatus, (status) =>
+        Ref.set(remoteListeningRef, status.enabled && status.listener === "on").pipe(
+          Effect.andThen(reconcile(holder)),
+        ),
+      ),
       { startImmediately: true },
     );
     const working = yield* projectionSnapshotQuery.listThreadShellsWithPossibleWork().pipe(

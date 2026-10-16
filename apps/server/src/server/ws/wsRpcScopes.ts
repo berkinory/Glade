@@ -125,6 +125,7 @@ export const WS_RPC_REQUIRED_SCOPES: Record<WsFeatureRpcTag, AuthScope> = {
   [REMOTE_ACCESS_WS_METHODS.createPairing]: "access:write",
   [REMOTE_ACCESS_WS_METHODS.subscribeDevices]: "access:write",
   [REMOTE_ACCESS_WS_METHODS.revokeDevice]: "access:write",
+  [REMOTE_ACCESS_WS_METHODS.revokePairing]: "access:write",
   // Owner only: sign-ins redirect to this machine's loopback, and connectors give every agent
   // session access to the user's accounts.
   [MCP_CONNECTORS_WS_METHODS.subscribe]: "access:write",

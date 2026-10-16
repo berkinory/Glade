@@ -182,7 +182,7 @@ Executor is handled as an ordinary MCP server and receives its own logo. Upstrea
 
 ## Connector catalog artwork
 
-Settings → Connectors shows each catalog preset with this artwork, resolved through
+Settings → MCP servers shows each catalog preset with this artwork, resolved through
 `resolveServiceBrand` from the preset id or name; chat tool rows resolve connector servers
 (`<name>_connector`) the same way. SVGs are minified with SVGO and PNGs larger than 128 pixels are
 downscaled. Marks that disappear on a dark surface are drawn as monochrome and follow the UI text

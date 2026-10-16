@@ -29,6 +29,7 @@ export function PairDeviceDialog(props: {
   readonly open: boolean;
   readonly pendingPairingIds: ReadonlyArray<string>;
   readonly createPairing: () => Promise<RemoteAccessPairing>;
+  readonly revokePairing: (input: { readonly id: string }) => Promise<void>;
   readonly onOpenChange: (open: boolean) => void;
 }) {
   const [state, setState] = useState<PairingState>({ kind: "loading" });
@@ -37,15 +38,20 @@ export function PairDeviceDialog(props: {
   // The device list learns about a new code a moment after it is created; until the code has shown
   // up there, its absence does not mean it was used.
   const [listedId, setListedId] = useState<string | null>(null);
-  const { open, onOpenChange, createPairing } = props;
+  const { open, onOpenChange, createPairing, revokePairing } = props;
 
+  // A code stays valid until it expires, so each one is ended as soon as the dialog moves on from
+  // it: closed, or replaced by a new code. Ending a code a device already used changes nothing.
   useEffect(() => {
     if (!open) return;
     let cancelled = false;
+    let createdId: string | null = null;
     setState({ kind: "loading" });
     createPairing()
       .then((pairing) => {
-        if (!cancelled) setState({ kind: "ready", pairing });
+        createdId = pairing.id;
+        if (cancelled) void revokePairing({ id: pairing.id }).catch(() => undefined);
+        else setState({ kind: "ready", pairing });
       })
       .catch((error: unknown) => {
         if (!cancelled) {
@@ -57,8 +63,9 @@ export function PairDeviceDialog(props: {
       });
     return () => {
       cancelled = true;
+      if (createdId !== null) void revokePairing({ id: createdId }).catch(() => undefined);
     };
-  }, [open, attempt, createPairing]);
+  }, [open, attempt, createPairing, revokePairing]);
 
   useEffect(() => {
     if (!open) return;

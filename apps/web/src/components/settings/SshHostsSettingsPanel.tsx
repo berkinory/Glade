@@ -11,28 +11,23 @@ import {
 } from "~/environments/remoteEnvironments";
 import { remoteHostAvailability } from "~/environments/remoteEnvironmentStatus";
 import {
-  ComputerPhoneSyncIcon,
+  CloudServerIcon,
   Delete02Icon,
-  EllipsisIcon,
   PencilEdit02Icon,
   PlusIcon,
   RefreshCwIcon,
+  ServerIcon,
 } from "~/lib/icons";
 import { ipcErrorMessage } from "~/lib/ipcErrorMessage";
-import { HostStatusDot } from "../HostStatusDot";
 import { readLocalNativeApi } from "~/nativeApi";
 import { Button } from "../ui/button";
-import { ComposerPickerMenuPopup } from "../chat/ComposerPickerMenuPopup";
-import { Menu, MenuItem, MenuTrigger } from "../ui/menu";
+import { MenuItem } from "../ui/menu";
+import { MachineRow } from "./machine/MachineRow";
+import { SettingsTile } from "./SettingsTile";
 import { toastManager } from "../ui/toast";
 import { SshHostDialog } from "./SshHostDialog";
 import { HostRemoteAccessDialog } from "./remoteAccess/HostRemoteAccessDialog";
-import {
-  SettingsCard,
-  SettingsEmptyState,
-  SettingsListRow,
-  SettingsSectionShell,
-} from "./SettingsPanelPrimitives";
+import { SettingsCard, SettingsEmptyState, SettingsSectionShell } from "./SettingsPanelPrimitives";
 
 function hostAddress(host: DesktopSshHost): string {
   return host.port === null ? host.destination : `${host.destination}:${host.port}`;
@@ -128,28 +123,27 @@ export function SshHostsSettingsPanel() {
 
       {suggestions.length > 0 ? (
         <SettingsSectionShell title="From your SSH config">
-          <SettingsCard>
+          <SettingsCard divided={false} className="grid grid-cols-1 gap-0.5 p-1 sm:grid-cols-2">
             {suggestions.map((alias) => (
-              <SettingsListRow
+              <button
                 key={alias}
-                title={<span className="font-mono">{alias}</span>}
-                actions={
-                  <Button
-                    size="xs"
-                    variant="outline"
-                    onClick={() =>
-                      void save({
-                        label: alias,
-                        destination: alias,
-                        port: null,
-                        identityFile: null,
-                      })
-                    }
-                  >
-                    Add
-                  </Button>
+                type="button"
+                onClick={() =>
+                  void save({ label: alias, destination: alias, port: null, identityFile: null })
                 }
-              />
+                className="group flex min-w-0 items-center gap-3 rounded-lg px-2.5 py-2 text-left outline-none hover:bg-[var(--color-background-elevated-secondary)] focus-visible:ring-1 focus-visible:ring-ring/60"
+              >
+                <SettingsTile>
+                  <ServerIcon />
+                </SettingsTile>
+                <span className="min-w-0 flex-1 truncate font-mono text-ui text-foreground">
+                  {alias}
+                </span>
+                <PlusIcon
+                  aria-hidden
+                  className="size-4 shrink-0 text-muted-foreground group-hover:text-foreground"
+                />
+              </button>
             ))}
           </SettingsCard>
         </SettingsSectionShell>
@@ -193,64 +187,41 @@ function SshHostRow(props: {
   readonly onRemoteAccess: () => void;
   readonly onRemove: () => void;
 }) {
-  const { host } = props.environment;
   const availability = remoteHostAvailability(props.environment);
   return (
-    <SettingsListRow
-      title={
-        <span className="flex min-w-0 items-baseline gap-2">
-          {availability.needsUser ? (
-            <HostStatusDot tone="attention" className="self-center" />
-          ) : null}
-          <span className="truncate">{host.label}</span>
-          {host.label === hostAddress(host) ? null : (
-            <span className="truncate font-mono text-ui-xs font-normal text-muted-foreground">
-              {hostAddress(host)}
-            </span>
-          )}
-        </span>
+    <MachineRow
+      environment={props.environment}
+      address={hostAddress(props.environment.host)}
+      busy={props.removing}
+      action={
+        availability.needsUser ? (
+          <Button size="sm" variant="outline" onClick={props.onReconnect}>
+            Reconnect
+          </Button>
+        ) : null
       }
-      {...(availability.needsUser
-        ? { description: props.environment.connection?.detail ?? availability.reason }
-        : {})}
-      actions={
+      menuItems={
         <>
-          <Menu>
-            <MenuTrigger
-              render={
-                <Button
-                  size="icon-xs"
-                  variant="ghost"
-                  aria-label={`More actions for ${host.label}`}
-                  disabled={props.removing}
-                />
-              }
-            >
-              <EllipsisIcon aria-hidden />
-            </MenuTrigger>
-            <ComposerPickerMenuPopup align="end">
-              <MenuItem onClick={props.onReconnect}>
-                <RefreshCwIcon aria-hidden className="size-3.5 opacity-70" />
-                Reconnect
-              </MenuItem>
-              <MenuItem onClick={props.onEdit}>
-                <PencilEdit02Icon aria-hidden className="size-3.5 opacity-70" />
-                Edit
-              </MenuItem>
-              <MenuItem
-                disabled={!availability.selectable}
-                title={availability.selectable ? undefined : availability.reason}
-                onClick={props.onRemoteAccess}
-              >
-                <ComputerPhoneSyncIcon aria-hidden className="size-3.5 opacity-70" />
-                Remote access
-              </MenuItem>
-              <MenuItem variant="destructive" onClick={props.onRemove}>
-                <Delete02Icon aria-hidden className="size-3.5" />
-                Remove
-              </MenuItem>
-            </ComposerPickerMenuPopup>
-          </Menu>
+          <MenuItem onClick={props.onReconnect}>
+            <RefreshCwIcon aria-hidden className="size-3.5 opacity-70" />
+            Reconnect
+          </MenuItem>
+          <MenuItem onClick={props.onEdit}>
+            <PencilEdit02Icon aria-hidden className="size-3.5 opacity-70" />
+            Edit
+          </MenuItem>
+          <MenuItem
+            disabled={!availability.selectable}
+            title={availability.selectable ? undefined : availability.reason}
+            onClick={props.onRemoteAccess}
+          >
+            <CloudServerIcon aria-hidden className="size-3.5 opacity-70" />
+            Remote access
+          </MenuItem>
+          <MenuItem variant="destructive" onClick={props.onRemove}>
+            <Delete02Icon aria-hidden className="size-3.5" />
+            Remove
+          </MenuItem>
         </>
       }
     />

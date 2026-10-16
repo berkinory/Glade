@@ -7,19 +7,30 @@ import type {
 import type { AuthClientSession } from "@glade/contracts/transport/auth/auth";
 import { useEffect, useState } from "react";
 
-import { PlusIcon } from "~/lib/icons";
+import {
+  ComputerTerminal01Icon,
+  Delete02Icon,
+  EllipsisIcon,
+  LaptopIcon,
+  PlusIcon,
+  SmartPhone01Icon,
+  Tablet01Icon,
+} from "~/lib/icons";
 import { LOCAL_ENVIRONMENT } from "~/environments/environmentKey";
 import { ensureEnvironmentNativeApi, readLocalNativeApi } from "~/nativeApi";
+import { ComposerPickerMenuPopup } from "../../chat/ComposerPickerMenuPopup";
+import { HostStatusDot } from "../../HostStatusDot";
 import { Button } from "../../ui/button";
+import { Menu, MenuItem, MenuTrigger } from "../../ui/menu";
 import { Switch } from "../../ui/switch";
 import { toastManager } from "../../ui/toast";
 import {
   SettingsCard,
   SettingsEmptyState,
-  SettingsListRow,
   SettingsRow,
   SettingsSectionShell,
 } from "../SettingsPanelPrimitives";
+import { SettingsTile } from "../SettingsTile";
 import { PairDeviceDialog } from "./PairDeviceDialog";
 import { PairedMachinesSection } from "./PairedMachinesSection";
 import { deviceActivity, deviceName, reachabilityText } from "./remoteAccess.logic";
@@ -107,7 +118,7 @@ export function RemoteAccessControls(props: { readonly api: RemoteAccessApi }) {
           <SettingsRow
             id="setting-remote-access"
             title="Allow other devices"
-            description="Use Glade from your phone or another computer. Each device has to be paired first, and works only while this machine is awake."
+            description="Use Glade from your phone or another computer. Each device has to be paired first. While this is on, a Mac stays out of idle sleep so devices can reach it."
             status={reachability}
             control={
               <Switch
@@ -174,6 +185,7 @@ export function RemoteAccessControls(props: { readonly api: RemoteAccessApi }) {
       <PairDeviceDialog
         open={pairing}
         createPairing={api.createPairing}
+        revokePairing={api.revokePairing}
         pendingPairingIds={devices?.pendingPairingIds ?? []}
         onOpenChange={setPairing}
       />
@@ -231,10 +243,19 @@ function TailscaleRow(props: {
   );
 }
 
+const DEVICE_ICONS = {
+  mobile: SmartPhone01Icon,
+  tablet: Tablet01Icon,
+  desktop: LaptopIcon,
+  bot: ComputerTerminal01Icon,
+  unknown: LaptopIcon,
+} as const;
+
 function DeviceRow(props: { readonly device: AuthClientSession; readonly api: RemoteAccessApi }) {
   const { device, api } = props;
+  const name = deviceName(device);
+  const Icon = DEVICE_ICONS[device.client.deviceType] ?? LaptopIcon;
   const remove = async () => {
-    const name = deviceName(device);
     const confirmed = await readLocalNativeApi()?.dialogs.confirm(
       `Remove ${name}?\n\nIt is signed out right away and has to be paired again to come back.`,
     );
@@ -246,14 +267,31 @@ function DeviceRow(props: { readonly device: AuthClientSession; readonly api: Re
       );
   };
   return (
-    <SettingsListRow
-      title={deviceName(device)}
-      description={deviceActivity(device)}
-      actions={
-        <Button size="xs" variant="outline" onClick={() => void remove()}>
-          Remove
-        </Button>
-      }
-    />
+    <div className="flex min-w-0 items-center gap-3 px-3 py-2.5">
+      <SettingsTile
+        badge={device.connected ? <HostStatusDot tone="connected" className="size-2" /> : undefined}
+      >
+        <Icon />
+      </SettingsTile>
+      <span className="min-w-0 flex-1">
+        <span className="block truncate text-ui font-medium text-foreground">{name}</span>
+        <span className="block truncate text-ui-sm text-muted-foreground">
+          {deviceActivity(device)}
+        </span>
+      </span>
+      <Menu>
+        <MenuTrigger
+          render={<Button size="icon-xs" variant="ghost" aria-label={`More actions for ${name}`} />}
+        >
+          <EllipsisIcon aria-hidden />
+        </MenuTrigger>
+        <ComposerPickerMenuPopup align="end">
+          <MenuItem variant="destructive" onClick={() => void remove()}>
+            <Delete02Icon aria-hidden className="size-3.5" />
+            Remove
+          </MenuItem>
+        </ComposerPickerMenuPopup>
+      </Menu>
+    </div>
   );
 }

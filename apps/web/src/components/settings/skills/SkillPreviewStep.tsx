@@ -14,7 +14,9 @@ import {
   ShieldIcon,
   TriangleAlertIcon,
 } from "~/lib/icons";
-import { ensureNativeApi } from "~/nativeApi";
+import type { NativeApi } from "@glade/contracts/ipc/ipc";
+import { LOCAL_ENVIRONMENT } from "~/environments/environmentKey";
+import { ensureEnvironmentNativeApi } from "~/nativeApi";
 import { Button } from "../../ui/button";
 import { DialogFooter, DialogHeader, DialogPanel, DialogTitle } from "../../ui/dialog";
 import { IconButton } from "../../ui/icon-button";
@@ -100,6 +102,8 @@ function AuditRows(props: { readonly audits: ReadonlyArray<SkillAudit> | null })
 }
 
 export function SkillPreviewStep(props: {
+  readonly api: NativeApi;
+  readonly machineLabel: string | null;
   readonly preview: SkillPreview;
   readonly onBack: () => void;
   readonly onInstalled: (paths: ReadonlyArray<string>) => void;
@@ -119,8 +123,8 @@ export function SkillPreviewStep(props: {
     }
     setInstalling(true);
     setError(null);
-    ensureNativeApi()
-      .skillsDirectory.install({
+    props.api.skillsDirectory
+      .install({
         repository: preview.repository,
         commit: preview.commit,
         path: preview.path,
@@ -173,7 +177,9 @@ export function SkillPreviewStep(props: {
                 variant="ghost"
                 size="icon-xs"
                 label="View on GitHub"
-                onClick={() => void ensureNativeApi().shell.openExternal(sourceUrl)}
+                onClick={() =>
+                  void ensureEnvironmentNativeApi(LOCAL_ENVIRONMENT).shell.openExternal(sourceUrl)
+                }
               >
                 <ArrowUpRightIcon />
               </IconButton>
@@ -214,7 +220,7 @@ export function SkillPreviewStep(props: {
         ) : null}
         <Button type="button" disabled={installing} onClick={install}>
           {installing ? <Spinner className="size-4" /> : <DownloadIcon aria-hidden />}
-          Install
+          {props.machineLabel ? `Install on ${props.machineLabel}` : "Install"}
         </Button>
       </DialogFooter>
     </>

@@ -7,13 +7,16 @@
 - Videos in file and Git previews play with full controls instead of showing a still frame, including larger files, and formats that can't play show a clear preview-unavailable state. ([2a3d780c9](https://github.com/berkinory/Glade/commit/2a3d780c94af888a4218d509a6b6966367c75a9d), [47c73c779](https://github.com/berkinory/Glade/commit/47c73c779d31d43c3aa68db8a8fd1f460b169db8))
 - Preview HTML files rendered alongside their source, just like Markdown. ([9773c8f9c](https://github.com/berkinory/Glade/commit/9773c8f9cf6ba9d9401093b1245b43ade36600ab))
 - Agents can reply with native charts, tables, checklists and clickable follow-up choices.
-- Connectors: connect services like Supabase, Linear, Notion and GitHub once in Settings, and agents in every new chat can use their tools, whichever provider runs it. ([6b42cbd9a](https://github.com/berkinory/Glade/commit/6b42cbd9a78bfb97684fcf2200bbac11df0b0735))
+- MCP servers: connect services like Supabase, Linear, Notion and GitHub once in Settings, and agents in every new chat can use their tools, whichever provider runs it. ([6b42cbd9a](https://github.com/berkinory/Glade/commit/6b42cbd9a78bfb97684fcf2200bbac11df0b0735))
 - Install skills from skills.sh or GitHub after a preview of their source, scripts and security audits, for all your agents or only the ones you pick. ([db5bd2da2](https://github.com/berkinory/Glade/commit/db5bd2da2bb1f3a33c490fe9f223dec08e66bdf2))
 - Skills and MCP servers your agents set up themselves, including OpenCode, Cursor and Grok, appear in Settings and can be moved to all agents in one step without leaving duplicates behind. ([2b5112370](https://github.com/berkinory/Glade/commit/2b5112370368866dbb1d3f811e24eb97c50eb15d))
+- Settings → Providers, Skills and MCP servers can switch to an SSH host or paired machine to manage its own agents, skills and MCP servers, including installing skills and signing in to agent CLIs there.
 
 ### Improved
 
-- Connectors can serve only the agents you choose, and the catalog adds OpenRouter, Superhuman, Craft, OpenStatus, Databuddy, Scalar and Browserbase. ([db5bd2da2](https://github.com/berkinory/Glade/commit/db5bd2da2bb1f3a33c490fe9f223dec08e66bdf2), [e4e22ade7](https://github.com/berkinory/Glade/commit/e4e22ade7221faf61451fdab2e1905f003d94254))
+- MCP servers connected in Glade can serve only the agents you choose, and the catalog adds OpenRouter, Superhuman, Craft, OpenStatus, Databuddy, Scalar and Browserbase. ([db5bd2da2](https://github.com/berkinory/Glade/commit/db5bd2da2bb1f3a33c490fe9f223dec08e66bdf2), [e4e22ade7](https://github.com/berkinory/Glade/commit/e4e22ade7221faf61451fdab2e1905f003d94254))
+- Pairing codes stop working as soon as the pairing dialog closes or shows a new code.
+- While remote access is on, the Mac no longer idle-sleeps, so paired devices can still reach it.
 - Model names are shorter where the provider is already shown.
 - Codex chats use much less memory.
 - The background server keeps a smaller database cache, so it uses less memory after long sessions.

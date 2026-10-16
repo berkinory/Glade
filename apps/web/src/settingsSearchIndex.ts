@@ -355,17 +355,17 @@ const SETTINGS_SEARCH_ENTRIES: readonly SettingsSearchEntry[] = [
   },
 
   {
-    id: "connectors:catalog",
-    section: "connectors",
-    title: "Connectors",
+    id: "mcp:catalog",
+    section: "mcp",
+    title: "MCP servers",
     keywords:
-      "Connectors MCP servers remote integrations Supabase Linear Notion GitHub Sentry Stripe sign in OAuth token tools",
+      "MCP servers connectors remote integrations Supabase Linear Notion GitHub Sentry Stripe sign in OAuth token tools",
     target: null,
   },
 
   {
     id: "ssh:hosts",
-    section: "connections",
+    section: "ssh",
     title: "SSH hosts",
     target: null,
     applies: () => isElectron,
@@ -374,7 +374,7 @@ const SETTINGS_SEARCH_ENTRIES: readonly SettingsSearchEntry[] = [
   },
   {
     id: "remote:access",
-    section: "connections",
+    section: "remote",
     title: "Allow other devices",
     target: "setting-remote-access",
     applies: () => isElectron,
@@ -383,7 +383,7 @@ const SETTINGS_SEARCH_ENTRIES: readonly SettingsSearchEntry[] = [
   },
   {
     id: "remote:machines",
-    section: "connections",
+    section: "remote",
     title: "Pair with a machine",
     target: null,
     applies: () => isElectron,

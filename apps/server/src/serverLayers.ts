@@ -127,10 +127,6 @@ function makeServerRuntimeServicesLayer(
     Layer.provideMerge(ServerSettingsLive),
   );
 
-  const keepAwakeLayer = KeepAwakeLive.pipe(
-    Layer.provideMerge(OrchestrationLayerLive),
-    Layer.provideMerge(ServerSettingsLive),
-  );
   const usageLimitResumeLayer = UsageLimitResumeLive.pipe(
     Layer.provideMerge(OrchestrationLayerLive),
     Layer.provideMerge(ServerSettingsLive),
@@ -161,6 +157,11 @@ function makeServerRuntimeServicesLayer(
   const remoteAccessLayer = RemoteAccessLive.pipe(
     Layer.provide(authServicesLayer),
     Layer.provide(ServerEnvironmentLive),
+  );
+  const keepAwakeLayer = KeepAwakeLive.pipe(
+    Layer.provideMerge(OrchestrationLayerLive),
+    Layer.provideMerge(ServerSettingsLive),
+    Layer.provide(remoteAccessLayer),
   );
   const gitActionRunsLayer = GitActionRunsLive.pipe(
     Layer.provide(Layer.mergeAll(GitLayerLive, sessionCredentialLayer)),

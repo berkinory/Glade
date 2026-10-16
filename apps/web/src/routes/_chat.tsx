@@ -465,7 +465,7 @@ function ChatRouteGlobalShortcuts() {
         return;
       }
       if (action === "open-ssh-hosts") {
-        void navigate({ to: "/settings", search: { section: "connections" } });
+        void navigate({ to: "/settings", search: { section: "ssh" } });
         return;
       }
       if (action !== "open-settings") return;

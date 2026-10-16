@@ -54,5 +54,9 @@ export function makeRemoteAccessWsHandlers(input: {
       readonly sessionId: AuthSessionId;
     }): Effect.Effect<void, WsRpcError> =>
       remoteAccess.revokeDevice(input.sessionId).pipe(Effect.mapError(toWsError)),
+    [REMOTE_ACCESS_WS_METHODS.revokePairing]: (input: {
+      readonly id: string;
+    }): Effect.Effect<void, WsRpcError> =>
+      remoteAccess.revokePairing(input.id).pipe(Effect.mapError(toWsError)),
   };
 }

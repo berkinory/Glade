@@ -516,6 +516,7 @@ function buildNativeApi(transport: WsTransport, listeners: NativeApiListeners): 
       onDevices: (callback) =>
         transport.subscribeStateStream(REMOTE_ACCESS_WS_METHODS.subscribeDevices, callback),
       revokeDevice: (input) => transport.request(REMOTE_ACCESS_WS_METHODS.revokeDevice, input),
+      revokePairing: (input) => transport.request(REMOTE_ACCESS_WS_METHODS.revokePairing, input),
     },
     mcpConnectors: {
       onState: (callback) =>

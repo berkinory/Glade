@@ -27,6 +27,7 @@ import {
 import { Input } from "../../ui/input";
 import { Spinner } from "../../ui/spinner";
 import { type AgentTarget, AgentTargetPicker } from "../AgentTargetPicker";
+import { DialogFact } from "../DialogFact";
 import { ConnectorIcon } from "./ConnectorIcon";
 import { connectorHost, type ConnectorTarget, targetIconUrl, targetName } from "./connectors.logic";
 
@@ -52,6 +53,8 @@ interface ConnectorDialogProps {
   readonly state: McpConnectorsState | null;
   readonly api: ConnectorsApi;
   readonly openExternal: (url: string) => void;
+  // Set when the connector is added on another machine; see McpConnectorConnectInput.
+  readonly callbackOrigin: string | undefined;
   readonly onOpenChange: (open: boolean) => void;
 }
 
@@ -69,15 +72,6 @@ export function ConnectorDialog(props: ConnectorDialogProps) {
         ) : null}
       </DialogPopup>
     </Dialog>
-  );
-}
-
-function Fact(props: { readonly icon: ReactNode; readonly children: ReactNode }) {
-  return (
-    <li className="flex gap-2.5">
-      <span className="mt-0.5 shrink-0 text-muted-foreground [&>svg]:size-4">{props.icon}</span>
-      <span className="text-ui-sm leading-snug text-muted-foreground">{props.children}</span>
-    </li>
   );
 }
 
@@ -193,7 +187,11 @@ function ConnectorDialogContent(
     setPhase({ kind: "connecting" });
     const startedAt = Date.now();
     api
-      .connect(input)
+      .connect(
+        props.callbackOrigin === undefined
+          ? input
+          : { ...input, callbackOrigin: props.callbackOrigin },
+      )
       .then((result) => {
         if (result.kind === "connected") {
           setPhase({ kind: "connected" });
@@ -248,7 +246,7 @@ function ConnectorDialogContent(
             size="lg"
           />
         </div>
-        <DialogTitle>{preset ? `Connect ${preset.name}` : "Add a custom connector"}</DialogTitle>
+        <DialogTitle>{preset ? `Connect ${preset.name}` : "Add a custom MCP server"}</DialogTitle>
         <DialogDescription>
           {preset ? preset.description : "Any remote MCP server that speaks Streamable HTTP."}
         </DialogDescription>
@@ -323,18 +321,18 @@ function ConnectorDialogContent(
             ) : null}
             <AgentTargetPicker value={providers} onChange={setProviders} disabled={!editable} />
             <ul className="flex flex-col gap-2.5">
-              <Fact icon={<BotIcon aria-hidden />}>
+              <DialogFact icon={<BotIcon aria-hidden />}>
                 {providers === null ? "Agents" : "The chosen agents"} in new chats can use{" "}
                 {displayName}’s tools. Each call follows the chat’s approval mode.
-              </Fact>
-              <Fact icon={<LockKeyholeIcon aria-hidden />}>
+              </DialogFact>
+              <DialogFact icon={<LockKeyholeIcon aria-hidden />}>
                 {preset?.auth === "none" && !token.trim()
                   ? `${preset.name} is public and needs no sign-in.`
                   : `Glade keeps the ${secretLabel} on this computer. Agents never see it.`}
-              </Fact>
-              <Fact icon={<ShieldCheckIcon aria-hidden />}>
+              </DialogFact>
+              <DialogFact icon={<ShieldCheckIcon aria-hidden />}>
                 Connect only services you trust: what they return reaches your agents.
-              </Fact>
+              </DialogFact>
             </ul>
             {host ? (
               <p className="truncate text-ui-xs text-muted-foreground">Server: {host}</p>

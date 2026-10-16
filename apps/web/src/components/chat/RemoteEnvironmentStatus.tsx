@@ -73,7 +73,7 @@ export function RemoteEnvironmentStatus({ variant }: { variant: "composer" | "pa
     ? () =>
         void navigate({
           to: "/settings",
-          search: { section: "connections" },
+          search: { section: environment.kind === "ssh" ? "ssh" : "remote" },
         })
     : status.reachable
       ? null

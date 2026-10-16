@@ -9,7 +9,9 @@ import {
   type ProviderAuthenticationRequest,
 } from "@glade/contracts/provider/providerAuthentication";
 import { PROVIDER_DISPLAY_NAMES } from "@glade/contracts/provider/model";
-import { LOCAL_ENVIRONMENT } from "~/environments/environmentKey";
+import { LOCAL_ENVIRONMENT, type EnvironmentKey } from "~/environments/environmentKey";
+import { environmentServerConfigQueryOptions } from "~/lib/serverReactQuery";
+import { ensureEnvironmentNativeApi } from "~/nativeApi";
 import { resolveWsHttpUrl } from "~/lib/wsHttpUrl";
 import { providerDiscoveryQueryKeys } from "~/lib/providerDiscoveryReactQuery";
 import { useRefreshProviderStatusesNow } from "~/hooks/useProviderStatusRefresh";
@@ -23,9 +25,10 @@ import "@xterm/xterm/css/xterm.css";
 
 type Provider = ProviderAuthenticationRequest["provider"];
 async function request(
+  environment: EnvironmentKey,
   input: ProviderAuthenticationRequest,
 ): Promise<ProviderAuthenticationStatus | null> {
-  const response = await fetch(resolveWsHttpUrl(PROVIDER_AUTHENTICATION_PATH, LOCAL_ENVIRONMENT), {
+  const response = await fetch(resolveWsHttpUrl(PROVIDER_AUTHENTICATION_PATH, environment), {
     method: "POST",
     credentials: "include",
     cache: "no-store",
@@ -43,12 +46,15 @@ async function request(
   return Schema.decodeUnknownSync(Schema.NullOr(ProviderAuthenticationStatus))(body);
 }
 
+// Runs the provider's own sign-in on a machine's server, the local one unless another is given.
 export function ProviderSignIn({
   provider,
   authenticated,
+  environment = LOCAL_ENVIRONMENT,
 }: {
   provider: Provider;
   authenticated: boolean;
+  environment?: EnvironmentKey;
 }) {
   const [open, setOpen] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -86,12 +92,14 @@ export function ProviderSignIn({
     const input = instance.onData((data) => {
       const current = live.current;
       if (current?.status === "running")
-        void request({ provider, action: "write", id: current.id, data }).catch(showError);
+        void request(environment, { provider, action: "write", id: current.id, data }).catch(
+          showError,
+        );
     });
     const resize = instance.onResize(({ cols, rows }) => {
       const current = live.current;
       if (current?.status === "running")
-        void request({
+        void request(environment, {
           provider,
           action: "resize",
           id: current.id,
@@ -108,7 +116,7 @@ export function ProviderSignIn({
       instance.dispose();
       terminal.current = null;
     };
-  }, [open, provider]);
+  }, [environment, open, provider]);
 
   useEffect(() => {
     if (!open) return;
@@ -116,7 +124,7 @@ export function ProviderSignIn({
     let timer: ReturnType<typeof setTimeout> | undefined;
     const poll = async () => {
       try {
-        const next = await request({ provider, action: "status" });
+        const next = await request(environment, { provider, action: "status" });
         if (!disposed) {
           setView(next);
           setError(null);
@@ -131,7 +139,7 @@ export function ProviderSignIn({
       disposed = true;
       clearTimeout(timer);
     };
-  }, [open, provider]);
+  }, [environment, open, provider]);
 
   useEffect(() => {
     const instance = terminal.current;
@@ -146,7 +154,15 @@ export function ProviderSignIn({
 
   const verify = useEffectEvent(async (id: string) => {
     try {
-      const statuses = await refresh({ silent: true });
+      const statuses =
+        environment === LOCAL_ENVIRONMENT
+          ? await refresh({ silent: true })
+          : (await ensureEnvironmentNativeApi(environment).server.refreshProviders()).providers;
+      if (environment !== LOCAL_ENVIRONMENT) {
+        await queryClient.invalidateQueries({
+          queryKey: environmentServerConfigQueryOptions(environment).queryKey,
+        });
+      }
       await queryClient.invalidateQueries({ queryKey: providerDiscoveryQueryKeys.modelsAll });
       if (live.current?.id === id)
         setVerification(
@@ -170,7 +186,7 @@ export function ProviderSignIn({
     setError(null);
     setVerification(null);
     try {
-      setView(await request({ provider, action: "start" }));
+      setView(await request(environment, { provider, action: "start" }));
       setOpen(true);
     } catch (cause) {
       showError(cause);
@@ -182,7 +198,7 @@ export function ProviderSignIn({
     setBusy(true);
     try {
       const current = live.current;
-      if (current) await request({ provider, action: "close", id: current.id });
+      if (current) await request(environment, { provider, action: "close", id: current.id });
       setOpen(false);
       setView(null);
       setError(null);

@@ -6,22 +6,15 @@ import {
   useRemoteEnvironments,
   type RemoteEnvironment,
 } from "~/environments/remoteEnvironments";
-import {
-  describeRemoteEnvironment,
-  remoteHostAvailability,
-} from "~/environments/remoteEnvironmentStatus";
+import { describeRemoteEnvironment } from "~/environments/remoteEnvironmentStatus";
 import { ipcErrorMessage } from "~/lib/ipcErrorMessage";
-import { PlusIcon } from "~/lib/icons";
+import { Delete02Icon, PlusIcon } from "~/lib/icons";
 import { readLocalNativeApi } from "~/nativeApi";
-import { HostStatusDot } from "../../HostStatusDot";
 import { Button } from "../../ui/button";
+import { MenuItem } from "../../ui/menu";
 import { toastManager } from "../../ui/toast";
-import {
-  SettingsCard,
-  SettingsEmptyState,
-  SettingsListRow,
-  SettingsSectionShell,
-} from "../SettingsPanelPrimitives";
+import { MachineRow } from "../machine/MachineRow";
+import { SettingsCard, SettingsEmptyState, SettingsSectionShell } from "../SettingsPanelPrimitives";
 import { PairMachineDialog } from "./PairMachineDialog";
 
 type PairedEnvironment = Extract<RemoteEnvironment, { readonly kind: "paired" }>;
@@ -87,34 +80,25 @@ function PairedMachineRow(props: { readonly machine: PairedEnvironment }) {
     );
   };
   return (
-    <SettingsListRow
-      title={
-        <span className="flex min-w-0 items-baseline gap-2">
-          <HostStatusDot tone={remoteHostAvailability(machine).tone} className="self-center" />
-          <span className="truncate">{machine.host.label}</span>
-          <span className="truncate font-mono text-ui-xs font-normal text-muted-foreground">
-            {URL.parse(machine.host.address)?.host ?? machine.host.address}
-          </span>
-        </span>
-      }
-      description={
-        status.tone === "connected" ? status.label : (machine.connection?.detail ?? status.label)
-      }
-      actions={
-        <>
-          {status.reachable || needsPairing ? null : (
-            <Button
-              size="xs"
-              variant="ghost"
-              onClick={() => void connectRemoteEnvironment(machine).catch(() => undefined)}
-            >
-              Retry
-            </Button>
-          )}
-          <Button size="xs" variant="outline" onClick={() => void remove()}>
-            Remove
+    <MachineRow
+      environment={machine}
+      address={URL.parse(machine.host.address)?.host ?? machine.host.address}
+      action={
+        status.reachable || needsPairing ? null : (
+          <Button
+            size="sm"
+            variant="ghost"
+            onClick={() => void connectRemoteEnvironment(machine).catch(() => undefined)}
+          >
+            Retry
           </Button>
-        </>
+        )
+      }
+      menuItems={
+        <MenuItem variant="destructive" onClick={() => void remove()}>
+          <Delete02Icon aria-hidden className="size-3.5" />
+          Remove
+        </MenuItem>
       }
     />
   );

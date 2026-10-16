@@ -92,6 +92,21 @@ function toContract(connector: StoredConnector): McpConnector {
   };
 }
 
+const LOOPBACK_HOSTS = new Set(["127.0.0.1", "localhost", "[::1]"]);
+
+// The vendor sends the browser, and with it the authorization code, to this origin, so it must be
+// a loopback port of the user's own machine.
+function loopbackOrigin(value: string): string | null {
+  try {
+    const url = new URL(value);
+    return url.protocol === "http:" && LOOPBACK_HOSTS.has(url.hostname) && url.port
+      ? url.origin
+      : null;
+  } catch {
+    return null;
+  }
+}
+
 function resolveTarget(input: McpConnectorConnectInput): ConnectorTarget | McpConnectorsError {
   if (input.providers?.length === 0) {
     return new McpConnectorsError({ message: "Choose at least one agent." });
@@ -253,7 +268,7 @@ const make = Effect.gen(function* () {
       const reconnecting = document.connectors.some((connector) => connector.url === target.url);
       if (!reconnecting && document.connectors.length >= MAX_CONNECTORS) {
         return yield* new McpConnectorsError({
-          message: `Glade keeps at most ${MAX_CONNECTORS} connectors. Disconnect one first.`,
+          message: `Glade keeps at most ${MAX_CONNECTORS} MCP servers. Disconnect one first.`,
         });
       }
       const token = input.token?.trim() || undefined;
@@ -280,7 +295,14 @@ const make = Effect.gen(function* () {
       }
       const attemptId = randomUUID();
       const state = randomBytes(32).toString("base64url");
-      const redirectUrl = `${new URL(credentials.mcpEndpointUrl).origin}${MCP_CONNECTOR_OAUTH_CALLBACK_PATH}`;
+      const callbackOrigin =
+        input.callbackOrigin === undefined ? undefined : loopbackOrigin(input.callbackOrigin);
+      if (callbackOrigin === null) {
+        return yield* new McpConnectorsError({
+          message: `${target.name} needs a browser sign-in, which this machine cannot receive from here. Connect it with a token, or from that machine's Glade.`,
+        });
+      }
+      const redirectUrl = `${callbackOrigin ?? new URL(credentials.mcpEndpointUrl).origin}${MCP_CONNECTOR_OAUTH_CALLBACK_PATH}`;
       const started = yield* Effect.tryPromise({
         try: () =>
           beginOAuthSignIn({
@@ -347,7 +369,7 @@ const make = Effect.gen(function* () {
         return {
           ok: false as const,
           title: "This sign-in has expired",
-          message: "Start it again from Settings → Connectors in Glade.",
+          message: "Start it again from Settings → MCP servers in Glade.",
         };
       }
       const name = attempt.target.name;
@@ -512,7 +534,7 @@ const make = Effect.gen(function* () {
           if (isLostOAuthGrant(refreshed.failure.cause)) {
             yield* replaceOAuth(connector.connectorId, record, { status: "needs-sign-in" });
             return yield* new AccessFailure({
-              message: `${connector.name} needs you to sign in again in Glade: Settings → Connectors.`,
+              message: `${connector.name} needs you to sign in again in Glade: Settings → MCP servers.`,
             });
           }
           yield* Effect.logWarning("mcp_connectors.refresh_failed", {
@@ -540,7 +562,7 @@ const make = Effect.gen(function* () {
       if (connector.status === "needs-sign-in") {
         return {
           kind: "failure" as const,
-          message: `${connector.name} needs you to sign in again in Glade: Settings → Connectors.`,
+          message: `${connector.name} needs you to sign in again in Glade: Settings → MCP servers.`,
         };
       }
       for (let attempt = 0; ; attempt += 1) {
@@ -562,8 +584,8 @@ const make = Effect.gen(function* () {
             kind: "failure" as const,
             message:
               connector.auth.kind === "token"
-                ? `${connector.name} rejected the saved token. Reconnect it with a new token in Glade: Settings → Connectors.`
-                : `${connector.name} rejected Glade's sign-in. Reconnect it in Glade: Settings → Connectors.`,
+                ? `${connector.name} rejected the saved token. Reconnect it with a new token in Glade: Settings → MCP servers.`
+                : `${connector.name} rejected Glade's sign-in. Reconnect it in Glade: Settings → MCP servers.`,
           };
         }
         return {

@@ -35,6 +35,14 @@ your machine.
   message.
 - **A chat on a host** shows the host's name and a status dot beside the composer's controls. Hovering
   explains the state; clicking reconnects a host that is not connected.
+- **Each host keeps its own agents, skills and MCP servers.** Settings → Providers, Skills and MCP
+  servers have a machine picker in their header (shown once a host or paired machine exists);
+  it starts on Local every time Glade opens. For a host, Providers lists the agent CLIs installed
+  there, their sign-in and updates, and runs a CLI's sign-in on the host. A host's connectors are
+  signed in on the host itself: the vendor returns the browser to the host's server through the SSH
+  tunnel's local port. Paired machines are reached over HTTPS rather than a tunnel, so connectors
+  that need a browser sign-in are added from that machine's own Glade; token and public connectors
+  work from here. **Manage agents** in a host's **…** menu opens Providers for it.
 - **Provider updates on a host** are checked when it connects and hourly, following the update-check
   setting. The prompt appears once per new version, only in that host's chats, and updates the CLI
   on the host.

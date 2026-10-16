@@ -47,7 +47,9 @@ host's editor, or read thread diagnostics; those stay with the machine's owner.
 - **The Tailscale address hangs right after turning on HTTPS**: the first connection waits while
   Tailscale gets the machine's certificate, which can take a few minutes. Later connections are
   immediate.
-- **Chats stop when the Mac sleeps**: turn on **Keep Mac awake** in Chat settings.
+- **Chats stop when the Mac sleeps**: while remote access is on, Glade keeps a Mac from idle sleep
+  so paired devices can reach it; closing the lid still sleeps it. **Keep Mac awake** in Chat
+  settings also keeps it awake while agents work, and can keep the display on.
 
 ## SSH hosts
 
@@ -144,7 +146,8 @@ bun run --cwd apps/server start -- --host "$(tailscale ip -4)" --auth-token "$(o
   returns it with the server's version, protocol range and pairing methods, without
   authentication, so a client can confirm an address reaches the right machine before sending a
   credential.
-- **Pairing.** Pairing secrets are single-use, expire after five minutes, and are stored only as a
+- **Pairing.** Pairing secrets are single-use, expire after five minutes (or as soon as the pairing
+  dialog closes or shows a new code), and are stored only as a
   SHA-256 digest; listings never include them. The secret and the route list travel in the URL
   fragment, which browsers never send to a server, and the pairing page removes them from history.
   Failed exchanges are throttled per source address.

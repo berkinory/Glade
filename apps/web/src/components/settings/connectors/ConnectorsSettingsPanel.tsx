@@ -22,6 +22,7 @@ import { ConnectorAgentsDialog } from "./ConnectorAgentsDialog";
 import { ConnectorDialog } from "./ConnectorDialog";
 import { ConnectorIcon } from "./ConnectorIcon";
 import { useAgentServerRemoval } from "./useAgentServerRemoval";
+import { type SettingsMachine, useSettingsMachine } from "../machine/settingsMachine";
 import {
   type AgentServerRow,
   catalogShelves,
@@ -141,9 +142,23 @@ function SignInRow(props: { readonly signIn: McpConnectorSignIn; readonly onDism
   );
 }
 
+// Connectors belong to the machine picked in the header: each machine signs in and serves its own.
 export function ConnectorsSettingsPanel() {
+  const machine = useSettingsMachine();
+  if (!machine.api) {
+    return (
+      <SettingsEmptyState layout="status">
+        {machine.label} is not connected. Glade keeps trying in the background.
+      </SettingsEmptyState>
+    );
+  }
+  return <MachineConnectors key={machine.key} machine={machine} api={machine.api} />;
+}
+
+function MachineConnectors(props: { readonly machine: SettingsMachine; readonly api: NativeApi }) {
+  const { machine } = props;
   const localApi = ensureEnvironmentNativeApi(LOCAL_ENVIRONMENT);
-  const api = localApi.mcpConnectors;
+  const api = props.api.mcpConnectors;
   const state = useConnectorsState(api);
   const [search, setSearch] = useState("");
   const query = useDeferredValue(search).trim().toLowerCase();
@@ -151,7 +166,7 @@ export function ConnectorsSettingsPanel() {
   // The agent server picked with Use in all agents, offered for removal once the service connects.
   const [moving, setMoving] = useState<AgentServerRow | null>(null);
   const [choosingAgents, setChoosingAgents] = useState<McpConnector | null>(null);
-  const removal = useAgentServerRemoval();
+  const removal = useAgentServerRemoval(machine);
 
   const openExternal = (url: string) => {
     void localApi.shell
@@ -161,7 +176,7 @@ export function ConnectorsSettingsPanel() {
 
   const disconnect = async (connector: McpConnector) => {
     const confirmed = await localApi.dialogs.confirm(
-      `Disconnect ${connector.name}?\nAgents lose its tools, and Glade deletes its sign-in from this computer.`,
+      `Disconnect ${connector.name}?\nAgents lose its tools, and Glade deletes its sign-in from ${machine.remote ? machine.label : "this computer"}.`,
     );
     if (!confirmed) return;
     await api.disconnect({ connectorId: connector.connectorId }).catch((error: unknown) =>
@@ -189,8 +204,8 @@ export function ConnectorsSettingsPanel() {
         <SearchInput
           value={search}
           onChange={(event) => setSearch(event.target.value)}
-          placeholder="Search connectors"
-          aria-label="Search connectors"
+          placeholder="Search MCP servers"
+          aria-label="Search MCP servers"
         />
         <Button
           variant="outline"
@@ -204,12 +219,12 @@ export function ConnectorsSettingsPanel() {
 
       <SettingsSectionShell title="Connected">
         {state === null ? (
-          <SettingsEmptyState layout="status">Loading connectors…</SettingsEmptyState>
+          <SettingsEmptyState layout="status">Loading MCP servers…</SettingsEmptyState>
         ) : connected.length === 0 && signIns.length === 0 ? (
           <SettingsEmptyState layout="status">
             {query
               ? "No connected service matches your search."
-              : "Connect a service once and agents in every new chat can use its tools. Glade keeps the sign-in on this computer; agents never see it."}
+              : `Connect a service once and agents in every new chat can use its tools. Glade keeps the sign-in on ${machine.remote ? machine.label : "this computer"}; agents never see it.`}
           </SettingsEmptyState>
         ) : (
           <SettingsCard>
@@ -234,6 +249,7 @@ export function ConnectorsSettingsPanel() {
       </SettingsSectionShell>
 
       <AgentMcpServersSection
+        machine={machine}
         connectors={connectors}
         query={query}
         removing={removal.removing}
@@ -285,6 +301,7 @@ export function ConnectorsSettingsPanel() {
         target={target}
         state={state}
         api={api}
+        callbackOrigin={machine.callbackOrigin}
         openExternal={openExternal}
         onOpenChange={(open) => {
           if (open) return;

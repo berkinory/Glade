@@ -36,7 +36,7 @@ export function EnvironmentMenuItems(props: {
         const openSettings = () =>
           void navigate({
             to: "/settings",
-            search: { section: "connections" },
+            search: { section: group.kind === "ssh" ? "ssh" : "remote" },
           });
         return (
           <MenuSub key={group.kind}>

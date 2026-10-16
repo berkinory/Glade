@@ -617,6 +617,7 @@ export interface NativeApi {
     createPairing: () => Promise<RemoteAccessPairing>;
     onDevices: (callback: (devices: RemoteAccessDevices) => void) => () => void;
     revokeDevice: (input: { readonly sessionId: AuthSessionId }) => Promise<void>;
+    revokePairing: (input: { readonly id: string }) => Promise<void>;
   };
   // Remote MCP servers this machine signs in to and serves to the agents chosen for each.
   mcpConnectors: {

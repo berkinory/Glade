@@ -1,6 +1,6 @@
 import type { DesktopSshHost, DesktopSshHostInput } from "@glade/contracts/ipc/sshHosts";
 import { useEffect, useId, useState } from "react";
-import { ChevronRightIcon } from "~/lib/icons";
+import { ComputerTerminal01Icon, DownloadIcon, LockKeyholeIcon, ServerIcon } from "~/lib/icons";
 import { cn } from "~/lib/utils";
 import { PROJECT_DIALOG_FIELD_CONTROL_CLASS_NAME } from "../CreateGitHubProjectFields";
 import { Button } from "../ui/button";
@@ -14,7 +14,10 @@ import {
   DialogTitle,
   dialogFieldLabelClassName,
 } from "../ui/dialog";
+import { DisclosureChevron } from "../ui/DisclosureChevron";
 import { DisclosureRegion } from "../ui/DisclosureRegion";
+import { Spinner } from "../ui/spinner";
+import { DialogFact } from "./DialogFact";
 import { Input } from "../ui/input";
 
 function parseOptionalPort(value: string): number | null | "invalid" {
@@ -110,10 +113,10 @@ export function SshHostDialog(props: {
           <DialogDescription>
             {host
               ? "A new address may reach another machine; Glade then asks you to add it as a new host."
-              : "Glade connects with your system ssh and installs its server on the host the first time. Projects and chats there stay on the host."}
+              : "Run chats, terminals and agents on another machine."}
           </DialogDescription>
         </DialogHeader>
-        <DialogPanel className="space-y-4 px-5">
+        <DialogPanel className="mt-2 space-y-4 px-5">
           <form
             className="space-y-4"
             onSubmit={(event) => {
@@ -179,10 +182,7 @@ export function SshHostDialog(props: {
                 className="flex items-center gap-1 text-ui-sm text-muted-foreground hover:text-foreground"
                 onClick={() => setAdvancedOpen((open) => !open)}
               >
-                <ChevronRightIcon
-                  aria-hidden
-                  className={cn("size-3.5 transition-transform", advancedOpen && "rotate-90")}
-                />
+                <DisclosureChevron open={advancedOpen} />
                 Advanced
               </button>
               <DisclosureRegion open={advancedOpen}>
@@ -223,6 +223,22 @@ export function SshHostDialog(props: {
                 </div>
               </DisclosureRegion>
             </div>
+            {host ? null : (
+              <ul className="flex flex-col gap-2.5">
+                <DialogFact icon={<ComputerTerminal01Icon aria-hidden />}>
+                  Glade connects with your system ssh and its config.
+                </DialogFact>
+                <DialogFact icon={<DownloadIcon aria-hidden />}>
+                  The first connection installs Glade's server on the host.
+                </DialogFact>
+                <DialogFact icon={<LockKeyholeIcon aria-hidden />}>
+                  Passwords and passphrases are asked when needed and kept in memory only.
+                </DialogFact>
+                <DialogFact icon={<ServerIcon aria-hidden />}>
+                  Projects, chats, agents and their skills stay on the host.
+                </DialogFact>
+              </ul>
+            )}
             {/* Lets Enter submit from any field. */}
             <button type="submit" hidden />
           </form>
@@ -232,23 +248,16 @@ export function SshHostDialog(props: {
             </p>
           ) : null}
         </DialogPanel>
-        <DialogFooter className="px-5 pb-5">
-          <Button
-            variant="ghost"
-            shape="capsule"
-            className="px-4 text-ui-lg sm:text-ui-lg"
-            onClick={() => props.onOpenChange(false)}
-            disabled={pending}
-          >
+        <DialogFooter>
+          <Button variant="outline" onClick={() => props.onOpenChange(false)} disabled={pending}>
             Cancel
           </Button>
           <Button
-            variant="prominent"
-            className="px-4 text-ui-lg transition-opacity hover:scale-100 sm:text-ui-lg"
             onClick={() => void submit()}
             disabled={pending || destination.trim().length === 0}
           >
-            {pending ? "Saving…" : host ? "Save" : "Add and connect"}
+            {pending ? <Spinner className="size-4" /> : null}
+            {host ? "Save" : "Add and connect"}
           </Button>
         </DialogFooter>
       </DialogPopup>

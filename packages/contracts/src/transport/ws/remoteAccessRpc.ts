@@ -9,6 +9,7 @@ export const REMOTE_ACCESS_WS_METHODS = {
   subscribe: "remoteAccess.subscribe",
   update: "remoteAccess.update",
   createPairing: "remoteAccess.createPairing",
+  revokePairing: "remoteAccess.revokePairing",
   subscribeDevices: "remoteAccess.subscribeDevices",
   revokeDevice: "remoteAccess.revokeDevice",
 } as const;
@@ -101,6 +102,13 @@ export const WsRemoteAccessSubscribeDevicesRpc = Rpc.make(
     stream: true,
   },
 );
+
+// Ends a pairing code before it expires, once the dialog that showed it is done with it.
+export const WsRemoteAccessRevokePairingRpc = Rpc.make(REMOTE_ACCESS_WS_METHODS.revokePairing, {
+  payload: Schema.Struct({ id: Schema.String }),
+  success: Schema.Void,
+  error: WsRpcError,
+});
 
 export const WsRemoteAccessRevokeDeviceRpc = Rpc.make(REMOTE_ACCESS_WS_METHODS.revokeDevice, {
   payload: Schema.Struct({ sessionId: AuthSessionId }),

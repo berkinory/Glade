@@ -13,7 +13,8 @@ import type { ServerConfig } from "@glade/contracts/server/server";
 import { expensiveReadErrorRefetchInterval, shouldRetryExpensiveRead } from "./expensiveReadRetry";
 import { serverQueryKeys } from "./serverReactQuery";
 import { queryOptions, type QueryClient } from "@tanstack/react-query";
-import { ensureNativeApi } from "~/nativeApi";
+import type { EnvironmentKey } from "~/environments/environmentKey";
+import { ensureEnvironmentNativeApi, ensureNativeApi } from "~/nativeApi";
 
 const EMPTY_SKILLS_RESULT: ProviderListSkillsResult = {
   skills: [],
@@ -228,8 +229,10 @@ export const providerDiscoveryQueryKeys = {
 
   skills: (provider: ProviderKind, cwd: string | null) =>
     ["provider-discovery", "skills", provider, cwd] as const,
-  skillsCatalog: (cwd: string | null) => ["provider-discovery", "skills-catalog", cwd] as const,
-  mcpServers: (provider: ProviderKind) => ["provider-discovery", "mcp-servers", provider] as const,
+  skillsCatalog: (environment: EnvironmentKey) =>
+    ["provider-discovery", "skills-catalog", environment] as const,
+  mcpServers: (environment: EnvironmentKey, provider: ProviderKind) =>
+    ["provider-discovery", "mcp-servers", environment, provider] as const,
   plugins: (
     provider: ProviderKind,
     cwd: string | null,
@@ -302,27 +305,28 @@ export function providerSkillsQueryOptions(input: {
   });
 }
 
-export function skillsCatalogQueryOptions(input?: { cwd?: string | null; enabled?: boolean }) {
-  const cwd = input?.cwd ?? null;
+// One machine's home skill folders, as Settings → Skills lists them.
+export function skillsCatalogQueryOptions(environment: EnvironmentKey, enabled = true) {
   return queryOptions({
-    queryKey: providerDiscoveryQueryKeys.skillsCatalog(cwd),
-    queryFn: async (): Promise<ProviderSkillsCatalogResult> => {
-      const api = ensureNativeApi();
-      return api.provider.listSkillsCatalog(cwd ? { cwd } : {});
-    },
-    enabled: input?.enabled ?? true,
+    queryKey: providerDiscoveryQueryKeys.skillsCatalog(environment),
+    queryFn: (): Promise<ProviderSkillsCatalogResult> =>
+      ensureEnvironmentNativeApi(environment).provider.listSkillsCatalog({}),
+    enabled,
     staleTime: 30_000,
-    placeholderData: (previous) => previous,
   });
 }
 
 // Reading Codex's servers starts them to learn their tools, so results stay fresh for minutes and
 // a refresh is explicit.
-export function mcpServersQueryOptions(provider: ProviderKind, forceReload = false) {
+export function mcpServersQueryOptions(
+  environment: EnvironmentKey,
+  provider: ProviderKind,
+  forceReload = false,
+) {
   return queryOptions({
-    queryKey: providerDiscoveryQueryKeys.mcpServers(provider),
+    queryKey: providerDiscoveryQueryKeys.mcpServers(environment, provider),
     queryFn: (): Promise<ProviderListMcpServersResult> =>
-      ensureNativeApi().provider.listMcpServers({
+      ensureEnvironmentNativeApi(environment).provider.listMcpServers({
         provider,
         ...(forceReload ? { forceReload } : {}),
       }),

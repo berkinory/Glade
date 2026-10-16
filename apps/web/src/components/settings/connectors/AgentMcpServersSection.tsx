@@ -13,6 +13,7 @@ import { ProviderStack } from "../ProviderStack";
 import { SettingsCard, SettingsEmptyState, SettingsSectionShell } from "../SettingsPanelPrimitives";
 import { ConnectorIcon } from "./ConnectorIcon";
 import { reloadAgentMcpServers } from "./useAgentServerRemoval";
+import type { SettingsMachine } from "../machine/settingsMachine";
 import { type AgentServerRow, agentServerRows, connectorHost } from "./connectors.logic";
 
 function rowSummary(row: AgentServerRow): { text: string; problem: boolean } {
@@ -36,6 +37,7 @@ function rowSummary(row: AgentServerRow): { text: string; problem: boolean } {
 // Servers come from each agent's own settings. Glade removes one there only once the same service
 // is connected in Glade, and only after the user confirms.
 export function AgentMcpServersSection(props: {
+  readonly machine: SettingsMachine;
   readonly connectors: ReadonlyArray<McpConnector>;
   readonly query: string;
   readonly removing: string | null;
@@ -45,7 +47,9 @@ export function AgentMcpServersSection(props: {
   const queryClient = useQueryClient();
   const [refreshing, setRefreshing] = useState(false);
   const results = useQueries({
-    queries: DEFAULT_PROVIDER_ORDER.map((provider) => mcpServersQueryOptions(provider)),
+    queries: DEFAULT_PROVIDER_ORDER.map((provider) =>
+      mcpServersQueryOptions(props.machine.key, provider),
+    ),
   });
   const loading = results.some((result) => result.isPending);
   // Providers that cannot report their servers, or are turned off, answer with an empty source.
@@ -66,7 +70,7 @@ export function AgentMcpServersSection(props: {
 
   const refresh = () => {
     setRefreshing(true);
-    void reloadAgentMcpServers(queryClient).finally(() => setRefreshing(false));
+    void reloadAgentMcpServers(queryClient, props.machine.key).finally(() => setRefreshing(false));
   };
 
   return (
