@@ -79,8 +79,27 @@ export type ProviderSkillsCatalogInput = typeof ProviderSkillsCatalogInput.Type;
 export const ProviderSkillsCatalogResult = Schema.Struct({
   skills: Schema.Array(ProviderSkillDescriptor),
   gladeSkillsDir: Schema.optional(TrimmedNonEmptyString),
+  // The shared folder every agent reads, and the agents' own home folders that skills can be
+  // moved out of.
+  sharedSkillsDir: TrimmedNonEmptyString,
+  agentSkillsDirs: Schema.Array(TrimmedNonEmptyString),
+  // Which agent each skill scope belongs to.
+  scopeProviders: Schema.Record(TrimmedNonEmptyString, ProviderDiscoveryKind),
+  // Agents that load shared skills only through Glade.
+  bridgedProviders: Schema.Array(ProviderDiscoveryKind),
 });
 export type ProviderSkillsCatalogResult = typeof ProviderSkillsCatalogResult.Type;
+
+export const ProviderShareSkillInput = Schema.Struct({
+  name: TrimmedNonEmptyString,
+});
+export type ProviderShareSkillInput = typeof ProviderShareSkillInput.Type;
+
+export const ProviderShareSkillResult = Schema.Struct({
+  // Agent copies that differ from the shared one and were left where they are.
+  keptPaths: Schema.Array(TrimmedNonEmptyString),
+});
+export type ProviderShareSkillResult = typeof ProviderShareSkillResult.Type;
 
 export const ProviderNativeCommandDescriptor = Schema.Struct({
   name: TrimmedNonEmptyString,
@@ -205,8 +224,8 @@ export const ProviderListPluginsResult = Schema.Struct({
 });
 export type ProviderListPluginsResult = typeof ProviderListPluginsResult.Type;
 
-// An MCP server the provider loads from its own configuration. Glade lists these but never changes
-// them; the provider's config stays their owner.
+// An MCP server the provider loads from its own user configuration. Glade lists these and removes
+// one only when the user moves it to a Glade connector.
 export const ProviderMcpServer = Schema.Struct({
   name: TrimmedNonEmptyString,
   transport: Schema.Literals(["http", "local"]),
@@ -231,6 +250,12 @@ export const ProviderListMcpServersResult = Schema.Struct({
   cached: Schema.optional(Schema.Boolean),
 });
 export type ProviderListMcpServersResult = typeof ProviderListMcpServersResult.Type;
+
+export const ProviderRemoveMcpServerInput = Schema.Struct({
+  provider: ProviderDiscoveryKind,
+  name: TrimmedNonEmptyString,
+});
+export type ProviderRemoveMcpServerInput = typeof ProviderRemoveMcpServerInput.Type;
 
 export const ProviderListModelsInput = Schema.Struct({
   provider: ProviderDiscoveryKind,

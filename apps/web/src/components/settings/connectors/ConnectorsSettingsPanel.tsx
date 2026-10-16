@@ -19,7 +19,9 @@ import { SettingsCard, SettingsEmptyState, SettingsSectionShell } from "../Setti
 import { AgentMcpServersSection } from "./AgentMcpServersSection";
 import { ConnectorDialog } from "./ConnectorDialog";
 import { ConnectorIcon } from "./ConnectorIcon";
+import { useAgentServerRemoval } from "./useAgentServerRemoval";
 import {
+  type AgentServerRow,
   catalogShelves,
   connectorHost,
   connectorIconUrl,
@@ -138,6 +140,9 @@ export function ConnectorsSettingsPanel() {
   const [search, setSearch] = useState("");
   const query = useDeferredValue(search).trim().toLowerCase();
   const [target, setTarget] = useState<ConnectorTarget | null>(null);
+  // The agent server picked with Use in Glade, offered for removal once the service connects.
+  const [moving, setMoving] = useState<AgentServerRow | null>(null);
+  const removal = useAgentServerRemoval();
 
   const openExternal = (url: string) => {
     void localApi.shell
@@ -249,7 +254,13 @@ export function ConnectorsSettingsPanel() {
       <AgentMcpServersSection
         connectors={connectors}
         query={query}
-        onUseInGlade={(preset) => setTarget({ kind: "preset", preset })}
+        removing={removal.removing}
+        onRemove={(row) => void removal.remove(row)}
+        onUseInGlade={(row) => {
+          if (!row.preset) return;
+          setMoving(row);
+          setTarget({ kind: "preset", preset: row.preset });
+        }}
       />
 
       <ConnectorDialog
@@ -258,7 +269,13 @@ export function ConnectorsSettingsPanel() {
         api={api}
         openExternal={openExternal}
         onOpenChange={(open) => {
-          if (!open) setTarget(null);
+          if (open) return;
+          setTarget(null);
+          setMoving(null);
+          const connected =
+            moving?.preset &&
+            connectors.some((connector) => connector.presetId === moving.preset?.id);
+          if (moving && connected) void removal.remove(moving);
         }}
       />
     </div>

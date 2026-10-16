@@ -265,6 +265,9 @@ import type {
   ProviderListPluginsResult,
   ProviderListMcpServersInput,
   ProviderListMcpServersResult,
+  ProviderRemoveMcpServerInput,
+  ProviderShareSkillInput,
+  ProviderShareSkillResult,
   ProviderListSkillsInput,
   ProviderListSkillsResult,
   ProviderSkillsCatalogInput,
@@ -757,6 +760,8 @@ export interface NativeApi {
     listSkillsCatalog: (input: ProviderSkillsCatalogInput) => Promise<ProviderSkillsCatalogResult>;
     listPlugins: (input: ProviderListPluginsInput) => Promise<ProviderListPluginsResult>;
     listMcpServers: (input: ProviderListMcpServersInput) => Promise<ProviderListMcpServersResult>;
+    removeMcpServer: (input: ProviderRemoveMcpServerInput) => Promise<void>;
+    shareSkill: (input: ProviderShareSkillInput) => Promise<ProviderShareSkillResult>;
     listModels: (input: ProviderListModelsInput) => Promise<ProviderListModelsResult>;
     listAgents: (input: ProviderListAgentsInput) => Promise<ProviderListAgentsResult>;
   };

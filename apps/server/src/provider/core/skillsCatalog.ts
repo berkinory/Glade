@@ -296,6 +296,39 @@ export function gladeSkillsDir(gladeBaseDir: string): string {
   return nodePath.join(gladeBaseDir, "skills");
 }
 
+// The folder every agent reads: Codex, OpenCode, Cursor and Grok natively, Claude through Glade.
+export function sharedSkillsDir(homeDir: string): string {
+  return nodePath.join(homeDir, SHARED_DIRECTORY, "skills");
+}
+
+// The home folders agents read their own skills from, which skills can be moved out of.
+export function agentSkillsDirs(homeDir: string): string[] {
+  return [...SKILL_ORIGINS, ...PRIVATE_ORIGINS]
+    .filter((origin) => origin.scope !== GLADE_ORIGIN && origin.directory !== SHARED_DIRECTORY)
+    .map((origin) => nodePath.join(homeDir, origin.directory, "skills"));
+}
+
+// Which agent each skill scope belongs to.
+export function skillScopeProviders(): Record<string, ProviderKind> {
+  return Object.fromEntries(
+    BUILT_IN_PROVIDERS.flatMap((provider) =>
+      [...provider.skills.origins, ...(provider.skills.privateOrigins ?? [])].map(
+        (origin) => [origin.scope, provider.kind] as const,
+      ),
+    ),
+  );
+}
+
+export function sharedSkillsBridgedProviders(): ProviderKind[] {
+  return BUILT_IN_PROVIDERS.filter((provider) => provider.skills.bridgesSharedSkills).map(
+    (provider) => provider.kind,
+  );
+}
+
+export function forgetSkillsCatalog(): void {
+  skillsCatalogCache.clear();
+}
+
 async function ensureGladeSkillsDir(gladeBaseDir: string): Promise<string> {
   const dir = gladeSkillsDir(gladeBaseDir);
   if (ensuredGladeSkillsDirs.has(dir)) {
@@ -315,11 +348,15 @@ interface SkillOrigin {
 }
 
 const GLADE_ORIGIN = "glade";
+const SHARED_DIRECTORY = ".agents";
 const SKILL_ORIGINS: ReadonlyArray<SkillOrigin> = [
   { scope: GLADE_ORIGIN, directory: ".glade" },
   ...BUILT_IN_PROVIDERS.flatMap((provider) => provider.skills.origins),
-  { scope: "agents", directory: ".agents" },
+  { scope: "agents", directory: SHARED_DIRECTORY },
 ];
+const PRIVATE_ORIGINS: ReadonlyArray<SkillOrigin> = BUILT_IN_PROVIDERS.flatMap(
+  (provider) => provider.skills.privateOrigins ?? [],
+);
 const HOME_ORIGIN_ORDER = SKILL_ORIGINS.map((origin) => origin.scope);
 
 const originDirectory = (origin: string): string | undefined =>
@@ -436,6 +473,12 @@ export async function discoverSkillsCatalog(
     await ensureGladeSkillsDir(input.gladeBaseDir);
     const roots = [
       ...skillsCatalogRoots(input),
+      ...(input.provider
+        ? []
+        : PRIVATE_ORIGINS.map((origin) => ({
+            path: nodePath.join(input.homeDir, origin.directory, "skills"),
+            scope: origin.scope,
+          }))),
       ...(
         await Promise.all(
           BUILT_IN_PROVIDERS.flatMap(({ skills }) =>

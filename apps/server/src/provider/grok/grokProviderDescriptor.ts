@@ -24,7 +24,11 @@ export const GROK_PROVIDER_DESCRIPTOR: ServerProviderDescriptor = {
     workspaceConfigFiles: [],
     environmentKeys: ["XAI_API_KEY", "GROK_HOME"],
   },
-  skills: { origins: [], preferredScopes: [] },
+  skills: {
+    origins: [],
+    preferredScopes: [],
+    privateOrigins: [{ scope: "grok", directory: ".grok" }],
+  },
   makeStatusCheck: (context) => Effect.succeed(makeGrokStatusCheck(context)),
   maintenance: {
     provider: "grok",

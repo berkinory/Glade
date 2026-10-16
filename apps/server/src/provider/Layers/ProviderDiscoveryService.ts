@@ -7,6 +7,7 @@ import {
   type ProviderListModelsResult,
   ProviderListPluginsInput,
   ProviderListMcpServersInput,
+  ProviderRemoveMcpServerInput,
   type ProviderListPluginsResult,
   ProviderModelDescriptor,
   ProviderListSkillsInput,
@@ -185,7 +186,7 @@ const make = Effect.gen(function* () {
 
   const resolveDiscoveryContext = (
     request: ProviderListModelsInput,
-    operation: "listModels" | "listSkills" | "listAgents",
+    operation: "listModels" | "listSkills" | "listAgents" | "removeMcpServer",
   ) =>
     Effect.gen(function* () {
       const settings = yield* serverSettings.getSettings.pipe(
@@ -203,7 +204,7 @@ const make = Effect.gen(function* () {
 
   const resolveDiscoveryRuntime = (
     request: ProviderListModelsInput,
-    operation: "listSkills" | "listAgents",
+    operation: "listSkills" | "listAgents" | "removeMcpServer",
   ) =>
     resolveDiscoveryContext(request, operation).pipe(
       Effect.map(
@@ -347,6 +348,26 @@ const make = Effect.gen(function* () {
       return yield* adapter.listMcpServers(parsed);
     });
 
+  const removeMcpServer: ProviderDiscoveryServiceShape["removeMcpServer"] = (input) =>
+    Effect.gen(function* () {
+      const parsed = yield* decodeInputOrValidationError({
+        operation: "ProviderDiscoveryService.removeMcpServer",
+        schema: ProviderRemoveMcpServerInput,
+        payload: input,
+      });
+      const adapter = yield* registry.getByProvider(parsed.provider);
+      if (!adapter.removeMcpServer) {
+        return yield* new ProviderValidationError({
+          operation: "ProviderDiscoveryService.removeMcpServer",
+          issue: "This agent's MCP servers are changed in its own settings.",
+        });
+      }
+      return yield* adapter.removeMcpServer(
+        parsed,
+        yield* resolveDiscoveryRuntime({ provider: parsed.provider }, "removeMcpServer"),
+      );
+    });
+
   const listModels: ProviderDiscoveryServiceShape["listModels"] = (input) =>
     Effect.gen(function* () {
       const parsed = yield* decodeInputOrValidationError({
@@ -426,6 +447,7 @@ const make = Effect.gen(function* () {
     getComposerCapabilities,
     listCommands,
     listMcpServers,
+    removeMcpServer,
     listSkills,
     listPlugins,
     listModels,

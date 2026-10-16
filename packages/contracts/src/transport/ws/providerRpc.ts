@@ -1,3 +1,4 @@
+import { Schema } from "effect";
 import * as Rpc from "effect/unstable/rpc/Rpc";
 import { WS_METHODS } from "./ws";
 import {
@@ -13,6 +14,9 @@ import {
   ProviderListPluginsResult,
   ProviderListMcpServersInput,
   ProviderListMcpServersResult,
+  ProviderRemoveMcpServerInput,
+  ProviderShareSkillInput,
+  ProviderShareSkillResult,
   ProviderListModelsInput,
   ProviderListModelsResult,
   ProviderListAgentsInput,
@@ -56,6 +60,18 @@ export const WsProviderListPluginsRpc = Rpc.make(WS_METHODS.providerListPlugins,
 export const WsProviderListMcpServersRpc = Rpc.make(WS_METHODS.providerListMcpServers, {
   payload: ProviderListMcpServersInput,
   success: ProviderListMcpServersResult,
+  error: WsRpcError,
+});
+
+export const WsProviderRemoveMcpServerRpc = Rpc.make(WS_METHODS.providerRemoveMcpServer, {
+  payload: ProviderRemoveMcpServerInput,
+  success: Schema.Void,
+  error: WsRpcError,
+});
+
+export const WsProviderShareSkillRpc = Rpc.make(WS_METHODS.providerShareSkill, {
+  payload: ProviderShareSkillInput,
+  success: ProviderShareSkillResult,
   error: WsRpcError,
 });
 

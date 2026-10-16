@@ -16,11 +16,11 @@ production artwork. Production updates come only from the Glade release reposito
 - External agent connections: no pairing UI, external MCP HTTP transport, CLI commands,
   management RPC or integration authorization runtime. Provider MCP and the internal
   agent gateway remain available to authenticated provider sessions.
-- Provider MCP server management: no settings screen or RPCs to add, remove, enable or
-  authenticate a provider's own MCP servers. Providers load them from their native configuration.
-  Settings → Connectors lists them read-only, to show what each agent loads and flag services
-  also connected in Glade. [Connectors](./connectors.md) are separate: Glade owns their sign-ins
-  and serves them to every provider through the agent gateway.
+- Provider MCP server management: no settings screen or RPCs to add, enable or authenticate a
+  provider's own MCP servers. Providers load them from their native configuration. Settings →
+  Connectors lists them, and removes one from the agents' user configuration only after the same
+  service is connected in Glade and the user confirms. [Connectors](./connectors.md) are separate:
+  Glade owns their sign-ins and serves them to every provider through the agent gateway.
 - Alternate application channels: no extra installers, flavors, badges, update feeds,
   profile import or automatic remote diagnostics.
 - Side chats: no right dock pane, creation command, expiry worker, or retained side chat

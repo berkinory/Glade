@@ -52,7 +52,7 @@ import {
   SettingsSection,
   SettingsSectionShell,
 } from "../components/settings/SettingsPanelPrimitives";
-import { SkillsSettingsPanel } from "../components/settings/SkillsSettingsPanel";
+import { SkillsSettingsPanel } from "../components/settings/skills/SkillsSettingsPanel";
 import { ConnectorsSettingsPanel } from "../components/settings/connectors/ConnectorsSettingsPanel";
 import { ThemeModePicker } from "../components/settings/ThemeModePicker";
 import { SidebarHeaderNavigationControls } from "../components/SidebarHeaderNavigationControls";

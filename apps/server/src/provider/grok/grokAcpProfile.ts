@@ -3,6 +3,7 @@ import { asRecord } from "@glade/shared/transport/payloadValues";
 
 import type { AcpProviderProfile } from "../acp/acpProviderProfile.ts";
 import { GROK_CLI } from "./grokCli.ts";
+import { GROK_USER_MCP_SERVERS } from "./grokMcpServers.ts";
 
 // A private agent process instead of the shared leader, so Glade owns its lifetime and teardown.
 const AGENT_ARGS = ["agent", "--no-leader", "stdio"];
@@ -39,5 +40,6 @@ export const GROK_ACP_PROFILE: AcpProviderProfile = {
   // Grok reads a first-prompt policy as an injected instruction and refuses it.
   argsWithSystemPrompt: (policy) => ["--rules", policy, ...AGENT_ARGS],
   promptUsage: grokPromptUsage,
+  userMcpServers: GROK_USER_MCP_SERVERS,
   hiddenCommands: new Set(["goal", "loop", "workflow", "deep-research", "always-approve"]),
 };

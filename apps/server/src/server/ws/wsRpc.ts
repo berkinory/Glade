@@ -109,7 +109,15 @@ import { ProjectionStateIncompleteError } from "../../persistence/Errors";
 import { ProjectionSnapshotQuery } from "../../orchestration/Services/ProjectionSnapshotQuery";
 import { shouldPublishThreadShellForEvent } from "../../orchestration/threadShellEvents";
 import { ProviderDiscoveryService } from "../../provider/Services/ProviderDiscoveryService";
-import { discoverSkillsCatalog, gladeSkillsDir } from "../../provider/core/skillsCatalog";
+import {
+  agentSkillsDirs,
+  discoverSkillsCatalog,
+  gladeSkillsDir,
+  sharedSkillsBridgedProviders,
+  sharedSkillsDir,
+  skillScopeProviders,
+} from "../../provider/core/skillsCatalog";
+import { shareSkill } from "../../provider/core/skillSharing";
 import { recoverUnregisteredGitHubCheckout } from "../../project/githubProjectRegistration";
 import { ProviderAdapterRegistry } from "../../provider/Services/ProviderAdapterRegistry";
 import { getEnabledProviderAdapter } from "../../provider/core/enabledProviderAdapter";
@@ -2112,14 +2120,33 @@ const makeWsRpcHandlersLayer = () =>
               Effect.map((skills) => ({
                 skills,
                 gladeSkillsDir: gladeSkillsDir(config.baseDir),
+                sharedSkillsDir: sharedSkillsDir(config.homeDir),
+                agentSkillsDirs: agentSkillsDirs(config.homeDir),
+                scopeProviders: skillScopeProviders(),
+                bridgedProviders: sharedSkillsBridgedProviders(),
               })),
             ),
             "Failed to list the skills catalog",
           ),
+        [WS_METHODS.providerShareSkill]: (input) =>
+          Effect.tryPromise({
+            try: () =>
+              shareSkill({
+                name: input.name,
+                homeDir: config.homeDir,
+                gladeBaseDir: config.baseDir,
+              }),
+            catch: (cause) => toWsRpcError(cause, "Failed to share the skill"),
+          }),
         [WS_METHODS.providerListPlugins]: (input) =>
           rpcEffect(providerDiscoveryService.listPlugins(input), "Failed to list plugins"),
         [WS_METHODS.providerListMcpServers]: (input) =>
           rpcEffect(providerDiscoveryService.listMcpServers(input), "Failed to list MCP servers"),
+        [WS_METHODS.providerRemoveMcpServer]: (input) =>
+          rpcEffect(
+            providerDiscoveryService.removeMcpServer(input),
+            "Failed to remove the MCP server",
+          ),
         [WS_METHODS.providerListModels]: (input) =>
           rpcEffect(providerDiscoveryService.listModels(input), "Failed to list models"),
         [WS_METHODS.providerListAgents]: (input) =>

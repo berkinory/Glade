@@ -35,16 +35,27 @@ support. Each tool call follows the chat's normal approval flow.
 
 ## Servers in your agents
 
-Settings → Connectors also lists, read-only, the MCP servers agents load from their own
-configuration, merged by name with the agents that have each one. Codex reports its servers through
-the app-server's `mcpServerStatus/list`, which starts them to read their tools and sign-in state;
-results are cached until **Check again**. Claude's are read from the user scope of `.claude.json`
-(next to `CLAUDE_CONFIG_DIR`, otherwise in the home directory) without connecting. Project-scoped
-servers, claude.ai connectors and plugin servers are not listed. Glade's own `glade` and
-`*_connector` servers are left out.
+Settings → Connectors also lists the MCP servers agents load from their own user configuration,
+merged by name with the agents that have each one:
 
-A server that matches a catalog preset by origin or name offers **Use in Glade**; one that is also
-connected in Glade is flagged, because agents then load both.
+| Agent    | Read from                                                                    | Removed with                      |
+| -------- | ---------------------------------------------------------------------------- | --------------------------------- |
+| Codex    | the app-server's `mcpServerStatus/list`, with tools and sign-in state        | `codex mcp remove`, then a reload |
+| Claude   | the user scope of `.claude.json` (next to `CLAUDE_CONFIG_DIR`, else in home) | `claude mcp remove -s user`       |
+| OpenCode | `mcp.servers` (or the version 1 `mcp`) in its global config files            | editing the config file           |
+| Cursor   | `mcpServers` in `~/.cursor/mcp.json`                                         | editing the config file           |
+| Grok     | `mcp_servers` in `config.toml` under `GROK_HOME`                             | `grok mcp remove -s user`         |
+
+Codex starts its servers to list them, so results are cached until **Check again**; the others are
+read from config without connecting. Project-scoped servers, claude.ai connectors, plugin servers
+and the servers Grok imports from Claude and Cursor are not listed separately. Glade's own `glade`
+and `*_connector` servers are left out.
+
+A server that matches a catalog preset by origin or name offers **Use in Glade**. Once that service
+connects, Glade offers to remove the agents' own entries; a server also connected in Glade offers
+**Remove from agents** for the same reason, because agents would otherwise load both. Removal needs
+confirmation and the `access:write` scope. Glade rewrites a JSON config only when it holds plain
+JSON, so a file with comments is left for the user to edit.
 
 ## Catalog
 

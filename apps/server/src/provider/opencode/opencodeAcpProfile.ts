@@ -1,6 +1,7 @@
 import type { AcpProviderProfile } from "../acp/acpProviderProfile.ts";
 import { OPENCODE_CLI } from "./opencodeCli.ts";
 import { opencodeInnerToolCall } from "./opencodeCodeMode.ts";
+import { OPENCODE_USER_MCP_SERVERS } from "./opencodeMcpServers.ts";
 
 // OpenCode allows every tool by default. Supervised mode asks for each edit, command, fetch and
 // access outside the workspace instead.
@@ -23,5 +24,6 @@ export const OPENCODE_ACP_PROFILE: AcpProviderProfile = {
   compactCommand: "compact",
   sharesMcpServersAcrossSessions: true,
   innerToolCall: opencodeInnerToolCall,
+  userMcpServers: OPENCODE_USER_MCP_SERVERS,
   hiddenCommands: new Set(),
 };

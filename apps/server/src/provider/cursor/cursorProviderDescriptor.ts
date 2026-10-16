@@ -27,7 +27,11 @@ export const CURSOR_PROVIDER_DESCRIPTOR: ServerProviderDescriptor = {
     workspaceConfigFiles: [],
     environmentKeys: ["CURSOR_API_KEY", "CURSOR_API_ENDPOINT"],
   },
-  skills: { origins: [], preferredScopes: [] },
+  skills: {
+    origins: [],
+    preferredScopes: [],
+    privateOrigins: [{ scope: "cursor", directory: ".cursor" }],
+  },
   makeStatusCheck: () => Effect.succeed(checkCursorProviderStatus),
   maintenance: {
     provider: "cursor",

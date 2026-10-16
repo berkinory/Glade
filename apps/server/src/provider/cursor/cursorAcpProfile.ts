@@ -1,6 +1,7 @@
 import type { AcpProviderProfile } from "../acp/acpProviderProfile.ts";
 import { CURSOR_CLI } from "./cursorCli.ts";
 import { cursorModelVendor, describeCursorModels } from "./cursorModels.ts";
+import { CURSOR_USER_MCP_SERVERS } from "./cursorMcpServers.ts";
 
 export const CURSOR_ACP_PROFILE: AcpProviderProfile = {
   provider: "cursor",
@@ -14,5 +15,6 @@ export const CURSOR_ACP_PROFILE: AcpProviderProfile = {
   clientMeta: { parameterizedModelPicker: true },
   describeModels: describeCursorModels,
   modelVendor: cursorModelVendor,
+  userMcpServers: CURSOR_USER_MCP_SERVERS,
   hiddenCommands: new Set(["goal", "loop", "autopilot"]),
 };

@@ -2262,6 +2262,18 @@ const makeCodexAdapter = (options?: CodexAdapterLiveOptions) =>
           }),
       });
 
+    const removeMcpServer: NonNullable<CodexAdapterShape["removeMcpServer"]> = (input, runtime) =>
+      Effect.tryPromise({
+        try: () => manager.removeMcpServer(input.name, runtime.binaryPath),
+        catch: (cause) =>
+          new ProviderAdapterRequestError({
+            provider: PROVIDER,
+            method: "mcp/remove",
+            detail: toMessage(cause, `Could not remove ${input.name}.`),
+            cause,
+          }),
+      });
+
     const listModels: NonNullable<CodexAdapterShape["listModels"]> = (input) =>
       Effect.tryPromise({
         try: () => manager.listModels(undefined, input.cwd),
@@ -2453,6 +2465,7 @@ const makeCodexAdapter = (options?: CodexAdapterLiveOptions) =>
       listSkills,
       listPlugins,
       listMcpServers,
+      removeMcpServer,
       listModels,
       prewarmVoice,
       transcribeVoice,

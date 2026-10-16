@@ -7,6 +7,8 @@ import type {
 import type { ProviderKind } from "@glade/contracts/core/baseSchemas";
 import type { RuntimeMode } from "@glade/contracts/provider/sessionPolicy";
 
+import type { ProviderUserMcpServers } from "../core/configuredMcpServers.ts";
+
 export type AcpPromptUsage = (response: PromptResponse) => Usage | undefined;
 
 export type AcpInnerToolCall = (
@@ -66,4 +68,6 @@ export interface AcpProviderProfile {
   readonly compactCommand?: string;
   // Native slash commands for features outside Glade's scope, hidden from the composer.
   readonly hiddenCommands: ReadonlySet<string>;
+  // The MCP servers the agent keeps in its own user configuration.
+  readonly userMcpServers?: ProviderUserMcpServers;
 }

@@ -156,6 +156,8 @@ import {
   WsProviderListSkillsCatalogRpc,
   WsProviderListPluginsRpc,
   WsProviderListMcpServersRpc,
+  WsProviderRemoveMcpServerRpc,
+  WsProviderShareSkillRpc,
   WsProviderListModelsRpc,
   WsProviderListAgentsRpc,
 } from "./providerRpc";
@@ -307,6 +309,8 @@ export const WsFeatureRpcGroup = RpcGroup.make(
   WsProviderListSkillsCatalogRpc,
   WsProviderListPluginsRpc,
   WsProviderListMcpServersRpc,
+  WsProviderRemoveMcpServerRpc,
+  WsProviderShareSkillRpc,
   WsProviderListModelsRpc,
   WsProviderListAgentsRpc,
 );

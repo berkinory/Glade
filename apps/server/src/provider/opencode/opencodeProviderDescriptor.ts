@@ -25,7 +25,11 @@ export const OPENCODE_PROVIDER_DESCRIPTOR: ServerProviderDescriptor = {
     workspaceConfigFiles: ["opencode.json", "opencode.jsonc"],
     environmentKeys: ["OPENCODE_CONFIG", "OPENCODE_CONFIG_CONTENT", "XDG_DATA_HOME"],
   },
-  skills: { origins: [], preferredScopes: [] },
+  skills: {
+    origins: [],
+    preferredScopes: [],
+    privateOrigins: [{ scope: "opencode", directory: ".config/opencode" }],
+  },
   makeStatusCheck: () => Effect.succeed(checkOpenCodeProviderStatus),
   maintenance: {
     provider: "opencode",

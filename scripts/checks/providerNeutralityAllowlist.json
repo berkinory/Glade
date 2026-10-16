@@ -22,7 +22,6 @@
   "apps/web/src/components/settings/ProfileSettingsPanel.tsx": 2,
   "apps/web/src/components/settings/ProviderUsageSettingsPanel.tsx": 1,
   "apps/web/src/components/settings/ProvidersSettingsPanel.tsx": 2,
-  "apps/web/src/components/settings/skillsSettingsModel.ts": 4,
   "apps/web/src/components/useGitActionsControl.ts": 1,
   "apps/web/src/composerDraftModels.ts": 2,
   "apps/web/src/composerDraftPersistence.serialization.ts": 1,

@@ -79,6 +79,7 @@ import {
   type AgentGatewaySessionLease,
 } from "../../agentGateway/sessionLease.ts";
 import { CodexSessionStartError } from "./codexErrorClassification.ts";
+import { runProcess } from "../../platform/processRunner.ts";
 import { buildCodexProcessEnv } from "./codexProcessEnv.ts";
 import { codexExtraSkillsRoots } from "./codexSkillsRoots.ts";
 import { CodexProcessPool } from "./processPool/codexProcessPool";
@@ -2648,6 +2649,22 @@ export class CodexAppServerManager extends EventEmitter<CodexAppServerManagerEve
     };
     this.mcpServersCache = result;
     return result;
+  }
+
+  // Codex's own command edits config.toml; the discovery app-server then reloads it so the next
+  // list no longer shows the server.
+  async removeMcpServer(name: string, binaryPath: string): Promise<void> {
+    const result = await runProcess(binaryPath, ["mcp", "remove", name], {
+      env: await this.buildSessionProcessEnv(undefined),
+      allowNonZeroExit: true,
+      timeoutMs: 30_000,
+    });
+    if (result.code !== 0) {
+      throw new Error(result.stderr.trim() || `Codex could not remove ${name}.`);
+    }
+    this.mcpServersCache = null;
+    const context = await this.resolveContextForDiscovery(undefined, undefined);
+    await this.sendRequest(context, "config/mcpServer/reload", null);
   }
 
   async generateThreadTitle(input: CodexThreadTitleInput, signal: AbortSignal): Promise<string> {

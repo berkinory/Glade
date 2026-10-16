@@ -10,7 +10,7 @@ import { ServerSettingsService } from "../../settings/serverSettings.ts";
 import { AgentGatewayCredentials } from "../../agentGateway/Services/AgentGatewayCredentials.ts";
 import type { SDKUserMessage, Options as ClaudeQueryOptions } from "@anthropic-ai/claude-agent-sdk";
 import { loadClaudeAgentSdk } from "../claude/claudeAgentSdk.ts";
-import { readClaudeUserMcpServers } from "../claude/claudeMcpServers.ts";
+import { CLAUDE_USER_MCP_SERVERS } from "../claude/claudeMcpServers.ts";
 import { ProviderAdapterRequestError } from "../core/Errors.ts";
 import { ThreadId } from "@glade/contracts/core/baseSchemas";
 import { PROVIDER } from "../claude/adapter/sessionTypes";
@@ -401,13 +401,28 @@ function makeClaudeAdapter(options?: ClaudeAdapterLiveOptions) {
       listAgents,
       listMcpServers: () =>
         Effect.tryPromise({
-          try: async () => ({ servers: await readClaudeUserMcpServers(), source: "claude-config" }),
+          try: async () => ({
+            servers: await CLAUDE_USER_MCP_SERVERS.list(),
+            source: "claude-config",
+          }),
           catch: (cause) =>
             new ProviderAdapterRequestError({
               provider: PROVIDER,
               method: "mcpServers/read",
               detail:
                 cause instanceof Error ? cause.message : "Could not read Claude's MCP servers.",
+              cause,
+            }),
+        }),
+      removeMcpServer: (input, runtime) =>
+        Effect.tryPromise({
+          try: () =>
+            CLAUDE_USER_MCP_SERVERS.remove({ name: input.name, binaryPath: runtime.binaryPath }),
+          catch: (cause) =>
+            new ProviderAdapterRequestError({
+              provider: PROVIDER,
+              method: "mcpServers/remove",
+              detail: cause instanceof Error ? cause.message : `Could not remove ${input.name}.`,
               cause,
             }),
         }),

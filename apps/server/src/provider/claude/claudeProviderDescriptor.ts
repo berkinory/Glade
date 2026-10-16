@@ -64,6 +64,7 @@ export const CLAUDE_PROVIDER_DESCRIPTOR: ServerProviderDescriptor = {
   skills: {
     origins: [{ scope: "claude", directory: ".claude" }],
     preferredScopes: ["claude"],
+    bridgesSharedSkills: true,
     pluginRoots: discoverClaudePluginSkillRoots,
   },
   makeStatusCheck: makeClaudeStatusCheck,

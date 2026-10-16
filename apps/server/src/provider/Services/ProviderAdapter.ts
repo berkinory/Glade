@@ -17,6 +17,7 @@ import type {
   ProviderListPluginsResult,
   ProviderListMcpServersInput,
   ProviderListMcpServersResult,
+  ProviderRemoveMcpServerInput,
   ProviderListSkillsResult,
   ProviderListSkillsInput,
 } from "@glade/contracts/provider/providerDiscovery";
@@ -216,6 +217,11 @@ export interface ProviderAdapterShape<TError> {
   readonly listMcpServers?: (
     input: ProviderListMcpServersInput,
   ) => Effect.Effect<ProviderListMcpServersResult, TError>;
+
+  readonly removeMcpServer?: (
+    input: ProviderRemoveMcpServerInput,
+    runtime: ProviderDiscoveryRuntime,
+  ) => Effect.Effect<void, TError>;
 
   readonly listModels?: (
     input: ProviderListModelsInput,

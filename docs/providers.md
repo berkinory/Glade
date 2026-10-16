@@ -196,11 +196,11 @@ do not appear in the composer and nothing publishes to claude.ai.
 
 ## Native tools and extensions
 
-Shared skills load through each provider's native loader. Claude uses a local skills-only plugin bridge that links the original folders, preserving bundled resources; Codex receives additional native skill roots. Skill contents are not pasted into outgoing prompts. Claude enablement controls apply to Glade sessions, with changes taking effect in a new session. The allowlist governs Skill tool invocation; it does not restrict filesystem access through other tools.
+Shared skills live in `~/.agents/skills`, which Codex, OpenCode, Cursor and Grok read natively. Claude does not, so Glade hands them over through a local skills-only plugin bridge that links the original folders, preserving bundled resources; Codex also receives Glade's own skills folder as an extra native root. Skill contents are not pasted into outgoing prompts. Claude enablement controls apply to Glade sessions, with changes taking effect in a new session. The allowlist governs Skill tool invocation; it does not restrict filesystem access through other tools.
 
-Every provider loads its own MCP servers and plugins from its native configuration; Glade does not
-manage them. OpenCode, Grok Build and Cursor also load their own skills. Glade's own tools reach
-every provider.
+Settings → Skills lists shared skills and each agent's own, from the home skill folders of every provider. **Share** moves a skill from an agent's folder into the shared one and removes the other agents' copies that are the same skill: a link to the same folder, or a folder with identical contents. A linked skill stays a link to its original folder, so dotfile setups keep working, and a copy that differs is kept and reported. Plugin, synced and built-in skills are never moved.
+
+Every provider loads its own MCP servers and plugins from its native configuration. Glade lists their servers and removes one only when the user moves it to a connector (see [Connectors](./connectors.md)). Glade's own tools reach every provider.
 
 Glade reads a skill's name, description, short description (top level or under `metadata`) and `disable-model-invocation` from its `SKILL.md` YAML frontmatter, including block scalars. Only top-level string and boolean values count. Frontmatter that is not valid YAML falls back to unindented single-line `key: value` pairs. Frontmatter that does not close within the first 64 KiB, or that expands too many aliases, is ignored, and the skill is listed under its folder name.
 

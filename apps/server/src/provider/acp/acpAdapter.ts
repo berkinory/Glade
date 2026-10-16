@@ -190,6 +190,8 @@ export const makeAcpAdapter = (dependencies: AcpAdapterDependencies) =>
       runFork(Queue.offer(events, event));
     };
 
+    const userMcpServers = profile.userMcpServers;
+
     const requestError = (method: string, cause: unknown) =>
       new ProviderAdapterRequestError({
         provider,
@@ -748,6 +750,21 @@ export const makeAcpAdapter = (dependencies: AcpAdapterDependencies) =>
         generate: structuredRequest,
       },
       structuredRequest,
+      ...(userMcpServers
+        ? {
+            listMcpServers: () =>
+              Effect.tryPromise({
+                try: async () => ({ servers: await userMcpServers.list(), source: "config" }),
+                catch: (cause) => requestError("mcpServers/read", cause),
+              }),
+            removeMcpServer: (input, runtime) =>
+              Effect.tryPromise({
+                try: () =>
+                  userMcpServers.remove({ name: input.name, binaryPath: runtime.binaryPath }),
+                catch: (cause) => requestError("mcpServers/remove", cause),
+              }),
+          }
+        : {}),
       listModels: (input) =>
         Effect.tryPromise({
           try: (signal) => {

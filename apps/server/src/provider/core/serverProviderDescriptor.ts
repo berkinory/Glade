@@ -63,6 +63,12 @@ export interface ServerProviderDescriptor {
     // Skills live in `<home>/<directory>/skills` and in `<directory>/skills` of project ancestors.
     readonly origins: ReadonlyArray<{ readonly scope: string; readonly directory: string }>;
     readonly preferredScopes: ReadonlyArray<string>;
+    // Home skill folders only this agent reads: settings lists them, but Glade never hands them
+    // to the other agents.
+    readonly privateOrigins?: ReadonlyArray<{ readonly scope: string; readonly directory: string }>;
+    // The agent does not read the shared skills folder itself; Glade hands it those skills in
+    // each session.
+    readonly bridgesSharedSkills?: boolean;
     readonly pluginRoots?: (input: {
       readonly homeDir: string;
       readonly cwd?: string;

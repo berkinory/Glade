@@ -1,17 +1,18 @@
 import type { McpConnector } from "@glade/contracts/transport/ws/mcpConnectorsRpc";
-import type { McpConnectorPreset } from "@glade/shared/mcpConnectors/catalog";
+import { PROVIDER_DISPLAY_NAMES } from "@glade/contracts/provider/model";
 import { useQueries, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 
-import { ProviderIcon } from "~/components/ProviderIcon";
 import { RefreshCwIcon } from "~/lib/icons";
 import { mcpServersQueryOptions } from "~/lib/providerDiscoveryReactQuery";
+import { providerNames } from "~/lib/providerNames";
 import { DEFAULT_PROVIDER_ORDER } from "~/providerOrdering";
 import { Button } from "../../ui/button";
 import { IconButton } from "../../ui/icon-button";
+import { ProviderStack } from "../ProviderStack";
 import { SettingsCard, SettingsEmptyState, SettingsSectionShell } from "../SettingsPanelPrimitives";
-import { providerDisplayName } from "../skillsSettingsModel";
 import { ConnectorIcon } from "./ConnectorIcon";
+import { reloadAgentMcpServers } from "./useAgentServerRemoval";
 import { type AgentServerRow, agentServerRows, connectorHost } from "./connectors.logic";
 
 function rowSummary(row: AgentServerRow): { text: string; problem: boolean } {
@@ -19,7 +20,7 @@ function rowSummary(row: AgentServerRow): { text: string; problem: boolean } {
     (source) => source.server.status === "needs-sign-in" || source.server.status === "failed",
   );
   if (trouble) {
-    const agent = providerDisplayName(trouble.provider);
+    const agent = PROVIDER_DISPLAY_NAMES[trouble.provider];
     return trouble.server.status === "needs-sign-in"
       ? { text: `Needs sign-in in ${agent}.`, problem: true }
       : { text: trouble.server.detail ?? `Could not start in ${agent}.`, problem: true };
@@ -32,27 +33,14 @@ function rowSummary(row: AgentServerRow): { text: string; problem: boolean } {
   return { text: tools ? `${where} · ${tools} tools` : where, problem: false };
 }
 
-function AgentStack(props: { readonly row: AgentServerRow }) {
-  const label = props.row.sources.map((source) => providerDisplayName(source.provider)).join(", ");
-  return (
-    <span className="inline-flex shrink-0 items-center -space-x-1" title={`Set up in ${label}`}>
-      {props.row.sources.map((source) => (
-        <span
-          key={source.provider}
-          className="inline-flex size-5 items-center justify-center rounded-full border border-background bg-background"
-        >
-          <ProviderIcon provider={source.provider} className="size-3.5" />
-        </span>
-      ))}
-    </span>
-  );
-}
-
-// Read-only: servers come from each agent's own settings, which stay the place to change them.
+// Servers come from each agent's own settings. Glade removes one there only once the same service
+// is connected in Glade, and only after the user confirms.
 export function AgentMcpServersSection(props: {
   readonly connectors: ReadonlyArray<McpConnector>;
   readonly query: string;
-  readonly onUseInGlade: (preset: McpConnectorPreset) => void;
+  readonly removing: string | null;
+  readonly onRemove: (row: AgentServerRow) => void;
+  readonly onUseInGlade: (row: AgentServerRow) => void;
 }) {
   const queryClient = useQueryClient();
   const [refreshing, setRefreshing] = useState(false);
@@ -65,7 +53,7 @@ export function AgentMcpServersSection(props: {
     const source = results[index]?.data?.source;
     return source !== undefined && source !== "unsupported" && source !== "disabled";
   });
-  const agentNames = reporting.map(providerDisplayName).join(" and ") || "Your agents";
+  const agentNames = reporting.length > 0 ? providerNames(reporting) : "Your agents";
   // Every agent failed to answer, as with a server too old to list them: say so rather than
   // presenting the silence as an empty list.
   const failed = !loading && results.every((result) => result.isError);
@@ -78,11 +66,7 @@ export function AgentMcpServersSection(props: {
 
   const refresh = () => {
     setRefreshing(true);
-    void Promise.all(
-      DEFAULT_PROVIDER_ORDER.map((provider) =>
-        queryClient.fetchQuery({ ...mcpServersQueryOptions(provider, true), staleTime: 0 }),
-      ),
-    ).finally(() => setRefreshing(false));
+    void reloadAgentMcpServers(queryClient).finally(() => setRefreshing(false));
   };
 
   return (
@@ -137,13 +121,18 @@ export function AgentMcpServersSection(props: {
                     {summary.text}
                   </span>
                 </span>
-                <AgentStack row={row} />
-                {row.preset && !row.connector ? (
+                <ProviderStack providers={row.sources.map((source) => source.provider)} />
+                {row.connector ? (
                   <Button
                     size="sm"
                     variant="outline"
-                    onClick={() => row.preset && props.onUseInGlade(row.preset)}
+                    disabled={props.removing !== null}
+                    onClick={() => props.onRemove(row)}
                   >
+                    {props.removing === row.name ? "Removing…" : "Remove from agents"}
+                  </Button>
+                ) : row.preset ? (
+                  <Button size="sm" variant="outline" onClick={() => props.onUseInGlade(row)}>
                     Use in Glade
                   </Button>
                 ) : null}
@@ -153,8 +142,8 @@ export function AgentMcpServersSection(props: {
         </SettingsCard>
       )}
       <p className="px-2 text-ui-xs text-muted-foreground">
-        Read from each agent's own settings; change them there. Connecting a service in Glade
-        instead makes it available to every agent with one sign-in.
+        Read from each agent's own settings. Use in Glade connects the service once for every agent
+        and then offers to remove the agents' own copies.
       </p>
     </SettingsSectionShell>
   );

@@ -165,6 +165,9 @@ export const WS_RPC_REQUIRED_SCOPES: Record<WsFeatureRpcTag, AuthScope> = {
   [WS_METHODS.providerListSkillsCatalog]: "orchestration:read",
   [WS_METHODS.providerListPlugins]: "orchestration:read",
   [WS_METHODS.providerListMcpServers]: "orchestration:read",
+  // Both change the agents' own configuration on this computer.
+  [WS_METHODS.providerRemoveMcpServer]: "access:write",
+  [WS_METHODS.providerShareSkill]: "access:write",
   [WS_METHODS.providerListModels]: "orchestration:read",
   [WS_METHODS.providerListAgents]: "orchestration:read",
 };
