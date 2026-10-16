@@ -27,7 +27,6 @@ import { useStore } from "../store";
 import { useProjectWorkspacePathsOf } from "../environments/projectWorkspacePaths";
 import { shortcutLabelForCommand } from "../keybindings";
 import {
-  createProjectLastActivityAtSelector,
   createSidebarThreadSummariesSelector,
   createSidebarTreeThreadsSelector,
 } from "../storeSelectors";
@@ -35,7 +34,6 @@ import { serverConfigQueryOptions } from "../lib/serverReactQuery";
 import { readNativeApi } from "../nativeApi";
 import { isHomeChatContainerProject } from "../lib/chatProjects";
 import { useComposerDraftStore } from "../composerDraftStore";
-import { useProjectPreferencesStore } from "../projectPreferencesStore";
 import { type SidebarThreadSummary } from "../types";
 import { shouldRenderTerminalWorkspace } from "./ChatView.logic.subagents";
 import { hasUnreadActivity as hasUnreadActivityOutsideActiveThread } from "./SidebarActivityView.logic";
@@ -239,8 +237,6 @@ export function useSidebarShellState() {
 
   const { activeProjectId: focusedProjectId } = useFocusedChatContext();
 
-  const latestProjectId = useProjectPreferencesStore((state) => state.latestProjectId);
-
   const createProjectDialogOpen = useSidebarStateStore((state) => state.createProjectDialogOpen);
   const setCreateProjectDialogOpen = useSidebarStateStore(
     (state) => state.setCreateProjectDialogOpen,
@@ -359,10 +355,6 @@ export function useSidebarShellState() {
     ...persistedSidebarThreadSummaryById,
     ...Object.fromEntries(localDraftThreads.map((thread) => [thread.id, thread])),
   };
-
-  const selectProjectLastActivityAt = useMemo(() => createProjectLastActivityAtSelector(), []);
-
-  const projectLastActivityAt = useStore(selectProjectLastActivityAt);
 
   const projectById = useMemo(
     () => new Map(projects.map((project) => [project.id, project] as const)),
@@ -609,7 +601,6 @@ export function useSidebarShellState() {
     activityShortcutLabel,
     addProjectShortcutLabel,
     focusedProjectId,
-    latestProjectId,
     createProjectDialogOpen,
     setCreateProjectDialogOpen,
     createProjectSpaceId,
@@ -640,7 +631,6 @@ export function useSidebarShellState() {
     visualActiveSidebarThreadId,
     sidebarThreads,
     sidebarTreeThreads,
-    projectLastActivityAt,
     projectById,
     visibleSidebarActivityThreads,
     hasUnreadActivity,

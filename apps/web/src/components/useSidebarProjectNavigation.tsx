@@ -6,11 +6,7 @@ import { MAX_PINNED_PROJECTS } from "@glade/contracts/orchestration/threadEntiti
 import { type OrchestrationShellSnapshot } from "@glade/contracts/orchestration/snapshots";
 import { ProjectId, SpaceId, ThreadId } from "@glade/contracts/core/baseSchemas";
 import { newCommandId } from "../lib/utils";
-import {
-  resolveCurrentProjectTargetId,
-  resolveLatestProjectTargetIdWithFallback,
-  resolveNewThreadTarget,
-} from "../lib/projectShortcutTargets";
+import { resolveCurrentProjectTargetId } from "../lib/projectShortcutTargets";
 import { prefetchModelsForNewThread } from "../lib/providerModelPrefetch";
 import { hasReconciledServerProviderStatuses } from "../lib/serverReactQuery";
 import { readNativeApi } from "../nativeApi";
@@ -59,7 +55,6 @@ export function useSidebarProjectNavigation(context: ReturnType<typeof useSideba
     serverCwd,
     providerStatuses,
     focusedProjectId,
-    latestProjectId,
     setCreateProjectDialogOpen,
     projectAdditionLockRef,
     optimisticPinnedStateByProjectIdRef,
@@ -67,7 +62,6 @@ export function useSidebarProjectNavigation(context: ReturnType<typeof useSideba
     optimisticPinnedStateByProjectId,
     setOptimisticPinnedStateByProjectId,
     sidebarThreads,
-    projectLastActivityAt,
     projectById,
     visibleSidebarActivityThreads,
     ordinarySpaceProjects,
@@ -535,21 +529,11 @@ export function useSidebarProjectNavigation(context: ReturnType<typeof useSideba
     (project) => projectSpaceIdOf(project) === activeSpaceId,
   );
 
-  const currentProjectShortcutTargetId = resolveCurrentProjectTargetId(
+  // Outside a project (a projectless chat, or no projects at all) a new chat stays projectless.
+  const primaryNewThreadProjectId = resolveCurrentProjectTargetId(
     activeSpaceProjects,
     focusedProjectId,
   );
-
-  const latestUsableProjectId = resolveLatestProjectTargetIdWithFallback(
-    activeSpaceProjects,
-    latestProjectId,
-    projectLastActivityAt,
-  );
-
-  const primaryNewThreadTarget = resolveNewThreadTarget({
-    currentProjectId: currentProjectShortcutTargetId,
-    latestUsableProjectId,
-  });
 
   const prefetchModelsForProjectNewThread = useCallback(
     (projectId: ProjectId) => {
@@ -586,30 +570,26 @@ export function useSidebarProjectNavigation(context: ReturnType<typeof useSideba
   );
 
   const prefetchModelsForPrimaryNewThread = () => {
-    if (!primaryNewThreadTarget) {
+    if (!primaryNewThreadProjectId) {
       return;
     }
-    prefetchModelsForProjectNewThread(primaryNewThreadTarget.projectId);
+    prefetchModelsForProjectNewThread(primaryNewThreadProjectId);
   };
 
   useEffect(() => {
-    if (!primaryNewThreadTarget) {
+    if (!primaryNewThreadProjectId) {
       return;
     }
-    prefetchModelsForProjectNewThread(primaryNewThreadTarget.projectId);
-  }, [prefetchModelsForProjectNewThread, primaryNewThreadTarget]);
+    prefetchModelsForProjectNewThread(primaryNewThreadProjectId);
+  }, [prefetchModelsForProjectNewThread, primaryNewThreadProjectId]);
 
   const handlePrimaryNewThread = () => {
-    if (primaryNewThreadTarget) {
-      prefetchModelsForProjectNewThread(primaryNewThreadTarget.projectId);
-      void handleNewThread(primaryNewThreadTarget.projectId);
+    if (primaryNewThreadProjectId) {
+      prefetchModelsForProjectNewThread(primaryNewThreadProjectId);
+      void handleNewThread(primaryNewThreadProjectId);
       return;
     }
-
-    if (!threadsHydrated) {
-      return;
-    }
-    handleStartAddProject();
+    void handleNewChat();
   };
   return {
     ...context,
@@ -623,7 +603,6 @@ export function useSidebarProjectNavigation(context: ReturnType<typeof useSideba
     handleCreateHomeChat,
     addProjectFromPath,
     handleStartAddProject,
-    currentProjectShortcutTargetId,
     prefetchModelsForProjectNewThread,
     prefetchModelsForPrimaryNewThread,
     handlePrimaryNewThread,
