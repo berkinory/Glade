@@ -18,11 +18,14 @@ export function PatchFileCards(props: {
   /** Offers editing the working-tree file; off when the patch is not from this checkout. */
   editable?: boolean;
   diffStyle?: "unified" | "split";
-  onOpenFile: (path: string) => void;
+  initiallyExpanded?: boolean;
+  onOpenFile?: ((path: string) => void) | undefined;
   renderBelow?: (path: string) => ReactNode;
 }) {
   const { resolvedTheme } = useTheme();
-  const [expandedPaths, setExpandedPaths] = useState<ReadonlySet<string>>(() => new Set());
+  const [expandedPaths, setExpandedPaths] = useState<ReadonlySet<string>>(
+    () => new Set(props.initiallyExpanded ? props.files.map(resolveFileDiffPath) : []),
+  );
   const pagedFiles = usePagedFiles(
     props.filePath
       ? props.files.filter((file) => resolveFileDiffPath(file) === props.filePath)
@@ -57,7 +60,7 @@ export function PatchFileCards(props: {
           collapsed={!expanded}
           renderHeaderTrailing={() => (
             <>
-              {!props.onSelectFile && props.editable !== false ? (
+              {props.onOpenFile && !props.onSelectFile && props.editable !== false ? (
                 <EditSourceFile cwd={props.cwd} file={file} onOpenFile={props.onOpenFile} />
               ) : null}
               <ChevronDownIcon

@@ -1,3 +1,4 @@
+import { isSupportedLocalAudioPath } from "@glade/shared/attachments/localAudioFiles";
 import { isSupportedLocalVideoPath } from "@glade/shared/attachments/localVideoFiles";
 import { WORKSPACE_FILE_NOT_TEXT_CODE } from "@glade/contracts/transport/ws/rpcErrors";
 import type {
@@ -61,15 +62,17 @@ import {
 import { DiffTruncationWarning } from "./DiffTruncationWarning";
 import { CsvFilePreview } from "./CsvFilePreview";
 import { HtmlFilePreview } from "./HtmlFilePreview";
+import { JsonFilePreview } from "./JsonFilePreview";
+import { PatchFilePreview } from "./PatchFilePreview";
 import { PanelStateMessage } from "./chat/PanelStateMessage";
 import { WorkspaceFilePreviewHeader } from "./chat/WorkspaceFilePreviewHeader";
-import { LocalVideoPlayer } from "./LocalVideoPlayer";
+import { LocalMediaPlayer } from "./LocalMediaPlayer";
 import { buildLocalImageUrl } from "~/lib/localImageUrls";
 import { LocalImagePreview } from "./LocalImagePreview";
 import { PdfFilePreview } from "./PdfFilePreview";
 import { UnsupportedFilePreview } from "./UnsupportedFilePreview";
 
-type RenderedPreviewKind = "markdown" | "html" | "csv";
+type RenderedPreviewKind = "markdown" | "html" | "csv" | "json" | "jsonl" | "diff" | "svg";
 
 const RENDERED_PREVIEW_KIND_BY_EXTENSION = new Map<string, RenderedPreviewKind>([
   [".markdown", "markdown"],
@@ -79,6 +82,14 @@ const RENDERED_PREVIEW_KIND_BY_EXTENSION = new Map<string, RenderedPreviewKind>(
   [".htm", "html"],
   [".csv", "csv"],
   [".tsv", "csv"],
+  [".json", "json"],
+  [".jsonc", "json"],
+  [".geojson", "json"],
+  [".jsonl", "jsonl"],
+  [".ndjson", "jsonl"],
+  [".diff", "diff"],
+  [".patch", "diff"],
+  [".svg", "svg"],
 ]);
 
 function renderedPreviewKindOf(filePath: string): RenderedPreviewKind | null {
@@ -149,17 +160,6 @@ export function WorkspaceFilePreview(props: WorkspaceFilePreviewProps) {
   const [manualFileReload, setManualFileReload] = useState<{ key: string } | null>(null);
   const filePath = relocatedFullPath ?? requestedFilePath;
   const { settings, updateSettings } = useAppSettings();
-  const fileIsImage = filePath !== null && isSupportedLocalImagePath(filePath);
-  const fileIsVideo = filePath !== null && isSupportedLocalVideoPath(filePath);
-  const fileIsPdf = filePath !== null && isSupportedLocalPdfPath(filePath);
-  const fileIsLocalAbsolute = filePath !== null && isLocalAbsolutePath(filePath);
-  const fileIsWorkspaceRelative = filePath !== null && isWorkspaceRelativePathSafe(filePath);
-  const fileIsScratchBinaryPreview =
-    filePath !== null &&
-    (fileIsImage || fileIsPdf || fileIsVideo) &&
-    isScratchWorkspacePath(filePath);
-  const fileNeedsLocalPreviewGrant =
-    filePath !== null && fileIsLocalAbsolute && !fileIsScratchBinaryPreview;
   const renderedPreviewKind = filePath === null ? null : renderedPreviewKindOf(filePath);
 
   const [renderedPreviewOverride, setRenderedPreviewOverride] = useState<{
@@ -173,6 +173,27 @@ export function WorkspaceFilePreview(props: WorkspaceFilePreviewProps) {
     renderedPreviewOverride !== null && renderedPreviewOverride.filePath === filePath
       ? renderedPreviewOverride.rendered
       : settings.markdownPreviewEnabled;
+  // SVG is text, so its Source view reads and edits it like any other file.
+  const fileIsImage =
+    filePath !== null &&
+    isSupportedLocalImagePath(filePath) &&
+    (renderedPreviewKind !== "svg" || renderedPreviewEnabled);
+  const mediaKind =
+    filePath === null
+      ? null
+      : isSupportedLocalVideoPath(filePath)
+        ? "video"
+        : isSupportedLocalAudioPath(filePath)
+          ? "audio"
+          : null;
+  const fileIsPdf = filePath !== null && isSupportedLocalPdfPath(filePath);
+  const fileIsBinaryPreview = fileIsImage || fileIsPdf || mediaKind !== null;
+  const fileIsLocalAbsolute = filePath !== null && isLocalAbsolutePath(filePath);
+  const fileIsWorkspaceRelative = filePath !== null && isWorkspaceRelativePathSafe(filePath);
+  const fileIsScratchBinaryPreview =
+    filePath !== null && fileIsBinaryPreview && isScratchWorkspacePath(filePath);
+  const fileNeedsLocalPreviewGrant =
+    filePath !== null && fileIsLocalAbsolute && !fileIsScratchBinaryPreview;
   const localPreviewGrantQuery = useQuery(
     projectLocalPreviewGrantQueryOptions({
       path: filePath,
@@ -193,9 +214,7 @@ export function WorkspaceFilePreview(props: WorkspaceFilePreviewProps) {
       enabled:
         liveRevalidationEnabled &&
         filePath !== null &&
-        !fileIsImage &&
-        !fileIsVideo &&
-        !fileIsPdf &&
+        !fileIsBinaryPreview &&
         (fileNeedsLocalPreviewGrant ? localPreviewGrant !== null : props.workspaceRoot !== null),
     }),
   );
@@ -205,7 +224,7 @@ export function WorkspaceFilePreview(props: WorkspaceFilePreviewProps) {
       : null;
   const watchedWorkspaceRelativePath =
     resolvedWorkspaceRelativePath ??
-    ((fileIsImage || fileIsPdf || fileIsVideo) &&
+    (fileIsBinaryPreview &&
     workspaceRoot &&
     requestedFilePath &&
     isWorkspaceRelativePathSafe(requestedFilePath)
@@ -220,7 +239,7 @@ export function WorkspaceFilePreview(props: WorkspaceFilePreviewProps) {
       });
 
       void refreshGitAfterFileWrite(queryClient, workspaceRoot);
-      if (fileIsImage || fileIsPdf || fileIsVideo) {
+      if (fileIsBinaryPreview) {
         setBinaryPreviewRevision((current) => current + 1);
       }
       if (event.type === "changed") {
@@ -231,9 +250,7 @@ export function WorkspaceFilePreview(props: WorkspaceFilePreviewProps) {
       }
     },
     [
-      fileIsImage,
-      fileIsVideo,
-      fileIsPdf,
+      fileIsBinaryPreview,
       queryClient,
       relocationRequestKey,
       requestedFilePath,
@@ -363,7 +380,7 @@ export function WorkspaceFilePreview(props: WorkspaceFilePreviewProps) {
 
   const handleFileReload = useCallback(() => {
     if (!filePath) return;
-    if (fileIsImage || fileIsPdf || fileIsVideo) {
+    if (fileIsBinaryPreview) {
       setBinaryPreviewReloading(true);
       setBinaryPreviewRevision((current) => current + 1);
       return;
@@ -376,7 +393,7 @@ export function WorkspaceFilePreview(props: WorkspaceFilePreviewProps) {
     }).finally(() => {
       setManualFileReload((current) => (current === request ? null : current));
     });
-  }, [binaryPreviewKey, fileIsImage, fileIsVideo, fileIsPdf, filePath, queryClient, workspaceRoot]);
+  }, [binaryPreviewKey, fileIsBinaryPreview, filePath, queryClient, workspaceRoot]);
 
   const handleEditBufferReload = editor.reloadFromDisk;
 
@@ -384,9 +401,7 @@ export function WorkspaceFilePreview(props: WorkspaceFilePreviewProps) {
     props.workspaceRoot !== null &&
     resolvedWorkspaceRelativePath !== null &&
     fileQuery.data !== undefined &&
-    !fileIsImage &&
-    !fileIsVideo &&
-    !fileIsPdf &&
+    !fileIsBinaryPreview &&
     !showRenderedPreview &&
     editableDocument === null;
   const workingTreeDiffQuery = useQuery(
@@ -616,10 +631,9 @@ export function WorkspaceFilePreview(props: WorkspaceFilePreviewProps) {
           workspaceRoot && filePath
             ? {
                 onClick: handleFileReload,
-                pending:
-                  fileIsImage || fileIsPdf || fileIsVideo
-                    ? binaryPreviewReloading
-                    : manualFileReload?.key === binaryPreviewKey,
+                pending: fileIsBinaryPreview
+                  ? binaryPreviewReloading
+                  : manualFileReload?.key === binaryPreviewKey,
               }
             : undefined
         }
@@ -680,13 +694,14 @@ export function WorkspaceFilePreview(props: WorkspaceFilePreviewProps) {
       ) : null}
       {locatingOutOfRootFile ? (
         <FilePreviewLoadingState />
-      ) : (fileIsImage || fileIsVideo) &&
+      ) : (fileIsImage || mediaKind !== null) &&
         fileNeedsLocalPreviewGrant &&
         localPreviewGrantQuery.isPending ? (
         <FilePreviewLoadingState />
-      ) : fileIsVideo ? (
-        <LocalVideoPlayer
+      ) : mediaKind !== null ? (
+        <LocalMediaPlayer
           key={binaryPreviewKey}
+          kind={mediaKind}
           url={buildLocalImageUrl({
             src: filePath!,
             cwd: props.workspaceRoot ?? undefined,
@@ -698,7 +713,7 @@ export function WorkspaceFilePreview(props: WorkspaceFilePreviewProps) {
             <UnsupportedFilePreview
               filePath={filePath!}
               workspaceRoot={props.workspaceRoot}
-              description="Glade can't play this video format. Open it in another app to watch it."
+              description={`Glade can't play this ${mediaKind} format. Open it in another app.`}
             />
           }
           className="min-h-0 flex-1"
@@ -761,6 +776,20 @@ export function WorkspaceFilePreview(props: WorkspaceFilePreviewProps) {
             <CsvFilePreview
               filePath={filePath}
               contents={displayedFileContents}
+              truncated={fileQuery.data?.truncated ?? false}
+            />
+          ) : showRenderedPreview &&
+            (renderedPreviewKind === "json" || renderedPreviewKind === "jsonl") ? (
+            <JsonFilePreview
+              contents={displayedFileContents}
+              lines={renderedPreviewKind === "jsonl"}
+              truncated={fileQuery.data?.truncated ?? false}
+            />
+          ) : showRenderedPreview && renderedPreviewKind === "diff" ? (
+            <PatchFilePreview
+              filePath={filePath}
+              contents={displayedFileContents}
+              workspaceRoot={props.workspaceRoot}
               truncated={fileQuery.data?.truncated ?? false}
             />
           ) : !activeEditBuffer || !editableDocument || showRenderedPreview ? (

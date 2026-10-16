@@ -84,10 +84,11 @@ Each conversation owns main workspace tabs for chat, files, and commit and turn 
 
 File tabs accept tree selections, chat links and file references. Opening
 an existing file selects its tab; line and column links reveal source without changing
-the saved Markdown viewing preference. Markdown opens rendered by default, and the
-source/rendered setting applies across files and chats. Unsaved editor sessions remain
+the saved Markdown viewing preference. Markdown, HTML, CSV and TSV tables, JSON and
+JSONL trees, patch files and SVG open rendered by default, and the source/rendered
+setting applies across files and chats. Unsaved editor sessions remain
 available when switching or closing tabs. Absolute local paths and generated files
-use the same workspace preview, including images and PDFs.
+use the same workspace preview, including images, PDFs, video and audio.
 
 Explorer follows external filesystem changes in its open folders without manual
 refresh. Files and folders can be copied into the tree with drag and drop or pasted

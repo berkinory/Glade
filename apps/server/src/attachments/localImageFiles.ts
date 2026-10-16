@@ -1,3 +1,4 @@
+import { isSupportedLocalAudioPath } from "@glade/shared/attachments/localAudioFiles";
 import { isSupportedLocalVideoPath } from "@glade/shared/attachments/localVideoFiles";
 import crypto from "node:crypto";
 import fs from "node:fs/promises";
@@ -117,6 +118,14 @@ async function resolveWorkspaceRoot(cwd: string | null): Promise<string | null> 
   return (gitRoot ? await realpathOrNull(gitRoot) : realCwd) ?? null;
 }
 
+function isServableLocalPreviewPath(filePath: string): boolean {
+  return (
+    isSupportedLocalPreviewFilePath(filePath) ||
+    isSupportedLocalVideoPath(filePath) ||
+    isSupportedLocalAudioPath(filePath)
+  );
+}
+
 export async function resolveAllowedLocalPreviewFile(input: {
   readonly requestedPath: string | null;
   readonly cwd: string | null;
@@ -129,7 +138,7 @@ export async function resolveAllowedLocalPreviewFile(input: {
   if (
     !requestedPath ||
     requestedPath.includes("\0") ||
-    (!isSupportedLocalPreviewFilePath(requestedPath) && !isSupportedLocalVideoPath(requestedPath))
+    !isServableLocalPreviewPath(requestedPath)
   ) {
     return null;
   }
@@ -138,10 +147,7 @@ export async function resolveAllowedLocalPreviewFile(input: {
     ? path.resolve(requestedPath)
     : path.resolve(input.cwd ?? process.cwd(), requestedPath);
   const realFilePath = await realpathOrNull(resolvedRequestedPath);
-  if (
-    !realFilePath ||
-    (!isSupportedLocalPreviewFilePath(realFilePath) && !isSupportedLocalVideoPath(realFilePath))
-  ) {
+  if (!realFilePath || !isServableLocalPreviewPath(realFilePath)) {
     return null;
   }
 
