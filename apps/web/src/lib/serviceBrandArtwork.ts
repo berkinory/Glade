@@ -133,6 +133,19 @@ import {
   WolframIcon,
   WorkOSIcon,
   WorkatoIcon,
+  ApifyIcon,
+  AutumnIcon,
+  CircleCIIcon,
+  ClickUpIcon,
+  CustomerIoIcon,
+  DodoPaymentsIcon,
+  EachlabsIcon,
+  LoopsIcon,
+  OpenSeoIcon,
+  PaddleIcon,
+  PostmanIcon,
+  SemrushIcon,
+  WiroIcon,
 } from "~/lib/brandIcons";
 import { Folder02Icon } from "./icons";
 import type { IconComponent } from "./iconComponent";
@@ -313,6 +326,19 @@ const SERVICE_BRANDS: Record<string, ServiceBrandArtwork> = {
   workato: { icon: WorkatoIcon, color: "#687080" },
   workos: { icon: WorkOSIcon, color: "#687080" },
   openai: { icon: OpenAIIcon, color: "#687080" },
+  apify: { icon: ApifyIcon, color: "#687080" },
+  autumn: { icon: AutumnIcon, color: "#687080" },
+  circleci: { icon: CircleCIIcon, color: "#687080" },
+  clickup: { icon: ClickUpIcon, color: "#687080" },
+  customerio: { icon: CustomerIoIcon, color: "#687080" },
+  dodopayments: { icon: DodoPaymentsIcon, color: "#687080" },
+  eachlabs: { icon: EachlabsIcon, color: "#687080" },
+  loops: { icon: LoopsIcon, color: "#687080" },
+  openseo: { icon: OpenSeoIcon, color: "#687080" },
+  paddle: { icon: PaddleIcon, color: "#687080" },
+  postman: { icon: PostmanIcon, color: "#687080" },
+  semrush: { icon: SemrushIcon, color: "#687080" },
+  wiro: { icon: WiroIcon, color: "#687080" },
 };
 const SERVICE_ALIASES: Record<string, string> = {
   cf: "cloudflare",
@@ -374,6 +400,8 @@ const SERVICE_ALIASES: Record<string, string> = {
   prismapostgres: "prisma",
   clickhousecloud: "clickhouse",
   grafanacloud: "grafana",
+  customerioeu: "customerio",
+  dodo: "dodopayments",
 };
 export function resolveServiceBrand(
   value: string | null | undefined,

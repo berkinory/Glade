@@ -18,8 +18,6 @@ const MAX_GLYPH_SHARE = 0.86;
 const BADGE_ARTWORK = new Set([
   "context7",
   "exa",
-  "twilio-docs",
-  "coinbase-cdp-docs",
   "clickhouse",
   "mongodb",
   "netlify",
@@ -32,20 +30,24 @@ const BADGE_ARTWORK = new Set([
   "miro",
   "21st-dev",
   "todoist",
-  "fathom",
   "circleback",
   "intercom",
   "intercom-eu",
-  "klaviyo",
   "ramp",
-  "composio",
-  "workato",
   "zapier",
-  "egnyte",
+  "autumn",
+  "customerio",
+  "customerio-eu",
+  "dodopayments",
+  "eachlabs",
+  "openseo",
+  "postman",
+  "wiro",
 ]);
 
 // How much of its own canvas a padded glyph covers; it is enlarged to match the others.
 const GLYPH_COVERAGE: Readonly<Record<string, number>> = {
+  apify: 0.86,
   render: 0.5,
   resend: 0.5,
   sanity: 0.73,
