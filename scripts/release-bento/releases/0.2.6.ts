@@ -7,15 +7,14 @@ import {
   logo,
   stats,
   toggle,
-  type LogoName,
   type ReleaseBento,
 } from "../kit.ts";
 
-const PROVIDERS: ReadonlyArray<readonly [LogoName, string, boolean]> = [
+const PROVIDERS: ReadonlyArray<readonly [string, string, boolean]> = [
   ["openai", "Codex", false],
   ["claude", "Claude", false],
-  ["opencode", "OpenCode", true],
-  ["grok", "Grok Build", true],
+  ["opencodeai", "OpenCode", true],
+  ["xaigrok", "Grok Build", true],
   ["cursor", "Cursor", true],
 ];
 
@@ -34,7 +33,7 @@ const providers = `
   <div class="panel picker">
     <div class="tabs">
       <span class="tab">${icon("Star", 15)}</span>
-      ${(["openai", "claude", "cursor", "grok", "opencode"] as const)
+      ${(["openai", "claude", "cursor", "xaigrok", "opencodeai"] as const)
         .map(
           (mark) =>
             `<span class="tab${mark === "cursor" ? " active" : ""}">${logo(mark, 15)}</span>`,

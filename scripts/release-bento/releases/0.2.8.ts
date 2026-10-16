@@ -20,7 +20,7 @@ const recovery = `
 const tools = `
 <section class="tile fill tools">
   ${copy("Same tools. Same experience.", "Open edits in place, inspect images, and explore search results across providers.")}
-  <div class="provider-line">${logo("openai", 22)}${logo("claude", 22)}${logo("grok", 22)}${logo("opencode", 22)}${logo("cursor", 22)}<span class="dim">One consistent way to inspect the work.</span></div>
+  <div class="provider-line">${logo("openai", 22)}${logo("claude", 22)}${logo("xaigrok", 22)}${logo("opencodeai", 22)}${logo("cursor", 22)}<span class="dim">One consistent way to inspect the work.</span></div>
   <div class="panel tool-panel">
     <div class="tool-row">${icon("ChevronDown", 12, "dim")}${icon("PencilEdit02", 16, "dim")}Edited<span class="chip">${fileIcon("ts")}theme.ts</span><span class="grow"></span><span class="ok xs">+1</span><span class="bad xs">−1</span></div>
     <div class="diff"><div class="removed"><span>−</span> surface: "#ffffff",</div><div class="added"><span>+</span> surface: "#f5f4f1",</div></div>

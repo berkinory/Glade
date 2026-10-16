@@ -1,63 +1,44 @@
 # Glade Changelog
 
-## Unreleased
+## 0.2.9 - 2026-10-16
 
 ### New
 
-- Videos in file and Git previews play with full controls instead of showing a still frame, including larger files, and formats that can't play show a clear preview-unavailable state. ([2a3d780c9](https://github.com/berkinory/Glade/commit/2a3d780c94af888a4218d509a6b6966367c75a9d), [47c73c779](https://github.com/berkinory/Glade/commit/47c73c779d31d43c3aa68db8a8fd1f460b169db8))
-- Preview CSV and TSV files as a sortable table alongside their source.
-- Preview JSON and JSONL files as a collapsible tree, patch files as a diff, and SVG files as an image or as editable source.
-- Play audio files in the file preview.
-- Preview HTML files rendered alongside their source, just like Markdown. ([9773c8f9c](https://github.com/berkinory/Glade/commit/9773c8f9cf6ba9d9401093b1245b43ade36600ab))
-- Agents can reply with native charts, tables, checklists and clickable follow-up choices.
-- Native agent replies can include sliders and switches that recompute their figures and charts as you move them.
-- MCP servers: connect services like Supabase, Linear, Notion and GitHub once in Settings, and agents in every new chat can use their tools, whichever provider runs it. ([6b42cbd9a](https://github.com/berkinory/Glade/commit/6b42cbd9a78bfb97684fcf2200bbac11df0b0735))
-- Install skills from skills.sh or GitHub after a preview of their source, scripts and security audits, for all your agents or only the ones you pick. ([db5bd2da2](https://github.com/berkinory/Glade/commit/db5bd2da2bb1f3a33c490fe9f223dec08e66bdf2))
-- Skills and MCP servers your agents set up themselves, including OpenCode, Cursor and Grok, appear in Settings and can be moved to all agents in one step without leaving duplicates behind. ([2b5112370](https://github.com/berkinory/Glade/commit/2b5112370368866dbb1d3f811e24eb97c50eb15d))
-- Settings → Providers, Skills and MCP servers can switch to an SSH host or paired machine to manage its own agents, skills and MCP servers, including installing skills and signing in to agent CLIs there.
+- Connect MCP servers like Supabase, Linear, Notion and GitHub once, and agents in every new chat can use their tools, whichever provider runs it. The catalog grows between releases, and Glade only accepts catalogs it can verify. ([6b42cbd9a](https://github.com/berkinory/Glade/commit/6b42cbd9a78bfb97684fcf2200bbac11df0b0735), [c82ef6aec](https://github.com/berkinory/Glade/commit/c82ef6aecd875757e028382a335892867701f1e3), [e4e22ade7](https://github.com/berkinory/Glade/commit/e4e22ade7221faf61451fdab2e1905f003d94254), [b1ac25cc1](https://github.com/berkinory/Glade/commit/b1ac25cc11d5419afb44d160bc3a5ef97b0f4778))
+- Install skills from skills.sh or GitHub after previewing their source, scripts and security audits, and choose which agents get each skill or MCP server. ([db5bd2da2](https://github.com/berkinory/Glade/commit/db5bd2da2bb1f3a33c490fe9f223dec08e66bdf2))
+- Skills and MCP servers your agents set up on their own show up in Glade and can be shared with every agent in one step. ([4001f267e](https://github.com/berkinory/Glade/commit/4001f267e813f9026a0542c254bfa81fe5b4bddf), [2b5112370](https://github.com/berkinory/Glade/commit/2b5112370368866dbb1d3f811e24eb97c50eb15d))
+- Manage the agents, skills and MCP servers of your SSH hosts and paired machines, including signing in to agent CLIs there. ([3a05e0ec8](https://github.com/berkinory/Glade/commit/3a05e0ec88a57b4954004c9fd50b8bd5c3c17381))
+- Agents can reply with native charts, tables, checklists and follow-up choices, with sliders and switches that update the figures as you move them. ([c11f740e5](https://github.com/berkinory/Glade/commit/c11f740e569df0fefab04dde861853e0828bfb21), [411db5dde](https://github.com/berkinory/Glade/commit/411db5dde21dc81a36407ff8967065ce0dbef236))
+- File previews play video and audio, render HTML, and show CSV files as sortable tables, JSON as a collapsible tree, patches as diffs and SVG as images. Files that cannot be shown say so clearly. ([2a3d780c9](https://github.com/berkinory/Glade/commit/2a3d780c94af888a4218d509a6b6966367c75a9d), [9773c8f9c](https://github.com/berkinory/Glade/commit/9773c8f9cf6ba9d9401093b1245b43ade36600ab), [f19d05354](https://github.com/berkinory/Glade/commit/f19d05354f407931c6b65ffb9eeaa08d475e1d08), [c692b5a97](https://github.com/berkinory/Glade/commit/c692b5a9730f92e4f0ecc0eccc673e6325857deb), [47c73c779](https://github.com/berkinory/Glade/commit/47c73c779d31d43c3aa68db8a8fd1f460b169db8))
 
 ### Improved
 
-- Rewind is now part of Edit: edit any of your messages to resend it from there, and Glade asks whether files changed since then are kept or restored.
-- Visuals whose scripts fail or that show nothing go back to the agent to fix instead of appearing broken in the chat.
-- MCP servers connected in Glade can serve only the agents you choose, and the catalog adds OpenRouter, Superhuman, Craft, OpenStatus, Databuddy, Scalar and Browserbase. ([db5bd2da2](https://github.com/berkinory/Glade/commit/db5bd2da2bb1f3a33c490fe9f223dec08e66bdf2), [e4e22ade7](https://github.com/berkinory/Glade/commit/e4e22ade7221faf61451fdab2e1905f003d94254))
-- The MCP server catalog updates from useglade.dev between releases, signed so Glade accepts only catalogs it can verify.
-- Pairing codes stop working as soon as the pairing dialog closes or shows a new code.
-- While remote access is on, the Mac no longer idle-sleeps, so paired devices can still reach it.
-- Model names are shorter where the provider is already shown.
-- Codex chats use much less memory.
-- The background server keeps a smaller database cache, so it uses less memory after long sessions.
-- The built-in browser's ad blocker updates its lists in the background without freezing the window or holding on to extra memory.
-- Diffs, code previews and pull request reviews release their memory sooner after you close them.
-- File search frees its index and cached file contents when you stop searching.
-- Switching between many chats no longer keeps every recently opened chat in memory.
-- Glade's own code takes up less memory in every process.
-- Notifications share one look: a colored icon for success, warning, error and info, short titles with the details underneath, and clear buttons below the message.
-- Glade and provider updates on this computer and your SSH hosts are gathered in one Updates window: pick what to update, follow each one's progress, and Glade restarts only when you choose it. Separate update prompts for each machine are gone.
-- The Activity page is redesigned: token usage by provider and model, agent time and chats for the last month or all time, a yearly activity grid with per-provider tooltips, and a generated pixel avatar. Streak, skill and insight sections are gone.
-- Moving from one tooltip to the next shows it right away instead of waiting again.
+- Rewind is now part of Edit: edit any of your messages to resend from there, and choose whether files changed since then are kept or restored. Edited messages show their new text right away. ([bfe36aac4](https://github.com/berkinory/Glade/commit/bfe36aac436f741cc739cb8b99e1f813af8bd4e9))
+- Updates for Glade and your providers, on this computer and your SSH hosts, are gathered in one Updates window, and Glade restarts only when you choose. ([4fde865fb](https://github.com/berkinory/Glade/commit/4fde865fbd2121b6cf8bc5215fce658e86a1fb84))
+- The Activity page centers on token usage by provider and model, agent time and a yearly activity grid. ([6df06de17](https://github.com/berkinory/Glade/commit/6df06de17a44e8ae79ae903e8a512acd32cbb419))
+- Glade uses noticeably less memory in long sessions, across Codex chats, diffs, file search, switching between chats and the background server, and the ad blocker updates without freezing the window. ([3b5ed5b52](https://github.com/berkinory/Glade/commit/3b5ed5b522f20b2f15354ca71362f49286725f30), [fa2e3c3c3](https://github.com/berkinory/Glade/commit/fa2e3c3c3c572b9906493af0def271d8125d6451), [0c9523371](https://github.com/berkinory/Glade/commit/0c95233714ac102eeb3074440c532350dc95f9a6), [d32e38468](https://github.com/berkinory/Glade/commit/d32e38468bbf34cd1e53c2bd2fbbcba001706284), [8671843bb](https://github.com/berkinory/Glade/commit/8671843bbed837cb99eae49c77a8f0eb7ae30b6e), [abb513631](https://github.com/berkinory/Glade/commit/abb513631de9c99691aee9a5de158f6dbca39073), [7cb616e13](https://github.com/berkinory/Glade/commit/7cb616e1386780c2ba86efef3564758725c774ce), [042253be3](https://github.com/berkinory/Glade/commit/042253be3a9484042236d0983df5b777a33c4f0a))
+- Visuals that fail to render go back to the agent to fix instead of appearing broken in the chat. ([411db5dde](https://github.com/berkinory/Glade/commit/411db5dde21dc81a36407ff8967065ce0dbef236))
+- Notifications share one consistent look, with their details shown under a short title. ([a511b19be](https://github.com/berkinory/Glade/commit/a511b19be829fca06b1a559e51c9d989f2b9a4f8))
+- Remote access is safer and more dependable: pairing codes stop working once the pairing dialog closes, and the Mac stays awake while remote access is on. ([3a05e0ec8](https://github.com/berkinory/Glade/commit/3a05e0ec88a57b4954004c9fd50b8bd5c3c17381))
 
 ### Fixed
 
-- An edited message shows its new text and starts working right away instead of looking unchanged for several seconds.
-- Error and status notifications show their details again instead of only a title.
-- HEIC and TIFF files show a clear preview-unavailable state instead of claiming the file may have moved.
-- Opening a step where an agent looked at an image now shows that image. ([41306bc87](https://github.com/berkinory/Glade/commit/41306bc877d0b220c149c0af8dee8a494655dbd4), [94dd5f4fe](https://github.com/berkinory/Glade/commit/94dd5f4fe0f32d3ee0dcc29028353a098d30724f))
-- Chat status indicators in the sidebar stay at the right edge for chats on SSH and remote hosts. ([eb8b56261](https://github.com/berkinory/Glade/commit/eb8b5626180b0395fab8d8729dee3cba84d68e56))
-- Steering a chat while background work is still running no longer plays the completion sound. ([0334dc776](https://github.com/berkinory/Glade/commit/0334dc776d13442028f0a23f46e8611260a07c98))
-- Opening a background task from the Environment panel keeps the panel open while the chat scrolls to it. ([34518870c](https://github.com/berkinory/Glade/commit/34518870cda67c829ef240d07e21fb35f4b39449))
-- Command rows in the chat show a label and icon that match the step the command actually ran. ([bb2bd0abc](https://github.com/berkinory/Glade/commit/bb2bd0abc8e2e8af75eb75dab73d2fb96fdb3d31))
-- Editing a Claude message you stopped before it replied resends it instead of failing. ([c931d56ef](https://github.com/berkinory/Glade/commit/c931d56ef35e831d18a1b14cee9b993c509e7001))
+- Chat costs and Profile count Claude usage once per turn, including resumed sessions, subagents and failed turns. ([00ce672ff](https://github.com/berkinory/Glade/commit/00ce672ffb27ef139ac47beb4613a40c02cfb9a0), [39a5d01f6](https://github.com/berkinory/Glade/commit/39a5d01f68eacae238f3f5df5b299c56ec096db4))
+- Ask for approval always asks before Claude acts, whatever Claude's own default permission setting is. ([b6b998b74](https://github.com/berkinory/Glade/commit/b6b998b74325011dee9461577b7f875e98a5c2e5))
+- Claude subagents no longer keep running after their turn fails. ([a6339bff2](https://github.com/berkinory/Glade/commit/a6339bff2e2c624948dae62c8fc4edb41e39ef59))
+- Claude replies can be forked again, including earlier replies while a turn is still running. ([f280fe755](https://github.com/berkinory/Glade/commit/f280fe755426a7b5e34e8e13d3f2e37163a60c8c))
 - Generating commit messages, branch names and pull requests with Claude works again in the desktop app. ([a4a1244db](https://github.com/berkinory/Glade/commit/a4a1244db5585ecdadac2f1f708e473eca5b15cf))
-- Message times follow your system's 12- or 24-hour clock setting. ([8fb1c1d4d](https://github.com/berkinory/Glade/commit/8fb1c1d4d2a7ac034a26549ff0419b9bc8330dd0))
-- Switching providers warns before it stops background tasks that are still running.
-- Ask for approval mode now always asks before Claude acts, even when Claude settings choose a different default.
-- Claude subagents interrupted by a failed turn no longer stay running forever.
-- Claude replies you watched arrive can be forked again, including earlier replies while a turn is still running.
-- Profile no longer overcounts Claude token usage after a chat resumes.
-- Recovering a missing chat after a restart no longer briefly uses up to a gigabyte of memory on large histories.
-- Chat costs and Profile now count each Claude turn's usage once, including resumed sessions, subagents and failed turns.
-- A message sent right after rewinding a chat is no longer lost, and the chat no longer stays loading forever when a message fails to start. ([dc17a44e1](https://github.com/berkinory/Glade/commit/dc17a44e1e4c35aaa1d9f99e4c1b502fd056964a))
+- Editing a Claude message stopped before it replied resends it instead of failing. ([c931d56ef](https://github.com/berkinory/Glade/commit/c931d56ef35e831d18a1b14cee9b993c509e7001))
+- Messages sent right after a rewind are no longer lost, and a chat no longer stays loading when a message fails to start. ([dc17a44e1](https://github.com/berkinory/Glade/commit/dc17a44e1e4c35aaa1d9f99e4c1b502fd056964a))
+- Opening a step where an agent viewed an image shows that image, for every provider. ([41306bc87](https://github.com/berkinory/Glade/commit/41306bc877d0b220c149c0af8dee8a494655dbd4), [94dd5f4fe](https://github.com/berkinory/Glade/commit/94dd5f4fe0f32d3ee0dcc29028353a098d30724f))
+- Switching providers warns before it stops background tasks that are still running. ([2bd3d18e4](https://github.com/berkinory/Glade/commit/2bd3d18e42fcc47c2812135c730d69993c055f13))
+- Steering a chat while background work runs no longer plays the completion sound. ([0334dc776](https://github.com/berkinory/Glade/commit/0334dc776d13442028f0a23f46e8611260a07c98))
+- Restoring chats after a restart no longer causes a large memory spike on big histories. ([4d061b31d](https://github.com/berkinory/Glade/commit/4d061b31d22c6795b23851c1d7b526c5c6541188))
+- Message times follow your system's 12- or 24-hour clock. ([8fb1c1d4d](https://github.com/berkinory/Glade/commit/8fb1c1d4d2a7ac034a26549ff0419b9bc8330dd0))
+
+### Removed
+
+- The Activity page no longer shows streaks, skills or insights. ([6df06de17](https://github.com/berkinory/Glade/commit/6df06de17a44e8ae79ae903e8a512acd32cbb419))
 
 ## 0.2.8 - 2026-10-15
 

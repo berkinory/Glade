@@ -1,4 +1,4 @@
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import AlertCircleGlyph from "@hugeicons/core-free-icons/AlertCircleIcon";
 import ArrowDown02Glyph from "@hugeicons/core-free-icons/ArrowDown02Icon";
@@ -143,25 +143,23 @@ export function fileIcon(symbol: string, size = 14): string {
   return `<img src="${dataUri(join(WEB_PUBLIC, "symbols/files", `${symbol}.svg`))}" width="${size}" height="${size}" alt="">`;
 }
 
-const WEB_ASSETS = join(import.meta.dirname, "../../apps/web/src/assets");
+const CATALOG = join(import.meta.dirname, "../../packages/catalog");
+const BRANDS: Record<string, { readonly monochrome?: boolean }> = JSON.parse(
+  readFileSync(join(CATALOG, "brands.json"), "utf8"),
+);
 
-// Brand logos as apps/web/src/lib/brandIcons.tsx draws them: tinted ones are a mask in the text
+// A brand from the catalog, drawn as the app draws it: monochrome marks are a mask in the text
 // color, the rest keep their own colors.
-const LOGOS = {
-  github: { path: join(WEB_PUBLIC, "brands/github_light.svg"), tinted: true },
-  claude: { path: join(WEB_PUBLIC, "brands/claude-ai-icon.svg"), tinted: false },
-  openai: { path: join(WEB_ASSETS, "brands/openai.svg"), tinted: true },
-  opencode: { path: join(WEB_ASSETS, "brands/opencode.svg"), tinted: true },
-  grok: { path: join(WEB_ASSETS, "brands/grok.svg"), tinted: true },
-  cursor: { path: join(WEB_PUBLIC, "brands/cursor_light.svg"), tinted: true },
-} as const;
-
-export type LogoName = keyof typeof LOGOS;
-
-export function logo(name: LogoName, size = 15): string {
-  const { path, tinted } = LOGOS[name];
-  const src = dataUri(path);
-  if (!tinted) {
+export function logo(id: string, size = 15): string {
+  const brand = BRANDS[id];
+  if (!brand) throw new Error(`Unknown catalog brand: ${id}`);
+  const file = ["svg", "png"]
+    .map((ext) => join(CATALOG, "brands", `${id}.${ext}`))
+    .find(existsSync);
+  if (!file) throw new Error(`Catalog brand ${id} has no artwork.`);
+  const mime = file.endsWith(".svg") ? "image/svg+xml" : "image/png";
+  const src = `data:${mime};base64,${readFileSync(file).toString("base64")}`;
+  if (!brand.monochrome) {
     return `<img class="ic" src="${src}" width="${size}" height="${size}" style="object-fit:contain" alt="">`;
   }
   return `<span class="ic" style="width:${size}px;height:${size}px;background:currentColor;-webkit-mask:url(${src}) center/contain no-repeat;mask:url(${src}) center/contain no-repeat"></span>`;
