@@ -1,4 +1,4 @@
-import type { ComponentProps, CSSProperties, ReactNode } from "react";
+import { useState, type ComponentProps, type CSSProperties, type ReactNode } from "react";
 
 import { cn } from "~/lib/utils";
 
@@ -168,13 +168,18 @@ const GLYPHS: Record<SpinnerVariant, () => ReactNode> = {
   voice: stretchingPills,
 };
 
-export function Spinner({ className, variant = "loading", ...props }: SpinnerProps) {
+// CSS animations start when their element mounts, so spinners that appear at different moments
+// would turn out of phase. A negative delay of the current document time places every spinner on
+// one shared timeline that began at document start; infinite animations wrap the delay per cycle.
+export function Spinner({ className, style, variant = "loading", ...props }: SpinnerProps) {
+  const [syncDelay] = useState(() => `${-performance.now()}ms`);
   return (
     <span
       aria-label="Loading"
       role="status"
       {...props}
       className={cn("relative inline-block size-4 shrink-0", className)}
+      style={{ ...style, "--spinner-sync": syncDelay } as CSSProperties}
     >
       {GLYPHS[variant]()}
     </span>
