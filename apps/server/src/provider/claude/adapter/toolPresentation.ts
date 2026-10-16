@@ -11,6 +11,7 @@ import {
 import { extractTextContent } from "./messageContent";
 import { subagentName } from "@glade/shared/threads/subagentName";
 import { isSupportedLocalImagePath } from "@glade/shared/attachments/localPreviewFiles";
+import { asRecord } from "@glade/shared/transport/payloadValues";
 
 // Only the SDK's own launcher spawns a subagent; MCP or custom tools that mention "agent" are ordinary
 // tools and must not open child threads.
@@ -145,7 +146,7 @@ export function viewedImagePath(
   return typeof path === "string" &&
     isSupportedLocalImagePath(path) &&
     Array.isArray(result.content) &&
-    result.content.some((block) => (block as { type?: unknown } | null)?.type === "image")
+    result.content.some((block) => asRecord(block)?.type === "image")
     ? path
     : undefined;
 }
