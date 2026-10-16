@@ -11,12 +11,22 @@ const List = <S extends Schema.Top>(item: S, min: number, max: number) =>
 const invalid = (actual: unknown, message: string) =>
   new SchemaIssue.InvalidValue(Option.some(actual), { message });
 
+// Plain arithmetic over input ids, evaluated by the reader's client as inputs change.
+const FormulaSource = Text(300);
+
+const FormulaValue = Schema.Struct({
+  formula: FormulaSource,
+  prefix: Schema.optionalKey(Text(4)),
+  unit: Schema.optionalKey(Text(12)),
+  decimals: Schema.optionalKey(Schema.Int.check(Schema.isBetween({ minimum: 0, maximum: 6 }))),
+});
+
 const StatsBlock = Schema.Struct({
   type: Schema.Literal("stats"),
   items: List(
     Schema.Struct({
       label: Text(60),
-      value: Schema.Union([Text(40), Schema.Finite]),
+      value: Schema.Union([Text(40), Schema.Finite, FormulaValue]),
       detail: Schema.optionalKey(Text(80)),
       trend: Schema.optionalKey(Schema.Literals(["up", "down", "flat"])),
     }),
@@ -31,11 +41,22 @@ const ChartBlock = Schema.Struct({
   title: Schema.optionalKey(Text(120)),
   unit: Schema.optionalKey(Text(12)),
   labels: List(Text(40), 1, 60),
-  series: List(Schema.Struct({ name: Text(40), values: List(Schema.Finite, 1, 60) }), 1, 5),
+  series: List(
+    Schema.Union([
+      Schema.Struct({ name: Text(40), values: List(Schema.Finite, 1, 60) }),
+      Schema.Struct({ name: Text(40), formula: FormulaSource }),
+    ]),
+    1,
+    5,
+  ),
 }).check(
   Schema.makeFilter(
     (chart) => {
-      if (chart.series.some((series) => series.values.length !== chart.labels.length))
+      if (
+        chart.series.some(
+          (series) => "values" in series && series.values.length !== chart.labels.length,
+        )
+      )
         return invalid(chart.labels.length, "Every series needs exactly one value per label.");
       return (
         chart.kind === "bar" ||
@@ -93,7 +114,43 @@ const ChoicesBlock = Schema.Struct({
   ),
 });
 
+const InputId = Schema.String.check(Schema.isPattern(/^[A-Za-z][A-Za-z0-9_]{0,31}$/u));
+
+const SliderInput = Schema.Struct({
+  kind: Schema.Literal("slider"),
+  id: InputId,
+  label: Text(60),
+  min: Schema.Finite,
+  max: Schema.Finite,
+  step: Schema.optionalKey(Schema.Finite.check(Schema.isGreaterThan(0))),
+  value: Schema.Finite,
+  unit: Schema.optionalKey(Text(12)),
+}).check(
+  Schema.makeFilter(
+    (slider) =>
+      (slider.min < slider.max && slider.value >= slider.min && slider.value <= slider.max) ||
+      invalid(slider.value, "A slider needs min < max and a value between them."),
+    { identifier: "VisualSliderRange" },
+  ),
+);
+
+const ToggleInput = Schema.Struct({
+  kind: Schema.Literal("toggle"),
+  id: InputId,
+  label: Text(60),
+  value: Schema.Boolean,
+});
+
+export const VisualComponentInput = Schema.Union([SliderInput, ToggleInput]);
+export type VisualComponentInput = typeof VisualComponentInput.Type;
+
+const InputsBlock = Schema.Struct({
+  type: Schema.Literal("inputs"),
+  items: List(VisualComponentInput, 1, 6),
+});
+
 export const VisualComponentLeafBlock = Schema.Union([
+  InputsBlock,
   StatsBlock,
   ChartBlock,
   TableBlock,

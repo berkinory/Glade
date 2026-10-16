@@ -1,5 +1,5 @@
 import { ArrowDown02Icon, ArrowUp02Icon, MinusIcon } from "~/lib/icons";
-import type { VisualBlockOf } from "./visualBlockTypes";
+import type { ResolvedBlockOf } from "./visualBlockTypes";
 import { formatVisualNumber } from "./visualNumber";
 
 const TREND = {
@@ -8,7 +8,7 @@ const TREND = {
   flat: { Icon: MinusIcon, label: "Unchanged" },
 } as const;
 
-export function StatsBlock({ block }: { readonly block: VisualBlockOf<"stats"> }) {
+export function StatsBlock({ block }: { readonly block: ResolvedBlockOf<"stats"> }) {
   return (
     <dl className="grid grid-cols-[repeat(auto-fit,minmax(9rem,1fr))] gap-2">
       {block.items.map((item, index) => {

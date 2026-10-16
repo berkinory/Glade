@@ -1,6 +1,7 @@
 import { createHash } from "node:crypto";
 import fs from "node:fs/promises";
 import path from "node:path";
+import vm from "node:vm";
 import { parse, serialize, type DefaultTreeAdapterTypes } from "parse5";
 import { Data, Effect } from "effect";
 import {
@@ -55,6 +56,29 @@ function rasterMime(bytes: Buffer): string | null {
   return null;
 }
 
+const CLASSIC_SCRIPT_TYPES = new Set(["", "text/javascript", "application/javascript"]);
+
+// Compiling without running catches truncated or malformed scripts before anyone sees the visual.
+function compileInlineScript(node: Element, index: number): vm.Script | null {
+  const type =
+    node.attrs
+      .find((attr) => attr.name === "type")
+      ?.value.trim()
+      .toLowerCase() ?? "";
+  if (!CLASSIC_SCRIPT_TYPES.has(type) || node.attrs.some((attr) => attr.name === "src"))
+    return null;
+  const source = node.childNodes.map((child) => ("value" in child ? child.value : "")).join("");
+  try {
+    return new vm.Script(source, { filename: `inline script ${index}` });
+  } catch (error) {
+    const location = error instanceof Error ? error.stack?.split("\n")[0] : undefined;
+    throw new Error(
+      `${location ?? `inline script ${index}`}: ${error instanceof Error ? error.message : String(error)}`,
+      { cause: error },
+    );
+  }
+}
+
 function elements(node: Node): Element[] {
   const result: Element[] = [];
   const pending: Node[] = [node];
@@ -89,6 +113,7 @@ export const prepareVisualReply = (input: {
       const document = parse(html);
       const baseDir = file ? path.dirname(file.resolved) : root;
       let embeddedBytes = 0;
+      let inlineScripts = 0;
       for (const node of elements(document)) {
         if (node.tagName === "a" || node.tagName === "area") {
           node.attrs = node.attrs.filter(
@@ -106,6 +131,7 @@ export const prepareVisualReply = (input: {
           if (parent) parent.childNodes = parent.childNodes.filter((child) => child !== node);
           continue;
         }
+        if (node.tagName === "script") compileInlineScript(node, ++inlineScripts);
         if (node.tagName === "script" || node.tagName === "link") {
           const resource = node.attrs.find(
             (attr) => attr.name === (node.tagName === "script" ? "src" : "href"),

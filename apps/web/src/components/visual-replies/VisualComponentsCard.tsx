@@ -1,14 +1,18 @@
+import { useState } from "react";
 import type {
   VisualComponentBlock,
   VisualComponentsReply,
 } from "@glade/contracts/orchestration/visualComponents";
+import { defaultInputScope, visualComponentInputs } from "@glade/shared/visualComponentScope";
 import { ChartBlock } from "./blocks/ChartBlock";
 import { ChecklistBlock } from "./blocks/ChecklistBlock";
 import { ChoicesBlock } from "./blocks/ChoicesBlock";
+import { InputsBlock } from "./blocks/InputsBlock";
 import { StatsBlock } from "./blocks/StatsBlock";
 import { TableBlock } from "./blocks/TableBlock";
 import { TabsBlock } from "./blocks/TabsBlock";
 import type { VisualFollowUp } from "./blocks/visualBlockTypes";
+import { resolveVisualBlock } from "./VisualComponentsCard.logic";
 
 export function VisualComponentsCard({
   reply,
@@ -19,20 +23,27 @@ export function VisualComponentsCard({
   readonly activityId: string;
   readonly followUp: VisualFollowUp;
 }) {
+  // Inputs are shared by every block in the reply, including those inside tabs.
+  const [scope, setScope] = useState(() => defaultInputScope(visualComponentInputs(reply.blocks)));
+  const changeInput = (id: string, value: number) =>
+    setScope((current) => ({ ...current, [id]: value }));
   const renderBlock = (block: VisualComponentBlock, key: string) => {
-    switch (block.type) {
+    if (block.type === "tabs")
+      return <TabsBlock key={key} block={block} renderBlock={renderBlock} />;
+    const resolved = resolveVisualBlock(block, scope);
+    switch (resolved.type) {
+      case "inputs":
+        return <InputsBlock key={key} block={resolved} scope={scope} onChange={changeInput} />;
       case "stats":
-        return <StatsBlock key={key} block={block} />;
+        return <StatsBlock key={key} block={resolved} />;
       case "chart":
-        return <ChartBlock key={key} block={block} />;
+        return <ChartBlock key={key} block={resolved} />;
       case "table":
-        return <TableBlock key={key} block={block} />;
+        return <TableBlock key={key} block={resolved} />;
       case "checklist":
-        return <ChecklistBlock key={key} block={block} />;
+        return <ChecklistBlock key={key} block={resolved} />;
       case "choices":
-        return <ChoicesBlock key={key} block={block} followUp={followUp} />;
-      case "tabs":
-        return <TabsBlock key={key} block={block} renderBlock={renderBlock} />;
+        return <ChoicesBlock key={key} block={resolved} followUp={followUp} />;
     }
   };
   return (

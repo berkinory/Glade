@@ -5,19 +5,27 @@ import {
   linePoints,
   SERIES_COLORS,
 } from "./ChartBlock.logic";
-import type { VisualBlockOf } from "./visualBlockTypes";
+import type { ResolvedBlockOf } from "./visualBlockTypes";
 
-type Chart = VisualBlockOf<"chart">;
+type Chart = ResolvedBlockOf<"chart">;
 
 export function ChartBlock({ block }: { readonly block: Chart }) {
   return (
     <figure className="flex min-w-0 flex-col gap-2">
       {block.title ? <figcaption className="font-medium">{block.title}</figcaption> : null}
-      <div aria-hidden="true" className="flex min-w-0 flex-col gap-2">
-        {block.series.length > 1 ? <Legend block={block} /> : null}
-        {block.kind === "bar" ? <BarChart block={block} /> : <LineChart block={block} />}
-      </div>
-      <ChartDataTable block={block} />
+      {block.series.every((series) => series.values.every(Number.isFinite)) ? (
+        <>
+          <div aria-hidden="true" className="flex min-w-0 flex-col gap-2">
+            {block.series.length > 1 ? <Legend block={block} /> : null}
+            {block.kind === "bar" ? <BarChart block={block} /> : <LineChart block={block} />}
+          </div>
+          <ChartDataTable block={block} />
+        </>
+      ) : (
+        <p className="text-chat-meta text-muted-foreground">
+          This chart is not defined for the current inputs.
+        </p>
+      )}
     </figure>
   );
 }

@@ -94,6 +94,7 @@ export const VisualReplyPreviewLive = Layer.effect(
         void dialog.dismiss().catch(() => undefined);
       });
       const consoleLines: string[] = [];
+      const errors: string[] = [];
       const record = (message: string) => {
         if (consoleLines.length < 30) consoleLines.push(message.slice(0, 1000));
       };
@@ -102,6 +103,7 @@ export const VisualReplyPreviewLive = Layer.effect(
       });
       page.on("pageerror", (error) => {
         record(String(error));
+        if (errors.length < 5) errors.push(String(error).slice(0, 500));
       });
       await page.setContent(
         visualReplyDocument({
@@ -118,10 +120,13 @@ export const VisualReplyPreviewLive = Layer.effect(
       await page.evaluate(
         "document.fonts.ready.then(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))))",
       );
-      return { page, context, consoleLines };
+      return { page, context, consoleLines, errors };
     };
     const measureExpression =
       "(() => { const root = document.documentElement; return Math.max(0, Math.ceil(root.scrollHeight > root.clientHeight ? root.scrollHeight : root.getBoundingClientRect().height)); })()";
+    // Text, media, controls or any painted box count as content; an empty body or bare markup does not.
+    const hasContentExpression =
+      "(() => { const body = document.body; if (!body) return false; if (body.innerText.trim()) return true; for (const element of body.querySelectorAll('*')) { const rect = element.getBoundingClientRect(); if (rect.width < 1 || rect.height < 1) continue; if (/^(svg|canvas|img|video|picture|input|button|select|textarea)$/i.test(element.tagName)) return true; const style = getComputedStyle(element); if (style.backgroundImage !== 'none' || style.backgroundColor !== 'rgba(0, 0, 0, 0)' || style.boxShadow !== 'none' || parseFloat(style.borderTopWidth) > 0) return true; } return false; })()";
     const capture: VisualReplyPreviewShape["capture"] = (input) =>
       Effect.scoped(
         Effect.gen(function* () {
@@ -183,20 +188,25 @@ export const VisualReplyPreviewLive = Layer.effect(
             return yield* Effect.tryPromise({
               try: async () => {
                 const heights: (readonly [number, number])[] = [];
+                const errors = new Set<string>();
+                let hasContent = false;
                 for (let index = 0; index < VISUAL_REPLY_MEASURE_WIDTHS.length; index += 3) {
                   const batch = await Promise.all(
                     VISUAL_REPLY_MEASURE_WIDTHS.slice(index, index + 3).map(async (width) => {
-                      const { page, context } = await render(browser, html, width, "dark");
+                      const loaded = await render(browser, html, width, "dark");
                       try {
-                        return [width, Number(await page.evaluate(measureExpression))] as const;
+                        const height = Number(await loaded.page.evaluate(measureExpression));
+                        if (await loaded.page.evaluate(hasContentExpression)) hasContent = true;
+                        for (const error of loaded.errors) errors.add(error);
+                        return [width, height] as const;
                       } finally {
-                        await context.close();
+                        await loaded.context.close();
                       }
                     }),
                   );
                   heights.push(...batch);
                 }
-                return heights;
+                return { heights, errors: [...errors].slice(0, 5), hasContent };
               },
               catch: (cause) =>
                 new VisualReplyError({ message: `Height measurement failed: ${String(cause)}` }),

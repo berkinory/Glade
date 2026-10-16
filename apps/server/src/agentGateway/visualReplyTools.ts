@@ -15,6 +15,7 @@ import {
 } from "@glade/contracts/orchestration/visualReply";
 import { resolveThreadWorkspaceCwd } from "../checkpointing/Utils";
 import { prepareVisualReply, VisualReplyError } from "../visualReplies/visualReplySource";
+import { checkVisualComponents } from "../visualReplies/visualComponentsCheck";
 import type { VisualReplyPreviewShape } from "../visualReplies/Services/VisualReplyPreview";
 import type { ProjectionSnapshotQueryShape } from "../orchestration/Services/ProjectionSnapshotQuery";
 import type { OrchestrationEngineShape } from "../orchestration/Services/OrchestrationEngine";
@@ -36,13 +37,17 @@ const VISUAL_REPLY_THEME_GUIDE =
   "Live CSS variables: --glade-background (transparent reply canvas), --glade-foreground, --glade-muted, --glade-accent, --glade-border; --glade-surface/--glade-surface-foreground and --glade-secondary/--glade-secondary-foreground for intentional inner surfaces; --glade-input, --glade-ring, --glade-radius; --glade-chart-1 through --glade-chart-5; --glade-font-family, --glade-font-mono, --glade-font-size. Use these instead of hardcoded light/dark surface and text colors. Native controls follow the reader's color scheme. Theme changes preserve interactive state.";
 
 const VISUAL_COMPONENTS_DESCRIPTION =
-  "Publish a native visual reply inline in the current Glade conversation, drawn by Glade's own components in the reader's theme and font size. Prefer this over html_render whenever these blocks express the visual: headline stats, bar or line charts, sortable tables, checklists and follow-up choices, optionally grouped in tabs. Use html_render only for diagrams, mockups, custom layouts or interactions these blocks cannot express. No html_begin call is needed. Blocks carry plain text and numbers; markup is shown literally. " +
+  "Publish a native visual reply inline in the current Glade conversation, drawn by Glade's own components in the reader's theme and font size. Prefer this over html_render whenever these blocks express the visual: headline stats, bar or line charts, sortable tables, checklists, follow-up choices and sliders or toggles that recompute stats and charts, optionally grouped in tabs. Use html_render only for diagrams, mockups, custom layouts or interactions these blocks cannot express. No html_begin call is needed. Blocks carry plain text and numbers; markup is shown literally. " +
   "stats {items:[{label, value (text or number), detail?, trend?: up|down|flat}]}: 1-6 headline numbers. " +
   "chart {kind: bar|line, title?, unit?, labels, series:[{name, values}]}: one value per label in every series, up to 60 labels and 5 series; a line needs at least two labels. Put the unit in unit, not in labels. " +
   "table {title?, columns, rows}: one string or number per column in every row, up to 8 columns and 100 rows; readers can sort any column, and numeric columns align right. " +
   "checklist {title?, items:[{label, detail?, checked?}]}: readers can tick items while viewing; ticks are not saved or sent to you. " +
   "choices {prompt?, options:[{label, message?}]}: 1-6 follow-up options. After your turn ends, a reader's click sends message (default label) as their next message; choices are disabled once the conversation moves on. Put choices last and do not repeat them as text. " +
   "tabs {tabs:[{label, blocks}]}: 2-6 views of the same subject holding any blocks except tabs. " +
+  "inputs {items:[{kind: slider, id, label, min, max, step?, value, unit?} | {kind: toggle, id, label, value}]}: 1-6 controls readers change to explore what-if questions; values stay local to the view. " +
+  "Formulas make stats and charts follow the inputs: a stat value may be {formula, prefix?, unit?, decimals?}, and a chart series may give {name, formula} instead of values, evaluated once per label with x (the label as a number, or its position) and i (its 1-based position). " +
+  'A formula is arithmetic over input ids (toggles are 1 or 0): numbers, + - * / % ^, comparisons, && || !, parentheses, pi and abs, sqrt, floor, ceil, exp, log, round(x, digits?), pow, min, max, clamp(x, lo, hi), if(condition, then, else). Example: loan payment {formula: "principal * r / (1 - (1 + r) ^ -months)"}. ' +
+  "Before publishing, Glade evaluates every formula at the default inputs, at each slider's min and max and with each toggle flipped; any parse error, unknown name or non-finite result is returned to you and nothing is published. " +
   "At most 12 blocks and 64 KiB of JSON. Order blocks as the reader should read them, answer first. The reader sees the visual, so the final reply should add only information the visual does not convey.";
 
 const VISUAL_TOOL_ANNOTATIONS = {
@@ -226,7 +231,7 @@ export function makeVisualReplyTools(services: VisualReplyToolServices): readonl
       definition: {
         name: "html_render",
         description:
-          "Call html_begin before composing the HTML. Prefer components_render when its blocks (stats, charts, tables, checklists, choices, tabs) express the visual. Publish a persistent HTML visual reply inline in the current Glade conversation before the final answer. Use it for charts, diagrams, galleries, interactive tables or mockups. Provide exactly one of html or a workspace path. Prefer self-contained HTML with inline styles, scripts and SVG; public HTTP(S) resources and links are supported, and local raster images are embedded. Scripts run in an opaque sandbox without Glade APIs, browser-session access or persistent storage. Keep edits in memory and provide working inputs and completion controls when interaction is requested. Pass height (80–2000px), normally the preview contentHeight. A smaller height deliberately scrolls the content. Height is measured at nine widths when the preview browser is installed, then follows live layout up to 2000px. html_preview is an optional screenshot/console check for complex visuals or debugging; publishing never downloads a browser. The reader sees the visual, so the final reply should add only information the visual does not convey. " +
+          "Call html_begin before composing the HTML. Prefer components_render when its blocks (stats, charts, tables, checklists, choices, inputs with formulas, tabs) express the visual. Publish a persistent HTML visual reply inline in the current Glade conversation before the final answer. Use it for charts, diagrams, galleries, interactive tables or mockups. Provide exactly one of html or a workspace path. Prefer self-contained HTML with inline styles, scripts and SVG; public HTTP(S) resources and links are supported, and local raster images are embedded. Scripts run in an opaque sandbox without Glade APIs, browser-session access or persistent storage. Keep edits in memory and provide working inputs and completion controls when interaction is requested. Pass height (80–2000px), normally the preview contentHeight. A smaller height deliberately scrolls the content. Height is measured at nine widths when the preview browser is installed, then follows live layout up to 2000px. Inline classic scripts are syntax-checked on every call; when the preview browser is installed, publishing also loads the page and refuses a visual whose scripts throw while loading or that renders nothing, returning the errors to you. html_preview is an optional screenshot/console check for complex visuals or debugging; publishing never downloads a browser. The reader sees the visual, so the final reply should add only information the visual does not convey. " +
           VISUAL_REPLY_LAYOUT_GUIDE +
           " " +
           VISUAL_REPLY_THEME_GUIDE,
@@ -255,7 +260,19 @@ export function makeVisualReplyTools(services: VisualReplyToolServices): readonl
                   "Preview is unavailable, belongs to another session, or was captured from different HTML. Preview the current source again.",
               });
           }
-          const heights = yield* services.preview.measure(prepared.html);
+          const measurement = yield* services.preview.measure(prepared.html);
+          if (measurement && (measurement.errors.length > 0 || !measurement.hasContent))
+            return yield* new VisualReplyError({
+              message: [
+                "The visual was not published.",
+                ...(measurement.errors.length > 0
+                  ? ["Its scripts threw while loading:", ...measurement.errors]
+                  : []),
+                ...(measurement.hasContent ? [] : ["It renders no visible content."]),
+                "Fix it and call html_render again.",
+              ].join("\n"),
+            });
+          const heights = measurement?.heights;
           const attachment = yield* store({
             type: "file",
             bytes: Buffer.from(prepared.html),
@@ -309,6 +326,11 @@ export function makeVisualReplyTools(services: VisualReplyToolServices): readonl
       handler: (args, context) =>
         Effect.gen(function* () {
           const input = yield* Schema.decodeUnknownEffect(VisualComponentsInput)(args);
+          const problems = checkVisualComponents(input.blocks);
+          if (problems.length > 0)
+            return mcpToolResultError(
+              `The visual was not published. Fix these and call components_render again:\n${problems.join("\n")}`,
+            );
           const reply: VisualComponentsReply = {
             version: 1,
             format: "components",
