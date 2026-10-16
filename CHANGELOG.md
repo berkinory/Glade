@@ -25,7 +25,7 @@
 
 ### Fixed
 
-- Opening a step where Claude looked at an image now shows that image. ([41306bc87](https://github.com/berkinory/Glade/commit/41306bc877d0b220c149c0af8dee8a494655dbd4))
+- Opening a step where an agent looked at an image now shows that image. ([41306bc87](https://github.com/berkinory/Glade/commit/41306bc877d0b220c149c0af8dee8a494655dbd4), [94dd5f4fe](https://github.com/berkinory/Glade/commit/94dd5f4fe0f32d3ee0dcc29028353a098d30724f))
 - Chat status indicators in the sidebar stay at the right edge for chats on SSH and remote hosts. ([eb8b56261](https://github.com/berkinory/Glade/commit/eb8b5626180b0395fab8d8729dee3cba84d68e56))
 - Steering a chat while background work is still running no longer plays the completion sound. ([0334dc776](https://github.com/berkinory/Glade/commit/0334dc776d13442028f0a23f46e8611260a07c98))
 - Opening a background task from the Environment panel keeps the panel open while the chat scrolls to it. ([34518870c](https://github.com/berkinory/Glade/commit/34518870cda67c829ef240d07e21fb35f4b39449))
