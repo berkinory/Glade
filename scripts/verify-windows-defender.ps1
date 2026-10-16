@@ -35,8 +35,18 @@ try {
     throw 'Release qualification must run on a disposable GitHub-hosted Windows runner.'
   }
   Get-MpComputerStatus | ConvertTo-Json -Depth 6 | Set-Content (Join-Path $evidenceRoot 'status-initial.json')
-  # Hosted runner images may disable these modes; only strengthen the disposable CI machine.
-  Set-MpPreference -DisableRealtimeMonitoring $false -DisableArchiveScanning $false -DisableIOAVProtection $false -DisableBehaviorMonitoring $false -DisableScriptScanning $false
+  # Hosted runner images may disable these modes; only strengthen the disposable CI machine. Early in
+  # a job the Defender service can still be starting and reject the change (0x800106ba), so retry.
+  for ($attempt = 1; ; $attempt++) {
+    try {
+      Set-MpPreference -DisableRealtimeMonitoring $false -DisableArchiveScanning $false -DisableIOAVProtection $false -DisableBehaviorMonitoring $false -DisableScriptScanning $false
+      break
+    } catch {
+      if ($attempt -ge 6) { throw }
+      Write-Warning "Defender preferences could not be set yet (attempt $attempt): $($_.Exception.Message)"
+      Start-Sleep -Seconds 10
+    }
+  }
   # The update service fails intermittently on hosted runners, and a configured source can succeed
   # with stale staged definitions. Retry across sources; if every attempt fails or stays stale,
   # Assert-Protection still refuses the signatures.
