@@ -7,7 +7,7 @@ import { DiffWorkerPoolProvider } from "../components/DiffWorkerPoolProvider";
 import { APP_DISPLAY_NAME, APP_VERSION } from "../branding";
 import { DesktopWindowControls } from "../components/DesktopWindowControls";
 import { QueuedComposerDrainCoordinator } from "../components/QueuedComposerDrainCoordinator";
-import { UpdateProvider } from "../components/UpdateProvider";
+import { UpdateProvider } from "../components/updates/UpdateProvider";
 import { RunningChatsQuitCoordinator } from "../components/RunningChatsQuitCoordinator";
 import { Button, dialogActionButtonClassName } from "../components/ui/button";
 import { AnchoredToastProvider, ToastProvider } from "../components/ui/toast";

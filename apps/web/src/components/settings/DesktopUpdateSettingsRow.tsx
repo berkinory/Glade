@@ -1,25 +1,33 @@
 import { Button } from "~/components/ui/button";
-import { useUpdates } from "~/components/UpdateProvider";
+import { useUpdates } from "~/components/updates/UpdateProvider";
 import { SettingsRow } from "./SettingsPanelPrimitives";
 
 export function DesktopUpdateSettingsRow() {
-  const { updateButton } = useUpdates();
+  const { desktopUpdate, pill, openUpdates } = useUpdates();
   if (!window.desktopBridge) return null;
 
   return (
     <SettingsRow
       title="Updates"
-      description={updateButton.tooltip}
+      description={pill?.tooltip ?? desktopUpdate.desktopUpdateTooltip}
       control={
-        <Button
-          size="sm"
-          variant="outline"
-          disabled={updateButton.disabled}
-          onClick={updateButton.onClick}
-        >
-          {updateButton.label}
-          {updateButton.downloadPercent !== null ? ` ${updateButton.downloadPercent}%` : ""}
-        </Button>
+        pill ? (
+          <Button size="sm" variant="outline" onClick={openUpdates}>
+            Review updates
+          </Button>
+        ) : (
+          <Button
+            size="sm"
+            variant="outline"
+            disabled={
+              desktopUpdate.desktopUpdateButtonDisabled ||
+              desktopUpdate.desktopUpdateButtonAction === "none"
+            }
+            onClick={desktopUpdate.handleDesktopUpdateButtonClick}
+          >
+            {desktopUpdate.desktopUpdateButtonPresentation.label}
+          </Button>
+        )
       }
     />
   );

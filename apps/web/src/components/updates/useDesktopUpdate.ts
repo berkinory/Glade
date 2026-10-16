@@ -1,11 +1,11 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { DesktopUpdateState } from "@glade/contracts/ipc/ipc";
-import { isElectron } from "../env";
-import { persistAppStateNow, useStore } from "../store";
-import { listRunningChatsFromDesktopStore } from "../lib/runningChatsQuitConfirmation";
-import { stopLocalRunningChats } from "../lib/stopRunningChats";
+import { isElectron } from "../../env";
+import { persistAppStateNow, useStore } from "../../store";
+import { listRunningChatsFromDesktopStore } from "../../lib/runningChatsQuitConfirmation";
+import { stopLocalRunningChats } from "../../lib/stopRunningChats";
 import { DownloadIcon } from "~/lib/icons";
-import { toastManager } from "./ui/toast";
+import { toastManager } from "../ui/toast";
 import {
   type DesktopUpdateButtonAction,
   type DesktopUpdateButtonPresentation,
@@ -35,6 +35,7 @@ export interface DesktopUpdateControls {
   arm64IntelBuildWarningDescription: string | null;
   desktopUpdateDownloadPercent: number | null;
   desktopUpdateReadyVersion: string | null;
+  desktopCurrentVersion: string | null;
   preparing: boolean;
   installing: boolean;
   handleDesktopUpdateButtonClick: () => void;
@@ -353,6 +354,7 @@ export function useDesktopUpdate(): DesktopUpdateControls {
     arm64IntelBuildWarningDescription,
     desktopUpdateDownloadPercent,
     desktopUpdateReadyVersion,
+    desktopCurrentVersion: desktopUpdateState?.currentVersion ?? null,
     handleDesktopUpdateButtonClick,
   };
 }

@@ -6,7 +6,7 @@ import { startRemoteEnvironments, useRemoteEnvironments } from "../environments/
 import { readLocalNativeApi } from "../nativeApi";
 import { onServerWelcome, onThreadStreamFailure } from "../wsNativeApi";
 import { EnvironmentEventRouter } from "./-rootEventRouter";
-import { HostProviderUpdates } from "./-rootProviders";
+import { HostProviderStatusRefresh } from "./-rootProviders";
 
 // One stream runtime per environment: the local server, plus every SSH host that is reachable.
 export function EnvironmentRouters() {
@@ -58,11 +58,7 @@ export function EnvironmentRouters() {
               connection={environment.api}
               store={environment.store}
             />
-            <HostProviderUpdates
-              environmentKey={environment.key}
-              hostLabel={environment.host.label}
-              api={environment.api.api}
-            />
+            <HostProviderStatusRefresh environmentKey={environment.key} api={environment.api.api} />
           </Fragment>
         ) : null,
       )}

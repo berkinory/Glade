@@ -44,15 +44,6 @@ export async function withProviderUpdateTimeout<T>(input: {
   }
 }
 
-type ProviderUpdateFilterInput = {
-  readonly providers: ReadonlyArray<ServerProviderStatus>;
-  readonly serverSettings?:
-    | Pick<ServerSettings, "providers" | "enableProviderUpdateChecks">
-    | null
-    | undefined;
-  readonly oneClickOnly?: boolean;
-};
-
 type ProviderUpdateVisibilityInput = {
   readonly provider: ServerProviderStatus;
   readonly serverSettings?:
@@ -111,76 +102,26 @@ export function shouldShowProviderUpdateStatus(input: ProviderUpdateVisibilityIn
     : true;
 }
 
-function getVisibleProviderUpdateStatuses(
-  input: ProviderUpdateFilterInput,
-): ServerProviderStatus[] {
-  const oneClickOnly = input.oneClickOnly ?? false;
-
-  return input.providers.filter((provider) =>
-    shouldShowProviderUpdateStatus({
-      provider,
-      serverSettings: input.serverSettings,
-      oneClickOnly,
-    }),
-  );
-}
-
-export function getNotifiableProviderUpdateStatuses(
-  input: ProviderUpdateFilterInput & { readonly liveVersionCheckCompleted: boolean },
-): ServerProviderStatus[] {
-  if (!input.liveVersionCheckCompleted) {
-    return [];
-  }
-  return getVisibleProviderUpdateStatuses({ ...input, oneClickOnly: true });
-}
-
-export interface ProviderUpdateFailure {
-  readonly provider: ServerProviderStatus;
-  readonly reason: string;
-}
-
-export async function updateProviders(
+// Resolves with the reason the update did not take, or null once the provider is current.
+export async function updateProvider(
   api: NativeApi,
-  providers: ReadonlyArray<ServerProviderStatus>,
-): Promise<ProviderUpdateFailure[]> {
-  const failures: ProviderUpdateFailure[] = [];
-  for (const provider of providers) {
-    try {
-      const result = await withProviderUpdateTimeout({
-        provider: provider.provider,
-        request: api.server.updateProvider({ provider: provider.provider }),
-      });
-      const refreshed = result.providers.find((entry) => entry.provider === provider.provider);
-      const updateState = refreshed?.updateState;
-      if (updateState?.status === "failed" || updateState?.status === "unchanged") {
-        failures.push({
-          provider,
-          reason: updateState.message ?? "The update command did not complete successfully.",
-        });
-      } else if (refreshed?.versionAdvisory?.status === "behind_latest") {
-        failures.push({
-          provider,
-          reason: "The provider still appears outdated after updating.",
-        });
-      }
-    } catch (error) {
-      failures.push({
-        provider,
-        reason: error instanceof Error ? error.message : "The update request failed.",
-      });
+  provider: ServerProviderStatus,
+): Promise<string | null> {
+  try {
+    const result = await withProviderUpdateTimeout({
+      provider: provider.provider,
+      request: api.server.updateProvider({ provider: provider.provider }),
+    });
+    const refreshed = result.providers.find((entry) => entry.provider === provider.provider);
+    const updateState = refreshed?.updateState;
+    if (updateState?.status === "failed" || updateState?.status === "unchanged") {
+      return updateState.message ?? "The update command did not complete successfully.";
     }
+    if (refreshed?.versionAdvisory?.status === "behind_latest") {
+      return "The provider still appears outdated after updating.";
+    }
+    return null;
+  } catch (error) {
+    return error instanceof Error ? error.message : "The update request failed.";
   }
-  return failures;
-}
-
-export function providerUpdateNotificationKey(
-  providers: ReadonlyArray<ServerProviderStatus>,
-): string | null {
-  const parts = providers
-    .map((provider) =>
-      [provider.provider, provider.versionAdvisory?.latestVersion ?? "unknown"].join(":"),
-    )
-    .toSorted();
-
-  return parts.length > 0 ? parts.join("|") : null;
 }

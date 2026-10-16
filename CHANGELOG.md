@@ -29,6 +29,7 @@
 - Switching between many chats no longer keeps every recently opened chat in memory.
 - Glade's own code takes up less memory in every process.
 - Notifications share one look: a colored icon for success, warning, error and info, short titles with the details underneath, and clear buttons below the message.
+- Glade and provider updates on this computer and your SSH hosts are gathered in one Updates window: pick what to update, follow each one's progress, and Glade restarts only when you choose it. Separate update prompts for each machine are gone.
 
 ### Fixed
 

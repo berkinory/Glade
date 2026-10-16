@@ -32,6 +32,7 @@ import { SidebarGlyph } from "./sidebarGlyphs";
 import { Alert, AlertAction, AlertDescription, AlertTitle } from "./ui/alert";
 import { Button } from "./ui/button";
 import { DisclosureChevron } from "./ui/DisclosureChevron";
+import { Spinner } from "./ui/spinner";
 import { Tooltip, TooltipPopup, TooltipTrigger } from "./ui/tooltip";
 import {
   SidebarContent,
@@ -75,8 +76,8 @@ export function SidebarView({ context }: { context: ReturnType<typeof useSidebar
     activeSpaceId,
     threadsHydrated,
     desktopUpdate,
-    updateButton,
-    showUpdateButton,
+    updatePill,
+    openUpdates,
     navigate,
     isOnSettings,
     appSettings,
@@ -253,7 +254,11 @@ export function SidebarView({ context }: { context: ReturnType<typeof useSidebar
                     size="xs"
                     variant="outline"
                     disabled={desktopUpdateButtonDisabled}
-                    onClick={handleDesktopUpdateButtonClick}
+                    onClick={
+                      desktopUpdateButtonAction === "install"
+                        ? openUpdates
+                        : handleDesktopUpdateButtonClick
+                    }
                   >
                     {desktopUpdateButtonAction === "download"
                       ? "Preparing ARM build"
@@ -591,43 +596,31 @@ export function SidebarView({ context }: { context: ReturnType<typeof useSidebar
                 {!usageInSeparateRow && !desktopUpdate.preparing ? (
                   <SidebarUsageIndicators providers={sidebarUsageProviders} />
                 ) : null}
-                {showUpdateButton ? (
+                {updatePill ? (
                   <Tooltip>
                     <TooltipTrigger
                       render={
                         <button
                           type="button"
-                          aria-label={updateButton.tooltip}
-                          aria-disabled={updateButton.disabled || undefined}
-                          disabled={updateButton.disabled}
-                          className={cn(
-                            "inline-flex h-6 shrink-0 items-center justify-center gap-1.5 rounded-full bg-[var(--info)] px-2.5 font-system-ui text-ui-xs font-medium leading-none text-white transition-colors",
-                            updateButton.secondaryLabel !== null && "min-h-6 py-0.5",
-                            updateButton.disabled
-                              ? "cursor-not-allowed opacity-60"
-                              : "hover:brightness-110",
-                          )}
-                          onClick={updateButton.onClick}
+                          aria-label={updatePill.tooltip}
+                          className="inline-flex h-6 shrink-0 items-center justify-center gap-1.5 rounded-full bg-[var(--info)] px-2.5 font-system-ui text-ui-xs font-medium leading-none text-white transition-colors hover:brightness-110"
+                          onClick={openUpdates}
                         >
-                          <span className="flex min-w-0 flex-1 items-center justify-between gap-1.5 leading-tight">
-                            <span className="min-w-0 truncate text-center">
-                              {updateButton.label}
-                            </span>
-                            {updateButton.secondaryLabel ? (
-                              <span className="min-w-0 truncate text-center text-ui-xs text-white/80">
-                                {updateButton.secondaryLabel}
-                              </span>
-                            ) : null}
+                          {updatePill.busy ? (
+                            <Spinner variant="action" aria-hidden="true" className="size-3" />
+                          ) : null}
+                          <span className="min-w-0 truncate text-center leading-tight">
+                            {updatePill.label}
                           </span>
-                          {updateButton.downloadPercent !== null ? (
+                          {updatePill.downloadPercent !== null ? (
                             <span className="rounded-full bg-white/20 px-1.5 py-0.5 text-ui-2xs font-semibold tabular-nums text-white/95">
-                              {updateButton.downloadPercent}%
+                              {updatePill.downloadPercent}%
                             </span>
                           ) : null}
                         </button>
                       }
                     />
-                    <TooltipPopup side="top">{updateButton.tooltip}</TooltipPopup>
+                    <TooltipPopup side="top">{updatePill.tooltip}</TooltipPopup>
                   </Tooltip>
                 ) : (
                   <SidebarHelpMenu {...sidebarHelpMenuProps} />
