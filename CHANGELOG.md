@@ -8,9 +8,12 @@
 - Preview HTML files rendered alongside their source, just like Markdown. ([9773c8f9c](https://github.com/berkinory/Glade/commit/9773c8f9cf6ba9d9401093b1245b43ade36600ab))
 - Agents can reply with native charts, tables, checklists and clickable follow-up choices.
 - Connectors: connect services like Supabase, Linear, Notion and GitHub once in Settings, and agents in every new chat can use their tools, whichever provider runs it. ([6b42cbd9a](https://github.com/berkinory/Glade/commit/6b42cbd9a78bfb97684fcf2200bbac11df0b0735))
+- Install skills from skills.sh or GitHub after a preview of their source, scripts and security audits, for all your agents or only the ones you pick. ([db5bd2da2](https://github.com/berkinory/Glade/commit/db5bd2da2bb1f3a33c490fe9f223dec08e66bdf2))
+- Skills and MCP servers your agents set up themselves, including OpenCode, Cursor and Grok, appear in Settings and can be moved to all agents in one step without leaving duplicates behind. ([2b5112370](https://github.com/berkinory/Glade/commit/2b5112370368866dbb1d3f811e24eb97c50eb15d))
 
 ### Improved
 
+- Connectors can serve only the agents you choose, and the catalog adds OpenRouter, Superhuman, Craft, OpenStatus, Databuddy, Scalar and Browserbase. ([db5bd2da2](https://github.com/berkinory/Glade/commit/db5bd2da2bb1f3a33c490fe9f223dec08e66bdf2), [e4e22ade7](https://github.com/berkinory/Glade/commit/e4e22ade7221faf61451fdab2e1905f003d94254))
 - Model names are shorter where the provider is already shown.
 - Codex chats use much less memory.
 - The background server keeps a smaller database cache, so it uses less memory after long sessions.
