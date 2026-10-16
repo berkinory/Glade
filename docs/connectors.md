@@ -63,7 +63,9 @@ offer dynamic client registration.
 
 Serving it:
 
-- Build with `bun run --cwd apps/landing build` and serve `apps/landing/dist` as static files.
+- Deploy the root `docker-compose.yml` on Coolify. It builds
+  `infrastructure/docker/landing.Dockerfile` and serves the site on port 4001; set the service's
+  domain to `https://useglade.dev` with that port. The container publishes no host port.
 - `https://useglade.dev/oauth/client.json` must answer `200` with `Content-Type: application/json`
   directly: no redirects (apex only, no trailing slash, no `http` hop).
 - Behind Cloudflare, exempt `/oauth/*` from Bot Fight Mode, challenges and other bot protection.

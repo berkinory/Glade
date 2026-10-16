@@ -1,0 +1,26 @@
+name: glade
+
+services:
+  landing:
+    build:
+      context: .
+      dockerfile: infrastructure/docker/landing.Dockerfile
+    # Coolify's proxy reaches the container on its own network; set the domain to
+    # https://useglade.dev with port 4001 in Coolify. No host port, so nothing bypasses Cloudflare.
+    expose:
+      - "4001"
+    environment:
+      - NODE_ENV=production
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "bun",
+          "-e",
+          "fetch('http://127.0.0.1:4001/oauth/client.json').then((r) => process.exit(r.ok ? 0 : 1), () => process.exit(1))",
+        ]
+      start_period: 5s
+      interval: 30s
+      timeout: 5s
+      retries: 3
+    restart: unless-stopped

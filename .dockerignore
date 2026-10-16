@@ -1,0 +1,16 @@
+# Local and generated files are not Docker build inputs.
+.git
+**/node_modules
+**/.turbo
+**/dist
+**/dist-dev
+**/dist-electron
+**/native-dist
+**/.astro
+**/coverage
+**/.DS_Store
+**/.env
+**/.env.*
+!**/.env.example
+release
+.glade
