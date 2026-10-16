@@ -23,7 +23,8 @@ export interface McpConnectorPreset {
   readonly homepage: string;
   readonly category: McpConnectorCategory;
   readonly auth: McpConnectorPresetAuth;
-  // Where a "token" preset's user creates the token.
+  // Where the user creates a token: required for "token" presets; on "none" presets it marks an
+  // optional key the server accepts, typically for higher limits.
   readonly tokenUrl?: string;
 }
 
@@ -72,6 +73,7 @@ export const MCP_CONNECTOR_PRESETS: ReadonlyArray<McpConnectorPreset> = [
       description: "Web search and page contents",
       url: "https://mcp.exa.ai/mcp",
       homepage: "https://exa.ai",
+      tokenUrl: "https://dashboard.exa.ai/api-keys",
     },
     {
       id: "huggingface",

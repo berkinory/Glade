@@ -179,3 +179,55 @@ Umami’s official implementation is present in [the main repository](https://gi
 Unity artwork recognizes the supported Unity CLI MCP mode, not only the deprecated in-editor server. Spotify support is based on Spotify’s first-party connector listed by Anthropic. Ollama, Obsidian and Pinterest are not registered because a public first-party MCP server was not verified. Astro refers to the ASO application at tryastro.app, not the Astro web framework. Astro and Mobbin favicon artwork is stored as small PNGs. Mobbin follows the UI text color; Astro retains its two-tone mark.
 
 Executor is handled as an ordinary MCP server and receives its own logo. Upstream integrations, authentication and policies belong to Executor. Glade does not unpack calls hidden inside Executor’s code execution into separate work entries or infer their brands. Local setup supports HTTP (`http://127.0.0.1:4788/mcp`) or stdio (`executor mcp`); hosted endpoints come from the Executor connection UI.
+
+## Connector catalog artwork
+
+Settings → Connectors shows each catalog preset with this artwork, resolved through
+`resolveServiceBrand` from the preset id or name; chat tool rows resolve connector servers
+(`<name>_connector`) the same way. SVGs are minified with SVGO and PNGs larger than 128 pixels are
+downscaled. Marks that disappear on a dark surface are drawn as monochrome and follow the UI text
+color. DeepWiki and Pinecone have no usable artwork and fall back to their site favicon.
+
+| Service      | Component            | Asset source                                                                                                                               | Bytes |
+| ------------ | -------------------- | ------------------------------------------------------------------------------------------------------------------------------------------ | ----- |
+| Ahrefs       | `AhrefsIcon`         | [SVGL (MIT)](https://svgl.app/library/ahrefs.svg)                                                                                          | 402   |
+| Airtable     | `AirtableIcon`       | [Simple Icons (CC0)](https://raw.githubusercontent.com/simple-icons/simple-icons/develop/icons/airtable.svg)                               | 622   |
+| Astro        | `AstroFrameworkIcon` | [SVGL (MIT)](https://svgl.app/library/astro-icon-light.svg)                                                                                | 882   |
+| Braintrust   | `BraintrustIcon`     | [Official site](https://www.braintrust.dev/icon180.png?v=2)                                                                                | 5571  |
+| Brevo        | `BrevoIcon`          | [Simple Icons (CC0)](https://raw.githubusercontent.com/simple-icons/simple-icons/develop/icons/brevo.svg)                                  | 587   |
+| Bright Data  | `BrightDataIcon`     | [Official site](https://brightdata.com/wp-content/themes/brightdata/assets/images/favicon.png)                                             | 604   |
+| Buffer       | `BufferIcon`         | [Simple Icons (CC0)](https://raw.githubusercontent.com/simple-icons/simple-icons/develop/icons/buffer.svg)                                 | 286   |
+| Circleback   | `CirclebackIcon`     | [Official site](https://circleback.ai/apple-touch-icon.png)                                                                                | 4641  |
+| Cloudinary   | `CloudinaryIcon`     | [SVGL (MIT)](https://svgl.app/library/cloudinary.svg)                                                                                      | 1615  |
+| Coinbase     | `CoinbaseIcon`       | [SVGL (MIT)](https://svgl.app/library/coinbase.svg)                                                                                        | 796   |
+| Composio     | `ComposioIcon`       | [Official site](https://composio.dev/apple-touch-icon.png)                                                                                 | 5320  |
+| Contentful   | `ContentfulIcon`     | [Simple Icons (CC0)](https://raw.githubusercontent.com/simple-icons/simple-icons/develop/icons/contentful.svg)                             | 1823  |
+| DigitalOcean | `DigitalOceanIcon`   | [Simple Icons (CC0)](https://raw.githubusercontent.com/simple-icons/simple-icons/develop/icons/digitalocean.svg)                           | 424   |
+| Egnyte       | `EgnyteIcon`         | [Official site](https://www.egnyte.com/sites/default/files/2020-03/older-iPhone.png)                                                       | 3366  |
+| Expo         | `ExpoIcon`           | [SVGL (MIT)](https://svgl.app/library/expo.svg)                                                                                            | 330   |
+| Fathom       | `FathomIcon`         | [Official site](https://cdn.prod.website-files.com/6899da9beccbdbe92be49b5d/6a4282cf5eaacfd4a9c45526_fathom_favicon.png)                   | 3115  |
+| Fly.io       | `FlyIoIcon`          | [SVGL (MIT)](https://svgl.app/library/fly.svg)                                                                                             | 6101  |
+| Framer       | `FramerIcon`         | [SVGL (MIT)](https://svgl.app/library/framer.svg)                                                                                          | 186   |
+| GitMCP       | `GitMcpIcon`         | [Official site](https://gitmcp.io/img/icon_black_cropped.png)                                                                              | 17234 |
+| Greenhouse   | `GreenhouseIcon`     | [Simple Icons (CC0)](https://raw.githubusercontent.com/simple-icons/simple-icons/develop/icons/greenhouse.svg)                             | 902   |
+| Heroku       | `HerokuIcon`         | [SVGL (MIT)](https://svgl.app/library/heroku.svg)                                                                                          | 441   |
+| Honeycomb    | `HoneycombIcon`      | [Official site](https://www.honeycomb.io/favicon-32x32.png)                                                                                | 1485  |
+| Hostinger    | `HostingerIcon`      | [Simple Icons (CC0)](https://raw.githubusercontent.com/simple-icons/simple-icons/develop/icons/hostinger.svg)                              | 301   |
+| Klaviyo      | `KlaviyoIcon`        | [Official site](https://www.klaviyo.com/icons/icon-48x48.png)                                                                              | 1310  |
+| Lovable      | `LovableIcon`        | [SVGL (MIT)](https://svgl.app/library/lovable.svg)                                                                                         | 2501  |
+| Lucid        | `LucidIcon`          | [Simple Icons (CC0)](https://raw.githubusercontent.com/simple-icons/simple-icons/develop/icons/lucid.svg)                                  | 150   |
+| Microsoft    | `MicrosoftIcon`      | [SVGL (MIT)](https://svgl.app/library/microsoft.svg)                                                                                       | 356   |
+| monday.com   | `MondayIcon`         | [Official site](https://cdn.prod.website-files.com/656da6fea306219773d04208/65af6bd6e742d497b5f23f69_645898132bbaac20f1963919_256x256.png) | 4784  |
+| PayPal       | `PayPalIcon`         | [SVGL (MIT)](https://svgl.app/library/paypal.svg)                                                                                          | 644   |
+| Pulumi       | `PulumiIcon`         | [SVGL (MIT)](https://svgl.app/library/pulumi.svg)                                                                                          | 1942  |
+| Ramp         | `RampIcon`           | [Official site](https://ramp.com/apple-touch-icon.png)                                                                                     | 14405 |
+| Square       | `SquareIcon`         | [Simple Icons (CC0)](https://raw.githubusercontent.com/simple-icons/simple-icons/develop/icons/square.svg)                                 | 456   |
+| Svelte       | `SvelteIcon`         | [SVGL (MIT)](https://svgl.app/library/svelte.svg)                                                                                          | 1716  |
+| Todoist      | `TodoistIcon`        | [SVGL (MIT)](https://svgl.app/library/todoist.svg)                                                                                         | 1260  |
+| 21st.dev     | `TwentyFirstDevIcon` | [Official site](https://21st.dev/apple-touch-icon.png)                                                                                     | 3531  |
+| Twilio       | `TwilioIcon`         | [SVGL (MIT)](https://svgl.app/library/twilio.svg)                                                                                          | 501   |
+| Webflow      | `WebflowIcon`        | [SVGL (MIT)](https://svgl.app/library/webflow.svg)                                                                                         | 387   |
+| Wix          | `WixIcon`            | [Simple Icons (CC0)](https://raw.githubusercontent.com/simple-icons/simple-icons/develop/icons/wix.svg)                                    | 766   |
+| Wolfram      | `WolframIcon`        | [Simple Icons (CC0)](https://raw.githubusercontent.com/simple-icons/simple-icons/develop/icons/wolfram.svg)                                | 1227  |
+| Workato      | `WorkatoIcon`        | [Official site](https://www.workato.com/favicon.ico)                                                                                       | 1303  |
+| WorkOS       | `WorkOSIcon`         | [SVGL (MIT)](https://svgl.app/library/workos.svg)                                                                                          | 594   |

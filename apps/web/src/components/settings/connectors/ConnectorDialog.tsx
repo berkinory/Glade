@@ -222,7 +222,11 @@ function ConnectorDialogContent(
     <>
       <DialogHeader className="px-5 pt-5">
         <div className="mb-2">
-          <ConnectorIcon url={preset ? targetIconUrl(target) : url.trim() || "custom"} size="lg" />
+          <ConnectorIcon
+            brand={preset ? [preset.id, preset.name] : [name]}
+            url={preset ? targetIconUrl(target) : url.trim() || "custom"}
+            size="lg"
+          />
         </div>
         <DialogTitle>{preset ? `Connect ${preset.name}` : "Add a custom connector"}</DialogTitle>
         <DialogDescription>
@@ -264,19 +268,24 @@ function ConnectorDialogContent(
                 </Field>
               </>
             )}
-            {preset === null || needsToken ? (
+            {preset === null || preset.tokenUrl ? (
               <Field
-                label={needsToken ? `${preset?.name} token` : "Token"}
+                label={
+                  needsToken ? `${preset?.name} token` : preset ? `${preset.name} API key` : "Token"
+                }
                 hint={
-                  needsToken && preset?.tokenUrl ? (
-                    <button
-                      type="button"
-                      className="inline-flex items-center gap-0.5 text-foreground underline-offset-2 hover:underline"
-                      onClick={() => openExternal(preset.tokenUrl ?? "")}
-                    >
-                      Create a token
-                      <ArrowUpRightIcon aria-hidden className="size-3" />
-                    </button>
+                  preset?.tokenUrl ? (
+                    <span>
+                      {needsToken ? null : "Optional, for higher limits. "}
+                      <button
+                        type="button"
+                        className="inline-flex items-center gap-0.5 text-foreground underline-offset-2 hover:underline"
+                        onClick={() => openExternal(preset.tokenUrl ?? "")}
+                      >
+                        {needsToken ? "Create a token" : "Get a key"}
+                        <ArrowUpRightIcon aria-hidden className="size-3" />
+                      </button>
+                    </span>
                   ) : (
                     "Optional. Only for servers that take an API key instead of a sign-in."
                   )
@@ -298,7 +307,7 @@ function ConnectorDialogContent(
                 approval mode.
               </Fact>
               <Fact icon={<LockKeyholeIcon aria-hidden />}>
-                {preset?.auth === "none"
+                {preset?.auth === "none" && !token.trim()
                   ? `${preset.name} is public and needs no sign-in.`
                   : `Glade keeps the ${secretLabel} on this computer. Agents never see it.`}
               </Fact>
