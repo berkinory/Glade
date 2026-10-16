@@ -61,13 +61,6 @@ export const MCP_CONNECTOR_PRESETS: ReadonlyArray<McpConnectorPreset> = [
       tokenUrl: "https://context7.com/dashboard",
     },
     {
-      id: "deepwiki",
-      name: "DeepWiki",
-      description: "Ask questions about public GitHub repositories",
-      url: "https://mcp.deepwiki.com/mcp",
-      homepage: "https://deepwiki.com",
-    },
-    {
       id: "exa",
       name: "Exa",
       description: "Web search and page contents",
@@ -138,6 +131,13 @@ export const MCP_CONNECTOR_PRESETS: ReadonlyArray<McpConnectorPreset> = [
       description: "Computation, math and curated data",
       url: "https://agenttools.wolfram.com/mcp",
       homepage: "https://www.wolfram.com",
+    },
+    {
+      id: "scalar",
+      name: "Scalar",
+      description: "Scalar docs for API references and clients",
+      url: "https://scalar.com/mcp",
+      homepage: "https://scalar.com",
     },
   ]),
   ...shelf("data", "oauth", [
@@ -387,6 +387,20 @@ export const MCP_CONNECTOR_PRESETS: ReadonlyArray<McpConnectorPreset> = [
       url: "https://api.braintrust.dev/mcp",
       homepage: "https://www.braintrust.dev",
     },
+    {
+      id: "openstatus",
+      name: "OpenStatus",
+      description: "Uptime monitors, incidents and status pages",
+      url: "https://api.openstatus.dev/mcp",
+      homepage: "https://www.openstatus.dev",
+    },
+    {
+      id: "databuddy",
+      name: "Databuddy",
+      description: "Privacy-first web and product analytics",
+      url: "https://api.databuddy.cc/v1/mcp",
+      homepage: "https://www.databuddy.cc",
+    },
   ]),
   ...shelf("ai", "token", [
     {
@@ -396,6 +410,14 @@ export const MCP_CONNECTOR_PRESETS: ReadonlyArray<McpConnectorPreset> = [
       url: "https://mcp.wiro.ai/v1",
       homepage: "https://wiro.ai",
       tokenUrl: "https://wiro.ai/panel/project",
+    },
+    {
+      id: "browserbase",
+      name: "Browserbase",
+      description: "Drive cloud browsers to browse and extract pages",
+      url: "https://mcp.browserbase.com/mcp",
+      homepage: "https://www.browserbase.com",
+      tokenUrl: "https://www.browserbase.com/settings",
     },
   ]),
   ...shelf("ai", "none", [
@@ -409,6 +431,13 @@ export const MCP_CONNECTOR_PRESETS: ReadonlyArray<McpConnectorPreset> = [
     },
   ]),
   ...shelf("ai", "oauth", [
+    {
+      id: "openrouter",
+      name: "OpenRouter",
+      description: "Models, usage and credits across AI providers",
+      url: "https://mcp.openrouter.ai/mcp",
+      homepage: "https://openrouter.ai",
+    },
     {
       id: "perplexity",
       name: "Perplexity",
@@ -645,6 +674,20 @@ export const MCP_CONNECTOR_PRESETS: ReadonlyArray<McpConnectorPreset> = [
       description: "Meeting notes and action items",
       url: "https://circleback.ai/api/mcp",
       homepage: "https://circleback.ai",
+    },
+    {
+      id: "craft",
+      name: "Craft",
+      description: "Docs, notes and tasks in your Craft space",
+      url: "https://mcp.craft.do/my/mcp",
+      homepage: "https://www.craft.do",
+    },
+    {
+      id: "superhuman",
+      name: "Superhuman",
+      description: "Search, triage and draft email",
+      url: "https://mcp.mail.superhuman.com/mcp",
+      homepage: "https://superhuman.com",
     },
   ]),
   ...shelf("business", "oauth", [

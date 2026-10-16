@@ -186,7 +186,7 @@ Settings → Connectors shows each catalog preset with this artwork, resolved th
 `resolveServiceBrand` from the preset id or name; chat tool rows resolve connector servers
 (`<name>_connector`) the same way. SVGs are minified with SVGO and PNGs larger than 128 pixels are
 downscaled. Marks that disappear on a dark surface are drawn as monochrome and follow the UI text
-color. DeepWiki has no usable artwork and falls back to its site favicon.
+color.
 
 | Service       | Component            | Asset source                                                                                                                               | Bytes |
 | ------------- | -------------------- | ------------------------------------------------------------------------------------------------------------------------------------------ | ----- |

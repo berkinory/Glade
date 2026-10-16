@@ -42,6 +42,8 @@ const BADGE_ARTWORK = new Set([
   "openseo",
   "postman",
   "wiro",
+  "browserbase",
+  "superhuman",
 ]);
 
 // How much of its own canvas a padded glyph covers; it is enlarged to match the others.
