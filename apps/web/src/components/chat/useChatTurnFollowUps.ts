@@ -189,19 +189,28 @@ export function useChatTurnFollowUps({
             : null,
       });
       if (!editTarget.editable) {
-        toastManager.add({ type: "warning", title: "Only the latest message can be edited." });
+        toastManager.add({
+          type: "warning",
+          title: "Could not edit message",
+          description: "Only the latest message can be edited.",
+        });
         return false;
       }
       const originalMessage = currentThread.messages[editTarget.messageIndex];
       if (!originalMessage || originalMessage.role !== "user") {
         toastManager.add({
           type: "warning",
-          title: "This message is no longer available to edit.",
+          title: "Message unavailable",
+          description: "This message is no longer available to edit.",
         });
         return false;
       }
       if (isSendBusy || isConnecting || sendInFlightRef.current) {
-        toastManager.add({ type: "warning", title: "Wait for the current send to start." });
+        toastManager.add({
+          type: "warning",
+          title: "Send in progress",
+          description: "Wait for the current send to start.",
+        });
         return false;
       }
 
@@ -239,7 +248,11 @@ export function useChatTurnFollowUps({
       })()
         .catch((err: unknown) => {
           if (err instanceof Error && err.message.includes("Only the latest rollbackable")) {
-            toastManager.add({ type: "warning", title: "Only the latest message can be edited." });
+            toastManager.add({
+              type: "warning",
+              title: "Could not edit message",
+              description: "Only the latest message can be edited.",
+            });
             return false;
           }
           setThreadError(
@@ -274,7 +287,11 @@ export function useChatTurnFollowUps({
         getThreadFromState(useStore.getState(), activeThread.id) ?? activeThread;
       const status = currentThread.session?.orchestrationStatus;
       if (status === "running" || status === "starting") {
-        toastManager.add({ type: "warning", title: "Stop the current turn before rewinding." });
+        toastManager.add({
+          type: "warning",
+          title: "Stop the turn first",
+          description: "Stop the current turn before rewinding.",
+        });
         return;
       }
       const message = currentThread.messages.find((entry) => entry.id === messageId);

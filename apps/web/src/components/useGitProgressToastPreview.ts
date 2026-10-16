@@ -1,5 +1,6 @@
 import { useEffect, useRef } from "react";
 
+import { ArrowRight02Icon } from "~/lib/icons";
 import { toastManager } from "./ui/toast";
 
 type ToastType = "loading" | "success" | "error" | "info" | "warning";
@@ -13,8 +14,8 @@ interface PreviewStage {
 }
 
 const PREVIEW_STAGES: PreviewStage[] = [
-  { type: "loading", title: "Generating commit message..." },
-  { type: "loading", title: "Pushing..." },
+  { type: "loading", title: "Generating commit message…" },
+  { type: "loading", title: "Pushing…" },
   { type: "success", title: "Committed to codex/redesign" },
   { type: "success", title: "Pushed 3a1f2c to main" },
   {
@@ -67,8 +68,10 @@ export function useGitProgressToastPreview(enabled: boolean): void {
       const data = {
         ...PREVIEW_TOAST_DATA,
         ...(stage.copyText ? { copyText: stage.copyText } : {}),
+        ...(stage.hasAction
+          ? { actions: [{ label: "Open", icon: ArrowRight02Icon, onClick: () => {} }] }
+          : {}),
       };
-      const actionProps = stage.hasAction ? { children: "Open", onClick: () => {} } : undefined;
 
       if (toastIdRef.current) {
         toastManager.update(toastIdRef.current, {
@@ -77,7 +80,6 @@ export function useGitProgressToastPreview(enabled: boolean): void {
           description: stage.description,
           timeout: 0,
           data,
-          actionProps,
         });
       } else {
         toastIdRef.current = toastManager.add({
@@ -86,7 +88,6 @@ export function useGitProgressToastPreview(enabled: boolean): void {
           description: stage.description,
           timeout: 0,
           data,
-          actionProps,
         });
       }
     };

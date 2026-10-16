@@ -167,8 +167,8 @@ export function ConnectorsSettingsPanel() {
     await api.disconnect({ connectorId: connector.connectorId }).catch((error: unknown) =>
       toastManager.add({
         type: "error",
-        title: `Could not disconnect ${connector.name}`,
-        description: error instanceof Error ? error.message : "Try again.",
+        title: "Could not disconnect connector",
+        description: `Could not disconnect ${connector.name}. ${error instanceof Error ? error.message : "Try again."}`,
       }),
     );
   };

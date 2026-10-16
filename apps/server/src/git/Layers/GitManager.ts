@@ -1053,7 +1053,7 @@ export const makeGitManager = Effect.gen(function* () {
           yield* emit({
             kind: "phase_started",
             phase: "commit",
-            label: "Generating commit message...",
+            label: "Generating commit message…",
           });
         }
         suggestion = yield* resolveCommitAndBranchSuggestion({
@@ -1079,7 +1079,7 @@ export const makeGitManager = Effect.gen(function* () {
       yield* emit({
         kind: "phase_started",
         phase: "commit",
-        label: "Committing...",
+        label: "Committing…",
       });
 
       let currentHookName: string | null = null;
@@ -1866,7 +1866,7 @@ export const makeGitManager = Effect.gen(function* () {
           yield* progress.emit({
             kind: "phase_started",
             phase: "branch",
-            label: "Preparing feature branch...",
+            label: "Preparing feature branch…",
           });
           const result = yield* runFeatureBranchStep(
             input.cwd,
@@ -1913,7 +1913,7 @@ export const makeGitManager = Effect.gen(function* () {
               .emit({
                 kind: "phase_started",
                 phase: "push",
-                label: "Pushing...",
+                label: "Pushing…",
               })
               .pipe(
                 Effect.flatMap(() =>
@@ -1934,7 +1934,7 @@ export const makeGitManager = Effect.gen(function* () {
               .emit({
                 kind: "phase_started",
                 phase: "pr",
-                label: "Creating PR...",
+                label: "Creating PR…",
               })
               .pipe(
                 Effect.flatMap(() =>

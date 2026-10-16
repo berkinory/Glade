@@ -88,7 +88,7 @@ export function WorktreesSettingsPanel({ active }: { readonly active: boolean })
       if (snapshot === null) {
         toastManager.add({
           type: "error",
-          title: "Could not verify linked conversations",
+          title: "Could not verify linked chats",
           description: "Retry once the app reconnects to the server.",
         });
         return;
@@ -138,7 +138,7 @@ export function WorktreesSettingsPanel({ active }: { readonly active: boolean })
           title: "Worktree deleted",
           description:
             linkedArchivedThreadIds.length > 0
-              ? `${displayName} was removed and ${linkedArchivedThreadIds.length} archived ${pluralize(linkedArchivedThreadIds.length, "conversation")} were deleted.`
+              ? `${displayName} was removed and ${linkedArchivedThreadIds.length} archived ${pluralize(linkedArchivedThreadIds.length, "chat")} were deleted.`
               : `${displayName} was removed.`,
         });
       } catch (error) {
@@ -293,7 +293,7 @@ export function ArchivedSettingsPanel({ active }: { readonly active: boolean }) 
       toastManager.add({
         type: "error",
         title: "Could not restore chat",
-        description: error instanceof Error ? error.message : "Unable to restore the thread.",
+        description: error instanceof Error ? error.message : "Unable to restore the chat.",
       });
     }
   }, []);
@@ -333,7 +333,7 @@ export function ArchivedSettingsPanel({ active }: { readonly active: boolean }) 
         toastManager.add({
           type: "error",
           title: "Could not delete chat",
-          description: error instanceof Error ? error.message : "Unable to delete the thread.",
+          description: error instanceof Error ? error.message : "Unable to delete the chat.",
         });
       }
     },
@@ -365,7 +365,7 @@ export function ArchivedSettingsPanel({ active }: { readonly active: boolean }) 
       toastManager.add({
         type: "success",
         title: "Archived chats deleted",
-        description: `${rootThreadIds.length} archived ${pluralize(rootThreadIds.length, "thread was", "threads were")} permanently removed.`,
+        description: `${rootThreadIds.length} archived ${pluralize(rootThreadIds.length, "chat was", "chats were")} permanently removed.`,
       });
     } catch (error) {
       toastManager.add({

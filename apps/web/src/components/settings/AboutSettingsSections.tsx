@@ -31,7 +31,7 @@ export function AboutSettingsSections(props: {
       onError: (error) =>
         toastManager.add({
           type: "error",
-          title: "Sign out failed",
+          title: "Could not sign out",
           description: error instanceof Error ? error.message : "Unable to revoke this session.",
         }),
     });

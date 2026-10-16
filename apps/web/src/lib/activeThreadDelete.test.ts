@@ -153,8 +153,8 @@ describe("deleteActiveThreadFromClient", () => {
     expect(harness.toast).toHaveBeenCalledWith(
       expect.objectContaining({
         type: "error",
-        title: "Chat deleted, but worktree removal failed",
-        description: "Could not remove /repo-worktree. busy",
+        title: "Could not remove worktree",
+        description: "The chat was deleted, but Glade could not remove /repo-worktree. busy",
       }),
     );
   });

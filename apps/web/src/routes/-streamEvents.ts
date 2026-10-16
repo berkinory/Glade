@@ -7,6 +7,7 @@ import { type ServerConfig } from "@glade/contracts/server/server";
 import { type ServerSettingsView } from "@glade/contracts/settings/settings";
 import { defaultTerminalTitleForCliKind } from "@glade/shared/threads/terminalThreads";
 import { didProviderEnablementChange } from "../appSettings";
+import { ExternalLinkIcon } from "~/lib/icons";
 import { toastManager } from "../components/ui/toast";
 import { resolveAndPersistPreferredEditor } from "../editorPreferences";
 import { providerModelDiscoveryInvalidationFingerprint } from "../lib/providerDiscoveryInvalidation";
@@ -399,27 +400,32 @@ export function subscribeStreamEvents(
         type: "warning",
         title: "Invalid keybindings configuration",
         description: issue.message,
-        actionProps: {
-          children: "Open keybindings.json",
-          onClick: () => {
-            void context.queryClient
-              .ensureQueryData(serverConfigQueryOptions())
-              .then((config) => {
-                const editor = resolveAndPersistPreferredEditor(config.availableEditors);
-                if (!editor) {
-                  throw new Error("No available editors found.");
-                }
-                return context.api.shell.openInEditor(config.keybindingsConfigPath, editor);
-              })
-              .catch((error) => {
-                toastManager.add({
-                  type: "error",
-                  title: "Unable to open keybindings file",
-                  description:
-                    error instanceof Error ? error.message : "Unknown error opening file.",
-                });
-              });
-          },
+        data: {
+          actions: [
+            {
+              label: "Open keybindings.json",
+              icon: ExternalLinkIcon,
+              onClick: () => {
+                void context.queryClient
+                  .ensureQueryData(serverConfigQueryOptions())
+                  .then((config) => {
+                    const editor = resolveAndPersistPreferredEditor(config.availableEditors);
+                    if (!editor) {
+                      throw new Error("No available editors found.");
+                    }
+                    return context.api.shell.openInEditor(config.keybindingsConfigPath, editor);
+                  })
+                  .catch((error) => {
+                    toastManager.add({
+                      type: "error",
+                      title: "Could not open keybindings file",
+                      description:
+                        error instanceof Error ? error.message : "Unknown error opening file.",
+                    });
+                  });
+              },
+            },
+          ],
         },
       });
     }),

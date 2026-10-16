@@ -4,6 +4,7 @@ import { isElectron } from "../env";
 import { persistAppStateNow, useStore } from "../store";
 import { listRunningChatsFromDesktopStore } from "../lib/runningChatsQuitConfirmation";
 import { stopLocalRunningChats } from "../lib/stopRunningChats";
+import { DownloadIcon } from "~/lib/icons";
 import { toastManager } from "./ui/toast";
 import {
   type DesktopUpdateButtonAction,
@@ -87,12 +88,17 @@ export function useDesktopUpdate(): DesktopUpdateControls {
       const recommendManualDownload = shouldRecommendManualDesktopDownload(input.state);
       const fallbackProps = releaseUrl
         ? {
-            data: { copyText: releaseUrl },
-            actionProps: {
-              children: "Download manually",
-              onClick: () => {
-                void window.desktopBridge?.openExternal(releaseUrl);
-              },
+            data: {
+              copyText: releaseUrl,
+              actions: [
+                {
+                  label: "Download manually",
+                  icon: DownloadIcon,
+                  onClick: () => {
+                    void window.desktopBridge?.openExternal(releaseUrl);
+                  },
+                },
+              ],
             },
           }
         : {};
@@ -119,8 +125,8 @@ export function useDesktopUpdate(): DesktopUpdateControls {
     surfaceDesktopUpdateError({
       title:
         desktopUpdateState.errorContext === "install"
-          ? "Couldn’t finish updating"
-          : "Couldn’t download the update",
+          ? "Could not finish updating"
+          : "Could not download update",
       description:
         desktopUpdateState.message ??
         "The in-app update could not complete. You can download it manually.",

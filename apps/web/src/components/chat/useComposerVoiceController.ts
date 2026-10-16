@@ -11,6 +11,7 @@ import {
 } from "../../lib/voiceRecorder";
 import { readNativeApi } from "../../nativeApi";
 import type { RefreshProviderStatusesNow } from "../../hooks/useProviderStatusRefresh";
+import { RefreshCwIcon } from "~/lib/icons";
 import { toastManager } from "../ui/toast";
 import {
   deriveComposerVoiceState,
@@ -64,7 +65,7 @@ export interface UseComposerVoiceControllerResult {
 }
 
 const DEFAULT_FAILURE_COPY: ComposerVoiceFailureCopy = {
-  transcriptionFailedTitle: "Voice transcription failed",
+  transcriptionFailedTitle: "Could not transcribe voice note",
   fallbackDescription: "The voice note could not be transcribed.",
   authExpiredTitle: "Sign in to ChatGPT again",
   authExpiredDescription:
@@ -201,21 +202,24 @@ export function useComposerVoiceController(
     if (activeProviderStatus?.authStatus === "unauthenticated") {
       toastManager.add({
         type: "error",
-        title: "Sign in to ChatGPT in Codex before using voice notes.",
+        title: "Sign in to use voice notes",
+        description: "Sign in to ChatGPT in Codex before using voice notes.",
       });
       return;
     }
     if (!canStartVoiceNotes) {
       toastManager.add({
         type: "error",
-        title: "Voice notes require a ChatGPT-authenticated Codex session.",
+        title: "Voice notes unavailable",
+        description: "Voice notes require a ChatGPT-authenticated Codex session.",
       });
       return;
     }
     if (pendingUserInputCount > 0) {
       toastManager.add({
         type: "error",
-        title: "Answer plan questions before recording a voice note.",
+        title: "Answer plan questions first",
+        description: "Answer plan questions before recording a voice note.",
       });
       return;
     }
@@ -267,7 +271,8 @@ export function useComposerVoiceController(
     if (!api || voiceProvider === undefined) {
       toastManager.add({
         type: "error",
-        title: "Voice transcription is unavailable right now.",
+        title: "Voice transcription unavailable",
+        description: "Try again in a moment.",
       });
       void cancelVoiceRecording();
       return Promise.resolve();
@@ -293,7 +298,8 @@ export function useComposerVoiceController(
         if (!payload) {
           toastManager.add({
             type: "warning",
-            title: "No audio was captured.",
+            title: "No audio captured",
+            description: "Check your microphone and try again.",
           });
           return;
         }
@@ -336,11 +342,16 @@ export function useComposerVoiceController(
           description: authExpired ? failureCopy.authExpiredDescription : description,
           ...(authExpired
             ? {
-                actionProps: {
-                  children: failureCopy.refreshActionLabel,
-                  onClick: () => {
-                    void refreshVoiceStatus();
-                  },
+                data: {
+                  actions: [
+                    {
+                      label: failureCopy.refreshActionLabel,
+                      icon: RefreshCwIcon,
+                      onClick: () => {
+                        void refreshVoiceStatus();
+                      },
+                    },
+                  ],
                 },
               }
             : {}),

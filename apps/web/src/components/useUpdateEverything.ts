@@ -17,6 +17,7 @@ import {
   shouldShowProviderUpdateStatus,
   updateProviders,
 } from "../providerUpdates";
+import { RefreshCwIcon } from "~/lib/icons";
 import { toastManager } from "./ui/toast";
 import { useDesktopUpdate, type DesktopUpdateControls } from "./useDesktopUpdate";
 
@@ -168,10 +169,16 @@ export function useUpdateEverything(): UpdateControls {
           )
           .join("\n"),
         timeout: 0,
-        ...(manualCommands.length > 0 ? { data: { copyText: manualCommands.join("\n") } } : {}),
-        ...(restartAfter
-          ? { actionProps: { children: "Restart anyway", onClick: desktop.install } }
-          : {}),
+        data: {
+          ...(manualCommands.length > 0 ? { copyText: manualCommands.join("\n") } : {}),
+          ...(restartAfter
+            ? {
+                actions: [
+                  { label: "Restart anyway", icon: RefreshCwIcon, onClick: desktop.install },
+                ],
+              }
+            : {}),
+        },
       });
       return;
     }
@@ -181,8 +188,8 @@ export function useUpdateEverything(): UpdateControls {
     }
     toastManager.add({
       type: "success",
-      title: providerCount === 1 ? "Provider updated" : `${providerCount} providers updated`,
-      description: "New sessions will use the refreshed provider tools.",
+      title: providerCount === 1 ? "Provider updated" : "Providers updated",
+      description: `${providerCount === 1 ? "" : `${providerCount} providers updated. `}New sessions will use the refreshed provider tools.`,
       timeout: 6000,
     });
   };

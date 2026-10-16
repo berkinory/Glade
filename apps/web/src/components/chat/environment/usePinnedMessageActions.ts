@@ -44,7 +44,7 @@ function matchesPinState(pin: PinnedMessage | undefined, expected: PinnedMessage
 function handlePinnedMessageDispatchError(error: unknown) {
   toastManager.add({
     type: "error",
-    title: "Failed to update pinned message",
+    title: "Could not update pinned message",
     description:
       error instanceof Error ? error.message : "The pinned message change could not be saved.",
   });
@@ -53,7 +53,7 @@ function handlePinnedMessageDispatchError(error: unknown) {
 function handleThreadNotesDispatchError(error: unknown) {
   toastManager.add({
     type: "error",
-    title: "Failed to save notes",
+    title: "Could not save notes",
     description: error instanceof Error ? error.message : "The note change could not be saved.",
   });
 }

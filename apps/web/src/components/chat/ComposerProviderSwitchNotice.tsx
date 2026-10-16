@@ -46,8 +46,11 @@ export function ComposerProviderSwitchNotice({
     } catch (error) {
       toastManager.add({
         type: "error",
-        title: `Could not switch back to ${source}`,
-        description: error instanceof Error ? error.message : "Try again in a moment.",
+        title: "Could not switch provider",
+        description:
+          error instanceof Error
+            ? error.message
+            : `Could not switch back to ${source}. Try again in a moment.`,
       });
     } finally {
       setUndoing(false);

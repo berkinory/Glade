@@ -97,7 +97,7 @@ export function useChatActionsController({
     void interruptThreadTurn(activeThread.id).catch((error: unknown) => {
       toastManager.add({
         type: "error",
-        title: "Could not stop the current response",
+        title: "Could not stop response",
         description:
           error instanceof Error
             ? error.message
@@ -177,7 +177,7 @@ export function useChatActionsController({
         if (!handoffPending && (handoffDisabled || !handoffTargetProviders.includes(provider))) {
           toastManager.add({
             type: "warning",
-            title: "Provider handoff unavailable",
+            title: "Provider switch unavailable",
             description:
               "Wait for the current task to finish and check that the provider is enabled.",
           });
@@ -247,7 +247,8 @@ export function useChatActionsController({
       if (pendingUserInputs.length > 0) {
         toastManager.add({
           type: "error",
-          title: "Attach images after answering plan questions.",
+          title: "Answer plan questions first",
+          description: "Attach images after answering plan questions.",
         });
         return;
       }
@@ -264,7 +265,8 @@ export function useChatActionsController({
       if (pendingUserInputs.length > 0) {
         toastManager.add({
           type: "error",
-          title: "Attach files after answering plan questions.",
+          title: "Answer plan questions first",
+          description: "Attach files after answering plan questions.",
         });
         return;
       }

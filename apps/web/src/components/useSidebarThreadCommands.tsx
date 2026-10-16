@@ -76,7 +76,7 @@ export function useSidebarThreadCommands(context: ReturnType<typeof useSidebarPr
     }).catch((error) => {
       toastManager.add({
         type: "error",
-        title: "Failed to rename chat",
+        title: "Could not rename chat",
         description: error instanceof Error ? error.message : "An error occurred.",
       });
       return null;
@@ -85,7 +85,8 @@ export function useSidebarThreadCommands(context: ReturnType<typeof useSidebarPr
     if (outcome === "empty") {
       toastManager.add({
         type: "warning",
-        title: "Chat title cannot be empty",
+        title: "Chat title is empty",
+        description: "Chat title cannot be empty.",
       });
     }
   };
@@ -300,7 +301,7 @@ export function useSidebarThreadCommands(context: ReturnType<typeof useSidebarPr
         }
         toastManager.add({
           type: "error",
-          title: "Unable to open terminal",
+          title: "Could not open terminal",
           description: error instanceof Error ? error.message : "The terminal could not be opened.",
         });
       }

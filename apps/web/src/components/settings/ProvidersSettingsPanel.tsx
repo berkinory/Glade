@@ -474,10 +474,10 @@ export function ProvidersSettingsPanel({
               const manualCommand = refreshedProvider?.versionAdvisory?.updateCommand?.trim();
               toastManager.add({
                 type: "error",
-                title: `Could not update ${PROVIDER_DISPLAY_NAMES[provider]}`,
+                title: "Could not update provider",
                 description: manualCommand
-                  ? `${failureMessage}\n\nCopy the command below to update manually in a terminal.`
-                  : failureMessage,
+                  ? `${PROVIDER_DISPLAY_NAMES[provider]}: ${failureMessage}\n\nCopy the command below to update manually in a terminal.`
+                  : `${PROVIDER_DISPLAY_NAMES[provider]}: ${failureMessage}`,
                 ...(manualCommand
                   ? {
                       data: {
@@ -490,15 +490,15 @@ export function ProvidersSettingsPanel({
             }
             toastManager.add({
               type: "success",
-              title: `${PROVIDER_DISPLAY_NAMES[provider]} update finished`,
-              description: "New sessions will use the refreshed provider.",
+              title: "Provider updated",
+              description: `${PROVIDER_DISPLAY_NAMES[provider]} was updated. New sessions will use the refreshed provider.`,
             });
           })
           .catch((error: unknown) => {
             toastManager.add({
               type: "error",
-              title: `Could not update ${PROVIDER_DISPLAY_NAMES[provider]}`,
-              description: error instanceof Error ? error.message : "The provider update failed.",
+              title: "Could not update provider",
+              description: `${PROVIDER_DISPLAY_NAMES[provider]}: ${error instanceof Error ? error.message : "The provider update failed."}`,
             });
           });
       } finally {

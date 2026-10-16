@@ -51,7 +51,7 @@ export function useComposerForkCommands(input: {
       if (!api || !activeProject || !activeThread || !isServerThread) {
         toastManager.add({
           type: "warning",
-          title: "Fork is unavailable",
+          title: "Fork unavailable",
           description: "Only existing server-backed chats can be forked right now.",
         });
         return true;
@@ -92,7 +92,11 @@ export function useComposerForkCommands(input: {
         selectedProvider !== activeThread.modelSelection.provider ||
         !forkPointOf(forkMessage)
       ) {
-        toastManager.add({ type: "warning", title: "This message cannot be forked" });
+        toastManager.add({
+          type: "warning",
+          title: "Fork unavailable",
+          description: "This message cannot be forked.",
+        });
         return false;
       }
       const nextThreadId = newThreadId();
@@ -149,7 +153,7 @@ export function useComposerForkCommands(input: {
       if (!api || !activeThread || !activeProject) {
         toastManager.add({
           type: "warning",
-          title: "Review is unavailable",
+          title: "Review unavailable",
           description: "Open a project chat before starting a native review.",
         });
         return false;

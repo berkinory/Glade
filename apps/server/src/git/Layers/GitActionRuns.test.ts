@@ -42,7 +42,7 @@ const runTest = <A, E>(
           const publish = (event: GitActionProgressEvent) =>
             options?.progressReporter?.publish(event) ?? Effect.void;
           yield* publish({ ...base, kind: "action_started", phases: ["push"] });
-          yield* publish({ ...base, kind: "phase_started", phase: "push", label: "Pushing..." });
+          yield* publish({ ...base, kind: "phase_started", phase: "push", label: "Pushing…" });
           yield* Deferred.await(release);
           yield* publish({ ...base, kind: "action_finished", result });
           return result;

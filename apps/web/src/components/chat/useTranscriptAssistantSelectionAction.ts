@@ -187,7 +187,8 @@ export function useTranscriptAssistantSelectionAction(
       setPendingTranscriptSelectionAction(null);
       toastManager.add({
         type: "warning",
-        title: `You can attach up to ${PROVIDER_SEND_TURN_MAX_ATTACHMENTS} references per message.`,
+        title: "Reference limit reached",
+        description: `You can attach up to ${PROVIDER_SEND_TURN_MAX_ATTACHMENTS} references per message.`,
       });
       return;
     }
@@ -198,7 +199,8 @@ export function useTranscriptAssistantSelectionAction(
       if (getAssistantSelectionValidationError(pendingSelection.selection) === "too-long") {
         toastManager.add({
           type: "warning",
-          title: "Selections can be up to 4,000 characters.",
+          title: "Selection too long",
+          description: "Selections can be up to 4,000 characters.",
         });
       }
       return;

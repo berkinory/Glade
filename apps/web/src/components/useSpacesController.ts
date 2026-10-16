@@ -318,8 +318,8 @@ export function useSpacesController(input: {
         } catch (error) {
           toastManager.add({
             type: "error",
-            title: `${value.name} was created, but the project was not moved`,
-            description: error instanceof Error ? error.message : "Try moving the project again.",
+            title: "Could not move project",
+            description: `${value.name} was created, but the project was not moved. ${error instanceof Error ? error.message : "Try moving the project again."}`,
           });
           return;
         }
@@ -378,7 +378,7 @@ export function useSpacesController(input: {
       } catch (error) {
         toastManager.add({
           type: "error",
-          title: "Unable to delete space",
+          title: "Could not delete space",
           description: error instanceof Error ? error.message : "Try again.",
         });
       }
@@ -404,7 +404,7 @@ export function useSpacesController(input: {
     } catch (error) {
       toastManager.add({
         type: "error",
-        title: "Unable to rename space",
+        title: "Could not rename space",
         description: error instanceof Error ? error.message : "Try again.",
       });
     }
@@ -436,7 +436,7 @@ export function useSpacesController(input: {
         }
         toastManager.add({
           type: "error",
-          title: "Unable to confirm space order",
+          title: "Could not confirm space order",
           description: error instanceof Error ? error.message : "Try again.",
         });
       });
@@ -478,7 +478,7 @@ export function useSpacesController(input: {
       } catch (error) {
         toastManager.add({
           type: "error",
-          title: "Unable to move project",
+          title: "Could not move project",
           description: error instanceof Error ? error.message : "Try again.",
         });
       }

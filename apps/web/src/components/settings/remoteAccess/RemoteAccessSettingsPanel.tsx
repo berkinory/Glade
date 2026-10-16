@@ -26,11 +26,11 @@ import { deviceActivity, deviceName, reachabilityText } from "./remoteAccess.log
 
 const TAILSCALE_DOWNLOAD_URL = "https://tailscale.com/download";
 
-function reportError(title: string, error: unknown): void {
+function reportError(title: string, error: unknown, subject?: string): void {
   toastManager.add({
     type: "error",
     title,
-    description: error instanceof Error ? error.message : "Try again.",
+    description: `${subject ? `${subject} ` : ""}${error instanceof Error ? error.message : "Try again."}`,
   });
 }
 
@@ -241,7 +241,9 @@ function DeviceRow(props: { readonly device: AuthClientSession; readonly api: Re
     if (!confirmed) return;
     void api
       .revokeDevice({ sessionId: device.sessionId })
-      .catch((error: unknown) => reportError(`Could not remove ${name}`, error));
+      .catch((error: unknown) =>
+        reportError("Could not remove device", error, `Could not remove ${name}.`),
+      );
   };
   return (
     <SettingsListRow

@@ -5,6 +5,7 @@ import { useNavigate } from "@tanstack/react-router";
 import type { NativeApi } from "@glade/contracts/ipc/ipc";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useAppSettings } from "../appSettings";
+import { DownloadIcon, SettingsIcon } from "~/lib/icons";
 import { toastManager } from "../components/ui/toast";
 import { useActiveEnvironment } from "../environments/activeEnvironment";
 import { LOCAL_ENVIRONMENT, type EnvironmentKey } from "../environments/environmentKey";
@@ -191,16 +192,17 @@ async function runProviderUpdateAll(params: {
   isUpdatingAllRef.current = true;
   progressToastDismissedRef.current = false;
   setIsUpdatingAll(true);
+  const updatingDescription =
+    providers.length === 1
+      ? `Updating ${PROVIDER_DISPLAY_NAMES[providers[0]!.provider]}${onMachine}.`
+      : `Updating ${providers.length} providers${onMachine}.`;
   const trackedToast = activeToastRef.current;
   const toastId =
     trackedToast?.toastId ??
     toastManager.add({
       type: "loading",
-      title: `Updating providers${onMachine}...`,
-      description:
-        providers.length === 1
-          ? `Updating ${PROVIDER_DISPLAY_NAMES[providers[0]!.provider]}.`
-          : `Updating ${providers.length} providers.`,
+      title: "Updating providers…",
+      description: updatingDescription,
       timeout: 0,
     });
   activeToastRef.current = { kind: "update", key: activeNotificationKey, toastId };
@@ -214,12 +216,8 @@ async function runProviderUpdateAll(params: {
 
   toastManager.update(toastId, {
     type: "loading",
-    title: `Updating providers${onMachine}...`,
-    description:
-      providers.length === 1
-        ? `Updating ${PROVIDER_DISPLAY_NAMES[providers[0]!.provider]}.`
-        : `Updating ${providers.length} providers.`,
-    actionProps: undefined,
+    title: "Updating providers…",
+    description: updatingDescription,
     data: { onClose: dismissProgressToast },
     timeout: 0,
   });
@@ -267,16 +265,17 @@ async function runProviderUpdateAll(params: {
     const failureLines = failures
       .map(({ provider, reason }) => `${PROVIDER_DISPLAY_NAMES[provider.provider]}: ${reason}`)
       .join("\n");
+    const failureHeading = hostLabel ? `Provider updates failed${onMachine}.\n` : "";
     toastManager.update(toastId, {
       type: "error",
       title:
         failures.length === providers.length
-          ? `Provider updates failed${onMachine}`
-          : `Some provider updates failed${onMachine}`,
+          ? "Could not update providers"
+          : "Could not update some providers",
       description:
         manualCommands.length > 0
-          ? `${failureLines}\n\nCopy the command${manualCommands.length === 1 ? "" : "s"} below to update manually in a terminal.`
-          : failureLines,
+          ? `${failureHeading}${failureLines}\n\nCopy the command${manualCommands.length === 1 ? "" : "s"} below to update manually in a terminal.`
+          : `${failureHeading}${failureLines}`,
       data: {
         onClose: dismissProgressToast,
         ...(manualCommands.length > 0 ? { copyText: manualCommands.join("\n") } : {}),
@@ -289,11 +288,12 @@ async function runProviderUpdateAll(params: {
   activeToastRef.current = null;
   toastManager.update(toastId, {
     type: "success",
-    title:
+    title: providers.length === 1 ? "Provider updated" : "Providers updated",
+    description: `${
       providers.length === 1
-        ? `${PROVIDER_DISPLAY_NAMES[providers[0]!.provider]} updated${onMachine}`
-        : `${providers.length} providers updated${onMachine}`,
-    description: "New sessions will use the refreshed provider tools.",
+        ? `${PROVIDER_DISPLAY_NAMES[providers[0]!.provider]} was updated${onMachine}.`
+        : `${providers.length} providers were updated${onMachine}.`
+    } New sessions will use the refreshed provider tools.`,
     data: { onClose: dismissProgressToast },
     timeout: 6000,
   });
@@ -377,13 +377,11 @@ function ProviderUpdateNotifications({
     const providerName = PROVIDER_DISPLAY_NAMES[firstProvider.provider];
     const onMachine = hostLabel ? ` on ${hostLabel}` : "";
     const title =
-      outdatedProviders.length === 1
-        ? `${providerName} update available${onMachine}`
-        : `${outdatedProviders.length} provider updates available${onMachine}`;
+      outdatedProviders.length === 1 ? "Provider update available" : "Provider updates available";
     const description =
       outdatedProviders.length === 1
-        ? `${providerName} has a newer version available.`
-        : `${providerName} and ${additionalCount} more provider${additionalCount === 1 ? "" : "s"} have newer versions available.`;
+        ? `${providerName} has a newer version available${onMachine}.`
+        : `${providerName} and ${additionalCount} more provider${additionalCount === 1 ? "" : "s"} have newer versions available${onMachine}.`;
 
     let toastId!: ProviderUpdateToastId;
     const closeTrackedPrompt = () => {
@@ -400,34 +398,43 @@ function ProviderUpdateNotifications({
       ...(hostLabel
         ? {
             // Settings lists this machine's providers only, so a host's prompt updates in place.
-            actionProps: {
-              children: "Update",
-              onClick: () => void updateAll(oneClickProviders),
-            },
-            data: { onClose: closeTrackedPrompt },
-          }
-        : {
-            actionProps: {
-              children: "Review updates",
-              onClick: () => {
-                if (activeToastRef.current?.toastId === toastId) {
-                  toastManager.close(toastId);
-                  activeToastRef.current = null;
-                }
-                void navigate({
-                  to: "/settings",
-                  search: { section: "providers", target: SETTINGS_TARGETS.providerUpdates },
-                });
-              },
-            },
             data: {
               onClose: closeTrackedPrompt,
-              secondaryActionProps: {
-                children: "Update all",
-                onClick: () => {
-                  void updateAll(oneClickProviders);
+              actions: [
+                {
+                  label: "Update",
+                  icon: DownloadIcon,
+                  onClick: () => void updateAll(oneClickProviders),
                 },
-              },
+              ],
+            },
+          }
+        : {
+            data: {
+              onClose: closeTrackedPrompt,
+              actions: [
+                {
+                  label: "Review updates",
+                  icon: SettingsIcon,
+                  onClick: () => {
+                    if (activeToastRef.current?.toastId === toastId) {
+                      toastManager.close(toastId);
+                      activeToastRef.current = null;
+                    }
+                    void navigate({
+                      to: "/settings",
+                      search: { section: "providers", target: SETTINGS_TARGETS.providerUpdates },
+                    });
+                  },
+                },
+                {
+                  label: "Update all",
+                  icon: DownloadIcon,
+                  onClick: () => {
+                    void updateAll(oneClickProviders);
+                  },
+                },
+              ],
             },
           }),
     });

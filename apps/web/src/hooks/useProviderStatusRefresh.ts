@@ -33,7 +33,7 @@ export function useRefreshProviderStatusesNow(): RefreshProviderStatusesNow {
       if (!options?.silent) {
         toastManager.add({
           type: "error",
-          title: "Unable to refresh provider status",
+          title: "Could not refresh provider status",
           description:
             error instanceof Error ? error.message : "Unknown error refreshing provider status.",
         });

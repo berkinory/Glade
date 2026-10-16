@@ -365,7 +365,8 @@ export function useChatTranscriptController({
     } catch (error) {
       toastManager.add({
         type: "error",
-        title: error instanceof Error ? error.message : "Could not release the held message.",
+        title: "Could not release message",
+        description: error instanceof Error ? error.message : "Try again in a moment.",
       });
     } finally {
       setIsAbandoningLegacyCacheHold(false);

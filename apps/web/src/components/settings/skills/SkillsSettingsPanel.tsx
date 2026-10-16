@@ -78,15 +78,15 @@ export function SkillsSettingsPanel() {
         setDiverged((current) => new Set([...current, group.key]));
         toastManager.add({
           type: "warning",
-          title: `Kept ${keptPaths.length === 1 ? "a copy that differs" : `${keptPaths.length} copies that differ`}`,
-          description: keptPaths.join("\n"),
+          title: "Differing copies kept",
+          description: `Kept ${keptPaths.length === 1 ? "a copy that differs" : `${keptPaths.length} copies that differ`}.\n${keptPaths.join("\n")}`,
         });
       }
     } catch (error) {
       toastManager.add({
         type: "error",
-        title: `Could not share ${group.displayName}`,
-        description: error instanceof Error ? error.message : "Try again.",
+        title: "Could not share skill",
+        description: `Could not share ${group.displayName}. ${error instanceof Error ? error.message : "Try again."}`,
       });
     } finally {
       setSharing(null);
@@ -136,8 +136,8 @@ export function SkillsSettingsPanel() {
         onInstalled={(name, paths) => {
           toastManager.add({
             type: "success",
-            title: `Installed ${name}`,
-            description: paths.join("\n"),
+            title: "Skill installed",
+            description: `Installed ${name}.\n${paths.join("\n")}`,
           });
           void queryClient.invalidateQueries({ queryKey: providerDiscoveryQueryKeys.all });
         }}

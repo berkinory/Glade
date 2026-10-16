@@ -11,9 +11,6 @@ function showCopyToast(
 ): void {
   if (!ref.current) return;
   anchoredToastManager.add({
-    data: {
-      tooltipStyle: true,
-    },
     positionerProps: {
       anchor: ref.current,
     },

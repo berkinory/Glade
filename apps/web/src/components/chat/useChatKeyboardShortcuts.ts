@@ -457,7 +457,8 @@ export function useChatKeyboardShortcuts({
           event.stopPropagation();
           toastManager.add({
             type: "info",
-            title: "No Git action is available here.",
+            title: "No Git action available",
+            description: "No Git action is available here.",
           });
         }
         return;

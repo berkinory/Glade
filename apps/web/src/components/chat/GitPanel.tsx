@@ -274,7 +274,8 @@ export function GitPanel(props: {
       if (hasUnsavedWorkspaceEditors(queryClient, cwd)) {
         toastManager.add({
           type: "error",
-          title: "Save your open files before updating .gitignore.",
+          title: "Save open files first",
+          description: "Save your open files before updating .gitignore.",
         });
         return;
       }

@@ -219,7 +219,7 @@ export default function GitActionsControl(props: GitActionsControlProps) {
   );
   const quickActionUnavailable = quickAction.disabled || isPublishPending;
   const primaryLabel =
-    actionProgress?.title ?? (isGitActionRunning ? "Running Git action..." : quickAction.label);
+    actionProgress?.title ?? (isGitActionRunning ? "Running Git action…" : quickAction.label);
   const primaryDetail = actionProgress
     ? actionProgress.detail
     : (quickActionDisabledReason ?? quickActionContext);

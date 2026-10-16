@@ -361,7 +361,7 @@ export function BranchToolbarBranchSelector({
             api,
             branch: branch.name,
             cwd: selectionTarget.checkoutCwd,
-            fallbackTitle: "Failed to checkout branch.",
+            fallbackTitle: "Could not check out branch",
             onSuccess: () => {
               setOptimisticBranch(selectedBranchName);
               onSetThreadWorkspace({
@@ -419,7 +419,7 @@ export function BranchToolbarBranchSelector({
             api,
             branch: name,
             cwd: branchCwd,
-            fallbackTitle: "Failed to checkout branch.",
+            fallbackTitle: "Could not check out branch",
             onSuccess: () => {
               setOptimisticBranch(name);
               onSetThreadWorkspace({
@@ -437,7 +437,7 @@ export function BranchToolbarBranchSelector({
       } catch (error) {
         toastManager.add({
           type: "error",
-          title: "Failed to create branch.",
+          title: "Could not create branch",
           description: toBranchActionErrorMessage(error),
         });
         return;

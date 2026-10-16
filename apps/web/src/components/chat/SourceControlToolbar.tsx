@@ -1,9 +1,10 @@
 import {
+  ArrowDown02Icon,
+  ArrowUp02Icon,
   CloudDownloadIcon,
   CloudUploadIcon,
   RefreshCwIcon,
-  ArrowUp02Icon,
-  ArrowDown02Icon,
+  UndoIcon,
 } from "~/lib/icons";
 import type { ThreadId } from "@glade/contracts/core/baseSchemas";
 import type { GitStatusResult } from "@glade/contracts/git/git";
@@ -88,7 +89,8 @@ export function SourceControlToolbar({
     ) {
       toastManager.add({
         type: "error",
-        title: "Save your open files before changing the working tree.",
+        title: "Save open files first",
+        description: "Save your open files before changing the working tree.",
       });
       return;
     }
@@ -116,7 +118,7 @@ export function SourceControlToolbar({
       onError: (error) =>
         toastManager.add({
           type: "error",
-          title: `Could not ${request.action}`,
+          title: "Could not run Git action",
           description: error.message,
         }),
     });
@@ -158,9 +160,14 @@ export function SourceControlToolbar({
         title: "Changes committed",
         ...(undoableHead
           ? {
-              actionProps: {
-                children: "Undo",
-                onClick: () => void undoCommit(queryClient, cwd, undoableHead),
+              data: {
+                actions: [
+                  {
+                    label: "Undo",
+                    icon: UndoIcon,
+                    onClick: () => void undoCommit(queryClient, cwd, undoableHead),
+                  },
+                ],
               },
             }
           : {}),

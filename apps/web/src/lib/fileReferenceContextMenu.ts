@@ -136,7 +136,7 @@ export async function showFileReferenceContextMenu(input: {
     } catch (error) {
       toastManager.add({
         type: "error",
-        title: input.revealKind === "directory" ? "Unable to open folder" : "Unable to reveal file",
+        title: input.revealKind === "directory" ? "Could not open folder" : "Could not reveal file",
         description:
           error instanceof Error ? error.message : "An unknown error occurred opening the file.",
       });

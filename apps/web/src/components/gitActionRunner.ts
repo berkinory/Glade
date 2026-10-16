@@ -17,7 +17,8 @@ import {
   summarizeGitResult,
   type DefaultBranchConfirmableAction,
 } from "./GitActionsControl.logic";
-import { toastManager } from "./ui/toast";
+import { CloudUploadIcon, ExternalLinkIcon, GitPullRequestIcon } from "~/lib/icons";
+import { toastManager, type ToastAction } from "./ui/toast";
 
 export interface PendingDefaultBranchAction {
   action: DefaultBranchConfirmableAction;
@@ -59,18 +60,31 @@ export interface RunGitActionWithToastInput {
   allowDirtyWorkingTree?: boolean;
 }
 
-function formatElapsedDescription(startedAtMs: number | null): string | undefined {
+const FAILED_PHASE_TITLES: Record<string, string> = {
+  branch: "Could not prepare branch",
+  commit: "Could not commit changes",
+  push: "Could not push changes",
+  pr: "Could not create pull request",
+};
+
+function formatElapsedDescription(
+  startedAtMs: number | null,
+  hookName: string | null,
+): string | undefined {
   if (startedAtMs === null) {
     return undefined;
   }
-  return `Running for ${formatClockDuration(Date.now() - startedAtMs)}`;
+  return `Running ${hookName ? `${hookName} ` : ""}for ${formatClockDuration(Date.now() - startedAtMs)}`;
 }
 
 function resolveProgressDescription(progress: ActiveGitActionProgress): string | undefined {
   if (progress.lastOutputLine) {
     return progress.lastOutputLine;
   }
-  return formatElapsedDescription(progress.hookStartedAtMs ?? progress.phaseStartedAtMs);
+  return formatElapsedDescription(
+    progress.hookStartedAtMs ?? progress.phaseStartedAtMs,
+    progress.hookName,
+  );
 }
 
 type RunStackedActionVariables = {
@@ -212,8 +226,8 @@ export function useGitActionRunner(deps: GitActionRunnerDeps) {
         progressToastId ??
         toastManager.add({
           type: "loading",
-          title: progressStages[0] ?? "Running git action...",
-          description: "Waiting for Git...",
+          title: progressStages[0] ?? "Running git action…",
+          description: "Waiting for Git…",
           timeout: 0,
           data: threadToastData,
         });
@@ -221,19 +235,19 @@ export function useGitActionRunner(deps: GitActionRunnerDeps) {
       const progress: ActiveGitActionProgress = {
         toastId: resolvedProgressToastId,
         actionId,
-        title: progressStages[0] ?? "Running git action...",
+        title: progressStages[0] ?? "Running git action…",
         phaseStartedAtMs: null,
         hookStartedAtMs: null,
         hookName: null,
         lastOutputLine: null,
-        currentPhaseLabel: progressStages[0] ?? "Running git action...",
+        currentPhaseLabel: progressStages[0] ?? "Running git action…",
       };
 
       if (progressToastId) {
         toastManager.update(progressToastId, {
           type: "loading",
-          title: progressStages[0] ?? "Running git action...",
-          description: "Waiting for Git...",
+          title: progressStages[0] ?? "Running git action…",
+          description: "Waiting for Git…",
           timeout: 0,
           data: threadToastData,
         });
@@ -269,7 +283,7 @@ export function useGitActionRunner(deps: GitActionRunnerDeps) {
             progress.lastOutputLine = null;
             break;
           case "hook_started":
-            progress.title = `Running ${event.hookName}...`;
+            progress.title = "Running hook…";
             progress.hookName = event.hookName;
             progress.hookStartedAtMs = now;
             break;
@@ -277,7 +291,7 @@ export function useGitActionRunner(deps: GitActionRunnerDeps) {
             progress.lastOutputLine = event.text;
             break;
           case "hook_finished":
-            progress.title = progress.currentPhaseLabel ?? "Committing...";
+            progress.title = progress.currentPhaseLabel ?? "Committing…";
             progress.hookName = null;
             progress.hookStartedAtMs = null;
             progress.lastOutputLine = null;
@@ -369,6 +383,44 @@ export function useGitActionRunner(deps: GitActionRunnerDeps) {
           toastManager.close(resolvedProgressToastId);
         };
 
+        const resultAction: ToastAction | null = shouldOfferPushCta
+          ? {
+              label: "Push",
+              icon: CloudUploadIcon,
+              onClick: () => {
+                void runGitActionWithToast({
+                  action: "push",
+                  onConfirmed: closeResultToast,
+                  statusOverride: actionStatus,
+                  isDefaultBranchOverride: actionIsDefaultBranch,
+                });
+              },
+            }
+          : shouldOfferOpenPrCta
+            ? {
+                label: "View PR",
+                icon: ExternalLinkIcon,
+                onClick: () => {
+                  const api = readNativeApi();
+                  if (!api) return;
+                  closeResultToast();
+                  void api.shell.openExternal(prUrl);
+                },
+              }
+            : shouldOfferCreatePrCta
+              ? {
+                  label: "Create PR",
+                  icon: GitPullRequestIcon,
+                  onClick: () => {
+                    closeResultToast();
+                    openCreatePrDialog({
+                      statusOverride: postPushStatus,
+                      statusOverrideSource: actionStatus,
+                      isDefaultBranchOverride: actionIsDefaultBranch,
+                    });
+                  },
+                }
+              : null;
         toastManager.update(resolvedProgressToastId, {
           type: "success",
           title: resultToast.title,
@@ -377,55 +429,13 @@ export function useGitActionRunner(deps: GitActionRunnerDeps) {
           data: {
             ...threadToastData,
             dismissAfterVisibleMs: 10_000,
+            ...(resultAction ? { actions: [resultAction] } : {}),
           },
-          ...(shouldOfferPushCta
-            ? {
-                actionProps: {
-                  children: "Push",
-                  onClick: () => {
-                    void runGitActionWithToast({
-                      action: "push",
-                      onConfirmed: closeResultToast,
-                      statusOverride: actionStatus,
-                      isDefaultBranchOverride: actionIsDefaultBranch,
-                    });
-                  },
-                },
-              }
-            : shouldOfferOpenPrCta
-              ? {
-                  actionProps: {
-                    children: "View PR",
-                    onClick: () => {
-                      const api = readNativeApi();
-                      if (!api) return;
-                      closeResultToast();
-                      void api.shell.openExternal(prUrl);
-                    },
-                  },
-                }
-              : shouldOfferCreatePrCta
-                ? {
-                    actionProps: {
-                      children: "Create PR",
-                      onClick: () => {
-                        closeResultToast();
-                        openCreatePrDialog({
-                          statusOverride: postPushStatus,
-                          statusOverrideSource: actionStatus,
-                          isDefaultBranchOverride: actionIsDefaultBranch,
-                        });
-                      },
-                    },
-                  }
-                : {}),
         });
       } catch (err) {
         toastManager.update(resolvedProgressToastId, {
           type: "error",
-          title: failedPhase
-            ? `${failedPhase === "pr" ? "Pull request" : failedPhase} failed`
-            : `${progress.currentPhaseLabel?.replace(/\.{3}$/, "") ?? "Action"} failed`,
+          title: (failedPhase && FAILED_PHASE_TITLES[failedPhase]) ?? "Could not run git action",
           description: failedMessage ?? (err instanceof Error ? err.message : "An error occurred."),
           timeout: 0,
           data: {

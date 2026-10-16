@@ -178,7 +178,7 @@ export function useSidebarProjectNavigation(context: ReturnType<typeof useSideba
       });
       toastManager.add({
         type: "error",
-        title: isPinned ? "Unable to unpin project" : "Unable to pin project",
+        title: isPinned ? "Could not unpin project" : "Could not pin project",
         description: error instanceof Error ? error.message : undefined,
       });
     });

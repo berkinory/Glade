@@ -32,13 +32,13 @@ function triggerActionFailedToasts(values: Record<ToggleFeatureFlagId, boolean>)
   };
   toastManager.add({
     type: "error",
-    title: "Action failed",
+    title: "Could not complete action",
     description: "Error: Git command failed in /Users/ibrahime/Documents/Projects/glade",
     data: toastData,
   });
   toastManager.add({
     type: "error",
-    title: "Action failed",
+    title: "Could not complete action",
     description: "Error: Git command failed in /Users/ibrahime/Documents/Projects/glade",
     data: toastData,
   });

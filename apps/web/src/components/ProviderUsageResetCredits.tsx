@@ -57,16 +57,22 @@ export function ProviderUsageResetCredits({
       try {
         finishCodexResetAttempt(attempt);
       } catch {}
-      const messages: Record<CodexResetCreditOutcome, string> = {
-        reset: "Codex limits reset.",
-        nothingToReset: "Codex limits do not need a reset right now.",
-        noCredit: "No banked resets available.",
-        alreadyRedeemed: "That reset was already used.",
+      const messages: Record<CodexResetCreditOutcome, { title: string; description: string }> = {
+        reset: { title: "Codex limits reset", description: "Your Codex limits were reset." },
+        nothingToReset: {
+          title: "Nothing to reset",
+          description: "Codex limits do not need a reset right now.",
+        },
+        noCredit: { title: "No resets available", description: "No banked resets available." },
+        alreadyRedeemed: {
+          title: "Reset already used",
+          description: "That reset was already used.",
+        },
       };
       toastManager.add({
         type:
           result.outcome === "reset" || result.outcome === "alreadyRedeemed" ? "success" : "info",
-        title: messages[result.outcome],
+        ...messages[result.outcome],
       });
     },
   });

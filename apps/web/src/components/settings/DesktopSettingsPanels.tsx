@@ -53,7 +53,7 @@ export function NotificationsSettingsPanel({
     } catch (error) {
       toastManager.add({
         type: "error",
-        title: "Notification action failed",
+        title: "Could not change notifications",
         description:
           error instanceof Error ? error.message : "Could not change notification permissions.",
       });

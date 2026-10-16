@@ -91,7 +91,7 @@ function ThreadRetentionMaintenanceToast() {
       if (state === "started") {
         toastIdRef.current = toastManager.add({
           type: "loading",
-          title: "Archiving old chats...",
+          title: "Archiving old chats…",
           description: "Preparing background maintenance.",
           timeout: 0,
           data: { allowCrossThreadVisibility: true },
@@ -104,14 +104,14 @@ function ThreadRetentionMaintenanceToast() {
           toastIdRef.current ??
           toastManager.add({
             type: "loading",
-            title: "Archiving old chats...",
+            title: "Archiving old chats…",
             timeout: 0,
             data: { allowCrossThreadVisibility: true },
           });
         toastIdRef.current = toastId;
         toastManager.update(toastId, {
           type: "loading",
-          title: "Archiving old chats...",
+          title: "Archiving old chats…",
           description:
             totalCount && totalCount > 0
               ? `${archivedCount ?? 0} of ${totalCount} chats archived.`
@@ -408,7 +408,8 @@ function ChatRouteGlobalShortcuts() {
           if (!providerAvailability.usable) {
             toastManager.add({
               type: "error",
-              title: providerAvailability.unavailableReason,
+              title: "Provider unavailable",
+              description: providerAvailability.unavailableReason,
             });
             return;
           }

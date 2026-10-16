@@ -98,7 +98,7 @@ export function useComposerSlashCommands(input: ComposerSlashCommandInput) {
       if (!supportsFastSlashCommand) {
         toastManager.add({
           type: "warning",
-          title: "Fast mode is unavailable",
+          title: "Fast mode unavailable",
           description: "The selected model does not support Fast mode.",
         });
         return true;
@@ -114,7 +114,7 @@ export function useComposerSlashCommands(input: ComposerSlashCommandInput) {
       if (action === "status") {
         toastManager.add({
           type: "info",
-          title: `Fast mode is ${fastModeEnabled ? "on" : "off"}`,
+          title: fastModeEnabled ? "Fast mode on" : "Fast mode off",
         });
         return true;
       }
@@ -122,7 +122,7 @@ export function useComposerSlashCommands(input: ComposerSlashCommandInput) {
       setFastModeFromSlashCommand(nextEnabled);
       toastManager.add({
         type: "success",
-        title: `Fast mode ${nextEnabled ? "enabled" : "disabled"}`,
+        title: nextEnabled ? "Fast mode enabled" : "Fast mode disabled",
       });
       return true;
     },
@@ -145,7 +145,7 @@ export function useComposerSlashCommands(input: ComposerSlashCommandInput) {
       editorActions.clearComposerSlashDraft();
       toastManager.add({
         type: "warning",
-        title: "Fast mode could not be checked",
+        title: "Could not check Fast mode",
         description: "Provider command discovery is unavailable right now.",
       });
       return false;
@@ -171,7 +171,7 @@ export function useComposerSlashCommands(input: ComposerSlashCommandInput) {
       editorActions.clearComposerSlashDraft();
       toastManager.add({
         type: "warning",
-        title: "Fast mode could not be checked",
+        title: "Could not check Fast mode",
         description: "Claude command discovery failed. Please try again.",
       });
       return false;
@@ -180,7 +180,7 @@ export function useComposerSlashCommands(input: ComposerSlashCommandInput) {
     editorActions.clearComposerSlashDraft();
     toastManager.add({
       type: "info",
-      title: "Fast mode is unavailable",
+      title: "Fast mode unavailable",
       description: "The provider did not expose /fast for this account or environment.",
     });
     return false;
@@ -190,7 +190,7 @@ export function useComposerSlashCommands(input: ComposerSlashCommandInput) {
     if (!canOfferExportCommand) {
       toastManager.add({
         type: "warning",
-        title: "Export is unavailable",
+        title: "Export unavailable",
         description:
           "Open a server-backed chat and wait for the current turn to finish before exporting.",
       });

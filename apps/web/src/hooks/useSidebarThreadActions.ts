@@ -8,6 +8,7 @@ import type { AppSettings } from "../appSettings";
 import { useComposerDraftStore } from "../composerDraftStore";
 import { showConfirmDialogFallback } from "../confirmDialogFallback";
 import { getFallbackThreadIdAfterDelete } from "../components/Sidebar.logic.projectData";
+import { UndoIcon } from "~/lib/icons";
 import { toastManager } from "../components/ui/toast";
 import { deleteActiveThreadFromClient } from "../lib/activeThreadDelete";
 import { releaseOrphanedWorktreeAfterArchive } from "../lib/archiveThreadWorktreeCleanup";
@@ -194,7 +195,7 @@ export function useSidebarThreadActions(input: {
       console.error("Failed to update pinned thread state", { threadId, error });
       toastManager.add({
         type: "error",
-        title: isPinned ? "Unable to unpin thread" : "Unable to pin thread",
+        title: isPinned ? "Could not unpin chat" : "Could not pin chat",
       });
     });
   };
@@ -272,7 +273,7 @@ export function useSidebarThreadActions(input: {
       console.error("Failed to update settled thread state", { threadId, error });
       toastManager.add({
         type: "error",
-        title: isSettled ? "Unable to mark thread as done" : "Unable to undo done",
+        title: isSettled ? "Could not mark chat as done" : "Could not undo done",
       });
     });
   };
@@ -564,6 +565,8 @@ export function useSidebarThreadActions(input: {
     (threadId: ThreadId, archiveSequence: number, options?: { returnToThreadOnUndo?: boolean }) => {
       toastManager.add({
         id: `archive-undo:${threadId}:${randomUUID()}`,
+        type: "success",
+        title: "Chat archived",
         timeout: 0,
         // Covers swipe/Escape dismissal as well as the visible timer. A pending Undo must never turn a
         // disappearing toast into a cleanup request.
@@ -574,21 +577,21 @@ export function useSidebarThreadActions(input: {
         data: {
           allowCrossThreadVisibility: true,
           dismissAfterVisibleMs: ARCHIVE_UNDO_TOAST_DURATION_MS,
-          archiveUndo: {
-            onNoUndo: () => releaseArchivedWorktree(threadId, archiveSequence),
-            onUndo: () =>
-              restoreArchivedThreadFromToast({
-                threadId,
-                returnToThreadOnUndo: options?.returnToThreadOnUndo === true,
-              }),
-            onViewArchived: () => {
-              void navigate({ to: "/settings", search: { section: "archived" } });
+          actions: [
+            {
+              label: "Undo",
+              icon: UndoIcon,
+              onClick: () =>
+                restoreArchivedThreadFromToast({
+                  threadId,
+                  returnToThreadOnUndo: options?.returnToThreadOnUndo === true,
+                }),
             },
-          },
+          ],
         },
       });
     },
-    [navigate, releaseArchivedWorktree, restoreArchivedThreadFromToast],
+    [releaseArchivedWorktree, restoreArchivedThreadFromToast],
   );
 
   const archiveThreadWithUndo = async (threadId: ThreadId) => {
@@ -670,17 +673,17 @@ export function useSidebarThreadActions(input: {
     if (archivedCount > 0) {
       toastManager.add({
         type: failureCount > 0 ? "warning" : "success",
-        title: archivedCount === 1 ? "Thread archived" : `Archived ${archivedCount} threads`,
+        title: archivedCount === 1 ? "Chat archived" : "Chats archived",
         description:
           failureCount > 0
-            ? `Failed to archive ${failureCount} ${pluralize(failureCount, "thread")}.`
-            : `"${project.name}" cleared.`,
+            ? `Archived ${archivedCount} ${pluralize(archivedCount, "chat")}. Could not archive ${failureCount} ${pluralize(failureCount, "chat")}.`
+            : `Archived ${archivedCount} ${pluralize(archivedCount, "chat")} in "${project.name}".`,
       });
     } else if (failureCount > 0) {
       toastManager.add({
         type: "error",
-        title: "Failed to archive chats",
-        description: `Could not archive ${failureCount} ${pluralize(failureCount, "thread")} in "${project.name}".`,
+        title: "Could not archive chats",
+        description: `Could not archive ${failureCount} ${pluralize(failureCount, "chat")} in "${project.name}".`,
       });
     }
   };
@@ -755,17 +758,17 @@ export function useSidebarThreadActions(input: {
       if (deletedCount > 0) {
         toastManager.add({
           type: failureCount > 0 ? "warning" : "success",
-          title: deletedCount === 1 ? "Thread deleted" : `Deleted ${deletedCount} threads`,
+          title: deletedCount === 1 ? "Chat deleted" : "Chats deleted",
           description:
             failureCount > 0
-              ? `Failed to delete ${failureCount} ${pluralize(failureCount, "thread")}.`
-              : `"${project.name}" cleared.`,
+              ? `Deleted ${deletedCount} ${pluralize(deletedCount, "chat")}. Could not delete ${failureCount} ${pluralize(failureCount, "chat")}.`
+              : `Deleted ${deletedCount} ${pluralize(deletedCount, "chat")} in "${project.name}".`,
         });
       } else if (failureCount > 0) {
         toastManager.add({
           type: "error",
-          title: "Failed to delete chats",
-          description: `Could not delete ${failureCount} ${pluralize(failureCount, "thread")} in "${project.name}".`,
+          title: "Could not delete chats",
+          description: `Could not delete ${failureCount} ${pluralize(failureCount, "chat")} in "${project.name}".`,
         });
       }
     }

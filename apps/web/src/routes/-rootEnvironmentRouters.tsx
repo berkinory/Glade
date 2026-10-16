@@ -32,8 +32,8 @@ export function EnvironmentRouters() {
         reportedIncompatible.current.add(environment.key);
         toastManager.add({
           type: "warning",
-          title: `${environment.host.label} runs a newer Glade`,
-          description: "Update this app to see its projects and chats. They are safe on the host.",
+          title: "Host runs a newer Glade",
+          description: `${environment.host.label} runs a newer Glade. Update this app to see its projects and chats. They are safe on the host.`,
         });
       } else if (!environment.incompatible && reported) {
         reportedIncompatible.current.delete(environment.key);

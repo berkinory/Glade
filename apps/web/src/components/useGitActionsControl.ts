@@ -266,7 +266,7 @@ export function useGitActionsControl({
     if (!api) {
       toastManager.add({
         type: "error",
-        title: "Link opening is unavailable.",
+        title: "Link opening unavailable",
         data: threadToastData,
       });
       return;
@@ -275,7 +275,7 @@ export function useGitActionsControl({
     if (!prUrl) {
       toastManager.add({
         type: "error",
-        title: "No open PR found.",
+        title: "No open PR",
         data: threadToastData,
       });
       return;
@@ -283,7 +283,7 @@ export function useGitActionsControl({
     void api.shell.openExternal(prUrl).catch((err) => {
       toastManager.add({
         type: "error",
-        title: "Unable to open PR link",
+        title: "Could not open PR link",
         description: err instanceof Error ? err.message : "An error occurred.",
         data: threadToastData,
       });
@@ -338,12 +338,12 @@ export function useGitActionsControl({
   const runSyncWithRemote = useCallback(() => {
     const promise = pullMutation.mutateAsync();
     void toastManager.promise(promise, {
-      loading: { title: "Pulling...", data: threadToastData },
+      loading: { title: "Pulling…", data: threadToastData },
       success: (result) => ({
         title: result.status === "pulled" ? "Pulled" : "Already up to date",
         description:
           result.status === "pulled"
-            ? `Updated ${result.branch} from ${result.upstreamBranch ?? "upstream"}`
+            ? `Updated ${result.branch} from ${result.upstreamBranch ?? "upstream"}.`
             : `${result.branch} is already synchronized.`,
         data: threadToastData,
       }),
@@ -557,8 +557,8 @@ export function useGitActionsControl({
         }
         toastManager.add({
           type: "success",
-          title: `Keeping ${trimmedName}`,
-          description: "Branch name confirmed.",
+          title: "Branch name kept",
+          description: `Keeping ${trimmedName} as the branch name.`,
           data: threadToastData,
         });
         return;
@@ -566,7 +566,7 @@ export function useGitActionsControl({
 
       const toastId = toastManager.add({
         type: "loading",
-        title: "Creating branch...",
+        title: "Creating branch…",
         timeout: 0,
         data: threadToastData,
       });
@@ -602,14 +602,14 @@ export function useGitActionsControl({
 
         toastManager.update(toastId, {
           type: "success",
-          title: `Switched to ${trimmedName}`,
-          description: "Branch created and checked out.",
+          title: "Branch created",
+          description: `Created and checked out ${trimmedName}.`,
           data: threadToastData,
         });
       } catch (error) {
         toastManager.update(toastId, {
           type: "error",
-          title: "Failed to create branch",
+          title: "Could not create branch",
           description: error instanceof Error ? error.message : "An error occurred.",
           data: threadToastData,
         });
@@ -784,7 +784,7 @@ export function useGitActionsControl({
       if (!api || !gitCwd) {
         toastManager.add({
           type: "error",
-          title: "Editor opening is unavailable.",
+          title: "Editor opening unavailable",
           data: threadToastData,
         });
         return;
@@ -793,7 +793,7 @@ export function useGitActionsControl({
       void openInPreferredEditor(api, target).catch((error) => {
         toastManager.add({
           type: "error",
-          title: "Unable to open file",
+          title: "Could not open file",
           description: error instanceof Error ? error.message : "An error occurred.",
           data: threadToastData,
         });

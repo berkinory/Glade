@@ -250,7 +250,7 @@ export function useSidebarProjectCommands(context: ReturnType<typeof useSidebarT
       } catch (error) {
         toastManager.add({
           type: "error",
-          title: "Unable to open in Finder",
+          title: "Could not open in Finder",
           description:
             error instanceof Error
               ? error.message
@@ -310,8 +310,8 @@ export function useSidebarProjectCommands(context: ReturnType<typeof useSidebarT
       if (deletionResult.failureCount > 0) {
         toastManager.add({
           type: "error",
-          title: `Failed to remove "${project.name}"`,
-          description: `Could not delete ${deletionResult.failureCount} ${pluralize(deletionResult.failureCount, "thread")} in "${project.name}".`,
+          title: "Could not remove project",
+          description: `Could not delete ${deletionResult.failureCount} ${pluralize(deletionResult.failureCount, "chat")} in "${project.name}".`,
         });
         return;
       }
@@ -324,11 +324,11 @@ export function useSidebarProjectCommands(context: ReturnType<typeof useSidebarT
       clearProjectDraftThreads(projectId);
       toastManager.add({
         type: "success",
-        title: `Removed "${project.name}"`,
+        title: "Project removed",
         description:
           deletionResult.deletedCount > 0
-            ? `Deleted ${deletionResult.deletedCount} ${pluralize(deletionResult.deletedCount, "thread")} and removed the project.`
-            : "Project removed.",
+            ? `Deleted ${deletionResult.deletedCount} ${pluralize(deletionResult.deletedCount, "chat")} and removed "${project.name}".`
+            : `Removed "${project.name}".`,
       });
     };
 
@@ -339,8 +339,8 @@ export function useSidebarProjectCommands(context: ReturnType<typeof useSidebarT
       console.error("Failed to remove project", { projectId, error });
       toastManager.add({
         type: "error",
-        title: `Failed to remove "${project.name}"`,
-        description: message,
+        title: "Could not remove project",
+        description: `Could not remove "${project.name}". ${message}`,
       });
     }
   };

@@ -230,8 +230,8 @@ export function SourceControlHistory(props: {
           ? { type: "success", title: "Commit reverted" }
           : {
               type: "warning",
-              title: "Revert stopped. Resolve it in Changes, then continue or abort.",
-              description: result.reason,
+              title: "Revert stopped",
+              description: `Resolve it in Changes, then continue or abort. ${result.reason}`,
             },
       ),
     onError: (error) =>

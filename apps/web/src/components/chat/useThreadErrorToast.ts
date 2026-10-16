@@ -2,6 +2,7 @@ import type { ThreadId } from "@glade/contracts/core/baseSchemas";
 import { isProviderDeliveryBlockDetail } from "@glade/shared/provider/providerDeliveryBlock";
 import { useEffect, useRef } from "react";
 
+import { ArrowRight02Icon } from "~/lib/icons";
 import { toastManager } from "../ui/toast";
 
 type ThreadErrorToastOptions = Parameters<typeof toastManager.add>[0];
@@ -10,17 +11,12 @@ function threadErrorToastId(threadId: ThreadId): string {
   return `thread-error:${threadId}`;
 }
 
-function threadErrorToastTitle(error: string): string {
-  if (isProviderDeliveryBlockDetail(error)) {
-    return "This chat is blocked by an earlier provider error.";
-  }
+function threadErrorToastDescription(error: string): string {
   const firstLine = error.split(/\r?\n/u, 1)[0]?.trim() ?? "";
-  const title =
-    firstLine
-      .replace(/^Error:\s*/u, "")
-      .replace(/^Provider adapter process error \([^)]+\) for thread [^:]+:\s*/u, "") ||
-    "This task failed.";
-  return title.length > 180 ? `${title.slice(0, 179).trimEnd()}…` : title;
+  const description = firstLine
+    .replace(/^Error:\s*/u, "")
+    .replace(/^Provider adapter process error \([^)]+\) for thread [^:]+:\s*/u, "");
+  return description.length > 180 ? `${description.slice(0, 179).trimEnd()}…` : description;
 }
 
 function buildThreadErrorToastOptions(input: {
@@ -31,7 +27,10 @@ function buildThreadErrorToastOptions(input: {
   return {
     id: threadErrorToastId(input.threadId),
     type: "error",
-    title: threadErrorToastTitle(input.error),
+    title: isProviderDeliveryBlockDetail(input.error)
+      ? "Chat blocked by provider error"
+      : "Task failed",
+    description: threadErrorToastDescription(input.error),
     timeout: 0,
     priority: "high",
     onClose: input.onClose,
@@ -58,8 +57,14 @@ export function useThreadErrorNotifications(input: {
         if (visibleThreadIds.has(threadId) || previous.current.get(threadId) === error) continue;
         toastManager.add({
           ...buildThreadErrorToastOptions({ error, threadId, onClose: () => {} }),
-          data: { copyText: error, threadId, allowCrossThreadVisibility: true },
-          actionProps: { children: "Open chat", onClick: () => onOpen(threadId) },
+          data: {
+            copyText: error,
+            threadId,
+            allowCrossThreadVisibility: true,
+            actions: [
+              { label: "Open chat", icon: ArrowRight02Icon, onClick: () => onOpen(threadId) },
+            ],
+          },
         });
       }
     }

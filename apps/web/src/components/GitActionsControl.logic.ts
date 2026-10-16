@@ -63,8 +63,7 @@ function truncateText(
 ): string | undefined {
   if (!value) return undefined;
   if (value.length <= maxLength) return value;
-  if (maxLength <= 3) return "...".slice(0, maxLength);
-  return `${value.slice(0, Math.max(0, maxLength - 3)).trimEnd()}...`;
+  return `${value.slice(0, Math.max(0, maxLength - 1)).trimEnd()}…`;
 }
 
 export function resolveDefaultCreateBranchName(
@@ -79,32 +78,31 @@ export function buildGitActionProgressStages(input: {
   hasCustomCommitMessage: boolean;
   hasWorkingTreeChanges: boolean;
   forcePushOnly?: boolean;
-  pushTarget?: string;
   featureBranch?: boolean;
   shouldPushBeforePr?: boolean;
 }): string[] {
-  const branchStages = input.featureBranch ? ["Preparing feature branch..."] : [];
-  const pushStage = input.pushTarget ? `Pushing to ${input.pushTarget}...` : "Pushing...";
+  const branchStages = input.featureBranch ? ["Preparing feature branch…"] : [];
+  const pushStage = "Pushing…";
   if (input.action === "push") {
     return [pushStage];
   }
   if (input.action === "create_pr") {
-    return input.shouldPushBeforePr ? [pushStage, "Creating PR..."] : ["Creating PR..."];
+    return input.shouldPushBeforePr ? [pushStage, "Creating PR…"] : ["Creating PR…"];
   }
   const shouldIncludeCommitStages =
     !input.forcePushOnly && (input.action === "commit" || input.hasWorkingTreeChanges);
   const commitStages = !shouldIncludeCommitStages
     ? []
     : input.hasCustomCommitMessage
-      ? ["Committing..."]
-      : ["Generating commit message...", "Committing..."];
+      ? ["Committing…"]
+      : ["Generating commit message…", "Committing…"];
   if (input.action === "commit") {
     return [...branchStages, ...commitStages];
   }
   if (input.action === "commit_push") {
     return [...branchStages, ...commitStages, pushStage];
   }
-  return [...branchStages, ...commitStages, pushStage, "Creating PR..."];
+  return [...branchStages, ...commitStages, pushStage, "Creating PR…"];
 }
 
 const withDescription = (title: string, description: string | undefined) =>
@@ -269,8 +267,11 @@ export function summarizeGitResult(result: GitRunStackedActionResult): {
 } {
   if (result.pr.status === "created" || result.pr.status === "opened_existing") {
     const prNumber = result.pr.number ? ` #${result.pr.number}` : "";
-    const title = `${result.pr.status === "created" ? "Created PR" : "Opened PR"}${prNumber}`;
-    return withDescription(title, truncateText(result.pr.title));
+    const prTitle = truncateText(result.pr.title);
+    return withDescription(
+      result.pr.status === "created" ? "PR created" : "PR opened",
+      prTitle ? `PR${prNumber}: ${prTitle}` : `PR${prNumber}.`,
+    );
   }
 
   if (result.push.status === "pushed") {
@@ -278,16 +279,20 @@ export function summarizeGitResult(result: GitRunStackedActionResult): {
     const branch = result.push.upstreamBranch ?? result.push.branch;
     const pushedCommitPart = shortSha ? ` ${shortSha}` : "";
     const branchPart = branch ? ` to ${branch}` : "";
+    const subject = truncateText(result.commit.subject);
     return withDescription(
-      `Pushed${pushedCommitPart}${branchPart}`,
-      truncateText(result.commit.subject),
+      "Changes pushed",
+      `Pushed${pushedCommitPart || " changes"}${branchPart}.${subject ? ` ${subject}` : ""}`,
     );
   }
 
   if (result.commit.status === "created") {
     const shortSha = shortenSha(result.commit.commitSha);
-    const title = shortSha ? `Committed ${shortSha}` : "Committed changes";
-    return withDescription(title, truncateText(result.commit.subject));
+    const subject = truncateText(result.commit.subject);
+    return withDescription(
+      "Changes committed",
+      `${shortSha ? `Committed ${shortSha}.` : "Committed changes."}${subject ? ` ${subject}` : ""}`,
+    );
   }
 
   return { title: "Done" };
@@ -811,7 +816,7 @@ export function resolvePromotedPullPresentation(input: {
   isPullRunning: boolean;
 }): PromotedPullPresentation | null {
   if (!shouldPromotePullAction(input)) return null;
-  return { label: input.isPullRunning ? "Pulling..." : "Pull" };
+  return { label: input.isPullRunning ? "Pulling…" : "Pull" };
 }
 
 export function shouldOfferCreateBranchPrompt(input: {

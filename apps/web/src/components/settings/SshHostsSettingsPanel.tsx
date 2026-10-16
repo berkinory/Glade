@@ -43,8 +43,8 @@ type SshEnvironment = Extract<RemoteEnvironment, { readonly kind: "ssh" }>;
 function reportConnectFailure(host: DesktopSshHost, error: unknown): void {
   toastManager.add({
     type: "error",
-    title: `Could not connect to ${host.label}`,
-    description: ipcErrorMessage(error, "Try again."),
+    title: "Could not connect to host",
+    description: `Could not connect to ${host.label}. ${ipcErrorMessage(error, "Try again.")}`,
   });
 }
 

@@ -154,8 +154,8 @@ function PullRequestThreadDialogContent({
     preparationInFlight.current = true;
     const progressId = toastManager.add({
       type: "loading",
-      title: "Preparing pull request workspace...",
-      description: cwd,
+      title: "Preparing pull request workspace…",
+      description: `Preparing ${cwd}.`,
       timeout: 0,
     });
     setPreparingMode(mode);

@@ -4,6 +4,7 @@ import { useActivitySound } from "./useActivitySound";
 import { ThreadId } from "@glade/contracts/core/baseSchemas";
 import { useNavigate, useParams } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
+import { ArrowRight02Icon } from "~/lib/icons";
 import { toastManager } from "../components/ui/toast";
 import { resolveVisibleToastThreadIds } from "../components/ui/toastRouteVisibility";
 import { useAppSettings } from "../appSettings";
@@ -96,14 +97,11 @@ function showThreadToast(
     description: body,
     data: {
       allowCrossThreadVisibility: true,
-      compactContextual: true,
       threadId,
       dismissAfterVisibleMs: 8000,
-    },
-    actionProps: {
-      "aria-label": `Open ${title}`,
-      children: "Open",
-      onClick: () => focusThread(threadId, navigate),
+      actions: [
+        { label: "Open", icon: ArrowRight02Icon, onClick: () => focusThread(threadId, navigate) },
+      ],
     },
   });
 }

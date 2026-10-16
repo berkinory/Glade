@@ -1,4 +1,4 @@
-import { GitForkIcon, LaptopIcon } from "~/lib/icons";
+import { GitForkIcon, LaptopIcon, RefreshCwIcon } from "~/lib/icons";
 import { ComputerSettings } from "~/components/computer/ComputerSettings";
 import { SshHostsSettingsPanel } from "~/components/settings/SshHostsSettingsPanel";
 import { RemoteAccessSettingsPanel } from "~/components/settings/remoteAccess/RemoteAccessSettingsPanel";
@@ -168,12 +168,16 @@ function SettingsRouteView() {
       type: "warning",
       title: "Restart to apply title bar",
       description: "The window frame updates the next time Glade launches.",
-      actionProps: {
-        "aria-label": "Restart Glade",
-        children: "Restart",
-        onClick: () => {
-          void window.desktopBridge?.customTitleBar?.relaunch();
-        },
+      data: {
+        actions: [
+          {
+            label: "Restart",
+            icon: RefreshCwIcon,
+            onClick: () => {
+              void window.desktopBridge?.customTitleBar?.relaunch();
+            },
+          },
+        ],
       },
     });
   }

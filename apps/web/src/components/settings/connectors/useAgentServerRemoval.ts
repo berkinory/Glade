@@ -46,8 +46,8 @@ export function useAgentServerRemoval() {
       if (failed.length > 0) {
         toastManager.add({
           type: "error",
-          title: `Could not remove ${row.name} from ${providerNames(failed.map((source) => source.provider))}`,
-          description: reasons.join("\n") || "Try again.",
+          title: "Could not remove server",
+          description: `Could not remove ${row.name} from ${providerNames(failed.map((source) => source.provider))}. ${reasons.join("\n") || "Try again."}`,
         });
       }
       await reloadAgentMcpServers(queryClient);

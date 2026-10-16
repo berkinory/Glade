@@ -20,7 +20,7 @@ function ConfigFileRow(props: {
     if (!props.path) return;
     const editor = resolveAndPersistPreferredEditor(availableEditors ?? []);
     if (!editor) {
-      toastManager.add({ type: "error", title: "No available editors found." });
+      toastManager.add({ type: "error", title: "No editor available" });
       return;
     }
     setIsOpening(true);
@@ -29,8 +29,8 @@ function ConfigFileRow(props: {
       .catch((error: unknown) =>
         toastManager.add({
           type: "error",
-          title: `Could not open ${props.title.toLowerCase()}`,
-          description: error instanceof Error ? error.message : String(error),
+          title: "Could not open file",
+          description: `Could not open ${props.title.toLowerCase()}. ${error instanceof Error ? error.message : String(error)}`,
         }),
       )
       .finally(() => setIsOpening(false));

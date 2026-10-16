@@ -58,7 +58,11 @@ export function PairedMachinesSection() {
         onOpenChange={setPairing}
         onPair={async (link) => {
           const machine = await addPairedMachine(link);
-          toastManager.add({ type: "success", title: `Paired with ${machine.label}` });
+          toastManager.add({
+            type: "success",
+            title: "Machine paired",
+            description: `Paired with ${machine.label}.`,
+          });
         }}
       />
     </SettingsSectionShell>
@@ -77,8 +81,8 @@ function PairedMachineRow(props: { readonly machine: PairedEnvironment }) {
     void removePairedMachine(machine.host.id).catch((error: unknown) =>
       toastManager.add({
         type: "error",
-        title: `Could not remove ${machine.host.label}`,
-        description: ipcErrorMessage(error, "Try again."),
+        title: "Could not remove machine",
+        description: `Could not remove ${machine.host.label}. ${ipcErrorMessage(error, "Try again.")}`,
       }),
     );
   };

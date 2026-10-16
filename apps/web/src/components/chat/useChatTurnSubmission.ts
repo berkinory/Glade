@@ -323,12 +323,12 @@ export function useChatTurnSubmission({
             }
             toastManager.add({
               type: "warning",
-              title:
+              title: "Attachments removed",
+              description: `${
                 unreadableAttachments.length === 1
-                  ? `Removed '${unreadableAttachments[0]?.name}'`
-                  : `Removed ${unreadableAttachments.length} attachments`,
-              description:
-                "The source was moved, deleted or changed after attaching. Check your message and send again.",
+                  ? `Removed '${unreadableAttachments[0]?.name}'.`
+                  : `Removed ${unreadableAttachments.length} attachments.`
+              } The source was moved, deleted or changed after attaching. Check your message and send again.`,
             });
             return false;
           }
@@ -442,7 +442,8 @@ export function useChatTurnSubmission({
         if (!sendProviderAvailability.usable) {
           toastManager.add({
             type: "error",
-            title: sendProviderAvailability.unavailableReason,
+            title: "Provider unavailable",
+            description: sendProviderAvailability.unavailableReason,
           });
           return false;
         }

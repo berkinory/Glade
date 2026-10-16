@@ -34,7 +34,11 @@ export function useExplorerIntake(cwd: string | null, selectedDirectory: string)
   const importEntries = async (loadEntries: () => Promise<ExplorerImport[]>, directory: string) => {
     if (!cwd) return;
     if (importing.current) {
-      toastManager.add({ type: "warning", title: "Wait for the current import to finish" });
+      toastManager.add({
+        type: "warning",
+        title: "Import in progress",
+        description: "Wait for the current import to finish.",
+      });
       return;
     }
     importing.current = true;
@@ -53,7 +57,8 @@ export function useExplorerIntake(cwd: string | null, selectedDirectory: string)
       if (imported)
         toastManager.add({
           type: "success",
-          title: `Imported ${imported} ${imported === 1 ? "entry" : "entries"}`,
+          title: "Files imported",
+          description: `Imported ${imported} ${imported === 1 ? "entry" : "entries"}.`,
         });
     } catch (error) {
       toastManager.add({

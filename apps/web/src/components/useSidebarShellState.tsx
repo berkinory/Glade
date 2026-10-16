@@ -557,7 +557,7 @@ export function useSidebarShellState() {
     if (!api) {
       toastManager.add({
         type: "error",
-        title: "Link opening is unavailable.",
+        title: "Link opening unavailable",
       });
       return;
     }
@@ -565,7 +565,7 @@ export function useSidebarShellState() {
     void api.shell.openExternal(prUrl).catch((error) => {
       toastManager.add({
         type: "error",
-        title: "Unable to open PR link",
+        title: "Could not open PR link",
         description: error instanceof Error ? error.message : "An error occurred.",
       });
     });

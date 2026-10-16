@@ -271,7 +271,7 @@ describe("wsNativeApi", () => {
       action: "commit",
       kind: "phase_started",
       phase: "commit",
-      label: "Committing...",
+      label: "Committing…",
     });
     emitPush(WS_CHANNELS.gitWorktreeSetupProgress, {
       progressId: "progress-1",
@@ -292,7 +292,7 @@ describe("wsNativeApi", () => {
       action: "commit",
       kind: "phase_started",
       phase: "commit",
-      label: "Committing...",
+      label: "Committing…",
     });
     expect(onWorktreeSetupProgress).toHaveBeenCalledTimes(1);
     expect(onWorktreeSetupProgress).toHaveBeenCalledWith({

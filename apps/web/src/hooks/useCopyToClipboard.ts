@@ -33,7 +33,7 @@ export function useCopyPathToClipboard(): (path: string) => void {
     copy(path, {
       successTitle: "Path copied",
       successDescription: path,
-      errorTitle: "Failed to copy path",
+      errorTitle: "Could not copy path",
     });
 }
 
@@ -45,7 +45,7 @@ export function useCopyFileContentsToClipboard(): (
   const copy = useCopyWithToasts();
   return (contents: string, fileName: string, options?: { partial?: boolean }) => {
     if (contents.length === 0) {
-      toastManager.add({ type: "info", title: "Nothing to copy", description: "File is empty" });
+      toastManager.add({ type: "info", title: "Nothing to copy", description: "File is empty." });
       return;
     }
     copy(
@@ -53,13 +53,13 @@ export function useCopyFileContentsToClipboard(): (
       options?.partial
         ? {
             successTitle: "Partial contents copied",
-            successDescription: "Large file — only the loaded part was copied",
-            errorTitle: "Failed to copy contents",
+            successDescription: "Only the loaded part of this large file was copied.",
+            errorTitle: "Could not copy contents",
           }
         : {
             successTitle: "Contents copied",
             successDescription: fileName,
-            errorTitle: "Failed to copy contents",
+            errorTitle: "Could not copy contents",
           },
     );
   };
@@ -69,8 +69,8 @@ export function useCopyThreadIdToClipboard(): (threadId: string) => void {
   const copy = useCopyWithToasts();
   return (threadId: string) =>
     copy(threadId, {
-      successTitle: "Thread ID copied",
+      successTitle: "Chat ID copied",
       successDescription: threadId,
-      errorTitle: "Failed to copy thread ID",
+      errorTitle: "Could not copy chat ID",
     });
 }

@@ -250,7 +250,7 @@ export function useChatComposerController({
       onRecordingStarted: scheduleComposerFocus,
       actionArmDelayMs: VOICE_RECORDER_ACTION_ARM_DELAY_MS,
       failureCopy: {
-        transcriptionFailedTitle: "Couldn't transcribe voice note",
+        transcriptionFailedTitle: "Could not transcribe voice note",
       },
       onGuardWarning: warnVoiceGuard,
     },

@@ -29,7 +29,7 @@ export function closeTerminalSession(target: TerminalSessionTarget): void {
     .catch((error: unknown) => {
       toastManager.add({
         type: "error",
-        title: "Unable to close terminal",
+        title: "Could not close terminal",
         description: describeErrorMessage(error, "The terminal process may still be running."),
       });
     });

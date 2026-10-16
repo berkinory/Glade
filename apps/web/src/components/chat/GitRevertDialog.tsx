@@ -67,7 +67,8 @@ export function GitRevertDialog(props: {
                 if (hasUnsavedWorkspaceEditors(queryClient, cwd)) {
                   toastManager.add({
                     type: "warning",
-                    title: "Save open files before discarding changes.",
+                    title: "Save open files first",
+                    description: "Save open files before discarding changes.",
                   });
                   return;
                 }
@@ -90,16 +91,15 @@ export function GitRevertDialog(props: {
                   }
                   toastManager.add({
                     type: "error",
-                    title:
+                    title: "Could not discard changes",
+                    description: `${completed > 0 ? `${completed} of ${files.length} files discarded. ` : ""}${
                       error &&
                       typeof error === "object" &&
                       "message" in error &&
                       typeof error.message === "string"
                         ? error.message
-                        : "Could not discard changes.",
-                    ...(completed > 0
-                      ? { description: `${completed} of ${files.length} files discarded.` }
-                      : {}),
+                        : "Try again."
+                    }`,
                   });
                 }
               })();

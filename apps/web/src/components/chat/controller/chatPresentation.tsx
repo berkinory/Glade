@@ -120,7 +120,7 @@ export function createChatPresentation(
     }).catch((error) => {
       toastManager.add({
         type: "error",
-        title: "Failed to rename chat",
+        title: "Could not rename chat",
         description: error instanceof Error ? error.message : "An error occurred.",
       });
       throw error;
@@ -128,7 +128,8 @@ export function createChatPresentation(
     if (outcome === "empty") {
       toastManager.add({
         type: "warning",
-        title: "Chat title cannot be empty",
+        title: "Chat title is empty",
+        description: "Chat title cannot be empty.",
       });
       return;
     }

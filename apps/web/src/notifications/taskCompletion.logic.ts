@@ -822,8 +822,8 @@ export function buildTaskCompletionCopy(candidate: CompletedThreadCandidate): {
   const threadLabel = normalizedTitle.length > 0 ? normalizedTitle : "Untitled thread";
 
   return {
-    title: threadLabel,
-    body: candidate.assistantSummary || "Finished working.",
+    title: "Task completed",
+    body: `${threadLabel}: ${candidate.assistantSummary || "Finished working."}`,
   };
 }
 

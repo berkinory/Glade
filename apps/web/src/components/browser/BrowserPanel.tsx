@@ -21,7 +21,7 @@ function runCommand(command: BrowserPanelCommand): void {
     .catch((error: unknown) => {
       toastManager.add({
         type: "error",
-        title: "Browser action failed",
+        title: "Could not complete browser action",
         description: error instanceof Error ? error.message : String(error),
       });
     });

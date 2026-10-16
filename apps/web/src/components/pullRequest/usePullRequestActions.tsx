@@ -22,15 +22,21 @@ import { toastManager } from "../ui/toast";
 import { buildFailingChecksPrompt } from "./pullRequestPrompts";
 
 const SUCCESS = {
-  merge: (number: number) => `Merged #${number}`,
-  ready: (number: number) => `#${number} is ready for review`,
-  update_branch: (number: number) => `Updated #${number} with its base branch`,
+  merge: (number: number) => ({ title: "PR merged", description: `Merged #${number}.` }),
+  ready: (number: number) => ({
+    title: "PR ready for review",
+    description: `#${number} is ready for review.`,
+  }),
+  update_branch: (number: number) => ({
+    title: "Branch updated",
+    description: `Updated #${number} with its base branch.`,
+  }),
 } as const;
 
 const FAILURE = {
-  merge: "Could not merge",
-  ready: "Could not mark ready",
-  update_branch: "Could not update the branch",
+  merge: "Could not merge PR",
+  ready: "Could not mark PR ready",
+  update_branch: "Could not update branch",
 } as const;
 
 const MERGE_METHOD_LABELS: Record<GitPullRequestMergeMethod, string> = {
@@ -66,7 +72,7 @@ export function usePullRequestActions(input: {
         action: prAction,
       }),
     onSuccess: (_result, prAction) =>
-      toastManager.add({ type: "success", title: SUCCESS[prAction.kind](input.number) }),
+      toastManager.add({ type: "success", ...SUCCESS[prAction.kind](input.number) }),
     onError: (error, prAction) =>
       toastManager.add({
         type: "error",
@@ -82,7 +88,11 @@ export function usePullRequestActions(input: {
       ),
     onSuccess: () => toastManager.add({ type: "success", title: "Rerunning failed jobs" }),
     onError: (error) =>
-      toastManager.add({ type: "error", title: "Could not rerun", description: error.message }),
+      toastManager.add({
+        type: "error",
+        title: "Could not rerun jobs",
+        description: error.message,
+      }),
     onSettled: () => invalidateGitQueries(queryClient),
   });
 

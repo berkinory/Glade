@@ -1,5 +1,6 @@
 import type { NativeApi } from "@glade/contracts/ipc/ipc";
 import { pluralize } from "@glade/shared/text/text";
+import { ArrowLeftRightIcon, Delete02Icon, RefreshCwIcon } from "~/lib/icons";
 import { toastManager } from "./ui/toast";
 
 export function toBranchActionErrorMessage(error: unknown): string {
@@ -104,21 +105,26 @@ export function handleCheckoutError(
       : ".git/index.lock";
     addBranchRecoveryToast({
       type: "error",
-      title: "Git index is locked.",
+      title: "Git index locked",
       description: `${lockFileLabel} already exists. Close any running Git operation, remove the stale lock file if none is running, then retry.`,
-      data: { copyText: toBranchActionErrorMessage(error) },
-      actionProps: {
-        children: "Remove lock & retry",
-        onClick: () => {
-          input.runBranchAction(async () => {
-            try {
-              await input.api.git.removeIndexLock({ cwd: input.cwd });
-              await retryStashAndCheckout();
-            } catch (retryError) {
-              handleCheckoutError(retryError, input);
-            }
-          }, retryRefreshOptions);
-        },
+      data: {
+        copyText: toBranchActionErrorMessage(error),
+        actions: [
+          {
+            label: "Remove lock & retry",
+            icon: RefreshCwIcon,
+            onClick: () => {
+              input.runBranchAction(async () => {
+                try {
+                  await input.api.git.removeIndexLock({ cwd: input.cwd });
+                  await retryStashAndCheckout();
+                } catch (retryError) {
+                  handleCheckoutError(retryError, input);
+                }
+              }, retryRefreshOptions);
+            },
+          },
+        ],
       },
     });
   };
@@ -126,21 +132,26 @@ export function handleCheckoutError(
   const addGitIndexWriteToast = (error: unknown): void => {
     addBranchRecoveryToast({
       type: "error",
-      title: "Git index could not be written.",
+      title: "Could not write Git index",
       description:
         "Git could not update the repository index. Retry after any current Git operation finishes.",
-      data: { copyText: toBranchActionErrorMessage(error) },
-      actionProps: {
-        children: "Retry stash & switch",
-        onClick: () => {
-          input.runBranchAction(async () => {
-            try {
-              await retryStashAndCheckout();
-            } catch (retryError) {
-              handleCheckoutError(retryError, input);
-            }
-          }, retryRefreshOptions);
-        },
+      data: {
+        copyText: toBranchActionErrorMessage(error),
+        actions: [
+          {
+            label: "Retry stash & switch",
+            icon: RefreshCwIcon,
+            onClick: () => {
+              input.runBranchAction(async () => {
+                try {
+                  await retryStashAndCheckout();
+                } catch (retryError) {
+                  handleCheckoutError(retryError, input);
+                }
+              }, retryRefreshOptions);
+            },
+          },
+        ],
       },
     });
   };
@@ -150,64 +161,73 @@ export function handleCheckoutError(
     const copyText = toBranchActionErrorMessage(error);
     addBranchRecoveryToast({
       type: "warning",
-      title: "Uncommitted changes block checkout.",
+      title: "Checkout blocked",
       description: formatDirtyWorktreeDescription(dirtyWorktree.files),
-      data: { copyText },
-      actionProps: {
-        children: "Stash & Switch",
-        onClick: () => {
-          closeActiveBranchRecoveryToast();
-          input.runBranchAction(async () => {
-            try {
-              await retryStashAndCheckout();
-            } catch (stashError) {
-              if (parseGitIndexLockError(stashError)) {
-                addGitIndexLockToast(stashError);
-                return;
-              }
-              if (isGitIndexWriteError(stashError)) {
-                addGitIndexWriteToast(stashError);
-                return;
-              }
-              if (isStashConflictError(stashError)) {
-                input.onSuccess();
-                addBranchRecoveryToast({
-                  type: "warning",
-                  title: "Changes saved, but not reapplied.",
-                  description:
-                    "Glade switched branches and kept your changes in a stash because they could not be restored onto this branch cleanly.",
-                  data: { copyText: toBranchActionErrorMessage(stashError) },
-                  actionProps: {
-                    children: "Discard stash",
-                    className:
-                      "text-destructive [:hover,[data-pressed]]:bg-destructive/10 [:hover,[data-pressed]]:text-destructive",
-                    onClick: () => {
-                      closeActiveBranchRecoveryToast();
-                      input.onRequestDiscardStash({ cwd: input.cwd });
-                    },
-                  },
-                });
-                return;
-              }
-              if (parseDirtyWorktreeError(stashError)) {
-                addBranchRecoveryToast({
-                  type: "error",
-                  title: "Cannot switch branches.",
-                  description:
-                    "Some conflicting files are not covered by git stash, such as ignored files. Move or remove them before switching.",
-                  data: { copyText: toBranchActionErrorMessage(stashError) },
-                });
-                return;
-              }
-              addBranchRecoveryToast({
-                type: "error",
-                title: "Failed to stash and switch.",
-                description: toBranchActionErrorMessage(stashError),
-                data: { copyText: toBranchActionErrorMessage(stashError) },
-              });
-            }
-          }, retryRefreshOptions);
-        },
+      data: {
+        copyText,
+        actions: [
+          {
+            label: "Stash & Switch",
+            icon: ArrowLeftRightIcon,
+            onClick: () => {
+              closeActiveBranchRecoveryToast();
+              input.runBranchAction(async () => {
+                try {
+                  await retryStashAndCheckout();
+                } catch (stashError) {
+                  if (parseGitIndexLockError(stashError)) {
+                    addGitIndexLockToast(stashError);
+                    return;
+                  }
+                  if (isGitIndexWriteError(stashError)) {
+                    addGitIndexWriteToast(stashError);
+                    return;
+                  }
+                  if (isStashConflictError(stashError)) {
+                    input.onSuccess();
+                    addBranchRecoveryToast({
+                      type: "warning",
+                      title: "Changes not reapplied",
+                      description:
+                        "Glade switched branches and kept your changes in a stash because they could not be restored onto this branch cleanly.",
+                      data: {
+                        copyText: toBranchActionErrorMessage(stashError),
+                        actions: [
+                          {
+                            label: "Discard stash",
+                            icon: Delete02Icon,
+                            destructive: true,
+                            onClick: () => {
+                              closeActiveBranchRecoveryToast();
+                              input.onRequestDiscardStash({ cwd: input.cwd });
+                            },
+                          },
+                        ],
+                      },
+                    });
+                    return;
+                  }
+                  if (parseDirtyWorktreeError(stashError)) {
+                    addBranchRecoveryToast({
+                      type: "error",
+                      title: "Could not switch branches",
+                      description:
+                        "Some conflicting files are not covered by git stash, such as ignored files. Move or remove them before switching.",
+                      data: { copyText: toBranchActionErrorMessage(stashError) },
+                    });
+                    return;
+                  }
+                  addBranchRecoveryToast({
+                    type: "error",
+                    title: "Could not stash and switch",
+                    description: toBranchActionErrorMessage(stashError),
+                    data: { copyText: toBranchActionErrorMessage(stashError) },
+                  });
+                }
+              }, retryRefreshOptions);
+            },
+          },
+        ],
       },
     });
     return;
@@ -224,9 +244,7 @@ export function handleCheckoutError(
 
   addBranchRecoveryToast({
     type: "error",
-    title: isUnresolvedIndexError(error)
-      ? "Unresolved conflicts in the repository."
-      : input.fallbackTitle,
+    title: isUnresolvedIndexError(error) ? "Unresolved conflicts" : input.fallbackTitle,
     description: toBranchActionErrorMessage(error),
     data: { copyText: toBranchActionErrorMessage(error) },
   });

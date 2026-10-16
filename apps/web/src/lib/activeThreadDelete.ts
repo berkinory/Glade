@@ -121,8 +121,8 @@ export async function deleteActiveThreadFromClient<TPrepared = undefined>(input:
     });
     toastManager.add({
       type: "error",
-      title: "Chat deleted, but worktree removal failed",
-      description: `Could not remove ${displayWorktreePath ?? orphanedWorktreePath}. ${message}`,
+      title: "Could not remove worktree",
+      description: `The chat was deleted, but Glade could not remove ${displayWorktreePath ?? orphanedWorktreePath}. ${message}`,
     });
   }
 }
