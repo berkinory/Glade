@@ -4,15 +4,26 @@ import {
   providerNativeCommandAliases,
 } from "@glade/shared/provider/providerMetadata";
 import { type ProviderKind } from "@glade/contracts/core/baseSchemas";
-import {
-  BUILT_IN_COMPOSER_SLASH_COMMANDS,
-  isBuiltInComposerSlashCommandName,
-  normalizeComposerSlashCommandName,
-  type BuiltInComposerSlashCommand,
-} from "@glade/shared/threads/composerSlashCommands";
 import { rankProviderDiscoveryItems } from "./lib/providerDiscovery";
 
-export type ComposerSlashCommand = BuiltInComposerSlashCommand;
+const BUILT_IN_COMPOSER_SLASH_COMMANDS = [
+  "clear",
+  "compact",
+  "model",
+  "review",
+  "fork",
+  "computer",
+  "fast",
+  "export",
+  "rename",
+  "feedback",
+] as const;
+
+export type ComposerSlashCommand = (typeof BUILT_IN_COMPOSER_SLASH_COMMANDS)[number];
+
+function normalizeComposerSlashCommandName(value: string): string {
+  return value.trim().replace(/^\/+/, "").toLowerCase();
+}
 
 export interface ComposerSlashCommandDefinition {
   command: ComposerSlashCommand;
@@ -175,7 +186,8 @@ const COMPOSER_SLASH_COMMAND_DEFINITIONS: Record<
 };
 
 export function isBuiltInComposerSlashCommand(value: string): value is ComposerSlashCommand {
-  return isBuiltInComposerSlashCommandName(value);
+  const normalizedValue = normalizeComposerSlashCommandName(value);
+  return BUILT_IN_COMPOSER_SLASH_COMMANDS.some((command) => command === normalizedValue);
 }
 
 function parseComposerSlashInvocation(text: string): ComposerSlashInvocation | null {
