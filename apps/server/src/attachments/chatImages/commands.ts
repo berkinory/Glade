@@ -1,4 +1,7 @@
-import { CHAT_IMAGE_SNAPSHOT_PREFIX } from "@glade/shared/attachments/chatImageSnapshots";
+import {
+  CHAT_IMAGE_SNAPSHOT_PREFIX,
+  hasChatImageExtension,
+} from "@glade/shared/attachments/chatImageSnapshots";
 import type { OrchestrationCommand } from "@glade/contracts/orchestration/commands";
 import type { OrchestrationReadModel } from "@glade/contracts/orchestration/snapshots";
 import { asRecord } from "@glade/shared/transport/payloadValues";
@@ -52,11 +55,7 @@ export function preserveCommandImages(input: {
       };
     }
     const payload = asRecord(command.activity.payload);
-    if (
-      command.activity.kind !== "tool.completed" ||
-      (payload?.itemType !== "image_view" && payload?.itemType !== "image_generation")
-    )
-      return { command, model };
+    if (command.activity.kind !== "tool.completed" || !payload) return { command, model };
     const data = asRecord(payload.data);
     const item = asRecord(data?.item);
     const args =
@@ -66,6 +65,14 @@ export function preserveCommandImages(input: {
       asRecord(item?.input);
     const source = data?.path ?? item?.path ?? args?.path ?? args?.file_path ?? args?.filePath;
     if (typeof source !== "string") return { command, model };
+    // Claude reads an image file with its generic Read tool, whose image result is stripped at
+    // ingress, so the file it named is preserved instead. The extension check keeps reads of
+    // notebooks, whose results can also carry images, showing their text.
+    const viewedImage =
+      payload.itemType === "image_view" ||
+      payload.itemType === "image_generation" ||
+      (returnsImage(data) && hasChatImageExtension(source));
+    if (!viewedImage) return { command, model };
     const callId = data?.callId ?? data?.toolCallId ?? item?.id ?? command.activity.id;
     const captureKey = JSON.stringify([command.activity.turnId, callId]);
     const sql = input.sql;
@@ -89,4 +96,9 @@ export function preserveCommandImages(input: {
       model,
     };
   });
+}
+
+function returnsImage(data: Record<string, unknown> | null): boolean {
+  const content = asRecord(data?.result)?.content;
+  return Array.isArray(content) && content.some((block) => asRecord(block)?.type === "image");
 }

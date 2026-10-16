@@ -9,10 +9,11 @@ export function hasToolCallDetailsContent(
 ): boolean {
   if (!details) return Boolean(activity?.detail?.trim());
   const output = details.output;
-  // A plain tool shows only the arguments its row does not already name, and its text output; an
-  // image read has neither, so it gets no chevron.
+  // A plain tool shows the image it viewed, or else the arguments its row does not already name
+  // and its text output.
   if (details.kind === "tool") {
     return Boolean(
+      details.imageSnapshotUrl !== undefined ||
       (details.input && describeToolInput(details.input, toolKind) !== null) ||
       output?.output?.trim(),
     );
