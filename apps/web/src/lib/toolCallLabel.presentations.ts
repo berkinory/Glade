@@ -1,5 +1,6 @@
 import type { ToolLifecycleItemType } from "@glade/contracts/provider/runtimeMetadata";
 import { extractToolArgumentField } from "./toolArgumentSummary";
+import { resolveConnectorServer } from "./mcpServerName";
 import { GLADE_BROWSER_TOOL_PRESENTATIONS, isBareBrowserToolName } from "./browserToolPresentation";
 import {
   GLADE_COMPUTER_TOOL_PRESENTATIONS,
@@ -63,7 +64,7 @@ export function humanizeMcpToolIdentifier(value: string): string | null {
   }
 
   const [, server, tool, ...rest] = trimmed.split("__");
-  const normalizedServer = humanizeMcpToken(server);
+  const normalizedServer = humanizeMcpServer(server);
   const normalizedTool = [tool, ...rest]
     .map((part) => humanizeMcpToken(part))
     .filter((part) => part.length > 0)
@@ -76,12 +77,18 @@ export function humanizeMcpToolIdentifier(value: string): string | null {
 }
 
 export function humanizeMcpServerTool(server: string, tool: string): string | null {
-  const normalizedServer = humanizeMcpToken(server);
+  const normalizedServer = humanizeMcpServer(server);
   const normalizedTool = humanizeMcpToken(tool);
   if (!normalizedServer || !normalizedTool) {
     return null;
   }
   return `${normalizedServer}: ${normalizedTool}`;
+}
+
+function humanizeMcpServer(server: string | undefined): string {
+  const connector = server ? resolveConnectorServer(server) : null;
+  if (!connector) return humanizeMcpToken(server);
+  return "known" in connector ? connector.known : humanizeMcpToken(connector.slug);
 }
 
 export interface ReadableToolTitleInput {
