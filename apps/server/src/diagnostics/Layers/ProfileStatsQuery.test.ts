@@ -1,10 +1,13 @@
 import * as NodeServices from "@effect/platform-node/NodeServices";
 import { it } from "@effect/vitest";
-import { Effect, Layer } from "effect";
+import { ThreadId } from "@glade/contracts/core/baseSchemas";
+import { Effect, Layer, Option } from "effect";
 import * as SqlClient from "effect/unstable/sql/SqlClient";
 import { expect } from "vitest";
 import { CheckpointStoreLive } from "../../checkpointing/Layers/CheckpointStore";
 import { GitCoreLive } from "../../git/Layers/GitCore";
+import { OrchestrationProjectionSnapshotQueryLive } from "../../orchestration/Layers/ProjectionSnapshotQuery";
+import { ProjectionSnapshotQuery } from "../../orchestration/Services/ProjectionSnapshotQuery";
 import { SqlitePersistenceMemory } from "../../persistence/Layers/Sqlite";
 import { ServerConfig } from "../../server/config";
 import { ProfileStatsArchive, ProfileStatsArchiveLive } from "../profileStatsArchive";
@@ -13,7 +16,11 @@ import { ProfileStatsQueryLive } from "./ProfileStatsQuery";
 
 const config = ServerConfig.layerTest(process.cwd(), { prefix: "glade-profile-attribution-" });
 const checkpoint = CheckpointStoreLive.pipe(Layer.provide(GitCoreLive));
-const layer = Layer.mergeAll(ProfileStatsQueryLive, ProfileStatsArchiveLive).pipe(
+const layer = Layer.mergeAll(
+  ProfileStatsQueryLive,
+  ProfileStatsArchiveLive,
+  OrchestrationProjectionSnapshotQueryLive,
+).pipe(
   Layer.provideMerge(SqlitePersistenceMemory),
   Layer.provide(checkpoint),
   Layer.provide(config),
@@ -70,11 +77,18 @@ it.layer(layer)("historical profile attribution", (it) => {
                   mainLoopTokens: 100,
                   ...(index === 2 ? { modelUsage: { "known-model": { totalTokens: 100 } } } : {}),
                 };
+          // Each Claude result comes from its own process, so no breakdown covers another turn.
+          if (provider === "claudeAgent") {
+            yield* sql`INSERT INTO projection_thread_activities
+              (activity_id, thread_id, turn_id, tone, kind, summary, payload_json, sequence, created_at)
+              VALUES (${`${turnId}-process`}, ${provider}, NULL, 'info', 'background-work.reset',
+                'process', '{}', ${index * 2}, ${date})`;
+          }
           yield* sql`INSERT INTO projection_thread_activities
             (activity_id, thread_id, turn_id, tone, kind, summary, payload_json, sequence, created_at)
             VALUES (${turnId}, ${provider}, ${turnId}, 'info',
               ${provider === "codex" ? "context-window.updated" : "turn.completed"},
-              'usage', ${JSON.stringify(payload)}, ${index}, ${date})`;
+              'usage', ${JSON.stringify(payload)}, ${index * 2 + 1}, ${date})`;
         }
       }
       const input = { utcOffsetMinutes: 0 };
@@ -214,41 +228,81 @@ for (const [orderName, deleteOrder] of deleteOrders) {
 }
 
 it.layer(layer)("resumed Claude results", (it) => {
-  it.effect("counts the main loop of a stored result that restored earlier totals", () =>
+  it.effect("counts each Claude result's own usage once", () =>
     Effect.gen(function* () {
       const sql = yield* SqlClient.SqlClient;
       const stats = yield* ProfileStatsQuery;
+      const snapshots = yield* ProjectionSnapshotQuery;
       yield* sql`INSERT INTO projection_projects
         (project_id, title, workspace_root, scripts_json, created_at, updated_at)
         VALUES ('project', 'Resume fixture', '/nonexistent-resume-fixture', '[]', ${date}, ${date})`;
+      const selection = JSON.stringify({ provider: "claudeAgent", model: "model" });
       yield* sql`INSERT INTO projection_threads
         (thread_id, project_id, title, model_selection_json, created_at, updated_at)
-        VALUES ('resumed', 'project', 'Resumed',
-          ${JSON.stringify({ provider: "claudeAgent", model: "model" })}, ${date}, ${date})`;
-      const results = [
-        { modelUsage: 300, mainLoopTokens: 250 },
-        { modelUsage: 200, mainLoopTokens: 200 },
-        // A resumed process's first result also carries the 500 restored from the previous one.
-        { modelUsage: 650, mainLoopTokens: 150 },
-        // Background work beyond the main loop that matches no earlier span still counts.
-        { modelUsage: 500, mainLoopTokens: 100 },
-        // The adapter now withholds restored totals, so a marked result is never reinterpreted.
-        { modelUsage: 600, mainLoopTokens: 100, restoredUsageExcluded: true },
-      ];
-      for (const [index, { modelUsage, ...result }] of results.entries()) {
-        const payload = {
+        VALUES ('resumed', 'project', 'Resumed', ${selection}, ${date}, ${date})`;
+      yield* sql`INSERT INTO projection_threads
+        (thread_id, project_id, title, model_selection_json, created_at, updated_at,
+         parent_thread_id, creation_source, source_turn_id)
+        VALUES ('resumed-child', 'project', 'Subagent', ${selection}, ${date}, ${date},
+          'resumed', 'provider_native', 'native-turn')`;
+      const process = { kind: "background-work.reset" } as const;
+      const result = (turn: string, modelUsage: number | null, rest: object = {}) => ({
+        kind: "turn.completed",
+        turn,
+        payload: {
           provider: "claudeAgent",
           tokenAccountingVersion: 1,
-          modelUsage: { model: { totalTokens: modelUsage } },
-          ...result,
-        };
+          ...(modelUsage === null
+            ? {}
+            : {
+                modelUsage: { model: { totalTokens: modelUsage } },
+                totalCostUsd: modelUsage / 100,
+              }),
+          ...rest,
+        },
+      });
+      const activities = [
+        process,
+        result("t0", 300, { mainLoopTokens: 250 }),
+        // A failed result is a delta of its own, although a later result of its turn has none.
+        result("t1", 200, { mainLoopTokens: 0, state: "failed" }),
+        result("t1", null, { mainLoopTokens: 0 }),
+        // The next breakdown of the process includes this turn and the subagent below.
+        result("t2", null, { mainLoopTokens: 120 }),
+        { ...result("child", null, { mainLoopTokens: 80 }), thread: "resumed-child" },
+        result("t3", 400, { mainLoopTokens: 200 }),
+        // The process ends before a breakdown covers this turn.
+        result("t4", null, { mainLoopTokens: 50 }),
+        process,
+        // Restores the previous process's 950 and adds its own 100 plus 19 of background work.
+        result("t5", 1_069, { mainLoopTokens: 100 }),
+        result("t6", 500, { mainLoopTokens: 100 }),
+        process,
+        // The adapter now withholds restored totals, so a marked result is never reinterpreted.
+        result("t7", 1_669, { mainLoopTokens: 100, restoredUsageExcluded: true }),
+        process,
+        // Work beyond the main loop that does not reach the previous process's usage counts.
+        result("t8", 300, { mainLoopTokens: 100 }),
+      ];
+      for (const [index, activity] of activities.entries()) {
+        const turn = "turn" in activity ? activity.turn : null;
+        const thread = "thread" in activity ? activity.thread : "resumed";
+        const payload = "payload" in activity ? activity.payload : {};
         yield* sql`INSERT INTO projection_thread_activities
           (activity_id, thread_id, turn_id, tone, kind, summary, payload_json, sequence, created_at)
-          VALUES (${`result-${index}`}, 'resumed', ${`turn-${index}`}, 'info', 'turn.completed',
-            'usage', ${JSON.stringify(payload)}, ${index}, ${date})`;
+          VALUES (${`activity-${index}`}, ${thread}, ${turn}, 'info', ${activity.kind}, 'usage',
+            ${JSON.stringify(payload)}, ${index}, ${date})`;
       }
       const { lifetimeTotalTokens } = yield* stats.getProfileTokenStats({ utcOffsetMinutes: 0 });
-      expect(lifetimeTotalTokens).toBe(300 + 200 + 150 + 500 + 600);
+      expect(lifetimeTotalTokens).toBe(300 + 200 + 400 + 50 + 119 + 500 + 1_669 + 300);
+
+      const detail = yield* snapshots.getThreadDetailById(ThreadId.makeUnsafe("resumed"));
+      const restored = Option.getOrThrow(detail).activities.find(
+        (activity) => activity.turnId === "t5",
+      );
+      expect(restored?.payload).toMatchObject({
+        totalCostUsd: expect.closeTo(10.69 - (3 + 2 + 4)),
+      });
     }),
   );
 });

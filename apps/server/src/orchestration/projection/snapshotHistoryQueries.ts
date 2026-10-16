@@ -5,6 +5,7 @@ import type * as SqlConnection from "effect/unstable/sql/SqlConnection";
 import * as SqlSchema from "effect/unstable/sql/SqlSchema";
 import { Schema } from "effect";
 import { OrchestrationPendingInteraction } from "@glade/contracts/orchestration/threadEntities";
+import { claudeResultCtes } from "../../provider/usage/claudeTokenStats";
 import {
   ProjectionThreadActivityDbRowSchema,
   MAX_SNAPSHOT_THREAD_ACTIVITIES,
@@ -322,6 +323,14 @@ export function makeSnapshotHistoryQueries(input: {
             AND kind IN ('runtime.error', 'turn.completed')
             AND (${turnFailureActivity})
         ),
+        ${claudeResultCtes(sql, { threadId })},
+        -- Older Claude results stored a resumed session's restored cost as one turn's cost. Reads
+        -- correct it without rewriting the stored payload.
+        claude_restored_costs AS MATERIALIZED (
+          SELECT activity_id, own_cost_usd
+          FROM claude_restored_results
+          WHERE own_cost_usd IS NOT NULL
+        ),
         ranked AS (
           SELECT
             thread_id,
@@ -391,6 +400,10 @@ export function makeSnapshotHistoryQueries(input: {
           activity.kind,
           summary,
           COALESCE((
+            SELECT json_set(activity.payload_json, '$.totalCostUsd', restored.own_cost_usd)
+            FROM claude_restored_costs restored
+            WHERE restored.activity_id = ranked.activity_id AND activity.kind = 'turn.completed'
+          ), (
             SELECT CASE WHEN json_type(totals, '$.inputTokens') = 'integer'
               AND json_type(totals, '$.outputTokens') = 'integer'
               THEN json_patch(activity.payload_json, json_object(

@@ -34,6 +34,7 @@
 - Claude subagents interrupted by a failed turn no longer stay running forever.
 - Profile no longer overcounts Claude token usage after a chat resumes.
 - Recovering a missing chat after a restart no longer briefly uses up to a gigabyte of memory on large histories.
+- Chat costs and Profile now count each Claude turn's usage once, including resumed sessions, subagents and failed turns.
 
 ## 0.2.8 - 2026-10-15
 
