@@ -50,12 +50,29 @@ custom servers when they accept a token.
 
 Custom servers must be public `https://` endpoints without credentials in the URL.
 
+## Client ID Metadata Document
+
+Glade's OAuth client identity is `https://useglade.dev/oauth/client.json`, served from
+`apps/landing/public/oauth/client.json`. A vendor that supports Client ID Metadata Documents fetches
+it instead of registering a client. The URL must never change: vendors bind grants to it.
+
+The document lists portless loopback redirects, while Glade's callback carries a per-launch port.
+OAuth 2.1 tells servers to accept any port for loopback redirects, but vendors have not been
+checked against that yet. Until they are, Glade uses the document only when a server does not
+offer dynamic client registration.
+
+Serving it:
+
+- Build with `bun run --cwd apps/landing build` and serve `apps/landing/dist` as static files.
+- `https://useglade.dev/oauth/client.json` must answer `200` with `Content-Type: application/json`
+  directly: no redirects (apex only, no trailing slash, no `http` hop).
+- Behind Cloudflare, exempt `/oauth/*` from Bot Fight Mode, challenges and other bot protection.
+  Vendors' servers fetch it, not browsers.
+
 ## Limits
 
 - Managing connectors is owner-only (`access:write`), because the OAuth redirect targets this
   machine's browser. Paired devices cannot add or remove them.
 - The callback URL carries the server's current port, so every sign-in registers a fresh client.
   Refreshing tokens does not depend on the port.
-- Client ID Metadata Documents are not supported yet; they need a hosted metadata document on a
-  Glade domain.
 - Connectors belong to this machine's server. Chats that run on an SSH host do not receive them.

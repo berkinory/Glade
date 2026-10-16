@@ -15,7 +15,12 @@ import { outboundHttp } from "../platform/outboundHttp/outboundHttp.ts";
 import type { StoredOAuth } from "./connectorDocument.ts";
 
 const OAUTH_CLIENT_NAME = "Glade";
-const OAUTH_CLIENT_URI = "https://github.com/berkinory/Glade";
+const OAUTH_CLIENT_URI = "https://useglade.dev";
+// Glade's OAuth Client ID Metadata Document, served from apps/landing/public/oauth/client.json.
+// The URL is Glade's client identity at every vendor that supports it; changing it orphans every
+// sign-in made with it.
+export const GLADE_CLIENT_METADATA_URL = "https://useglade.dev/oauth/client.json";
+const CLIENT_METADATA_REDIRECT_HOSTS = new Set(["127.0.0.1", "localhost", "[::1]"]);
 
 type OutboundMethod = "GET" | "HEAD" | "POST" | "PUT" | "PATCH" | "DELETE";
 const OUTBOUND_METHODS = new Set<string>(["GET", "HEAD", "POST", "PUT", "PATCH", "DELETE"]);
@@ -94,33 +99,22 @@ export async function beginOAuthSignIn(input: {
     fetchFn: connectorOAuthFetch,
   });
   const metadata = info.authorizationServerMetadata;
-  if (!metadata?.registration_endpoint) {
+  // The metadata document lists loopback redirects only, so a server bound to another host must
+  // register instead.
+  const metadataDocument =
+    metadata?.client_id_metadata_document_supported === true &&
+    CLIENT_METADATA_REDIRECT_HOSTS.has(new URL(input.redirectUrl).hostname);
+  if (!metadata?.registration_endpoint && !metadataDocument) {
     throw new ConnectorSignInError(
       `${input.name} only accepts apps it registered in advance, so Glade cannot sign in to it.`,
     );
   }
   const scope = input.challenge.scope ?? info.resourceMetadata?.scopes_supported?.join(" ");
-  const clientInformation = await registerClient(info.authorizationServerUrl, {
-    metadata,
-    clientMetadata: {
-      client_name: OAUTH_CLIENT_NAME,
-      client_uri: OAUTH_CLIENT_URI,
-      redirect_uris: [input.redirectUrl],
-      grant_types: ["authorization_code", "refresh_token"],
-      response_types: ["code"],
-      token_endpoint_auth_method: "none",
-      ...(scope ? { scope } : {}),
-    },
-    ...(scope ? { scope } : {}),
-    fetchFn: connectorOAuthFetch,
-  }).catch((cause: unknown) => {
-    // Vendors that admit only reviewed apps answer with anything from a bare 403 to a redirect
-    // complaint, and the SDK's parse errors mean nothing to the person connecting.
-    throw new ConnectorSignInError(
-      `${input.name} did not let Glade register as an app, so Glade cannot sign in to it.`,
-      { cause },
-    );
-  });
+  // Registration stays first until vendors are shown to accept the metadata document's portless
+  // loopback redirects, since the callback port changes with every launch.
+  const clientInformation = metadata.registration_endpoint
+    ? await registerGladeClient(info.authorizationServerUrl, metadata, input, scope)
+    : { client_id: GLADE_CLIENT_METADATA_URL };
   const resource = info.resourceMetadata?.resource
     ? new URL(info.resourceMetadata.resource)
     : undefined;
@@ -143,6 +137,35 @@ export async function beginOAuthSignIn(input: {
       resource,
     },
   };
+}
+
+function registerGladeClient(
+  authorizationServerUrl: string,
+  metadata: AuthorizationServerMetadata,
+  input: { readonly name: string; readonly redirectUrl: string },
+  scope: string | undefined,
+): Promise<OAuthClientInformationMixed> {
+  return registerClient(authorizationServerUrl, {
+    metadata,
+    clientMetadata: {
+      client_name: OAUTH_CLIENT_NAME,
+      client_uri: OAUTH_CLIENT_URI,
+      redirect_uris: [input.redirectUrl],
+      grant_types: ["authorization_code", "refresh_token"],
+      response_types: ["code"],
+      token_endpoint_auth_method: "none",
+      ...(scope ? { scope } : {}),
+    },
+    ...(scope ? { scope } : {}),
+    fetchFn: connectorOAuthFetch,
+  }).catch((cause: unknown) => {
+    // Vendors that admit only reviewed apps answer with anything from a bare 403 to a redirect
+    // complaint, and the SDK's parse errors mean nothing to the person connecting.
+    throw new ConnectorSignInError(
+      `${input.name} did not let Glade register as an app, so Glade cannot sign in to it.`,
+      { cause },
+    );
+  });
 }
 
 function expiresAt(tokens: OAuthTokens, nowMs: number): number | null {

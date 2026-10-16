@@ -10,6 +10,7 @@ const workspaces = [
   "apps/server",
   "apps/web",
   "apps/desktop",
+  "apps/landing",
   "scripts",
 ];
 const configurations = new Map(
