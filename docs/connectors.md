@@ -33,6 +33,19 @@ Claude receives connectors as SDK `mcpServers` HTTP entries, Codex in each threa
 config, and Cursor, Grok and OpenCode through ACP `session/new` when the agent advertises HTTP MCP
 support. Each tool call follows the chat's normal approval flow.
 
+## Servers in your agents
+
+Settings → Connectors also lists, read-only, the MCP servers agents load from their own
+configuration, merged by name with the agents that have each one. Codex reports its servers through
+the app-server's `mcpServerStatus/list`, which starts them to read their tools and sign-in state;
+results are cached until **Check again**. Claude's are read from the user scope of `.claude.json`
+(next to `CLAUDE_CONFIG_DIR`, otherwise in the home directory) without connecting. Project-scoped
+servers, claude.ai connectors and plugin servers are not listed. Glade's own `glade` and
+`*_connector` servers are left out.
+
+A server that matches a catalog preset by origin or name offers **Use in Glade**; one that is also
+connected in Glade is flagged, because agents then load both.
+
 ## Catalog
 
 The presets live in `packages/shared/src/mcpConnectors/catalog.ts`. Each one was checked against

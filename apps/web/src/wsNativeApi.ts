@@ -693,6 +693,9 @@ function buildNativeApi(transport: WsTransport, listeners: NativeApiListeners): 
       listSkills: (input) => transport.request(WS_METHODS.providerListSkills, input),
       listSkillsCatalog: (input) => transport.request(WS_METHODS.providerListSkillsCatalog, input),
       listPlugins: (input) => transport.request(WS_METHODS.providerListPlugins, input),
+      // Codex starts every configured server to list it.
+      listMcpServers: (input) =>
+        transport.request(WS_METHODS.providerListMcpServers, input, { timeoutMs: 60_000 }),
       listModels: (input) => transport.request(WS_METHODS.providerListModels, input),
       listAgents: (input) => transport.request(WS_METHODS.providerListAgents, input),
     },

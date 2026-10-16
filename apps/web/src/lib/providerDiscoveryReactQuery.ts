@@ -1,4 +1,5 @@
 import type {
+  ProviderListMcpServersResult,
   ProviderComposerCapabilities,
   ProviderListAgentsResult,
   ProviderListCommandsResult,
@@ -228,6 +229,7 @@ export const providerDiscoveryQueryKeys = {
   skills: (provider: ProviderKind, cwd: string | null) =>
     ["provider-discovery", "skills", provider, cwd] as const,
   skillsCatalog: (cwd: string | null) => ["provider-discovery", "skills-catalog", cwd] as const,
+  mcpServers: (provider: ProviderKind) => ["provider-discovery", "mcp-servers", provider] as const,
   plugins: (
     provider: ProviderKind,
     cwd: string | null,
@@ -311,6 +313,21 @@ export function skillsCatalogQueryOptions(input?: { cwd?: string | null; enabled
     enabled: input?.enabled ?? true,
     staleTime: 30_000,
     placeholderData: (previous) => previous,
+  });
+}
+
+// Reading Codex's servers starts them to learn their tools, so results stay fresh for minutes and
+// a refresh is explicit.
+export function mcpServersQueryOptions(provider: ProviderKind, forceReload = false) {
+  return queryOptions({
+    queryKey: providerDiscoveryQueryKeys.mcpServers(provider),
+    queryFn: (): Promise<ProviderListMcpServersResult> =>
+      ensureNativeApi().provider.listMcpServers({
+        provider,
+        ...(forceReload ? { forceReload } : {}),
+      }),
+    staleTime: 5 * 60_000,
+    retry: false,
   });
 }
 

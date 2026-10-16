@@ -11,6 +11,8 @@ import {
   ProviderSkillsCatalogResult,
   ProviderListPluginsInput,
   ProviderListPluginsResult,
+  ProviderListMcpServersInput,
+  ProviderListMcpServersResult,
   ProviderListModelsInput,
   ProviderListModelsResult,
   ProviderListAgentsInput,
@@ -48,6 +50,12 @@ export const WsProviderListSkillsCatalogRpc = Rpc.make(WS_METHODS.providerListSk
 export const WsProviderListPluginsRpc = Rpc.make(WS_METHODS.providerListPlugins, {
   payload: ProviderListPluginsInput,
   success: ProviderListPluginsResult,
+  error: WsRpcError,
+});
+
+export const WsProviderListMcpServersRpc = Rpc.make(WS_METHODS.providerListMcpServers, {
+  payload: ProviderListMcpServersInput,
+  success: ProviderListMcpServersResult,
   error: WsRpcError,
 });
 

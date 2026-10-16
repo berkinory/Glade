@@ -1,3 +1,5 @@
+import type { ProviderKind } from "@glade/contracts/core/baseSchemas";
+import type { ProviderMcpServer } from "@glade/contracts/provider/providerDiscovery";
 import type { McpConnector } from "@glade/contracts/transport/ws/mcpConnectorsRpc";
 import {
   findMcpConnectorPreset,
@@ -83,4 +85,67 @@ export function catalogShelves(
     );
     return presets.length > 0 ? [{ id: category.id, label: category.label, presets }] : [];
   });
+}
+
+export interface AgentServerSource {
+  readonly provider: ProviderKind;
+  readonly server: ProviderMcpServer;
+}
+
+// One MCP server as the agents configure it, merged across agents by name.
+export interface AgentServerRow {
+  readonly name: string;
+  readonly origin: string | null;
+  readonly sources: ReadonlyArray<AgentServerSource>;
+  // The catalog entry for the same service, when Glade offers it as a connector.
+  readonly preset: McpConnectorPreset | undefined;
+  // Set when the same service is also connected in Glade, so agents load it twice.
+  readonly connector: McpConnector | undefined;
+}
+
+const normalizedName = (value: string) => value.toLowerCase().replace(/[^a-z0-9]/gu, "");
+
+function presetFor(name: string, origin: string | null): McpConnectorPreset | undefined {
+  const byOrigin = origin
+    ? MCP_CONNECTOR_PRESETS.find((preset) => new URL(preset.url).origin === origin)
+    : undefined;
+  if (byOrigin) return byOrigin;
+  const key = normalizedName(name);
+  return MCP_CONNECTOR_PRESETS.find(
+    (preset) => normalizedName(preset.id) === key || normalizedName(preset.name) === key,
+  );
+}
+
+export function agentServerRows(
+  sources: ReadonlyArray<AgentServerSource>,
+  connectors: ReadonlyArray<McpConnector>,
+): ReadonlyArray<AgentServerRow> {
+  const byName = new Map<string, AgentServerSource[]>();
+  for (const source of sources) {
+    const key = normalizedName(source.server.name);
+    byName.set(key, [...(byName.get(key) ?? []), source]);
+  }
+  return [...byName.values()]
+    .flatMap((group): AgentServerRow[] => {
+      const [first] = group;
+      if (!first) return [];
+      const name = first.server.name;
+      const origin = group.find((entry) => entry.server.origin)?.server.origin ?? null;
+      const preset = presetFor(name, origin);
+      const connector = connectors.find(
+        (entry) =>
+          (preset !== undefined && entry.presetId === preset.id) ||
+          (origin !== null && connectorOrigin(entry.url) === origin),
+      );
+      return [{ name, origin, sources: group, preset, connector }];
+    })
+    .toSorted((left, right) => left.name.localeCompare(right.name));
+}
+
+function connectorOrigin(url: string): string | null {
+  try {
+    return new URL(url).origin;
+  } catch {
+    return null;
+  }
 }

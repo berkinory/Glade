@@ -134,6 +134,7 @@ export const WS_METHODS = {
   providerListSkills: "provider.listSkills",
   providerListSkillsCatalog: "provider.listSkillsCatalog",
   providerListPlugins: "provider.listPlugins",
+  providerListMcpServers: "provider.listMcpServers",
   providerListModels: "provider.listModels",
   providerListAgents: "provider.listAgents",
 } as const;

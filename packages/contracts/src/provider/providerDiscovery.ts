@@ -205,6 +205,33 @@ export const ProviderListPluginsResult = Schema.Struct({
 });
 export type ProviderListPluginsResult = typeof ProviderListPluginsResult.Type;
 
+// An MCP server the provider loads from its own configuration. Glade lists these but never changes
+// them; the provider's config stays their owner.
+export const ProviderMcpServer = Schema.Struct({
+  name: TrimmedNonEmptyString,
+  transport: Schema.Literals(["http", "local"]),
+  // Origin of an HTTP server's endpoint, without path or credentials.
+  origin: Schema.NullOr(TrimmedNonEmptyString),
+  // "configured": read from config, not connected to check.
+  status: Schema.Literals(["connected", "needs-sign-in", "failed", "configured"]),
+  toolCount: Schema.NullOr(Schema.Number),
+  detail: Schema.NullOr(TrimmedNonEmptyString),
+});
+export type ProviderMcpServer = typeof ProviderMcpServer.Type;
+
+export const ProviderListMcpServersInput = Schema.Struct({
+  provider: ProviderDiscoveryKind,
+  forceReload: Schema.optional(Schema.Boolean),
+});
+export type ProviderListMcpServersInput = typeof ProviderListMcpServersInput.Type;
+
+export const ProviderListMcpServersResult = Schema.Struct({
+  servers: Schema.Array(ProviderMcpServer),
+  source: Schema.optional(TrimmedNonEmptyString),
+  cached: Schema.optional(Schema.Boolean),
+});
+export type ProviderListMcpServersResult = typeof ProviderListMcpServersResult.Type;
+
 export const ProviderListModelsInput = Schema.Struct({
   provider: ProviderDiscoveryKind,
   binaryPath: Schema.optional(TrimmedNonEmptyString),

@@ -164,6 +164,7 @@ export const WS_RPC_REQUIRED_SCOPES: Record<WsFeatureRpcTag, AuthScope> = {
   [WS_METHODS.providerListSkills]: "orchestration:read",
   [WS_METHODS.providerListSkillsCatalog]: "orchestration:read",
   [WS_METHODS.providerListPlugins]: "orchestration:read",
+  [WS_METHODS.providerListMcpServers]: "orchestration:read",
   [WS_METHODS.providerListModels]: "orchestration:read",
   [WS_METHODS.providerListAgents]: "orchestration:read",
 };

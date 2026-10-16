@@ -6,6 +6,7 @@ import {
   ProviderListModelsInput,
   type ProviderListModelsResult,
   ProviderListPluginsInput,
+  ProviderListMcpServersInput,
   type ProviderListPluginsResult,
   ProviderModelDescriptor,
   ProviderListSkillsInput,
@@ -331,6 +332,21 @@ const make = Effect.gen(function* () {
       return parsed.installedOnly ? keepInstalledPlugins(result) : result;
     });
 
+  const listMcpServers: ProviderDiscoveryServiceShape["listMcpServers"] = (input) =>
+    Effect.gen(function* () {
+      const parsed = yield* decodeInputOrValidationError({
+        operation: "ProviderDiscoveryService.listMcpServers",
+        schema: ProviderListMcpServersInput,
+        payload: input,
+      });
+      if (!(yield* providerIsEnabled(parsed.provider))) {
+        return { servers: [], source: "disabled", cached: false };
+      }
+      const adapter = yield* registry.getByProvider(parsed.provider);
+      if (!adapter.listMcpServers) return { servers: [], source: "unsupported", cached: false };
+      return yield* adapter.listMcpServers(parsed);
+    });
+
   const listModels: ProviderDiscoveryServiceShape["listModels"] = (input) =>
     Effect.gen(function* () {
       const parsed = yield* decodeInputOrValidationError({
@@ -409,6 +425,7 @@ const make = Effect.gen(function* () {
   return {
     getComposerCapabilities,
     listCommands,
+    listMcpServers,
     listSkills,
     listPlugins,
     listModels,

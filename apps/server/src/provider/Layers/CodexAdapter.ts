@@ -2250,6 +2250,18 @@ const makeCodexAdapter = (options?: CodexAdapterLiveOptions) =>
           }),
       }).pipe(Effect.map((result) => result satisfies ProviderListPluginsResult));
 
+    const listMcpServers: NonNullable<CodexAdapterShape["listMcpServers"]> = (input) =>
+      Effect.tryPromise({
+        try: () => manager.listMcpServers(input.forceReload === true),
+        catch: (cause) =>
+          new ProviderAdapterRequestError({
+            provider: PROVIDER,
+            method: "mcpServerStatus/list",
+            detail: toMessage(cause, "mcpServerStatus/list failed"),
+            cause,
+          }),
+      });
+
     const listModels: NonNullable<CodexAdapterShape["listModels"]> = (input) =>
       Effect.tryPromise({
         try: () => manager.listModels(undefined, input.cwd),
@@ -2440,6 +2452,7 @@ const makeCodexAdapter = (options?: CodexAdapterLiveOptions) =>
       getComposerCapabilities,
       listSkills,
       listPlugins,
+      listMcpServers,
       listModels,
       prewarmVoice,
       transcribeVoice,

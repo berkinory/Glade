@@ -2118,6 +2118,8 @@ const makeWsRpcHandlersLayer = () =>
           ),
         [WS_METHODS.providerListPlugins]: (input) =>
           rpcEffect(providerDiscoveryService.listPlugins(input), "Failed to list plugins"),
+        [WS_METHODS.providerListMcpServers]: (input) =>
+          rpcEffect(providerDiscoveryService.listMcpServers(input), "Failed to list MCP servers"),
         [WS_METHODS.providerListModels]: (input) =>
           rpcEffect(providerDiscoveryService.listModels(input), "Failed to list models"),
         [WS_METHODS.providerListAgents]: (input) =>

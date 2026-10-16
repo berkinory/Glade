@@ -16,6 +16,7 @@ import { Spinner } from "../../ui/spinner";
 import { toastManager } from "../../ui/toast";
 import { ComposerPickerMenuPopup } from "../../chat/ComposerPickerMenuPopup";
 import { SettingsCard, SettingsEmptyState, SettingsSectionShell } from "../SettingsPanelPrimitives";
+import { AgentMcpServersSection } from "./AgentMcpServersSection";
 import { ConnectorDialog } from "./ConnectorDialog";
 import { ConnectorIcon } from "./ConnectorIcon";
 import {
@@ -216,6 +217,12 @@ export function ConnectorsSettingsPanel() {
           </SettingsCard>
         )}
       </SettingsSectionShell>
+
+      <AgentMcpServersSection
+        connectors={connectors}
+        query={query}
+        onUseInGlade={(preset) => setTarget({ kind: "preset", preset })}
+      />
 
       {shelves.length === 0 && query ? (
         <SettingsEmptyState>

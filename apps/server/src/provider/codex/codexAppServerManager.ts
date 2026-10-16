@@ -30,6 +30,7 @@ import {
   type ProviderComposerCapabilities,
   type ProviderListModelsResult,
   type ProviderListPluginsResult,
+  type ProviderListMcpServersResult,
   type ProviderMentionReference,
   type ProviderListSkillsResult,
   type ProviderListPluginsInput,
@@ -122,6 +123,9 @@ import {
 import type { ModelListResponse } from "./protocol/generated/types/v2/ModelListResponse";
 import type { SkillsListResponse } from "./protocol/generated/types/v2/SkillsListResponse";
 import type { PluginListResponse } from "./protocol/generated/types/v2/PluginListResponse";
+import type { ListMcpServerStatusResponse } from "./protocol/generated/types/v2/ListMcpServerStatusResponse";
+import type { McpServerStatus } from "./protocol/generated/types/v2/McpServerStatus";
+import { codexMcpServers } from "./codexMcpServers.ts";
 import type { GetAccountResponse } from "./protocol/generated/types/v2/GetAccountResponse";
 import type { GetAccountRateLimitsResponse } from "./protocol/generated/types/v2/GetAccountRateLimitsResponse";
 import type { ConfigReadResponse } from "./protocol/generated/types/v2/ConfigReadResponse";
@@ -815,6 +819,7 @@ export class CodexAppServerManager extends EventEmitter<CodexAppServerManagerEve
     | undefined;
   private readonly skillsCache = new Map<string, ProviderListSkillsResult>();
   private readonly pluginsCache = new Map<string, ProviderListPluginsResult>();
+  private mcpServersCache: ProviderListMcpServersResult | null = null;
 
   private runPromise: (effect: Effect.Effect<unknown, never>) => Promise<unknown>;
   private readonly gladeSkillsDir: string | undefined;
@@ -2617,6 +2622,31 @@ export class CodexAppServerManager extends EventEmitter<CodexAppServerManagerEve
       cached: false,
     };
     setRecentCacheEntry(this.pluginsCache, cacheKey, result);
+    return result;
+  }
+
+  // Starts the configured servers to read their tools and auth state, so results are cached until
+  // a reload is asked for.
+  async listMcpServers(forceReload: boolean): Promise<ProviderListMcpServersResult> {
+    if (!forceReload && this.mcpServersCache) return { ...this.mcpServersCache, cached: true };
+    const context = await this.resolveContextForDiscovery(undefined, undefined);
+    const statuses: McpServerStatus[] = [];
+    let cursor: string | null = null;
+    do {
+      const page: ListMcpServerStatusResponse = await this.sendRequest<ListMcpServerStatusResponse>(
+        context,
+        "mcpServerStatus/list",
+        { detail: "toolsAndAuthOnly", ...(cursor ? { cursor } : {}) },
+      );
+      statuses.push(...page.data);
+      cursor = page.nextCursor;
+    } while (cursor);
+    const result: ProviderListMcpServersResult = {
+      servers: codexMcpServers(statuses),
+      source: "codex-app-server",
+      cached: false,
+    };
+    this.mcpServersCache = result;
     return result;
   }
 
