@@ -1,28 +1,8 @@
 import * as SqlClient from "effect/unstable/sql/SqlClient";
 
-export interface CountRow {
-  readonly count: number;
-}
-
-export interface PromptActivityRow extends CountRow {
+export interface DayCountRow {
   readonly day: string | null;
-  readonly hour: number | null;
-}
-
-export interface TurnInsightRow extends CountRow {
-  readonly provider: string | null;
-  readonly model: string | null;
-  readonly reasoning: string | null;
-}
-
-export interface MostWorkedProjectRow {
-  readonly projectId: string | null;
-  readonly title: string | null;
-  readonly workspaceRoot: string | null;
-  readonly promptCount: number;
-  readonly threadCount: number;
-  readonly activeDays: number;
-  readonly lastWorkedAt: string | null;
+  readonly count: number;
 }
 
 export interface TokenDayRow {
@@ -107,4 +87,44 @@ export function tokenUsageSessionIdSql(sql: SqlClient.SqlClient) {
         INSTR(json_extract(a.payload_json, '$.usageSessionId'), ':') - 1)
       ELSE json_extract(a.payload_json, '$.usageSessionId')
     END, '')`);
+}
+
+// Active agent time per turn: the gaps between a turn's events (its start, activities and
+// completion), each capped so a turn left waiting (an unanswered approval, an abandoned interrupt)
+// adds at most the cap. A turn is dated by its first event. Provider-native threads mirror
+// subagents that run inside a parent turn already counted.
+export function agentTurnSecondsCtes(
+  sql: SqlClient.SqlClient,
+  scope?: { readonly threadId: string },
+) {
+  const activityScope = scope ? sql`AND a.thread_id = ${scope.threadId}` : sql.literal("");
+  const turnScope = scope ? sql`AND thread_id = ${scope.threadId}` : sql.literal("");
+  return sql`
+    agent_turn_events AS (
+      SELECT a.thread_id, a.turn_id, a.created_at AS at
+      FROM projection_thread_activities a
+      WHERE a.turn_id IS NOT NULL ${activityScope}
+      UNION ALL
+      SELECT thread_id, turn_id, started_at FROM projection_turns
+      WHERE turn_id IS NOT NULL AND started_at IS NOT NULL ${turnScope}
+      UNION ALL
+      SELECT thread_id, turn_id, completed_at FROM projection_turns
+      WHERE turn_id IS NOT NULL AND completed_at IS NOT NULL ${turnScope}
+    ),
+    agent_turn_gaps AS (
+      SELECT thread_id, turn_id, at,
+        (julianday(at) - julianday(LAG(at) OVER (PARTITION BY thread_id, turn_id ORDER BY at)))
+          * 86400 AS gap
+      FROM agent_turn_events
+    ),
+    agent_turn_seconds AS (
+      SELECT g.thread_id, MIN(g.at) AS started_at,
+        CAST(ROUND(COALESCE(SUM(MIN(g.gap, 300)), 0)) AS INTEGER) AS seconds
+      FROM agent_turn_gaps g
+      JOIN projection_threads th ON th.thread_id = g.thread_id
+      WHERE COALESCE(th.creation_source, '') != 'provider_native'
+      GROUP BY g.thread_id, g.turn_id
+      HAVING seconds > 0
+    )
+  `;
 }

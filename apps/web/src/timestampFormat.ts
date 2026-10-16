@@ -18,12 +18,6 @@ export function formatTimestamp(isoDate: string): string {
   return timeWithSecondsFormatter.format(new Date(isoDate));
 }
 
-export function formatHourOfDay(hour: number): string {
-  const date = new Date();
-  date.setHours(((hour % 24) + 24) % 24, 0, 0, 0);
-  return timeFormatter.format(date);
-}
-
 const dayLabelFormatterCache = new Map<string, Intl.DateTimeFormat>();
 
 function getDayLabelFormatter(options: Intl.DateTimeFormatOptions): Intl.DateTimeFormat {

@@ -1,15 +1,19 @@
 import { Schema } from "effect";
 import { normalizeModelSlug } from "@glade/shared/provider/model";
 import { ProviderKind } from "@glade/contracts/core/baseSchemas";
-import type { ProfileStats } from "@glade/contracts/server/stats";
+import type {
+  ProfileDayCount,
+  ProfileStats,
+  ProfileTokenStats,
+} from "@glade/contracts/server/stats";
 import { nonEmptyTrimmed } from "@glade/shared/text/text";
-import { TokenDayRow, num, MostWorkedProjectRow } from "./profileQueryValues";
+import { DayCountRow, TokenDayRow, num } from "./profileQueryValues";
 
 const HEATMAP_WINDOW_DAYS = 274;
 
 type HeatmapCell = ProfileStats["activity"]["heatmap"][number];
 
-type MostWorkedProject = ProfileStats["mostWorkedProject"];
+type ModelDayTokens = ProfileTokenStats["modelDays"][number];
 
 export function localToday(utcOffsetMinutes: number): string {
   return new Date(Date.now() + utcOffsetMinutes * 60_000).toISOString().slice(0, 10);
@@ -50,41 +54,9 @@ export function percent1(part: number, total: number): number {
   return total > 0 ? Math.round((part / total) * 1000) / 10 : 0;
 }
 
-export function compareNullableText(
-  left: string | null | undefined,
-  right: string | null | undefined,
-): number {
-  return (left ?? "").localeCompare(right ?? "");
-}
-
-export function deriveInitials(name: string): string {
-  const parts = name.split(/[\s._-]+/u).filter((part) => part.length > 0);
-  if (parts.length >= 2) {
-    return `${parts[0]?.[0] ?? ""}${parts[1]?.[0] ?? ""}`.toUpperCase() || "SY";
-  }
-  const single = parts[0] ?? name;
-  return (single.slice(0, 2) || "SY").toUpperCase();
-}
-
 export function sanitizeHandle(basename: string): string {
   const slug = basename.toLowerCase().replace(/[^a-z0-9_]/gu, "");
   return `@${slug || "glade"}`;
-}
-
-export function formatHour(hour: number): string {
-  const normalized = ((hour % 24) + 24) % 24;
-  if (normalized === 0) return "12 AM";
-  if (normalized === 12) return "12 PM";
-  return normalized < 12 ? `${normalized} AM` : `${normalized - 12} PM`;
-}
-
-export function arcName(startHour: number): string {
-  if (startHour < 5) return "Late-Night Dev Arc";
-  if (startHour < 9) return "Early Bird Arc";
-  if (startHour < 12) return "Morning Arc";
-  if (startHour < 17) return "Afternoon Arc";
-  if (startHour < 21) return "Evening Arc";
-  return "Night Owl Arc";
 }
 
 export function normalizeProviderKind(value: unknown): ProviderKind | "unknown" {
@@ -92,30 +64,25 @@ export function normalizeProviderKind(value: unknown): ProviderKind | "unknown" 
   return provider && Schema.is(ProviderKind)(provider) ? provider : "unknown";
 }
 
-export function normalizeUsageModel(
+function normalizeUsageModel(
   model: string | null | undefined,
   provider: ProviderKind | "unknown",
 ): string {
   return normalizeModelSlug(model, provider === "unknown" ? undefined : provider) ?? "unknown";
 }
 
-interface TokenModelUsageCount {
-  readonly provider: ProviderKind | "unknown";
-  readonly model: string;
-  tokens: number;
-}
-
 interface TokenActivityAggregate {
   readonly tokensByDay: Map<string, number>;
   readonly tokensByProvider: Map<ProviderKind, number>;
-  readonly tokensByProviderModel: Map<string, TokenModelUsageCount>;
+  // Unknown providers still count toward the day and lifetime totals.
+  readonly modelDays: ModelDayTokens[];
   readonly lifetime: number;
 }
 
 export function aggregateTokenActivity(rows: ReadonlyArray<TokenDayRow>): TokenActivityAggregate {
   const tokensByDay = new Map<string, number>();
   const tokensByProvider = new Map<ProviderKind, number>();
-  const tokensByProviderModel = new Map<string, TokenModelUsageCount>();
+  const tokensByModelDay = new Map<string, ModelDayTokens>();
   let lifetime = 0;
   for (const row of rows) {
     const day = nonEmptyTrimmed(row.day) ?? null;
@@ -126,19 +93,31 @@ export function aggregateTokenActivity(rows: ReadonlyArray<TokenDayRow>): TokenA
     tokensByDay.set(day, (tokensByDay.get(day) ?? 0) + tokens);
     lifetime += tokens;
     const provider = normalizeProviderKind(row.provider);
-    if (provider !== "unknown") {
-      tokensByProvider.set(provider, (tokensByProvider.get(provider) ?? 0) + tokens);
+    if (provider === "unknown") {
+      continue;
     }
-    const model = normalizeUsageModel(row.model, provider);
-    const providerModelKey = `${provider}\u0000${model}`;
-    const existing = tokensByProviderModel.get(providerModelKey);
-    if (existing) {
-      existing.tokens += tokens;
-    } else {
-      tokensByProviderModel.set(providerModelKey, { provider, model, tokens });
-    }
+    tokensByProvider.set(provider, (tokensByProvider.get(provider) ?? 0) + tokens);
+    const normalizedModel = normalizeUsageModel(row.model, provider);
+    const model = normalizedModel === "unknown" ? null : normalizedModel;
+    const key = `${day}\u0000${provider}\u0000${model ?? ""}`;
+    const existing = tokensByModelDay.get(key);
+    tokensByModelDay.set(key, { day, provider, model, tokens: (existing?.tokens ?? 0) + tokens });
   }
-  return { tokensByDay, tokensByProvider, tokensByProviderModel, lifetime };
+  const modelDays = [...tokensByModelDay.values()].toSorted(
+    (left, right) =>
+      left.day.localeCompare(right.day) ||
+      left.provider.localeCompare(right.provider) ||
+      (left.model ?? "").localeCompare(right.model ?? ""),
+  );
+  return { tokensByDay, tokensByProvider, modelDays, lifetime };
+}
+
+export function dayCounts(rows: ReadonlyArray<DayCountRow>): ProfileDayCount[] {
+  return rows.flatMap((row) => {
+    const day = nonEmptyTrimmed(row.day) ?? null;
+    const count = num(row.count);
+    return day && count > 0 ? [{ day, count }] : [];
+  });
 }
 
 export function computeStreaks(
@@ -201,28 +180,4 @@ export function buildHeatmap(
     });
   }
   return heatmap;
-}
-
-export function buildMostWorkedProject(row: MostWorkedProjectRow | undefined): MostWorkedProject {
-  if (!row) {
-    return null;
-  }
-
-  const projectId = nonEmptyTrimmed(row.projectId) ?? null;
-  const title = nonEmptyTrimmed(row.title) ?? null;
-  const workspaceRoot = nonEmptyTrimmed(row.workspaceRoot) ?? null;
-  const lastWorkedAt = nonEmptyTrimmed(row.lastWorkedAt) ?? null;
-  if (!projectId || !title || !workspaceRoot || !lastWorkedAt) {
-    return null;
-  }
-
-  return {
-    projectId,
-    title,
-    workspaceRoot,
-    promptCount: num(row.promptCount),
-    threadCount: num(row.threadCount),
-    activeDays: num(row.activeDays),
-    lastWorkedAt,
-  };
 }

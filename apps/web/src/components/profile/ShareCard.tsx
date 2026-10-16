@@ -5,7 +5,7 @@ import { GladeLogo } from "~/components/GladeLogo";
 import { ActivityHeatmap, CARD_HEATMAP_INTENSITY_CLASSES } from "./ActivityHeatmap";
 import { ProfileAvatar } from "./ProfileAvatar";
 import { ProfileUsageCoverage } from "./ProfileUsageCoverage";
-import { formatCompact, formatDays, formatProfileUsageBasis } from "./profileFormatting";
+import { formatCompact, formatDays } from "./profileFormatting";
 import { selectProfileHeatmap, selectProfileTopProvider } from "./profileSelectors";
 
 export const SHARE_CARD_WIDTH = 860;
@@ -34,7 +34,7 @@ export const ShareCard = forwardRef<HTMLDivElement, ShareCardProps>(function Sha
   { stats, tokenStats, displayName, handle, avatarColor, avatarImage },
   ref,
 ) {
-  const topProvider = selectProfileTopProvider(stats, tokenStats);
+  const topProvider = selectProfileTopProvider(tokenStats);
 
   const tiles: Tile[] = [
     {
@@ -65,9 +65,8 @@ export const ShareCard = forwardRef<HTMLDivElement, ShareCardProps>(function Sha
     },
     {
       key: "provider",
-      // Most-used provider: token telemetry when available, otherwise turn count. An explicit slate color
-      // keeps currentColor glyphs visible on the white card in every theme.
-      value: topProvider.provider ? (
+      // An explicit slate color keeps currentColor glyphs visible on the white card in every theme.
+      value: topProvider ? (
         <span className="flex items-center gap-2">
           <ProviderIcon
             provider={topProvider.provider}
@@ -80,7 +79,7 @@ export const ShareCard = forwardRef<HTMLDivElement, ShareCardProps>(function Sha
       ) : (
         <span className={VALUE_CLASS}>—</span>
       ),
-      label: `top provider · ${formatProfileUsageBasis(topProvider.metric)}`,
+      label: "top provider",
     },
   ];
 
@@ -96,11 +95,10 @@ export const ShareCard = forwardRef<HTMLDivElement, ShareCardProps>(function Sha
       <div className="flex min-w-0 items-center justify-between gap-6">
         <div className="flex min-w-0 flex-1 items-center gap-4">
           <ProfileAvatar
-            initials={stats.identity.initials}
+            seed={handle}
             color={avatarColor}
             image={avatarImage}
-            className="size-16 shrink-0 text-lg font-medium"
-            textClassName="text-lg font-medium"
+            className="size-16 shrink-0"
           />
           <div className="flex min-w-0 flex-1 flex-col gap-0.5">
             <span className="truncate text-2xl font-normal leading-tight tracking-tight">
@@ -132,7 +130,7 @@ export const ShareCard = forwardRef<HTMLDivElement, ShareCardProps>(function Sha
         ))}
       </div>
       <ProfileUsageCoverage
-        unavailableProviders={topProvider.unavailableProviders}
+        unavailableProviders={tokenStats?.unavailableProviders ?? []}
         className="text-xs leading-4 text-slate-500"
       />
     </div>

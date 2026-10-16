@@ -18,7 +18,7 @@ const dialogButtonClassName = "h-11 rounded-lg px-4";
 interface EditProfileDialogProps {
   readonly open: boolean;
   readonly onOpenChange: (open: boolean) => void;
-  readonly initials: string;
+  readonly seed: string;
   readonly name: string;
   readonly handle: string;
   readonly avatarColor: string;
@@ -33,7 +33,7 @@ interface EditProfileDialogProps {
 export function EditProfileDialog({
   open,
   onOpenChange,
-  initials,
+  seed,
   name,
   handle,
   avatarColor,
@@ -46,7 +46,7 @@ export function EditProfileDialog({
         {}
         <EditProfileDialogContent
           onOpenChange={onOpenChange}
-          initials={initials}
+          seed={seed}
           name={name}
           handle={handle}
           avatarColor={avatarColor}
@@ -59,7 +59,7 @@ export function EditProfileDialog({
 }
 function EditProfileDialogContent({
   onOpenChange,
-  initials,
+  seed,
   name,
   handle,
   avatarColor,
@@ -105,13 +105,7 @@ function EditProfileDialogContent({
         {}
         <div className="flex flex-col items-center gap-3">
           <div className="relative">
-            <ProfileAvatar
-              initials={initials}
-              color={draftColor}
-              image={draftImage}
-              className="size-20"
-              textClassName="text-2xl"
-            />
+            <ProfileAvatar seed={seed} color={draftColor} image={draftImage} className="size-20" />
             <button
               type="button"
               onClick={() => setShowEditor((value) => !value)}

@@ -852,12 +852,7 @@ function SettingsRouteView() {
         </div>
         <div className="flex h-full min-h-0 min-w-0 flex-1 flex-col">
           <div className="flex-1 overflow-y-auto [scrollbar-gutter:stable]">
-            <div
-              className={cn(
-                "mx-auto w-full px-6 py-8",
-                activeSection === "profile" ? "max-w-3xl" : "max-w-2xl",
-              )}
-            >
+            <div className="mx-auto w-full max-w-2xl px-6 py-8">
               {
                 <div className="mb-8 flex items-start justify-between gap-4">
                   <div className="min-w-0">

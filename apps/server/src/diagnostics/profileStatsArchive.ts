@@ -1,4 +1,3 @@
-import { normalizeProviderKind, normalizeUsageModel } from "./profileActivity";
 import { asNonBlankString } from "@glade/shared/text/text";
 import type { TaggedFailure } from "../platform/operationError.ts";
 
@@ -16,8 +15,11 @@ import {
   isManagedCheckpointRefForThread,
   resolveProjectCwdForKind,
 } from "../checkpointing/Utils";
-import { aggregateProfileSkillUsageRows } from "./profileSkillUsage";
-import { tokenUsageSessionIdSql, turnModelSelectionCte } from "./profileQueryValues";
+import {
+  agentTurnSecondsCtes,
+  tokenUsageSessionIdSql,
+  turnModelSelectionCte,
+} from "./profileQueryValues";
 import { PROVIDER_COMMAND_REACTOR_CONSUMER } from "../persistence/Services/OrchestrationEventDeliveries";
 import { isProviderIntentEventType } from "../orchestration/providerIntentClassification";
 import { THREAD_RETENTION_COMMAND_ID_PREFIX } from "../orchestration/threadRetention";
@@ -34,9 +36,9 @@ interface PurgeThreadRow {
   readonly workspaceRoot: string | null;
 }
 
-interface TurnEventRow {
-  readonly payloadJson: string | null;
-  readonly model: string | null;
+interface SnapshotThreadRow extends PurgeThreadRow {
+  readonly createdAt: string;
+  readonly creationSource: string | null;
 }
 
 interface TokenActivityRow {
@@ -48,13 +50,6 @@ interface TokenActivityRow {
   readonly usageSessionId: string;
   readonly dispatchOrigin?: string | null;
   readonly createdAt: string | null;
-}
-
-interface SkillMessageRow {
-  readonly messageId: string | null;
-  readonly text: string | null;
-  readonly skillsJson: string | null;
-  readonly mentionsJson: string | null;
 }
 
 interface CheckpointTurnRow {
@@ -71,13 +66,6 @@ interface ThreadCheckpointCleanup {
   readonly checkpointRefs: ReadonlyArray<CheckpointRef>;
 }
 
-interface ThreadTurnSnapshotRow {
-  readonly provider: string | null;
-  readonly model: string | null;
-  readonly reasoning: string | null;
-  readonly turnCount: number;
-}
-
 interface ThreadTokenSnapshotRow {
   readonly createdAt: string;
   readonly provider: string | null;
@@ -88,23 +76,16 @@ interface ThreadTokenSnapshotRow {
 interface ModelSelectionLike {
   readonly provider: string | null;
   readonly model: string | null;
-  readonly reasoning: string | null;
 }
 
 function parseModelSelection(value: unknown): ModelSelectionLike | null {
   if (value === null || typeof value !== "object" || Array.isArray(value)) {
     return null;
   }
-  const record = value as { provider?: unknown; model?: unknown; options?: unknown };
-  const options =
-    record.options !== null && typeof record.options === "object"
-      ? (record.options as { reasoningEffort?: unknown; effort?: unknown })
-      : null;
+  const record = value as { provider?: unknown; model?: unknown };
   return {
     provider: asNonBlankString(record.provider) ?? null,
     model: asNonBlankString(record.model) ?? null,
-    reasoning:
-      asNonBlankString(options?.reasoningEffort) ?? asNonBlankString(options?.effort) ?? null,
   };
 }
 
@@ -169,62 +150,6 @@ function checkpointRefsForThreadPurge(
   }
 
   return [...refs].map((checkpointRef) => CheckpointRef.makeUnsafe(checkpointRef));
-}
-
-function hasProfileStatsContribution(input: {
-  readonly promptRows: ReadonlyArray<SkillMessageRow>;
-  readonly turnRows: ReadonlyArray<ThreadTurnSnapshotRow>;
-  readonly tokenRows: ReadonlyArray<ThreadTokenSnapshotRow>;
-  readonly skillRows: ReturnType<typeof aggregateProfileSkillUsageRows>;
-}): boolean {
-  return (
-    input.promptRows.length > 0 ||
-    input.turnRows.some((row) => row.turnCount > 0) ||
-    input.tokenRows.length > 0 ||
-    input.skillRows.some((row) => row.runCount > 0)
-  );
-}
-
-// Match live attribution: a later thread model is not evidence of a historical turn model.
-function aggregateThreadTurnSnapshotRows(
-  events: ReadonlyArray<TurnEventRow>,
-  threadModelSelectionJson: string | null,
-): ThreadTurnSnapshotRow[] {
-  const threadSelection = parseModelSelectionJson(threadModelSelectionJson);
-  const counts = new Map<
-    string,
-    { provider: string | null; model: string | null; reasoning: string | null; turnCount: number }
-  >();
-
-  for (const event of events) {
-    let eventSelection: ModelSelectionLike | null = null;
-    if (event.payloadJson !== null) {
-      try {
-        const payload: unknown = JSON.parse(event.payloadJson);
-        if (payload !== null && typeof payload === "object") {
-          eventSelection = parseModelSelection(
-            (payload as { modelSelection?: unknown }).modelSelection,
-          );
-        }
-      } catch {}
-    }
-    const selection = eventSelection ?? threadSelection;
-    const provider = selection?.provider ?? null;
-    const model = normalizeUsageModel(
-      event.model ?? eventSelection?.model,
-      normalizeProviderKind(provider),
-    );
-    const reasoning = selection?.reasoning ?? null;
-    const key = `${provider ?? ""}\u0000${model ?? ""}\u0000${reasoning ?? ""}`;
-    const existing = counts.get(key);
-    if (existing) {
-      existing.turnCount += 1;
-    } else {
-      counts.set(key, { provider, model, reasoning, turnCount: 1 });
-    }
-  }
-
-  return [...counts.values()];
 }
 
 function tokenCounterValue(value: number | bigint | null): number | null {
@@ -547,10 +472,12 @@ const makeProfileStatsArchive = Effect.gen(function* () {
 
   const snapshotAndPurgeThread = (threadId: string) =>
     Effect.gen(function* () {
-      const threadRows = yield* sql<PurgeThreadRow>`
+      const threadRows = yield* sql<SnapshotThreadRow>`
         SELECT
           t.project_id AS projectId,
           t.model_selection_json AS modelSelectionJson,
+          t.created_at AS createdAt,
+          t.creation_source AS creationSource,
           t.deleted_at AS deletedAt,
           t.env_mode AS envMode,
           t.worktree_path AS worktreePath,
@@ -570,21 +497,6 @@ const makeProfileStatsArchive = Effect.gen(function* () {
       }
       const deletedAt = thread.deletedAt ?? new Date().toISOString();
       const projectId = thread.projectId ?? null;
-
-      const turnEventRows = yield* sql<TurnEventRow>`
-        WITH turn_model AS (${turnModelSelectionCte(sql, { threadId })})
-        SELECT e.payload_json AS payloadJson, tm.model AS model
-        FROM orchestration_events e
-        LEFT JOIN projection_turns pt
-          ON pt.thread_id = ${threadId}
-         AND pt.pending_message_id = json_extract(e.payload_json, '$.messageId')
-        LEFT JOIN turn_model tm ON tm.thread_id = pt.thread_id AND tm.turn_id = pt.turn_id
-        LEFT JOIN projection_thread_messages m
-          ON m.message_id = json_extract(e.payload_json, '$.messageId')
-        WHERE e.event_type = 'thread.turn-start-requested'
-          AND COALESCE(json_extract(e.payload_json, '$.threadId'), e.stream_id) = ${threadId}
-          AND (m.dispatch_origin IS NULL OR m.dispatch_origin = 'user')
-      `;
 
       const tokenActivityRows = yield* sql<TokenActivityRow>`
         WITH turn_model AS (
@@ -621,21 +533,11 @@ const makeProfileStatsArchive = Effect.gen(function* () {
           a.created_at ASC,
           a.activity_id ASC
       `;
-      const skillMessageRows = yield* sql<SkillMessageRow>`
-        SELECT
-          message_id AS messageId,
-          text,
-          skills_json AS skillsJson,
-          mentions_json AS mentionsJson
-        FROM projection_thread_messages
-        WHERE thread_id = ${threadId}
-          AND role = 'user'
-          AND source = 'native'
-          AND (dispatch_origin IS NULL OR dispatch_origin = 'user')
-        ORDER BY created_at ASC, message_id ASC
+      const agentTurnRows = yield* sql<{ readonly startedAt: string; readonly seconds: number }>`
+        WITH ${agentTurnSecondsCtes(sql, { threadId })}
+        SELECT started_at AS "startedAt", seconds FROM agent_turn_seconds
       `;
 
-      const turnRows = aggregateThreadTurnSnapshotRows(turnEventRows, thread.modelSelectionJson);
       const threadSelection = parseModelSelectionJson(thread.modelSelectionJson);
       const tokenRows = aggregateThreadTokenRows(tokenActivityRows, {
         provider: threadSelection?.provider ?? null,
@@ -659,61 +561,45 @@ const makeProfileStatsArchive = Effect.gen(function* () {
       for (const child of nativeChildRows) {
         tokenRows.push(...(yield* claudeTokenRowsFor(child.threadId)));
       }
-      const skillRows = aggregateProfileSkillUsageRows(skillMessageRows);
-      const hasStatsContribution = hasProfileStatsContribution({
-        promptRows: skillMessageRows,
-        turnRows,
-        tokenRows,
-        skillRows,
-      });
-
       yield* sql`DELETE FROM profile_stats_deleted_threads WHERE thread_id = ${threadId}`;
       yield* sql`DELETE FROM profile_stats_deleted_prompts WHERE thread_id = ${threadId}`;
-      yield* sql`DELETE FROM profile_stats_deleted_turns WHERE thread_id = ${threadId}`;
-      yield* sql`DELETE FROM profile_stats_deleted_skills WHERE thread_id = ${threadId}`;
       yield* sql`DELETE FROM profile_stats_deleted_tokens WHERE thread_id = ${threadId}`;
+      yield* sql`DELETE FROM profile_stats_deleted_agent_turns WHERE thread_id = ${threadId}`;
 
-      if (hasStatsContribution) {
+      // Only top-level chats count as started chats; a provider-native thread mirrors a subagent.
+      if (thread.creationSource !== "provider_native") {
         yield* sql`
-          INSERT INTO profile_stats_deleted_threads (thread_id, project_id, deleted_at)
-          VALUES (${threadId}, ${projectId}, ${deletedAt})
+          INSERT INTO profile_stats_deleted_threads (thread_id, project_id, deleted_at, created_at)
+          VALUES (${threadId}, ${projectId}, ${deletedAt}, ${thread.createdAt})
         `;
-        yield* sql`
-          INSERT INTO profile_stats_deleted_prompts (thread_id, project_id, created_at)
-          SELECT thread_id, ${projectId}, created_at
-          FROM projection_thread_messages
-          WHERE thread_id = ${threadId}
-            AND role = 'user'
-            AND source = 'native'
-            AND (dispatch_origin IS NULL OR dispatch_origin = 'user')
-        `;
-        yield* Effect.forEach(
-          turnRows,
-          (row) => sql`
-            INSERT INTO profile_stats_deleted_turns (thread_id, provider, model, reasoning, turn_count)
-            VALUES (${threadId}, ${row.provider}, ${row.model}, ${row.reasoning}, ${row.turnCount})
-          `,
-          { concurrency: 1, discard: true },
-        );
-        yield* Effect.forEach(
-          skillRows,
-          (row) => sql`
-            INSERT INTO profile_stats_deleted_skills (thread_id, name, kind, run_count)
-            VALUES (${threadId}, ${row.name}, ${row.kind}, ${row.runCount})
-          `,
-          { concurrency: 1, discard: true },
-        );
-        yield* Effect.forEach(
-          tokenRows,
-          (row) => sql`
-            INSERT INTO profile_stats_deleted_tokens
-              (thread_id, created_at, provider, model, tokens, token_accounting_version)
-            VALUES (${threadId}, ${row.createdAt}, ${row.provider}, ${row.model}, ${row.tokens},
-              ${row.provider === "claudeAgent" ? 1 : null})
-          `,
-          { concurrency: 1, discard: true },
-        );
       }
+      yield* sql`
+        INSERT INTO profile_stats_deleted_prompts (thread_id, project_id, created_at)
+        SELECT thread_id, ${projectId}, created_at
+        FROM projection_thread_messages
+        WHERE thread_id = ${threadId}
+          AND role = 'user'
+          AND source = 'native'
+          AND (dispatch_origin IS NULL OR dispatch_origin = 'user')
+      `;
+      yield* Effect.forEach(
+        tokenRows,
+        (row) => sql`
+          INSERT INTO profile_stats_deleted_tokens
+            (thread_id, created_at, provider, model, tokens, token_accounting_version)
+          VALUES (${threadId}, ${row.createdAt}, ${row.provider}, ${row.model}, ${row.tokens},
+            ${row.provider === "claudeAgent" ? 1 : null})
+        `,
+        { concurrency: 1, discard: true },
+      );
+      yield* Effect.forEach(
+        agentTurnRows,
+        (row) => sql`
+          INSERT INTO profile_stats_deleted_agent_turns (thread_id, started_at, seconds)
+          VALUES (${threadId}, ${row.startedAt}, ${row.seconds})
+        `,
+        { concurrency: 1, discard: true },
+      );
 
       yield* sql`
         DELETE FROM orchestration_event_deliveries

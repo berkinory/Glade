@@ -1,22 +1,21 @@
-import { type CSSProperties } from "react";
+import { type CSSProperties, type ReactNode } from "react";
 import type { ProfileHeatmapCell } from "@glade/contracts/server/stats";
 import { cn } from "~/lib/utils";
 import { Tooltip, TooltipPopup, TooltipTrigger } from "~/components/ui/tooltip";
-import { formatCompact, formatShortDate } from "./profileFormatting";
-
-const APP_HEATMAP_INTENSITY_CLASSES: readonly string[] = [
-  "bg-muted/70 dark:bg-white/[0.06]",
-  "bg-[color-mix(in_srgb,var(--info)_24%,transparent)]",
-  "bg-[color-mix(in_srgb,var(--info)_46%,transparent)]",
-  "bg-[color-mix(in_srgb,var(--info)_72%,transparent)]",
-  "bg-[var(--info)]",
-];
 
 export const CARD_HEATMAP_INTENSITY_CLASSES: readonly string[] = [
   "bg-[color-mix(in_srgb,black_2.8%,white)]",
   "bg-[color-mix(in_srgb,var(--info)_22%,white)]",
   "bg-[color-mix(in_srgb,var(--info)_45%,white)]",
   "bg-[color-mix(in_srgb,var(--info)_70%,white)]",
+  "bg-[var(--info)]",
+];
+
+export const APP_HEATMAP_INTENSITY_CLASSES: readonly string[] = [
+  "bg-muted/70 dark:bg-white/[0.06]",
+  "bg-[color-mix(in_srgb,var(--info)_24%,transparent)]",
+  "bg-[color-mix(in_srgb,var(--info)_46%,transparent)]",
+  "bg-[color-mix(in_srgb,var(--info)_72%,transparent)]",
   "bg-[var(--info)]",
 ];
 
@@ -51,19 +50,7 @@ interface ActivityHeatmapProps {
     readonly position?: "top" | "bottom";
     readonly labelClassName?: string;
   };
-  readonly tooltip?: {
-    readonly show?: boolean;
-    readonly unit?: string;
-  };
-}
-
-function heatmapTooltipText(cell: ProfileHeatmapCell, unit: string): string {
-  const date = formatShortDate(cell.day) ?? cell.day;
-  if (cell.count <= 0) {
-    return `No ${unit} on ${date}`;
-  }
-  const noun = cell.count === 1 && unit.endsWith("s") ? unit.slice(0, -1) : unit;
-  return `${formatCompact(cell.count)} ${noun} on ${date}`;
+  readonly renderTooltip?: (cell: ProfileHeatmapCell) => ReactNode;
 }
 
 type Slot =
@@ -81,19 +68,17 @@ export function ActivityHeatmap({
   className,
   layout,
   months,
-  tooltip: tooltipOptions,
+  renderTooltip,
 }: ActivityHeatmapProps) {
+  const intensityClasses = intensityClassesProp ?? APP_HEATMAP_INTENSITY_CLASSES;
   const cellSize = layout?.cellSize ?? 13;
   const gap = layout?.gap ?? 3;
   const radius = layout?.radius ?? 4;
-  const intensityClasses = intensityClassesProp ?? APP_HEATMAP_INTENSITY_CLASSES;
   const showMonths = months?.show ?? false;
   const monthsPosition = months?.position ?? "top";
   const monthLabelClassName = months?.labelClassName;
   const fill = layout?.fill ?? false;
   const maxCellSize = layout?.maxCellSize;
-  const tooltip = tooltipOptions?.show ?? false;
-  const tooltipUnit = tooltipOptions?.unit ?? "prompts";
   const columns: Column[] = [];
   if (cells.length > 0) {
     const slots: Slot[] = [];
@@ -206,7 +191,7 @@ export function ActivityHeatmap({
                 cellClass,
                 intensityClasses[slot.cell.intensity] ?? intensityClasses[0],
               );
-              if (!tooltip) {
+              if (!renderTooltip) {
                 return (
                   <div
                     key={slot.cell.day}
@@ -220,7 +205,7 @@ export function ActivityHeatmap({
                 <Tooltip key={slot.cell.day}>
                   <TooltipTrigger render={<div className={cellClassName} style={cellStyle} />} />
                   <TooltipPopup side="top" sideOffset={6}>
-                    {heatmapTooltipText(slot.cell, tooltipUnit)}
+                    {renderTooltip(slot.cell)}
                   </TooltipPopup>
                 </Tooltip>
               );

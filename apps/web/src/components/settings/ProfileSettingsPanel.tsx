@@ -1,38 +1,47 @@
-import { Share02Icon, PencilEdit02Icon, ChartColumnIcon, BotIcon, Book02Icon } from "~/lib/icons";
-import { useState } from "react";
+import { Share02Icon, PencilEdit02Icon } from "~/lib/icons";
+import { type ReactNode, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { type ProfileStats, type ProfileTokenStats } from "@glade/contracts/server/stats";
-import { type ProviderKind } from "@glade/contracts/core/baseSchemas";
 import {
   serverProfileStatsQueryOptions,
   serverProfileTokenStatsQueryOptions,
 } from "~/lib/serverReactQuery";
-import { ProviderIcon } from "~/components/ProviderIcon";
 import { Button } from "~/components/ui/button";
 import { Skeleton } from "~/components/ui/skeleton";
-import { ActivityHeatmap } from "../profile/ActivityHeatmap";
+import { cn } from "~/lib/utils";
+import { ActivityHeatmap, APP_HEATMAP_INTENSITY_CLASSES } from "../profile/ActivityHeatmap";
+import { ModelUsageList } from "../profile/ModelUsageList";
 import {
+  selectProfileDayProviders,
   selectProfileHeatmap,
-  selectProfileModelUsage,
-  selectProfileTopProvider,
+  selectProfileRangeSummary,
 } from "../profile/profileSelectors";
 import { ProfileUsageCoverage } from "../profile/ProfileUsageCoverage";
 import { ShareDialog } from "../profile/ShareDialog";
 import { EditProfileDialog } from "../profile/EditProfileDialog";
+import { TokenTooltipContent } from "../profile/TokenTooltipContent";
+import { TokenUsageChart } from "../profile/TokenUsageChart";
 import { useProfileHandle } from "../profile/useProfileHandle";
 import { useProfileName } from "../profile/useProfileName";
 import { useProfileAvatarColor } from "../profile/useProfileAvatarColor";
 import { useProfileAvatarImage } from "../profile/useProfileAvatarImage";
+import { useProfileRange } from "../profile/useProfileRange";
 import { ProfileAvatar } from "../profile/ProfileAvatar";
-import { formatHourOfDay } from "~/timestampFormat";
-import { PROVIDER_DISPLAY_NAMES } from "@glade/contracts/provider/model";
 import {
+  formatAgentDuration,
   formatCompact,
-  formatDays,
   formatNumber,
-  formatProfileUsageBasis,
+  formatPeriodLabel,
   toDisplayName,
 } from "../profile/profileFormatting";
+import { SettingsSegmentedControl } from "./SettingControls";
+import { SettingsCard, SettingsEmptyState, SettingsSectionShell } from "./SettingsPanelPrimitives";
+
+const RANGE_OPTIONS = [
+  { value: "month", label: "Monthly" },
+  { value: "all", label: "All time" },
+] as const;
+
 export function ProfileSettingsPanel() {
   const coreQuery = useQuery(serverProfileStatsQueryOptions());
   const tokenQuery = useQuery(serverProfileTokenStatsQueryOptions());
@@ -59,6 +68,7 @@ export function ProfileSettingsPanel() {
     />
   );
 }
+
 function ProfileContent({
   stats,
   tokenStats,
@@ -76,185 +86,94 @@ function ProfileContent({
   const { color: avatarColor, setColor: setAvatarColor } = useProfileAvatarColor();
   const { image: avatarImage, setImage: setAvatarImage } = useProfileAvatarImage();
 
-  // Tokens/day when available, prompts/day otherwise — shared with ShareCard.
+  const [range, setRange] = useProfileRange();
+
   const heatmap = selectProfileHeatmap(stats, tokenStats);
-  const topProvider = selectProfileTopProvider(stats, tokenStats);
-  const modelUsage = selectProfileModelUsage(stats, tokenStats);
-  const peakHourLabel = formatPeakHourLabel(stats.activeHours.startHour);
-  const mostWorkedProjectLabel = formatMostWorkedProjectLabel(stats.mostWorkedProject);
+  const summary = selectProfileRangeSummary(stats, tokenStats, range);
+  const tokens = tokenStats?.available ? tokenStats : null;
+
   return (
-    <div className="flex min-w-0 flex-col gap-7">
-      {}
-      <div className="flex items-center justify-end gap-2">
-        <Button variant="outline" size="sm" onClick={() => setShareOpen(true)}>
-          <Share02Icon />
-          Share
-        </Button>
+    <div className="flex min-w-0 flex-col gap-4">
+      <header className="flex items-center gap-3">
+        <ProfileAvatar seed={handle} color={avatarColor} image={avatarImage} className="size-12" />
+        <div className="flex min-w-0 flex-1 flex-col gap-0.5">
+          <h2 className="truncate text-ui-lg font-medium text-foreground">{name}</h2>
+          <span className="truncate text-ui-sm text-muted-foreground">{handle}</span>
+        </div>
         <Button variant="outline" size="sm" onClick={() => setEditOpen(true)}>
           <PencilEdit02Icon />
           Edit
         </Button>
-      </div>
-
-      {}
-      <header className="flex flex-col items-center gap-3 text-center">
-        <ProfileAvatar
-          initials={stats.identity.initials}
-          color={avatarColor}
-          image={avatarImage}
-          className="size-16 shadow-sm"
-          textClassName="text-xl"
-        />
-        <div className="flex flex-col items-center gap-1.5">
-          <h2 className="text-2xl font-semibold tracking-tight">{name}</h2>
-          <div className="flex items-center gap-1.5 text-ui leading-snug text-muted-foreground">
-            <span>{handle}</span>
-            <span aria-hidden>·</span>
-            <span className="rounded-full border px-1.5 py-px text-ui leading-snug text-muted-foreground">
-              Glade
-            </span>
-          </div>
-        </div>
+        <Button variant="outline" size="sm" onClick={() => setShareOpen(true)}>
+          <Share02Icon />
+          Share
+        </Button>
       </header>
 
-      {}
-      <div className="grid grid-cols-2 divide-x divide-y divide-border/50 overflow-hidden rounded-2xl border border-border/60 sm:grid-cols-3 lg:grid-cols-5 lg:divide-y-0">
-        <StatTile
-          label="Lifetime tokens"
-          value={tokensPending ? null : formatCompact(tokenStats?.lifetimeTotalTokens ?? null)}
-        />
+      <SettingsSegmentedControl
+        value={range}
+        onValueChange={setRange}
+        options={RANGE_OPTIONS}
+        ariaLabel="Stats range"
+      />
+
+      <SettingsCard divided={false} className="grid grid-cols-2 sm:grid-cols-4">
+        <StatTile label="Tokens" value={tokensPending ? null : formatCompact(summary.tokens)} />
+        <StatTile label="Agent time" value={formatAgentDuration(summary.agentSeconds)} />
+        <StatTile label="Chats" value={formatNumber(summary.chats)} />
         <StatTile
           label="Peak day"
-          value={tokensPending ? null : formatCompact(tokenStats?.peakDayTokens ?? null)}
+          value={tokensPending ? null : formatCompact(summary.peakDayTokens)}
         />
-        <StatTile label="Total prompts" value={formatNumber(stats.activity.totalPromptsSent)} />
-        <StatTile label="Current streak" value={formatDays(stats.activity.currentStreakDays)} />
-        <StatTile label="Longest streak" value={formatDays(stats.activity.longestStreakDays)} />
-      </div>
+      </SettingsCard>
 
-      {}
-      {stats.providerModels.some((entry) => entry.provider === "claudeAgent") ||
-      tokenStats?.providers.includes("claudeAgent") ? (
-        <p className="text-ui leading-snug text-muted-foreground">
-          Claude token totals use verifiable records. Older history and unfinished turns may be
-          incomplete.
-        </p>
-      ) : null}
-      <section className="flex min-w-0 flex-col gap-3">
-        <h3 className="text-ui-lg font-medium">Activity</h3>
-        {tokensPending ? (
-          <Skeleton className="h-28 w-full rounded-lg" />
-        ) : (
-          <ActivityHeatmap
-            cells={heatmap.cells}
-            layout={{
-              fill: true,
-              radius: 5,
-              gap: 3,
-            }}
-            tooltip={{
-              show: true,
-              unit: heatmap.unit,
-            }}
-            months={{
-              show: true,
-              position: "bottom",
-            }}
-          />
-        )}
-      </section>
-
-      {}
-      <div className="grid gap-x-12 gap-y-7 md:grid-cols-2">
-        <section className="flex flex-col gap-3">
-          <h3 className="text-ui-lg font-medium">Activity insights</h3>
-          <dl className="flex flex-col gap-2.5">
-            <InsightRow
-              label="Most used provider"
-              value={
-                topProvider.provider
-                  ? `${PROVIDER_DISPLAY_NAMES[topProvider.provider]}${topProvider.percent !== null ? ` · ${topProvider.percent}% of ${formatProfileUsageBasis(topProvider.metric)}` : ""}`
-                  : "—"
+      <ProfileSection title="Activity">
+        <ActivityHeatmap
+          cells={heatmap.cells}
+          layout={{ fill: true, radius: 3, gap: 3 }}
+          months={{ show: true, position: "bottom" }}
+          renderTooltip={(cell) => (
+            <TokenTooltipContent
+              title={formatPeriodLabel(cell.day, cell.day, "day")}
+              total={cell.count}
+              unit={heatmap.unit}
+              providers={
+                heatmap.unit === "tokens" ? selectProfileDayProviders(tokens, cell.day) : []
               }
             />
-            <InsightRow
-              label="Most used reasoning"
-              value={
-                stats.insights.topReasoning
-                  ? `${capitalize(stats.insights.topReasoning)}${stats.insights.topReasoningPercent !== null ? ` · ${stats.insights.topReasoningPercent}%` : ""}`
-                  : "—"
-              }
-            />
-            <InsightRow label="Most active hour" value={peakHourLabel} />
-            <InsightRow label="Most worked project" value={mostWorkedProjectLabel} />
-            <InsightRow
-              label="Skills explored"
-              value={formatNumber(stats.insights.skillsExplored)}
-            />
-            <InsightRow
-              label="Total skills used"
-              value={formatNumber(stats.insights.totalSkillsUsed)}
-            />
-            <InsightRow label="Total chats" value={formatNumber(stats.activity.totalThreads)} />
-          </dl>
-          <ProfileUsageCoverage unavailableProviders={topProvider.unavailableProviders} />
-        </section>
-
-        <section className="flex flex-col gap-3">
-          <h3 className="text-ui-lg font-medium">Most used plugins</h3>
-          {stats.skills.length > 0 ? (
-            <ul className="flex flex-col gap-2.5">
-              {stats.skills.slice(0, 6).map((skill) => (
-                <li
-                  key={`${skill.kind}:${skill.name}`}
-                  className="flex items-center justify-between gap-3"
-                >
-                  <span className="flex min-w-0 items-center gap-2.5">
-                    <span className="flex size-5 shrink-0 items-center justify-center rounded-md bg-muted/60">
-                      {skill.kind === "agent" ? (
-                        <BotIcon className="size-3" />
-                      ) : (
-                        <Book02Icon className="size-3" />
-                      )}
-                    </span>
-                    <span className="truncate text-ui leading-snug">{skill.displayName}</span>
-                  </span>
-                  <span className="shrink-0 text-ui leading-snug tabular-nums text-muted-foreground">
-                    {formatNumber(skill.runCount)} runs
-                  </span>
-                </li>
-              ))}
-            </ul>
-          ) : (
-            <p className="text-ui leading-snug text-muted-foreground">
-              No skills or agents used yet.
-            </p>
           )}
-        </section>
-      </div>
+        />
+        <div className="flex items-center justify-end gap-1.5 text-ui-xs text-muted-foreground">
+          Less
+          {APP_HEATMAP_INTENSITY_CLASSES.map((className) => (
+            <span key={className} className={cn("size-2.5 rounded-[3px]", className)} />
+          ))}
+          More
+        </div>
+      </ProfileSection>
 
-      {}
-      <section className="flex flex-col gap-3">
-        <h3 className="text-ui-lg font-medium">Model usage</h3>
-        <p className="text-ui leading-snug text-muted-foreground">
-          Share of {formatProfileUsageBasis(modelUsage.metric)}.
-        </p>
-        {modelUsage.entries.length > 0 ? (
-          <ul className="grid grid-cols-1 gap-x-12 gap-y-3 sm:grid-cols-2">
-            {modelUsage.entries.slice(0, 6).map((entry) => (
-              <ModelUsageRow
-                key={`${entry.provider}:${entry.model}`}
-                provider={entry.provider}
-                model={entry.model}
-                percent={entry.percent}
-              />
-            ))}
-          </ul>
+      <ProfileSection title="Token usage">
+        {tokensPending ? (
+          <Skeleton className="h-48 w-full rounded-lg" />
+        ) : tokens ? (
+          <>
+            <TokenUsageChart
+              buckets={summary.buckets}
+              granularity={summary.granularity}
+              providers={summary.providers}
+            />
+            <ProfileUsageCoverage unavailableProviders={tokens.unavailableProviders} />
+          </>
         ) : (
-          <p className="text-ui leading-snug text-muted-foreground">No model activity yet.</p>
+          <SettingsEmptyState>No token usage tracked yet.</SettingsEmptyState>
         )}
-        <ProfileUsageCoverage unavailableProviders={modelUsage.unavailableProviders} />
-      </section>
+      </ProfileSection>
+
+      {summary.models.length > 0 ? (
+        <ProfileSection title="Models">
+          <ModelUsageList models={summary.models} />
+        </ProfileSection>
+      ) : null}
 
       <ShareDialog
         stats={stats}
@@ -270,7 +189,7 @@ function ProfileContent({
       <EditProfileDialog
         open={editOpen}
         onOpenChange={setEditOpen}
-        initials={stats.identity.initials}
+        seed={handle}
         name={name}
         handle={handle}
         avatarColor={avatarColor}
@@ -290,94 +209,43 @@ function ProfileContent({
     </div>
   );
 }
+
+function ProfileSection({ title, children }: { title: string; children: ReactNode }) {
+  return (
+    <SettingsSectionShell title={title}>
+      <SettingsCard divided={false} className="flex flex-col gap-3 p-4">
+        {children}
+      </SettingsCard>
+    </SettingsSectionShell>
+  );
+}
+
 function StatTile({ label, value }: { label: string; value: string | null }) {
   return (
-    <div className="flex flex-col items-center gap-0.5 px-3 py-3">
+    <div className="flex flex-col gap-1 border-border px-4 py-3 not-first:border-l max-sm:nth-3:border-l-0 max-sm:nth-[n+3]:border-t">
+      <span className="text-ui-sm text-muted-foreground">{label}</span>
       {value === null ? (
-        <Skeleton className="h-4 w-12" />
+        <Skeleton className="h-5 w-14" />
       ) : (
-        <span className="text-ui-lg leading-snug font-normal tabular-nums text-foreground">
-          {value}
-        </span>
+        <span className="text-ui-lg font-medium text-foreground tabular-nums">{value}</span>
       )}
-      <span className="text-ui leading-snug font-normal text-muted-foreground">{label}</span>
     </div>
   );
 }
-function InsightRow({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="flex items-center justify-between gap-3">
-      <dt className="shrink-0 text-ui leading-snug text-muted-foreground">{label}</dt>
-      <dd className="truncate text-ui leading-snug font-normal tabular-nums" title={value}>
-        {value}
-      </dd>
-    </div>
-  );
-}
-function formatPeakHourLabel(startHour: number | null): string {
-  return startHour === null ? "—" : formatHourOfDay(startHour);
-}
-function formatMostWorkedProjectLabel(project: ProfileStats["mostWorkedProject"]): string {
-  if (!project) {
-    return "—";
-  }
-  const promptLabel = project.promptCount === 1 ? "prompt" : "prompts";
-  return `${project.title} · ${formatNumber(project.promptCount)} ${promptLabel}`;
-}
-function ModelUsageRow({
-  provider,
-  model,
-  percent,
-}: {
-  provider: ProviderKind | "unknown";
-  model: string;
-  percent: number;
-}) {
-  return (
-    <li className="flex flex-col gap-1.5">
-      <div className="flex items-center justify-between gap-3 text-ui leading-snug">
-        <span className="flex min-w-0 items-center gap-2">
-          {provider !== "unknown" ? (
-            <ProviderIcon provider={provider} className="size-3.5 shrink-0" />
-          ) : (
-            <ChartColumnIcon className="size-3.5 shrink-0 text-muted-foreground" />
-          )}
-          <span className="truncate">
-            {model === "unknown"
-              ? `Unknown model (${provider === "unknown" ? "unknown provider" : PROVIDER_DISPLAY_NAMES[provider]})`
-              : model}
-          </span>
-        </span>
-        <span className="shrink-0 tabular-nums text-muted-foreground">{percent}%</span>
-      </div>
-      <div className="h-1 w-full overflow-hidden rounded-full bg-muted">
-        <div
-          className="h-full rounded-full bg-[var(--info)]"
-          style={{
-            width: `${Math.min(100, Math.max(2, percent))}%`,
-          }}
-        />
-      </div>
-    </li>
-  );
-}
+
 function ProfileSkeleton() {
   return (
-    <div className="flex flex-col items-center gap-7">
-      <Skeleton className="size-16 rounded-full" />
-      <div className="flex flex-col items-center gap-1.5">
-        <Skeleton className="h-6 w-40" />
-        <Skeleton className="h-3 w-24" />
+    <div className="flex flex-col gap-6">
+      <div className="flex items-center gap-3">
+        <Skeleton className="size-12 rounded-full" />
+        <div className="flex flex-col gap-1.5">
+          <Skeleton className="h-4 w-32" />
+          <Skeleton className="h-3 w-20" />
+        </div>
       </div>
-      <Skeleton className="h-[72px] w-full rounded-2xl" />
-      <Skeleton className="h-24 w-full rounded-lg" />
-      <div className="grid w-full gap-7 md:grid-cols-2">
-        <Skeleton className="h-40 w-full rounded-lg" />
-        <Skeleton className="h-40 w-full rounded-lg" />
-      </div>
+      <Skeleton className="h-20 w-full rounded-xl" />
+      <Skeleton className="h-40 w-full rounded-xl" />
+      <Skeleton className="h-32 w-full rounded-xl" />
     </div>
   );
-}
-function capitalize(value: string): string {
-  return value.length > 0 ? value[0]!.toUpperCase() + value.slice(1) : value;
 }

@@ -1,10 +1,5 @@
-import {
-  chartDomain,
-  domainFraction,
-  formatChartValue,
-  linePoints,
-  SERIES_COLORS,
-} from "./ChartBlock.logic";
+import { SERIES_COLORS } from "~/lib/chartSeriesColors";
+import { chartDomain, domainFraction, formatChartValue, linePoints } from "./ChartBlock.logic";
 import type { ResolvedBlockOf } from "./visualBlockTypes";
 import { formatVisualNumber } from "./visualNumber";
 

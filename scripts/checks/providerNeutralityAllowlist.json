@@ -19,7 +19,6 @@
   "apps/web/src/components/chat/SourceControlCommitInput.tsx": 1,
   "apps/web/src/components/chat/useChatComposerCommands.ts": 1,
   "apps/web/src/components/settings/ModelsSettingsPanel.tsx": 1,
-  "apps/web/src/components/settings/ProfileSettingsPanel.tsx": 2,
   "apps/web/src/components/settings/ProviderUsageSettingsPanel.tsx": 1,
   "apps/web/src/components/settings/ProvidersSettingsPanel.tsx": 2,
   "apps/web/src/components/useGitActionsControl.ts": 1,

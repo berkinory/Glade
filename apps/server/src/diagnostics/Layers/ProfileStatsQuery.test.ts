@@ -94,19 +94,20 @@ it.layer(layer)("historical profile attribution", (it) => {
       const input = { utcOffsetMinutes: 0 };
       const before = yield* stats.getProfileStats(input);
       const tokensBefore = yield* stats.getProfileTokenStats(input);
-      expect(before.providerModels).toEqual(
-        expect.arrayContaining([
-          expect.objectContaining({ provider: "codex", model: "unknown", turnCount: 2 }),
-          expect.objectContaining({ provider: "claudeAgent", model: "unknown", turnCount: 2 }),
-          expect.objectContaining({ model: "observed-model", turnCount: 1 }),
-          expect.objectContaining({ model: "known-model", turnCount: 1 }),
-        ]),
-      );
+      expect(before.activity.threadDays).toEqual([{ day: "2026-09-30", count: 2 }]);
       expect(tokensBefore.lifetimeTotalTokens).toBe(800);
-      expect(
-        tokensBefore.models.filter((row) => row.model === "unknown").map((row) => row.tokens),
-      ).toEqual([200, 200]);
-      expect(tokensBefore.models.some((row) => row.model === "later-model")).toBe(false);
+      expect(tokensBefore.modelDays).toEqual(
+        (
+          [
+            ["claudeAgent", null, 200],
+            ["claudeAgent", "known-model", 100],
+            ["claudeAgent", "observed-model", 100],
+            ["codex", null, 200],
+            ["codex", "known-model", 100],
+            ["codex", "observed-model", 100],
+          ] as const
+        ).map(([provider, model, tokens]) => ({ day: "2026-09-30", provider, model, tokens })),
+      );
       for (const provider of ["codex", "claudeAgent"]) {
         yield* sql`UPDATE projection_threads SET model_selection_json =
           ${JSON.stringify({ provider, model: "another-later-model" })} WHERE thread_id = ${provider}`;
@@ -114,10 +115,52 @@ it.layer(layer)("historical profile attribution", (it) => {
       }
       const after = yield* stats.getProfileStats(input);
       const tokensAfter = yield* stats.getProfileTokenStats(input);
-      expect(after.providerModels).toEqual(before.providerModels);
-      expect(after.activity.totalPromptsSent).toBe(before.activity.totalPromptsSent);
-      expect(tokensAfter.models).toEqual(tokensBefore.models);
+      expect(after.activity.threadDays).toEqual(before.activity.threadDays);
+      expect(tokensAfter.modelDays).toEqual(tokensBefore.modelDays);
       expect(tokensAfter.lifetimeTotalTokens).toBe(tokensBefore.lifetimeTotalTokens);
+    }),
+  );
+});
+
+it.layer(layer)("agent time", (it) => {
+  it.effect("caps idle gaps, skips provider-native mirrors and survives chat purge", () =>
+    Effect.gen(function* () {
+      const sql = yield* SqlClient.SqlClient;
+      const stats = yield* ProfileStatsQuery;
+      const archive = yield* ProfileStatsArchive;
+      yield* sql`INSERT INTO projection_projects
+        (project_id, title, workspace_root, scripts_json, created_at, updated_at)
+        VALUES ('project', 'Agent time', '/nonexistent-agent-time-fixture', '[]', ${date}, ${date})`;
+      for (const [threadId, creationSource] of [
+        ["chat", null],
+        ["subagent", "provider_native"],
+      ] as const) {
+        yield* sql`INSERT INTO projection_threads
+          (thread_id, project_id, title, creation_source, parent_thread_id, created_at, updated_at)
+          VALUES (${threadId}, 'project', 'Agent time', ${creationSource},
+            ${creationSource ? "chat" : null}, ${date}, ${date})`;
+        yield* sql`INSERT INTO projection_turns
+          (thread_id, turn_id, state, requested_at, started_at, completed_at, checkpoint_files_json)
+          VALUES (${threadId}, ${`${threadId}-turn`}, 'completed', ${date},
+            '2026-09-30T12:00:00.000Z', '2026-09-30T12:21:00.000Z', '[]')`;
+        yield* sql`INSERT INTO projection_thread_activities
+          (activity_id, thread_id, turn_id, tone, kind, summary, payload_json, sequence, created_at)
+          VALUES (${`${threadId}-tool`}, ${threadId}, ${`${threadId}-turn`}, 'tool', 'tool.updated',
+            'tool', '{}', 1, '2026-09-30T12:01:00.000Z')`;
+      }
+      const days = Effect.map(stats.getProfileStats({ utcOffsetMinutes: 0 }), ({ activity }) => ({
+        agentDays: activity.agentDays,
+        threadDays: activity.threadDays,
+      }));
+      const expected = {
+        agentDays: [{ day: "2026-09-30", count: 60 + 300 }],
+        threadDays: [{ day: "2026-09-30", count: 1 }],
+      };
+      expect(yield* days).toEqual(expected);
+      for (const threadId of ["chat", "subagent"]) {
+        yield* archive.purgeThreadWithStatsSnapshot({ threadId });
+        expect(yield* days, `after deleting ${threadId}`).toEqual(expected);
+      }
     }),
   );
 });
@@ -206,11 +249,14 @@ for (const [orderName, deleteOrder] of deleteOrders) {
         }
         const tokensByProvider = Effect.map(
           stats.getProfileTokenStats({ utcOffsetMinutes: 0 }),
-          ({ models, lifetimeTotalTokens }) => ({
+          ({ modelDays, lifetimeTotalTokens }) => ({
             ...Object.fromEntries(
               ["codex", "claudeAgent"].map((provider) => [
                 provider,
-                models.reduce((sum, row) => sum + (row.provider === provider ? row.tokens : 0), 0),
+                modelDays.reduce(
+                  (sum, row) => sum + (row.provider === provider ? row.tokens : 0),
+                  0,
+                ),
               ]),
             ),
             total: lifetimeTotalTokens,

@@ -1,34 +1,23 @@
 import { cn } from "~/lib/utils";
-
-interface ProfileAvatarProps {
-  readonly initials: string;
-  readonly color: string;
-  readonly image?: string | null;
-
-  readonly className?: string;
-
-  readonly textClassName?: string;
-}
+import { DitherIdenticon } from "./DitherIdenticon";
 
 export function ProfileAvatar({
-  initials,
+  seed,
   color,
   image,
   className,
-  textClassName,
-}: ProfileAvatarProps) {
+}: {
+  readonly seed: string;
+  readonly color: string;
+  readonly image?: string | null;
+  readonly className?: string;
+}) {
   return (
-    <div
-      className={cn(
-        "flex items-center justify-center overflow-hidden rounded-full text-white",
-        className,
-      )}
-      style={image ? undefined : { backgroundColor: color }}
-    >
+    <div className={cn("overflow-hidden rounded-full bg-muted/60", className)}>
       {image ? (
         <img src={image} alt="" draggable={false} className="size-full object-cover" />
       ) : (
-        <span className={cn("font-semibold tracking-tight", textClassName)}>{initials}</span>
+        <DitherIdenticon seed={seed} color={color} className="size-full" />
       )}
     </div>
   );

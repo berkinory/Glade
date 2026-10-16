@@ -1,11 +1,3 @@
-export const SERIES_COLORS = [
-  "var(--info)",
-  "var(--warning)",
-  "var(--success)",
-  "var(--project-pink)",
-  "var(--status-merged)",
-] as const;
-
 const chartNumberFormats = [0, 2, 4].map(
   (digits) => new Intl.NumberFormat(undefined, { maximumFractionDigits: digits }),
 );

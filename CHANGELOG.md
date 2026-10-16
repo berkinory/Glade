@@ -34,6 +34,7 @@
 - Glade's own code takes up less memory in every process.
 - Notifications share one look: a colored icon for success, warning, error and info, short titles with the details underneath, and clear buttons below the message.
 - Glade and provider updates on this computer and your SSH hosts are gathered in one Updates window: pick what to update, follow each one's progress, and Glade restarts only when you choose it. Separate update prompts for each machine are gone.
+- The Activity page is redesigned: token usage by provider and model, agent time and chats for the last month or all time, a yearly activity grid with per-provider tooltips, and a generated pixel avatar. Streak, skill and insight sections are gone.
 - Moving from one tooltip to the next shows it right away instead of waiting again.
 
 ### Fixed

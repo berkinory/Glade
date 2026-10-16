@@ -96,7 +96,7 @@ export const SETTINGS_NAV_ITEMS: readonly SettingsNavItem[] = [
     id: "profile",
     group: "app",
     label: "Activity",
-    description: "Your local activity, streaks, and a shareable stats card.",
+    description: "Your token usage, models and activity, plus a shareable stats card.",
     icon: User02Icon,
   },
   {

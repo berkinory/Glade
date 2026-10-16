@@ -15,6 +15,7 @@ import PruneCommandReceipts from "./Migrations/010_PruneCommandReceipts.ts";
 import DropProjectImportTables from "./Migrations/011_DropProjectImportTables.ts";
 import BackgroundWorkActivityIndex from "./Migrations/012_BackgroundWorkActivityIndex.ts";
 import ThreadDetailReadIndexes from "./Migrations/013_ThreadDetailReadIndexes.ts";
+import ProfileStatsArchiveColumns from "./Migrations/015_ProfileStatsArchiveColumns.ts";
 
 import ProfileTurnLookup from "./Migrations/002_ProfileTurnLookup.ts";
 
@@ -35,6 +36,7 @@ export const migrationEntries = [
   [12, "BackgroundWorkActivityIndex", BackgroundWorkActivityIndex],
   [13, "ThreadDetailReadIndexes", ThreadDetailReadIndexes],
   [14, "ChatImageSnapshots", ChatImageSnapshots],
+  [15, "ProfileStatsArchiveColumns", ProfileStatsArchiveColumns],
 ] as const;
 
 const LATEST_MIGRATION_ID = Math.max(...migrationEntries.map(([id]) => id));

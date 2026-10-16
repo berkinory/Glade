@@ -484,7 +484,7 @@ const SETTINGS_SEARCH_ENTRIES: readonly SettingsSearchEntry[] = [
     section: "profile",
     title: "Activity",
     target: null,
-    keywords: "profile local stats streaks",
+    keywords: "profile local stats tokens models usage",
   },
 ] as const;
 

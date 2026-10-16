@@ -18,84 +18,37 @@ export const ProfileHeatmapCell = Schema.Struct({
 });
 export type ProfileHeatmapCell = typeof ProfileHeatmapCell.Type;
 
-export const ProfileProviderUsage = Schema.Struct({
-  provider: Schema.Union([ProviderKind, Schema.Literal("unknown")]),
-  model: TrimmedNonEmptyString,
-  turnCount: NonNegativeInt,
-  percent: Schema.Number,
-});
-export type ProfileProviderUsage = typeof ProfileProviderUsage.Type;
-
-export const ProfileTokenModelUsage = Schema.Struct({
-  provider: Schema.Union([ProviderKind, Schema.Literal("unknown")]),
-  model: TrimmedNonEmptyString,
+export const ProfileModelDayTokens = Schema.Struct({
+  day: TrimmedNonEmptyString,
+  provider: ProviderKind,
+  // Null when the provider reported tokens without naming the model.
+  model: Schema.NullOr(TrimmedNonEmptyString),
   tokens: NonNegativeInt,
-  percent: Schema.Number,
 });
-export type ProfileTokenModelUsage = typeof ProfileTokenModelUsage.Type;
+export type ProfileModelDayTokens = typeof ProfileModelDayTokens.Type;
 
-export const ProfileSkillUsage = Schema.Struct({
-  name: TrimmedNonEmptyString,
-  displayName: TrimmedNonEmptyString,
-  kind: Schema.Literals(["skill", "agent"]),
-  runCount: NonNegativeInt,
+export const ProfileDayCount = Schema.Struct({
+  day: TrimmedNonEmptyString,
+  count: NonNegativeInt,
 });
-export type ProfileSkillUsage = typeof ProfileSkillUsage.Type;
-
-export const ProfileMostWorkedProject = Schema.Struct({
-  projectId: TrimmedNonEmptyString,
-  title: TrimmedNonEmptyString,
-  workspaceRoot: TrimmedNonEmptyString,
-  promptCount: NonNegativeInt,
-  threadCount: NonNegativeInt,
-  activeDays: NonNegativeInt,
-  lastWorkedAt: IsoDateTime,
-});
-export type ProfileMostWorkedProject = typeof ProfileMostWorkedProject.Type;
-
-export const ProfileQuota = Schema.Struct({
-  status: Schema.Literals(["available", "unavailable"]),
-  provider: Schema.NullOr(ProviderKind),
-  window: Schema.NullOr(Schema.String),
-  usedPercent: Schema.NullOr(Schema.Number),
-  resetsAt: Schema.NullOr(IsoDateTime),
-  planName: Schema.NullOr(Schema.String),
-});
-export type ProfileQuota = typeof ProfileQuota.Type;
+export type ProfileDayCount = typeof ProfileDayCount.Type;
 
 export const ProfileActivity = Schema.Struct({
   currentStreakDays: NonNegativeInt,
   longestStreakDays: NonNegativeInt,
-  totalPromptsSent: NonNegativeInt,
-  totalThreads: NonNegativeInt,
-  promptsToday: NonNegativeInt,
+  // Chats started per local day.
+  threadDays: Schema.Array(ProfileDayCount),
+  // Seconds agents spent working on top-level chats per local day, with idle gaps inside a turn
+  // capped.
+  agentDays: Schema.Array(ProfileDayCount),
 
   heatmapMetric: Schema.Literal("prompts"),
   heatmap: Schema.Array(ProfileHeatmapCell),
 });
 export type ProfileActivity = typeof ProfileActivity.Type;
 
-export const ProfileActiveHours = Schema.Struct({
-  startHour: Schema.NullOr(Schema.Int),
-  endHour: Schema.NullOr(Schema.Int),
-  turnCount: NonNegativeInt,
-  label: Schema.NullOr(Schema.String),
-});
-export type ProfileActiveHours = typeof ProfileActiveHours.Type;
-
-export const ProfileInsights = Schema.Struct({
-  topProvider: Schema.NullOr(ProviderKind),
-  topProviderPercent: Schema.NullOr(Schema.Number),
-  topReasoning: Schema.NullOr(Schema.String),
-  topReasoningPercent: Schema.NullOr(Schema.Number),
-  skillsExplored: NonNegativeInt,
-  totalSkillsUsed: NonNegativeInt,
-});
-export type ProfileInsights = typeof ProfileInsights.Type;
-
 export const ProfileIdentity = Schema.Struct({
   homeDirBasename: Schema.String,
-  initials: Schema.String,
   defaultHandle: Schema.String,
 });
 export type ProfileIdentity = typeof ProfileIdentity.Type;
@@ -111,13 +64,6 @@ export const ProfileStats = Schema.Struct({
   timezone: ProfileTimezone,
   identity: ProfileIdentity,
   activity: ProfileActivity,
-  activeHours: ProfileActiveHours,
-  insights: ProfileInsights,
-  providerModels: Schema.Array(ProfileProviderUsage),
-  skills: Schema.Array(ProfileSkillUsage),
-  mostUsedSkill: Schema.NullOr(ProfileSkillUsage),
-  mostWorkedProject: Schema.NullOr(ProfileMostWorkedProject),
-  quota: ProfileQuota,
 });
 export type ProfileStats = typeof ProfileStats.Type;
 
@@ -136,7 +82,7 @@ export const ProfileTokenStats = Schema.Struct({
   topProvider: Schema.NullOr(ProviderKind),
   topProviderPercent: Schema.NullOr(Schema.Number),
 
-  models: Schema.Array(ProfileTokenModelUsage),
+  modelDays: Schema.Array(ProfileModelDayTokens),
   heatmapMetric: Schema.Literal("tokens"),
   heatmap: Schema.Array(ProfileHeatmapCell),
 });
