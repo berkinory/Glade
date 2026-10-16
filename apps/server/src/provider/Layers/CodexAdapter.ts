@@ -1022,6 +1022,7 @@ const DIAGNOSTIC_ONLY_CODEX_METHODS = new Set([
   "session/threadOpenRequested",
   "session/threadOpenResolved",
   "thread/reverted",
+  "turn/moderationMetadata",
 ]);
 
 function mapUnmappedCodexEvent(
