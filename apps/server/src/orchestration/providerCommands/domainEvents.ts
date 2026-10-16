@@ -81,9 +81,6 @@ export function makeProviderDomainEvents(input: {
   readonly processUserInputResponseRequested: ReturnType<
     typeof makeProviderHumanResponses
   >["processUserInputResponseRequested"];
-  readonly processConversationRollbackRequested: ReturnType<
-    typeof makeProviderConversationEdit
-  >["processConversationRollbackRequested"];
   readonly processMessageEditResendRequested: ReturnType<
     typeof makeProviderConversationEdit
   >["processMessageEditResendRequested"];
@@ -122,7 +119,6 @@ export function makeProviderDomainEvents(input: {
     processTaskBackgroundRequested,
     processApprovalResponseRequested,
     processUserInputResponseRequested,
-    processConversationRollbackRequested,
     processMessageEditResendRequested,
     setThreadSessionError,
     processSessionStopRequested,
@@ -376,17 +372,6 @@ export function makeProviderDomainEvents(input: {
           return;
         case "thread.user-input-response-requested":
           yield* processUserInputResponseRequested(event);
-          return;
-        case "thread.conversation-rollback-requested":
-          yield* processConversationRollbackRequested(event).pipe(
-            Effect.catchCause((cause) =>
-              setThreadSessionError({
-                threadId: event.payload.threadId,
-                detail: providerFailureMessage(cause),
-                createdAt: event.payload.createdAt,
-              }).pipe(Effect.andThen(Effect.failCause(cause))),
-            ),
-          );
           return;
         case "thread.message-edit-resend-requested":
           yield* processMessageEditResendRequested(event).pipe(

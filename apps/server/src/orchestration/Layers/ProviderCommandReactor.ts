@@ -199,16 +199,15 @@ const make = Effect.gen(function* () {
     queuedDispatchState,
     queuedTurnPromotionOwner,
   });
-  const { processConversationRollbackRequested, processMessageEditResendRequested } =
-    makeProviderConversationEdit({
-      projectionAccess,
-      providerService,
-      checkpointStore,
-      orchestrationEngine,
-      queuedTurnPromotions,
-      threadSessionSettings,
-      setThreadSession,
-    });
+  const { processMessageEditResendRequested } = makeProviderConversationEdit({
+    projectionAccess,
+    providerService,
+    checkpointStore,
+    orchestrationEngine,
+    queuedTurnPromotions,
+    threadSessionSettings,
+    setThreadSession,
+  });
   const {
     interruptProviderTurn,
     processThreadSessionStop,
@@ -319,7 +318,6 @@ const make = Effect.gen(function* () {
     processTaskBackgroundRequested,
     processApprovalResponseRequested,
     processUserInputResponseRequested,
-    processConversationRollbackRequested,
     processMessageEditResendRequested,
     setThreadSessionError,
     processSessionStopRequested,

@@ -173,22 +173,17 @@ export function useChatSubmissionController({
       .catch(reportChatActionFailure);
   };
 
-  const {
-    onEditUserMessage,
-    onRewindToMessage,
-    onContinueFailedTurn,
-    onSendVisualChoice,
-    onResumeWorkflowRun,
-  } = useChatTurnFollowUps({
-    session,
-    workspace,
-    provider,
-    composer,
-    transcript,
-    environment,
-    turn: { setQueuedSteerGate, lateComposerSendHandlersRef },
-    discovery,
-  });
+  const { onEditUserMessage, onContinueFailedTurn, onSendVisualChoice, onResumeWorkflowRun } =
+    useChatTurnFollowUps({
+      session,
+      workspace,
+      provider,
+      composer,
+      transcript,
+      environment,
+      turn: { setQueuedSteerGate, lateComposerSendHandlersRef },
+      discovery,
+    });
 
   const setPromptFromTraits = (nextPrompt: string) => {
     const currentPrompt = promptRef.current;
@@ -453,7 +448,6 @@ export function useChatSubmissionController({
     onEditPausedQueuedComposerTurn,
     onSend,
     onEditUserMessage,
-    onRewindToMessage,
     onContinueFailedTurn,
     onSendVisualChoice,
     onResumeWorkflowRun,

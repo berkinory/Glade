@@ -22,23 +22,14 @@ import {
 } from "./workspaceRestoreDecision";
 
 const TITLES: Record<WorkspaceRestoreMode, string> = {
-  rewind: "Rewind to this message?",
   edit: "Restore files too?",
   undoFiles: "Undo file changes?",
 };
 
-function describe(mode: WorkspaceRestoreMode, hasFiles: boolean): string {
-  switch (mode) {
-    case "rewind":
-      return hasFiles
-        ? "Later messages are removed and this message returns to the composer. These files changed since then: keep them as they are, or restore them."
-        : "Later messages are removed and this message returns to the composer.";
-    case "edit":
-      return "These files changed after this message. Keep them as they are, or restore them to how they were before it.";
-    case "undoFiles":
-      return "These files go back to how they were before this turn.";
-  }
-}
+const DESCRIPTIONS: Record<WorkspaceRestoreMode, string> = {
+  edit: "These files changed after this message. Keep them as they are, or restore them to how they were before it.",
+  undoFiles: "These files go back to how they were before this turn.",
+};
 
 function concurrentThreadsLabel(titles: ReadonlyArray<string>): string {
   const shown = titles.slice(0, 3).map((title) => `“${title}”`);
@@ -55,7 +46,6 @@ export function WorkspaceRestoreDialog() {
   const shown = request ?? lastRequest;
   if (!shown) return null;
   const { mode, review } = shown;
-  const hasFiles = review.files.length > 0;
   const hasConflicts = review.files.some((file) => file.conflict);
   const restore = () => settle({ kind: "restore", confirmation: restoreConfirmation(review) });
   return (
@@ -68,32 +58,30 @@ export function WorkspaceRestoreDialog() {
       <AlertDialogPopup className="max-w-md">
         <AlertDialogHeader>
           <AlertDialogTitle>{TITLES[mode]}</AlertDialogTitle>
-          <AlertDialogDescription>{describe(mode, hasFiles)}</AlertDialogDescription>
+          <AlertDialogDescription>{DESCRIPTIONS[mode]}</AlertDialogDescription>
         </AlertDialogHeader>
-        {hasFiles ? (
-          <div className="flex min-h-0 flex-col gap-2 px-4 pb-2">
-            {review.concurrentThreads.length > 0 ? (
-              <Alert variant="warning" size="sm">
-                <TriangleAlertIcon aria-hidden="true" />
-                <AlertTitle>
-                  {review.concurrentThreads.length === 1
-                    ? "Another chat worked in this folder"
-                    : "Other chats worked in this folder"}
-                </AlertTitle>
-                <AlertDescription>
-                  {`${concurrentThreadsLabel(review.concurrentThreads.map((thread) => thread.title))} also ran since then. Some of these changes may be theirs, and restoring would undo them.`}
-                </AlertDescription>
-              </Alert>
-            ) : null}
-            <RestoreFileList key={review.fingerprint} files={review.files} />
-            {hasConflicts ? (
-              <p className="text-ui-sm text-muted-foreground">
-                Files marked edited later changed after the agent's turn. Restoring overwrites those
-                edits.
-              </p>
-            ) : null}
-          </div>
-        ) : null}
+        <div className="flex min-h-0 flex-col gap-2 px-4 pb-2">
+          {review.concurrentThreads.length > 0 ? (
+            <Alert variant="warning" size="sm">
+              <TriangleAlertIcon aria-hidden="true" />
+              <AlertTitle>
+                {review.concurrentThreads.length === 1
+                  ? "Another chat worked in this folder"
+                  : "Other chats worked in this folder"}
+              </AlertTitle>
+              <AlertDescription>
+                {`${concurrentThreadsLabel(review.concurrentThreads.map((thread) => thread.title))} also ran since then. Some of these changes may be theirs, and restoring would undo them.`}
+              </AlertDescription>
+            </Alert>
+          ) : null}
+          <RestoreFileList key={review.fingerprint} files={review.files} />
+          {hasConflicts ? (
+            <p className="text-ui-sm text-muted-foreground">
+              Files marked edited later changed after the agent's turn. Restoring overwrites those
+              edits.
+            </p>
+          ) : null}
+        </div>
         <AlertDialogFooter>
           <AlertDialogClose render={<Button variant="outline" size="sm" />}>
             Cancel
@@ -102,7 +90,7 @@ export function WorkspaceRestoreDialog() {
             <Button variant="destructive" size="sm" onClick={restore}>
               Restore files
             </Button>
-          ) : hasFiles ? (
+          ) : (
             <>
               <Button variant="destructive-outline" size="sm" onClick={restore}>
                 Restore files
@@ -111,10 +99,6 @@ export function WorkspaceRestoreDialog() {
                 Keep files
               </Button>
             </>
-          ) : (
-            <Button size="sm" onClick={() => settle({ kind: "keep" })}>
-              Rewind
-            </Button>
           )}
         </AlertDialogFooter>
       </AlertDialogPopup>

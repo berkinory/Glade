@@ -269,10 +269,9 @@ export interface MessagesTimelineProps {
   onUndoTurnFiles?: (turnCounts: readonly number[]) => void;
   onRespondToAsyncUserInput?: (messageId: MessageId, answers: readonly string[]) => Promise<void>;
   onEditUserMessage?: (messageId: MessageId, text: string) => boolean | Promise<boolean>;
-  onRewindToMessage?: (messageId: MessageId) => void;
   // The timeline must not re-derive this from its own rows: they are createdAt-sorted and include
   // optimistic/filtered entries, so a row-derived target can point at a message the server rejects.
-  editableUserMessageId?: MessageId | null;
+  editableUserMessageIds: ReadonlySet<MessageId>;
   activeTurnId?: TurnId | null;
   isRevertingCheckpoint: boolean;
   onImageExpand: (preview: ExpandedImagePreview) => void;

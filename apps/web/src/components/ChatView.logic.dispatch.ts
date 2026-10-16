@@ -1,6 +1,7 @@
 import type { GitWorktreeSetupProgressEvent } from "@glade/contracts/git/git";
 import type {
   ChatMessage,
+  PendingMessageEdit,
   SessionPhase,
   Thread,
   WorktreeSetupResolutionAction,
@@ -151,6 +152,7 @@ export interface LocalDispatchSnapshot {
   startedAt: string;
   worktreeSetup: WorktreeSetupSnapshot | null;
   expectedUserMessageId: ChatMessage["id"] | null;
+  messageEdit: PendingMessageEdit | null;
   latestTurnTurnId: Thread["latestTurn"] extends infer T
     ? T extends { turnId: infer U }
       ? U | null
@@ -179,6 +181,7 @@ export function createLocalDispatchSnapshot(
       ? createWorktreeSetupSnapshot(options.worktreeSetupStepId, options)
       : null,
     expectedUserMessageId: options?.expectedUserMessageId ?? null,
+    messageEdit: options?.messageEdit ?? null,
     latestTurnTurnId: latestTurn?.turnId ?? null,
     latestTurnRequestedAt: latestTurn?.requestedAt ?? null,
     latestTurnStartedAt: latestTurn?.startedAt ?? null,
@@ -200,8 +203,9 @@ export function resolveNextLocalDispatchSnapshot(input: {
 
   if (!worktreeSetupStepId) {
     if (
-      input.options?.expectedUserMessageId != null &&
-      input.options.expectedUserMessageId !== input.current.expectedUserMessageId
+      input.options?.messageEdit ||
+      (input.options?.expectedUserMessageId != null &&
+        input.options.expectedUserMessageId !== input.current.expectedUserMessageId)
     ) {
       return createLocalDispatchSnapshot(input.activeThread, input.options);
     }
@@ -317,21 +321,23 @@ export function hasLiveTurnTakenOver(input: {
     return false;
   }
 
-  if (input.phase === "running") {
-    return true;
-  }
-  if (input.session?.activeTurnId != null) {
-    return true;
+  const editing = input.localDispatch.messageEdit !== null;
+  if (input.phase === "running" || input.session?.activeTurnId != null) {
+    // An edit can replace a running turn, so only a session update after it can be its new turn.
+    if (!editing || input.session?.updatedAt !== input.localDispatch.sessionUpdatedAt) {
+      return true;
+    }
   }
   if (input.hasPendingApproval || input.hasPendingUserInput || Boolean(input.threadError)) {
     return true;
   }
+  // An edit's rollback rewrites the latest turn before the replacement turn starts.
   const latestTurn = input.latestTurn ?? null;
   const startedAtChanged =
     input.localDispatch.latestTurnStartedAt !== (latestTurn?.startedAt ?? null);
   const completedAtChanged =
     input.localDispatch.latestTurnCompletedAt !== (latestTurn?.completedAt ?? null);
-  if (startedAtChanged || completedAtChanged) {
+  if (!editing && (startedAtChanged || completedAtChanged)) {
     return true;
   }
 

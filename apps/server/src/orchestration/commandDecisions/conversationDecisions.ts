@@ -1,8 +1,4 @@
-import type { OrchestrationReadModel } from "@glade/contracts/orchestration/snapshots";
-import {
-  collectTailTurnIds,
-  resolveTailUserMessageEditTarget,
-} from "@glade/shared/threads/conversationEdit";
+import { resolveUserMessageEditTarget } from "@glade/shared/threads/conversationEdit";
 import type { OrchestrationCommand } from "@glade/contracts/orchestration/commands";
 import { Effect } from "effect";
 import {
@@ -24,24 +20,6 @@ import {
 } from "./commandEvents";
 import { validateAutoRuntimeMode } from "./threadConfiguration";
 
-function deriveConversationRollbackTarget(
-  messages: OrchestrationReadModel["threads"][number]["messages"],
-  messageId: string,
-): {
-  readonly role: OrchestrationReadModel["threads"][number]["messages"][number]["role"];
-  readonly removedTurnIds: ReadonlySet<string>;
-} | null {
-  const targetIndex = messages.findIndex((message) => message.id === messageId);
-  if (targetIndex < 0) {
-    return null;
-  }
-
-  return {
-    role: messages[targetIndex]!.role,
-    removedTurnIds: new Set(collectTailTurnIds({ messages, messageId })),
-  };
-}
-
 export function decideConversationCommand({
   command,
   readModel,
@@ -51,7 +29,6 @@ export function decideConversationCommand({
     {
       type:
         | "thread.checkpoint.revert"
-        | "thread.conversation.rollback"
         | "thread.message.edit-and-resend"
         | "thread.revert.complete"
         | "thread.conversation.rollback.complete";
@@ -120,48 +97,6 @@ export function decideConversationCommand({
         };
         return [startedEvent, requestedEvent];
       }
-      case "thread.conversation.rollback": {
-        const thread = yield* requireThread({
-          readModel,
-          command,
-          threadId: command.threadId,
-        });
-        if (threadHasCheckpointRevertInProgress(thread)) {
-          return yield* new OrchestrationCommandInvariantError({
-            commandType: command.type,
-            detail: checkpointRevertInProgressDetail(command.threadId),
-          });
-        }
-        const rollbackTarget = deriveConversationRollbackTarget(thread.messages, command.messageId);
-        if (!rollbackTarget || rollbackTarget.role !== "user") {
-          return yield* new OrchestrationCommandInvariantError({
-            commandType: command.type,
-            detail: "Conversation rollback must target an existing user message.",
-          });
-        }
-        if (command.numTurns <= 0 || rollbackTarget.removedTurnIds.size !== command.numTurns) {
-          return yield* new OrchestrationCommandInvariantError({
-            commandType: command.type,
-            detail: `Conversation rollback requested ${command.numTurns} turn(s), but target message '${command.messageId}' would remove ${rollbackTarget.removedTurnIds.size} turn(s).`,
-          });
-        }
-        return {
-          ...withEventBase({
-            aggregateKind: "thread",
-            aggregateId: command.threadId,
-            occurredAt: command.createdAt,
-            commandId: command.commandId,
-          }),
-          type: "thread.conversation-rollback-requested",
-          payload: {
-            ...(command.workspaceRestore ? { workspaceRestore: command.workspaceRestore } : {}),
-            threadId: command.threadId,
-            messageId: command.messageId,
-            numTurns: command.numTurns,
-            createdAt: command.createdAt,
-          },
-        };
-      }
       case "thread.message.edit-and-resend": {
         const thread = yield* requireThread({
           readModel,
@@ -179,7 +114,7 @@ export function decideConversationCommand({
           command.modelSelection ?? thread.modelSelection,
           command.runtimeMode,
         );
-        const editTarget = resolveTailUserMessageEditTarget({
+        const editTarget = resolveUserMessageEditTarget({
           messages: thread.messages,
           messageId: command.messageId,
           activeTurnId:
@@ -188,7 +123,7 @@ export function decideConversationCommand({
         if (!editTarget.editable) {
           return yield* new OrchestrationCommandInvariantError({
             commandType: command.type,
-            detail: `Only the latest rollbackable user message can be edited and resent (${editTarget.reason}).`,
+            detail: `This message cannot be edited and resent (${editTarget.reason}).`,
           });
         }
         const requestedEvent: Omit<OrchestrationEvent, "sequence"> = {

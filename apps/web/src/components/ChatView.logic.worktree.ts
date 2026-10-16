@@ -5,7 +5,13 @@ import type { GitWorktreeSetupPhase } from "@glade/contracts/git/git";
 import type { ServerProviderAuthStatus } from "@glade/contracts/server/server";
 import { normalizeModelSlug } from "@glade/shared/provider/model";
 import { isGenericChatThreadTitle } from "@glade/shared/threads/chatThreads";
-import type { ChatMessage, Thread, TurnDiffSummary, WorktreeSetupStepId } from "../types";
+import type {
+  ChatMessage,
+  PendingMessageEdit,
+  Thread,
+  TurnDiffSummary,
+  WorktreeSetupStepId,
+} from "../types";
 import type { DraftThreadState } from "../composerDraftDomain";
 import { isProviderFileEditWorkLogEntry, type WorkLogEntry } from "../workLog.types";
 import { buildModelSelection, type ProviderModelOption } from "../providerModelOptions";
@@ -456,6 +462,7 @@ export interface WorktreeSetupSnapshotOptions {
 export interface WorktreeSetupDispatchOptions extends WorktreeSetupSnapshotOptions {
   worktreeSetupStepId?: WorktreeSetupStepId;
   expectedUserMessageId?: ChatMessage["id"];
+  messageEdit?: PendingMessageEdit;
 }
 
 export function worktreeSetupStepDefinitions(

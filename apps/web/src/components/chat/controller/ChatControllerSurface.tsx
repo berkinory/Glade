@@ -209,7 +209,7 @@ export function ChatControllerSurface({ controller }: { controller: ChatControll
     activeWorktreeSetup,
     worktreeSetupPendingAction,
     onResolveWorktreeSetup,
-    editableUserMessageId,
+    editableUserMessageIds,
     transcriptFollowsLiveTail,
     getAgentActivityDetail,
     selectedPromptEffort,
@@ -225,7 +225,6 @@ export function ChatControllerSurface({ controller }: { controller: ChatControll
     handleResetWorkspaceToHome,
     handleForkFromMessage,
     onEditUserMessage,
-    onRewindToMessage,
     onContinueFailedTurn,
     onSendVisualChoice,
   } = controller.submission;
@@ -580,11 +579,8 @@ export function ChatControllerSurface({ controller }: { controller: ChatControll
                       }).catch(reportChatActionFailure);
                     }}
                     onEditUserMessage={onEditUserMessage}
-                    onRewindToMessage={(messageId) => {
-                      void onRewindToMessage(messageId);
-                    }}
                     onRespondToAsyncUserInput={onRespondToAsyncUserInput}
-                    editableUserMessageId={editableUserMessageId}
+                    editableUserMessageIds={editableUserMessageIds}
                     isRevertingCheckpoint={isRevertingCheckpoint}
                     onExpandTimelineImage={setExpandedImage}
                     followLiveOutput={transcriptFollowsLiveTail && !isUserScrollDetached}

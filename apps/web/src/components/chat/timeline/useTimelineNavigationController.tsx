@@ -51,7 +51,7 @@ export function useTimelineNavigationController({
   const {
     controllerRef,
     onNavigate,
-    editableUserMessageId,
+    editableUserMessageIds,
     onIsAtEndChange,
     onTrailHighlightsChange,
     onMessagesScroll,
@@ -358,8 +358,6 @@ export function useTimelineNavigationController({
 
   const ignoreTimelineImageLoad = useCallback(() => {}, []);
 
-  const latestEditableUserMessageId = editableUserMessageId ?? null;
-
   const previousRowCountRef = useRef(rows.length);
 
   useEffect(() => {
@@ -552,7 +550,7 @@ export function useTimelineNavigationController({
     tailContentRowId,
     scrollTailExpansionToEnd,
     ignoreTimelineImageLoad,
-    latestEditableUserMessageId,
+    editableUserMessageIds,
     handleListScroll,
     handleMessagesPointerCancel,
     handleMessagesPointerDown,

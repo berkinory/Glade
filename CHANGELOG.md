@@ -16,6 +16,7 @@
 
 ### Improved
 
+- Rewind is now part of Edit: edit any of your messages to resend it from there, and Glade asks whether files changed since then are kept or restored.
 - Visuals whose scripts fail or that show nothing go back to the agent to fix instead of appearing broken in the chat.
 - MCP servers connected in Glade can serve only the agents you choose, and the catalog adds OpenRouter, Superhuman, Craft, OpenStatus, Databuddy, Scalar and Browserbase. ([db5bd2da2](https://github.com/berkinory/Glade/commit/db5bd2da2bb1f3a33c490fe9f223dec08e66bdf2), [e4e22ade7](https://github.com/berkinory/Glade/commit/e4e22ade7221faf61451fdab2e1905f003d94254))
 - The MCP server catalog updates from useglade.dev between releases, signed so Glade accepts only catalogs it can verify.
@@ -34,6 +35,7 @@
 
 ### Fixed
 
+- An edited message shows its new text and starts working right away instead of looking unchanged for several seconds.
 - Error and status notifications show their details again instead of only a title.
 - HEIC and TIFF files show a clear preview-unavailable state instead of claiming the file may have moved.
 - Opening a step where an agent looked at an image now shows that image. ([41306bc87](https://github.com/berkinory/Glade/commit/41306bc877d0b220c149c0af8dee8a494655dbd4), [94dd5f4fe](https://github.com/berkinory/Glade/commit/94dd5f4fe0f32d3ee0dcc29028353a098d30724f))

@@ -12,7 +12,7 @@ type EditableMessageLike = TurnMessageLike & {
     | undefined;
 };
 
-export type TailUserMessageEditTarget =
+export type UserMessageEditTarget =
   | {
       readonly editable: true;
       readonly messageId: string;
@@ -28,10 +28,11 @@ export type TailUserMessageEditTarget =
         | "not-user-message"
         | "non-native-message"
         | "structured-answer"
-        | "not-latest-native-user-message"
-        | "missing-turn-metadata"
-        | "spans-multiple-turns";
+        | "earlier-message-while-running"
+        | "missing-turn-metadata";
     };
+
+type EditRejectionReason = Extract<UserMessageEditTarget, { editable: false }>["reason"];
 
 function isNativeEditableSource(source: string | undefined): boolean {
   return source === undefined || source === "native";
@@ -94,80 +95,96 @@ function findLatestConversationUserMessageIndex(
   return -1;
 }
 
-export function resolveTailUserMessageEditTarget(input: {
+function collectAnsweredMessageIds(messages: ReadonlyArray<EditableMessageLike>): Set<string> {
+  const ids = new Set<string>();
+  for (const message of messages) {
+    const answerId = message.asyncUserInput?.response?.messageId;
+    if (answerId) ids.add(answerId);
+  }
+  return ids;
+}
+
+// An earlier message rolls back every later turn, which needs the provider idle. Only the latest
+// message can replace a running turn or a prompt whose turn has not produced output yet.
+function classifyUserMessageEdit(input: {
+  readonly message: EditableMessageLike;
+  readonly isLatest: boolean;
+  readonly isAnswer: boolean;
+  readonly tailTurnCount: number;
+  readonly onlySystemAfter: boolean;
+  readonly activeTurnId: string | null | undefined;
+}): EditRejectionReason | "rollback" | "active-tail" {
+  if (input.message.role !== "user") return "not-user-message";
+  if (!isNativeEditableSource(input.message.source)) return "non-native-message";
+  if (input.isAnswer) return "structured-answer";
+  if (!input.isLatest && input.activeTurnId) return "earlier-message-while-running";
+  if (input.tailTurnCount > 0) return "rollback";
+  if (input.isLatest && (input.activeTurnId || input.onlySystemAfter)) return "active-tail";
+  return "missing-turn-metadata";
+}
+
+export function resolveUserMessageEditTarget(input: {
   readonly messages: ReadonlyArray<EditableMessageLike>;
   readonly messageId: string;
   readonly activeTurnId?: string | null | undefined;
-}): TailUserMessageEditTarget {
+}): UserMessageEditTarget {
   const messageIndex = input.messages.findIndex((message) => message.id === input.messageId);
-  if (messageIndex < 0) {
+  const message = input.messages[messageIndex];
+  if (!message) {
     return { editable: false, reason: "missing-message" };
   }
-
-  const message = input.messages[messageIndex];
-  if (!message || message.role !== "user") {
-    return { editable: false, reason: "not-user-message" };
-  }
-  if (!isNativeEditableSource(message.source)) {
-    return { editable: false, reason: "non-native-message" };
-  }
-  if (input.messages.some((entry) => entry.asyncUserInput?.response?.messageId === message.id)) {
-    return { editable: false, reason: "structured-answer" };
-  }
-
-  const latestNativeUserIndex = findLatestConversationUserMessageIndex(input.messages);
-  if (messageIndex !== latestNativeUserIndex) {
-    return { editable: false, reason: "not-latest-native-user-message" };
-  }
-
   const removedTurnIds = collectTailTurnIds({
     messages: input.messages,
     messageId: input.messageId,
   });
-  if (removedTurnIds.length > 1) {
-    return { editable: false, reason: "spans-multiple-turns" };
-  }
-
-  if (removedTurnIds.length === 1) {
-    return {
-      editable: true,
-      messageId: message.id,
-      messageIndex,
-      mode: "rollback",
-      rollbackTurnCount: 1,
-      removedTurnIds,
-    };
-  }
-
-  if (
-    input.activeTurnId ||
-    input.messages.slice(messageIndex + 1).every((entry) => entry.role === "system")
-  ) {
-    return {
-      editable: true,
-      messageId: message.id,
-      messageIndex,
-      mode: "active-tail",
-      rollbackTurnCount: 0,
-      removedTurnIds: [],
-    };
-  }
-
-  return { editable: false, reason: "missing-turn-metadata" };
-}
-
-export function resolveLatestTailUserMessageEditTarget(input: {
-  readonly messages: ReadonlyArray<EditableMessageLike>;
-  readonly activeTurnId?: string | null | undefined;
-}): TailUserMessageEditTarget {
-  const latestNativeUserIndex = findLatestConversationUserMessageIndex(input.messages);
-  const latestNativeUserMessage = input.messages[latestNativeUserIndex];
-  if (!latestNativeUserMessage) {
-    return { editable: false, reason: "missing-message" };
-  }
-  return resolveTailUserMessageEditTarget({
-    messages: input.messages,
-    messageId: latestNativeUserMessage.id,
+  const classification = classifyUserMessageEdit({
+    message,
+    isLatest: messageIndex === findLatestConversationUserMessageIndex(input.messages),
+    isAnswer: collectAnsweredMessageIds(input.messages).has(message.id),
+    tailTurnCount: removedTurnIds.length,
+    onlySystemAfter: input.messages
+      .slice(messageIndex + 1)
+      .every((entry) => entry.role === "system"),
     activeTurnId: input.activeTurnId,
   });
+  if (classification !== "rollback" && classification !== "active-tail") {
+    return { editable: false, reason: classification };
+  }
+  return {
+    editable: true,
+    messageId: message.id,
+    messageIndex,
+    mode: classification,
+    rollbackTurnCount: removedTurnIds.length,
+    removedTurnIds,
+  };
+}
+
+// Same rules as resolveUserMessageEditTarget, in one pass over the transcript.
+export function collectEditableUserMessageIds<TId extends string>(input: {
+  readonly messages: ReadonlyArray<EditableMessageLike & { readonly id: TId }>;
+  readonly activeTurnId?: string | null | undefined;
+}): Set<TId> {
+  const editable = new Set<TId>();
+  const latestIndex = findLatestConversationUserMessageIndex(input.messages);
+  const answeredIds = collectAnsweredMessageIds(input.messages);
+  const tailTurnIds = new Set<string>();
+  let onlySystemAfter = true;
+  for (let index = input.messages.length - 1; index >= 0; index -= 1) {
+    const message = input.messages[index]!;
+    if (message.role !== "system" && message.turnId) tailTurnIds.add(message.turnId);
+    const classification = classifyUserMessageEdit({
+      message,
+      isLatest: index === latestIndex,
+      isAnswer: answeredIds.has(message.id),
+      tailTurnCount: tailTurnIds.size,
+      onlySystemAfter,
+      activeTurnId: input.activeTurnId,
+    });
+    if (classification === "rollback" || classification === "active-tail") {
+      editable.add(message.id);
+    }
+    if (message.role !== "system") onlySystemAfter = false;
+  }
+  return editable;
 }

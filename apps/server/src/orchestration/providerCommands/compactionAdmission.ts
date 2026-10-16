@@ -10,7 +10,6 @@ const CANCELLING_EVENTS = [
   "thread.turn-interrupt-requested",
   "thread.archived",
   "thread.deleted",
-  "thread.conversation-rollback-requested",
   "thread.message-edit-resend-requested",
   "thread.checkpoint-revert-requested",
   "thread.reverted",

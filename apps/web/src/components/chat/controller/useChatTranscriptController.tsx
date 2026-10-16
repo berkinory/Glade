@@ -19,6 +19,7 @@ import { buildTurnDiffSummaryByAssistantMessageId } from "../MessagesTimeline.lo
 import { ThreadDetailHydrationState } from "~/components/chat/ThreadDetailHydrationState";
 import { usePinnedMessageActions } from "~/components/chat/environment/usePinnedMessageActions";
 import { useChatTimelineMessages } from "~/components/chat/useChatTimelineMessages";
+import { applyPendingMessageEdit } from "~/components/chat/pendingMessageEdit.logic";
 import { useComposerDiscovery } from "~/components/chat/useComposerDiscovery";
 import { toastManager } from "~/components/ui/toast";
 import { resolveComposerSlashRootBranch } from "~/composerSlashCommands";
@@ -55,6 +56,8 @@ export function useChatTranscriptController({
     isWorking,
     pendingApprovals,
     agentActivityTimelineState,
+    localDispatch,
+    turnTakenOver,
     serverConfigQuery,
     selectedProvider,
     providerModelDiscoveryCwd,
@@ -160,11 +163,19 @@ export function useChatTranscriptController({
     activeTurnLayoutLive,
   ]);
 
-  const { timelineMessages, optimisticUserMessages, setOptimisticUserMessages } =
-    useChatTimelineMessages({
-      threadId,
-      activeThread,
-    });
+  const {
+    timelineMessages: serverTimelineMessages,
+    optimisticUserMessages,
+    setOptimisticUserMessages,
+  } = useChatTimelineMessages({
+    threadId,
+    activeThread,
+  });
+  const { messages: timelineMessages, workEntries: timelineWorkEntries } = applyPendingMessageEdit({
+    messages: serverTimelineMessages,
+    workEntries: agentActivityTimelineState.timelineWorkEntries,
+    edit: turnTakenOver ? null : (localDispatch?.messageEdit ?? null),
+  });
 
   const promptHistory = (() => {
     const activeMessages = activeThread?.messages ?? EMPTY_MESSAGES;
@@ -179,10 +190,7 @@ export function useChatTranscriptController({
     return derivePromptHistoryFromMessages([...activeMessages, ...pendingOptimisticMessages]);
   })();
 
-  const allTimelineEntries = deriveTimelineEntries(
-    timelineMessages,
-    agentActivityTimelineState.timelineWorkEntries,
-  );
+  const allTimelineEntries = deriveTimelineEntries(timelineMessages, timelineWorkEntries);
   // A subagent's launch prompt is derived from its parent and exists before the subagent's own
   // history loads. It must not stand in for that history, or the chat opens on the prompt alone and
   // its messages pop in afterwards.

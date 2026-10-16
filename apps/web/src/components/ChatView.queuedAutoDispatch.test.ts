@@ -14,6 +14,7 @@ const localDispatch: LocalDispatchSnapshot = {
   startedAt: "2026-04-13T00:00:00.000Z",
   worktreeSetup: null,
   expectedUserMessageId: "message-for-dispatch" as never,
+  messageEdit: null,
   latestTurnTurnId: null,
   latestTurnRequestedAt: null,
   latestTurnStartedAt: null,

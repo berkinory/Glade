@@ -62,7 +62,6 @@ export const decideOrchestrationCommand = Effect.fn("decideOrchestrationCommand"
     case "thread.user-input.respond":
       return yield* decideTurnCommand({ command, readModel, workspacePaths });
     case "thread.checkpoint.revert":
-    case "thread.conversation.rollback":
     case "thread.message.edit-and-resend":
     case "thread.revert.complete":
     case "thread.conversation.rollback.complete":

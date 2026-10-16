@@ -5,10 +5,7 @@ import {
   type ProviderKind,
   type TurnId,
 } from "@glade/contracts/core/baseSchemas";
-import {
-  collectTailTurnIds,
-  resolveTailUserMessageEditTarget,
-} from "@glade/shared/threads/conversationEdit";
+import { resolveUserMessageEditTarget } from "@glade/shared/threads/conversationEdit";
 
 import { deriveAssociatedWorktreeMetadata } from "@glade/shared/threads/threadWorkspace";
 import { useNavigate } from "@tanstack/react-router";
@@ -17,11 +14,7 @@ import { useCallback } from "react";
 import { newCommandId, randomUUID } from "~/lib/utils";
 import { readNativeApi } from "~/nativeApi";
 
-import {
-  appendOriginalComposerPromptBlocks,
-  deriveDisplayedUserMessageState,
-} from "../../lib/terminalContext";
-import { useComposerDraftStore } from "../../composerDraftStore";
+import { appendOriginalComposerPromptBlocks } from "../../lib/terminalContext";
 
 import { useStore } from "../../store";
 import { getThreadFromState } from "../../threadDerivation";
@@ -157,7 +150,9 @@ export function useChatTurnFollowUps({
     isConnecting,
 
     isSendBusy,
-
+    beginLocalDispatch,
+    armLocalDispatchAckFallback,
+    resetLocalDispatch,
     selectedProvider,
     selectedModel,
     selectedPromptEffort,
@@ -180,7 +175,7 @@ export function useChatTurnFollowUps({
       }
       const currentThread =
         getThreadFromState(useStore.getState(), activeThread.id) ?? activeThread;
-      const editTarget = resolveTailUserMessageEditTarget({
+      const editTarget = resolveUserMessageEditTarget({
         messages: currentThread.messages,
         messageId,
         activeTurnId:
@@ -192,7 +187,10 @@ export function useChatTurnFollowUps({
         toastManager.add({
           type: "warning",
           title: "Could not edit message",
-          description: "Only the latest message can be edited.",
+          description:
+            editTarget.reason === "earlier-message-while-running"
+              ? "Stop the current turn before editing an earlier message."
+              : "This message can no longer be edited.",
         });
         return false;
       }
@@ -217,18 +215,26 @@ export function useChatTurnFollowUps({
       setIsRevertingCheckpoint(true);
       setThreadError(activeThread.id, null);
       const messageCreatedAt = new Date().toISOString();
-      const editedTextWithOriginalContext = appendOriginalComposerPromptBlocks({
+      const outgoingMessageText = appendOriginalComposerPromptBlocks({
         editedPrompt: text,
         originalPrompt: originalMessage.text,
       });
-      const outgoingMessageText = editedTextWithOriginalContext;
-      return await (async () => {
-        const preview = await api.orchestration.previewWorkspaceRestore({
+      let dispatchStarted = false;
+      try {
+        const review = await api.orchestration.previewWorkspaceRestore({
           threadId: activeThread.id,
           target: { type: "edit", messageId },
         });
-        const decision = await requestWorkspaceRestoreDecision({ mode: "edit", review: preview });
+        const decision = await requestWorkspaceRestoreDecision({ mode: "edit", review });
         if (!decision) return false;
+        beginLocalDispatch({
+          messageEdit: {
+            messageId,
+            text: outgoingMessageText,
+            baseUpdatedAt: originalMessage.updatedAt ?? null,
+          },
+        });
+        dispatchStarted = true;
         await persistThreadSettingsForNextTurn({
           ...threadSettingsDispatchFields(turnDispatchSettings),
           threadId: activeThread.id,
@@ -244,26 +250,18 @@ export function useChatTurnFollowUps({
           ...editAndResendDispatchFields(turnDispatchSettings),
           createdAt: messageCreatedAt,
         });
+        armLocalDispatchAckFallback(activeThread.id);
         return true;
-      })()
-        .catch((err: unknown) => {
-          if (err instanceof Error && err.message.includes("Only the latest rollbackable")) {
-            toastManager.add({
-              type: "warning",
-              title: "Could not edit message",
-              description: "Only the latest message can be edited.",
-            });
-            return false;
-          }
-          setThreadError(
-            activeThread.id,
-            err instanceof Error ? err.message : "Failed to edit message.",
-          );
-          return false;
-        })
-        .finally(() => {
-          setIsRevertingCheckpoint(false);
-        });
+      } catch (err) {
+        if (dispatchStarted) resetLocalDispatch();
+        setThreadError(
+          activeThread.id,
+          err instanceof Error ? err.message : "Failed to edit message.",
+        );
+        return false;
+      } finally {
+        setIsRevertingCheckpoint(false);
+      }
     },
     [
       sendInFlightRef,
@@ -273,69 +271,13 @@ export function useChatTurnFollowUps({
       isRevertingCheckpoint,
       isSendBusy,
       isServerThread,
+      beginLocalDispatch,
+      armLocalDispatchAckFallback,
+      resetLocalDispatch,
       persistThreadSettingsForNextTurn,
       setThreadError,
       turnDispatchSettings,
     ],
-  );
-
-  const onRewindToMessage = useCallback(
-    async (messageId: MessageId): Promise<void> => {
-      const api = readNativeApi();
-      if (!api || !activeThread || !isServerThread || isRevertingCheckpoint) return;
-      const currentThread =
-        getThreadFromState(useStore.getState(), activeThread.id) ?? activeThread;
-      const status = currentThread.session?.orchestrationStatus;
-      if (status === "running" || status === "starting") {
-        toastManager.add({
-          type: "warning",
-          title: "Stop the turn first",
-          description: "Stop the current turn before rewinding.",
-        });
-        return;
-      }
-      const message = currentThread.messages.find((entry) => entry.id === messageId);
-      const numTurns = collectTailTurnIds({ messages: currentThread.messages, messageId }).length;
-      if (!message || message.role !== "user" || numTurns === 0) return;
-
-      setIsRevertingCheckpoint(true);
-      setThreadError(activeThread.id, null);
-      try {
-        const review = await api.orchestration.previewWorkspaceRestore({
-          threadId: activeThread.id,
-          target: { type: "edit", messageId },
-        });
-        const decision = await requestWorkspaceRestoreDecision({ mode: "rewind", review });
-        if (!decision) return;
-        await api.orchestration.dispatchCommand({
-          type: "thread.conversation.rollback",
-          ...(decision.kind === "restore" ? { workspaceRestore: decision.confirmation } : {}),
-          commandId: newCommandId(),
-          threadId: activeThread.id,
-          messageId,
-          numTurns,
-          createdAt: new Date().toISOString(),
-        });
-        // The rewound prompt goes in front of any draft so neither is lost.
-        const restoredPrompt = deriveDisplayedUserMessageState(message.text, {}).copyText.trim();
-        const draftStore = useComposerDraftStore.getState();
-        const draft = draftStore.draftsByThreadId[activeThread.id]?.prompt.trim() ?? "";
-        if (restoredPrompt) {
-          draftStore.setPrompt(
-            activeThread.id,
-            draft ? `${restoredPrompt}\n\n${draft}` : restoredPrompt,
-          );
-        }
-      } catch (err) {
-        setThreadError(
-          activeThread.id,
-          err instanceof Error ? err.message : "Failed to rewind the conversation.",
-        );
-      } finally {
-        setIsRevertingCheckpoint(false);
-      }
-    },
-    [activeThread, isRevertingCheckpoint, isServerThread, setIsRevertingCheckpoint, setThreadError],
   );
 
   // Sent as its own message so the composer draft stays untouched. Eligibility is re-read from the
@@ -434,7 +376,6 @@ export function useChatTurnFollowUps({
 
   return {
     onEditUserMessage,
-    onRewindToMessage,
     onContinueFailedTurn,
     onSendVisualChoice: sendTurnFollowUp,
     onResumeWorkflowRun,

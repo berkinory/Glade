@@ -1,9 +1,10 @@
 import { MessageId } from "@glade/contracts/core/baseSchemas";
 import { PROVIDER_DISPLAY_NAMES } from "@glade/contracts/provider/model";
-import { resolveLatestTailUserMessageEditTarget } from "@glade/shared/threads/conversationEdit";
+import { collectEditableUserMessageIds } from "@glade/shared/threads/conversationEdit";
 import { useQuery } from "@tanstack/react-query";
 import { useRef, useLayoutEffect, useMemo } from "react";
 import { createAgentActivityTimelineSelector } from "~/components/chat/agentActivity.logic";
+import { EMPTY_MESSAGE_ID_SET } from "~/components/chat/timeline/timelineSupport";
 import { useChatLocalDispatch } from "~/components/chat/useChatLocalDispatch";
 import { useChatPendingInteractions } from "~/components/chat/useChatPendingInteractions";
 import { useChatProviderModels } from "~/components/chat/useChatProviderModels";
@@ -199,19 +200,16 @@ export function useChatProviderController({
   const activeTurnIdForTranscript =
     activeThread?.session?.activeTurnId ?? (awaitingNewTurn ? null : activeLatestTurnId);
 
-  const editableUserMessageId = (() => {
-    if (!activeThread || !isServerThread) {
-      return null;
-    }
-    const editTarget = resolveLatestTailUserMessageEditTarget({
-      messages: activeThread.messages,
-      activeTurnId:
-        activeThread.session?.orchestrationStatus === "running"
-          ? (activeThread.session.activeTurnId ?? null)
-          : null,
-    });
-    return editTarget.editable ? (editTarget.messageId as MessageId) : null;
-  })();
+  const editableUserMessageIds: ReadonlySet<MessageId> =
+    activeThread && isServerThread
+      ? collectEditableUserMessageIds({
+          messages: activeThread.messages,
+          activeTurnId:
+            activeThread.session?.orchestrationStatus === "running"
+              ? (activeThread.session.activeTurnId ?? null)
+              : null,
+        })
+      : EMPTY_MESSAGE_ID_SET;
 
   const activeThreadIdRef = useRef(threadId);
   useLayoutEffect(() => {
@@ -305,7 +303,7 @@ export function useChatProviderController({
     scheduleFailedWorktreeSetupDispatchReset,
     hasLiveTurn,
     activeTurnIdForTranscript,
-    editableUserMessageId,
+    editableUserMessageIds,
     hasQueueableLiveTurn,
     activeThreadIdRef,
     isWorking,

@@ -164,8 +164,9 @@ The intended loop is:
 5. Commit only the intended changes.
 6. Push and open a pull request when appropriate.
 
-Editing and resending the latest message restores its preceding workspace checkpoint and replays
-the corrected prompt in the same chat. Codex rewinds its native conversation;
+Editing and resending any of your messages removes the turns after it, asks whether the files
+changed since then are kept or restored, and replays the corrected prompt in the same chat. While
+a turn runs only the latest message can be edited. Codex rewinds its native conversation;
 Claude resumes a native copy of the exact retained prefix, including tool results. Editing does
 not replace the retained history with a generated summary. File-change cards also support
 undoing their changes.

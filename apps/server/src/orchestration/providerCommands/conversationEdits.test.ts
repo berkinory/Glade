@@ -20,54 +20,6 @@ describe("Provider reactor conversationEdits", () => {
   const { createHarness, seedRollbackTarget, readHarnessThread, dispatchHarnessUserTurn } =
     makeReactorTestHarness();
 
-  it("interrupts the active provider turn before rolling back an edited message", async () => {
-    const harness = await createHarness();
-    const now = new Date().toISOString();
-    await seedRollbackTarget(harness, {
-      messageId: asMessageId("user-message-active"),
-      turnId: asTurnId("turn-rollback-active"),
-      createdAt: now,
-    });
-
-    await Effect.runPromise(
-      harness.engine.dispatch({
-        type: "thread.session.set",
-        commandId: CommandId.makeUnsafe("cmd-session-running-edit-rollback"),
-        threadId: ThreadId.makeUnsafe("thread-1"),
-        session: {
-          threadId: ThreadId.makeUnsafe("thread-1"),
-          status: "running",
-          providerName: "codex",
-          runtimeMode: "approval-required",
-          activeTurnId: asTurnId("turn-active-edit"),
-          lastError: null,
-          updatedAt: now,
-        },
-        createdAt: now,
-      }),
-    );
-    await Effect.runPromise(
-      harness.engine.dispatch({
-        type: "thread.conversation.rollback",
-        commandId: CommandId.makeUnsafe("cmd-conversation-rollback-active"),
-        threadId: ThreadId.makeUnsafe("thread-1"),
-        messageId: asMessageId("user-message-active"),
-        numTurns: 1,
-        createdAt: now,
-      }),
-    );
-
-    await waitFor(() => harness.rollbackConversation.mock.calls.length === 1);
-    expect(harness.interruptTurn.mock.calls[0]?.[0]).toEqual({
-      threadId: ThreadId.makeUnsafe("thread-1"),
-      turnId: asTurnId("turn-active-edit"),
-    });
-    expect(harness.rollbackConversation.mock.calls[0]?.[0]).toEqual({
-      threadId: ThreadId.makeUnsafe("thread-1"),
-      numTurns: 1,
-    });
-  });
-
   it("interrupts and rewinds the native conversation before resending an edited latest message", async () => {
     const harness = await createHarness();
     const now = new Date().toISOString();

@@ -78,8 +78,7 @@ interface ChatTranscriptPaneProps {
   onUndoTurnFiles?: ComponentProps<typeof MessagesTimeline>["onUndoTurnFiles"];
   onRespondToAsyncUserInput?: ComponentProps<typeof MessagesTimeline>["onRespondToAsyncUserInput"];
   onEditUserMessage?: (messageId: MessageId, text: string) => boolean | Promise<boolean>;
-  onRewindToMessage?: ComponentProps<typeof MessagesTimeline>["onRewindToMessage"];
-  editableUserMessageId?: MessageId | null;
+  editableUserMessageIds: ReadonlySet<MessageId>;
   onScrollToBottom: () => void;
   resolvedTheme: "light" | "dark";
   scrollButtonVisible: boolean;
@@ -145,9 +144,8 @@ export function ChatTranscriptPane({
   onOpenThread,
   onUndoTurnFiles,
   onEditUserMessage,
-  onRewindToMessage,
   onRespondToAsyncUserInput,
-  editableUserMessageId,
+  editableUserMessageIds,
   onScrollToBottom,
   resolvedTheme,
   scrollButtonVisible,
@@ -288,13 +286,12 @@ export function ChatTranscriptPane({
                   onEditUserMessage,
                 }
               : {})}
-            {...(onRewindToMessage ? { onRewindToMessage } : {})}
             {...(onRespondToAsyncUserInput
               ? {
                   onRespondToAsyncUserInput,
                 }
               : {})}
-            editableUserMessageId={editableUserMessageId ?? null}
+            editableUserMessageIds={editableUserMessageIds}
             isRevertingCheckpoint={isRevertingCheckpoint}
             onImageExpand={onExpandTimelineImage}
             followLiveOutput={followLiveOutput}

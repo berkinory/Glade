@@ -71,6 +71,14 @@ export type ChatMessage = MutableContractFields<
     completedAt?: string | undefined;
   };
 
+// An edit-and-resend in flight: the edited message shows its new text and the turns after it are
+// hidden until the server applies the rollback, which can take seconds while the provider restarts.
+export interface PendingMessageEdit {
+  messageId: ChatMessage["id"];
+  text: string;
+  baseUpdatedAt: string | null;
+}
+
 interface TurnDiffFileChange {
   path: string;
   kind?: string | undefined;

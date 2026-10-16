@@ -62,7 +62,6 @@ function orchestrationCommandLane(type: OrchestrationCommand["type"]): Orchestra
     case "thread.create":
     case "thread.turn.start":
     case "thread.checkpoint.revert":
-    case "thread.conversation.rollback":
     case "thread.message.edit-and-resend":
       return "user";
     default:

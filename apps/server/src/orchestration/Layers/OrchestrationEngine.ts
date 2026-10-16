@@ -675,7 +675,6 @@ const makeOrchestrationEngine = Effect.gen(function* () {
           ),
         );
       }
-      case "thread.conversation.rollback":
       case "thread.message.edit-and-resend":
       case "thread.approval.respond":
       case "thread.user-input.respond":

@@ -15,10 +15,7 @@ import { isRollbackStillInProgressError } from "./interactionPolicy";
 import { ProviderCommandExecutionError } from "./providerCallPolicy";
 import { invalidateWorkspaceIndex } from "../../workspace/workspaceEntries.ts";
 import { type ProviderIntentEvent } from "../providerIntentClassification.ts";
-import {
-  collectTailTurnIds,
-  resolveTailUserMessageEditTarget,
-} from "@glade/shared/threads/conversationEdit";
+import { resolveUserMessageEditTarget } from "@glade/shared/threads/conversationEdit";
 import { serverCommandId } from "./deliveryClaims";
 import { ThreadSessionSettings } from "../Services/ThreadSessionSettings.ts";
 import { EditReplayWorkspaceRestorePlan } from "./runtimeState";
@@ -45,7 +42,6 @@ export function makeProviderConversationEdit(input: {
     resolveThread,
     resolveProjectedThreadWorkspaceCwd,
     resolveProviderSessionThread,
-    resolveSubagentProviderThreadId,
     withProviderSessionLease,
   } = projectionAccess;
   const rollbackProviderConversationForEdit = Effect.fnUntraced(function* (input: {
@@ -107,69 +103,6 @@ export function makeProviderConversationEdit(input: {
     invalidateWorkspaceIndex(plan.cwd);
   });
 
-  const processConversationRollbackRequestedWithoutLease = Effect.fnUntraced(function* (
-    event: Extract<ProviderIntentEvent, { type: "thread.conversation-rollback-requested" }>,
-  ) {
-    const thread = yield* resolveThread(event.payload.threadId);
-    const removedTurnIds = thread
-      ? collectTailTurnIds<TurnId>({
-          messages: thread.messages,
-          messageId: event.payload.messageId,
-        })
-      : [];
-    if (!thread || removedTurnIds.length !== event.payload.numTurns) {
-      return yield* Effect.fail(
-        new ProviderCommandExecutionError(
-          `Conversation rollback target '${event.payload.messageId}' is no longer valid for ${event.payload.numTurns} turn(s).`,
-        ),
-      );
-    }
-    // Validated before the provider trims its conversation, which cannot be undone.
-    const workspaceRestorePlan = yield* planWorkspaceRestoreForEditReplay({
-      threadId: event.payload.threadId,
-      removedTurnIds,
-      confirmation: event.payload.workspaceRestore,
-    });
-    if (event.payload.numTurns > 0) {
-      const providerThread = yield* resolveProviderSessionThread(event.payload.threadId);
-      if (
-        thread &&
-        providerThread?.session?.status === "running" &&
-        providerThread.session.activeTurnId !== null
-      ) {
-        const providerThreadId = resolveSubagentProviderThreadId(thread.id, providerThread.id);
-        yield* providerService.interruptTurn({
-          threadId: providerThread.id,
-          turnId: providerThread.session.activeTurnId,
-          ...(providerThreadId ? { providerThreadId } : {}),
-        });
-      }
-
-      yield* rollbackProviderConversationForEdit({
-        threadId: event.payload.threadId,
-        numTurns: event.payload.numTurns,
-      });
-    }
-    yield* executeEditReplayWorkspaceRestore(workspaceRestorePlan);
-    yield* orchestrationEngine.dispatch({
-      type: "thread.conversation.rollback.complete",
-      commandId: serverCommandId("conversation-rollback-complete"),
-      threadId: event.payload.threadId,
-      messageId: event.payload.messageId,
-      numTurns: event.payload.numTurns,
-      removedTurnIds,
-      createdAt: event.payload.createdAt,
-    });
-  });
-
-  const processConversationRollbackRequested = (
-    event: Extract<ProviderIntentEvent, { type: "thread.conversation-rollback-requested" }>,
-  ) =>
-    withProviderSessionLease(
-      event.payload.threadId,
-      processConversationRollbackRequestedWithoutLease(event),
-    );
-
   const processMessageEditResendPayload = Effect.fnUntraced(function* (
     payload: Extract<
       ProviderIntentEvent,
@@ -218,7 +151,7 @@ export function makeProviderConversationEdit(input: {
             rollbackTurnCount: payload.rollbackTurnCount,
             removedTurnIds: payload.removedTurnIds,
           }
-        : resolveTailUserMessageEditTarget({
+        : resolveUserMessageEditTarget({
             messages: originalThread.messages,
             messageId: payload.messageId,
             activeTurnId:
@@ -230,7 +163,7 @@ export function makeProviderConversationEdit(input: {
     if (!editTarget.editable) {
       return yield* Effect.fail(
         new ProviderCommandExecutionError(
-          `Cannot edit non-tail user message '${payload.messageId}': ${editTarget.reason}.`,
+          `Cannot edit user message '${payload.messageId}': ${editTarget.reason}.`,
         ),
       );
     }
@@ -362,5 +295,5 @@ export function makeProviderConversationEdit(input: {
       event.payload.threadId,
       processMessageEditResendRequestedWithoutLease(event),
     );
-  return { processConversationRollbackRequested, processMessageEditResendRequested };
+  return { processMessageEditResendRequested };
 }

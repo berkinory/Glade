@@ -4,7 +4,7 @@ import type {
 } from "@glade/contracts/orchestration/workspaceRestore";
 import { create } from "zustand";
 
-export type WorkspaceRestoreMode = "rewind" | "edit" | "undoFiles";
+export type WorkspaceRestoreMode = "edit" | "undoFiles";
 
 export type WorkspaceRestoreDecision =
   | { readonly kind: "keep" }
@@ -42,11 +42,11 @@ export function restoreConfirmation(review: WorkspaceRestoreReview): WorkspaceRe
   };
 }
 
-// Resolves null when the user cancels. Only a rewind needs a dialog when no file would change.
+// Resolves null when the user cancels. No dialog is needed when no file would change.
 export function requestWorkspaceRestoreDecision(
   request: WorkspaceRestoreRequest,
 ): Promise<WorkspaceRestoreDecision | null> {
-  if (request.review.files.length === 0 && request.mode !== "rewind") {
+  if (request.review.files.length === 0) {
     return Promise.resolve(
       request.mode === "edit"
         ? { kind: "keep" }
