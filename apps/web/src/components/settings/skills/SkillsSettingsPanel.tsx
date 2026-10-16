@@ -25,7 +25,7 @@ function shareConfirmation(group: SkillGroup, catalog: ProviderSkillsCatalogResu
   return [
     group.shared
       ? `Remove the copies of ${group.displayName} in ${agents}?\nEvery agent already loads the shared one.`
-      : `Share ${group.displayName} with every agent?\nGlade moves it to ${catalog.sharedSkillsDir} and removes the copies in ${agents}.`,
+      : `Use ${group.displayName} in every agent?\nGlade moves it to ${catalog.sharedSkillsDir} and removes the copies in ${agents}.`,
     "Copies that differ from the shared one are kept.",
     ...(bridged.length > 0
       ? [`${providerNames(bridged)} outside Glade will no longer load it.`]
@@ -99,7 +99,7 @@ export function SkillsSettingsPanel() {
         disabled={sharing !== null}
         onClick={() => void share(group)}
       >
-        {sharing === group.key ? "Sharing…" : label}
+        {sharing === group.key ? "Moving…" : label}
       </Button>
     ) : null;
 
@@ -134,7 +134,7 @@ export function SkillsSettingsPanel() {
             <SettingsEmptyState layout="status">
               {query
                 ? "No shared skill matches your search."
-                : "Share a skill from an agent below and every agent gets the same copy."}
+                : "Choose Use everywhere on a skill below and every agent gets the same copy."}
             </SettingsEmptyState>
           ) : (
             <SettingsCard>
@@ -174,7 +174,7 @@ export function SkillsSettingsPanel() {
                 <SkillRow
                   key={group.key}
                   {...rowProps(group)}
-                  action={shareButton(group, "Share")}
+                  action={shareButton(group, "Use everywhere")}
                 />
               ))}
             </SettingsCard>

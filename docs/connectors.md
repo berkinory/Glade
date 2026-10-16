@@ -51,7 +51,7 @@ read from config without connecting. Project-scoped servers, claude.ai connector
 and the servers Grok imports from Claude and Cursor are not listed separately. Glade's own `glade`
 and `*_connector` servers are left out.
 
-A server that matches a catalog preset by origin or name offers **Use in Glade**. Once that service
+A server that matches a catalog preset by origin or name offers **Use everywhere**. Once that service
 connects, Glade offers to remove the agents' own entries; a server also connected in Glade offers
 **Remove from agents** for the same reason, because agents would otherwise load both. Removal needs
 confirmation and the `access:write` scope. Glade rewrites a JSON config only when it holds plain

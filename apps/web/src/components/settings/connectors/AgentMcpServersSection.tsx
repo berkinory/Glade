@@ -40,7 +40,7 @@ export function AgentMcpServersSection(props: {
   readonly query: string;
   readonly removing: string | null;
   readonly onRemove: (row: AgentServerRow) => void;
-  readonly onUseInGlade: (row: AgentServerRow) => void;
+  readonly onUseEverywhere: (row: AgentServerRow) => void;
 }) {
   const queryClient = useQueryClient();
   const [refreshing, setRefreshing] = useState(false);
@@ -132,8 +132,8 @@ export function AgentMcpServersSection(props: {
                     {props.removing === row.name ? "Removing…" : "Remove from agents"}
                   </Button>
                 ) : row.preset ? (
-                  <Button size="sm" variant="outline" onClick={() => props.onUseInGlade(row)}>
-                    Use in Glade
+                  <Button size="sm" variant="outline" onClick={() => props.onUseEverywhere(row)}>
+                    Use everywhere
                   </Button>
                 ) : null}
               </div>
@@ -142,8 +142,8 @@ export function AgentMcpServersSection(props: {
         </SettingsCard>
       )}
       <p className="px-2 text-ui-xs text-muted-foreground">
-        Read from each agent's own settings. Use in Glade connects the service once for every agent
-        and then offers to remove the agents' own copies.
+        Read from each agent's own settings. Use everywhere connects the service once for every
+        agent and then offers to remove the agents' own copies.
       </p>
     </SettingsSectionShell>
   );

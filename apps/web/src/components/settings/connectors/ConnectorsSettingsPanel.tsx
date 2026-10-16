@@ -140,7 +140,7 @@ export function ConnectorsSettingsPanel() {
   const [search, setSearch] = useState("");
   const query = useDeferredValue(search).trim().toLowerCase();
   const [target, setTarget] = useState<ConnectorTarget | null>(null);
-  // The agent server picked with Use in Glade, offered for removal once the service connects.
+  // The agent server picked with Use everywhere, offered for removal once the service connects.
   const [moving, setMoving] = useState<AgentServerRow | null>(null);
   const removal = useAgentServerRemoval();
 
@@ -223,6 +223,18 @@ export function ConnectorsSettingsPanel() {
         )}
       </SettingsSectionShell>
 
+      <AgentMcpServersSection
+        connectors={connectors}
+        query={query}
+        removing={removal.removing}
+        onRemove={(row) => void removal.remove(row)}
+        onUseEverywhere={(row) => {
+          if (!row.preset) return;
+          setMoving(row);
+          setTarget({ kind: "preset", preset: row.preset });
+        }}
+      />
+
       {shelves.length === 0 && query ? (
         <SettingsEmptyState>
           Nothing in the catalog matches “{search.trim()}”. Add it with its server URL instead.
@@ -250,18 +262,6 @@ export function ConnectorsSettingsPanel() {
           </SettingsCard>
         </SettingsSectionShell>
       ))}
-
-      <AgentMcpServersSection
-        connectors={connectors}
-        query={query}
-        removing={removal.removing}
-        onRemove={(row) => void removal.remove(row)}
-        onUseInGlade={(row) => {
-          if (!row.preset) return;
-          setMoving(row);
-          setTarget({ kind: "preset", preset: row.preset });
-        }}
-      />
 
       <ConnectorDialog
         target={target}
