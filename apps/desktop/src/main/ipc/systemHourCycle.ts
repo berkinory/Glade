@@ -6,12 +6,20 @@ import { app, systemPreferences } from "electron";
 // V8 ships Intl.Locale#getHourCycles, but TypeScript's lib does not declare it yet.
 type LocaleWithHourCycles = Intl.Locale & { getHourCycles(): ReadonlyArray<string> };
 
-export function resolveSystemHourCycle(): DesktopHourCycle {
+// Answers a synchronous IPC call, so it must not throw: an unanswered sendSync freezes the renderer.
+export function resolveSystemHourCycle(): DesktopHourCycle | null {
   if (process.platform === "darwin") {
     if (systemPreferences.getUserDefault("AppleICUForce24HourTime", "boolean")) return "h23";
     if (systemPreferences.getUserDefault("AppleICUForce12HourTime", "boolean")) return "h12";
   }
-  const locale = new Intl.Locale(app.getSystemLocale()) as LocaleWithHourCycles;
+  // Linux reports POSIX locales such as LANG=C.UTF-8 as "en-US@posix", which Intl.Locale rejects.
+  const [tag = ""] = app.getSystemLocale().split("@");
+  let locale: LocaleWithHourCycles;
+  try {
+    locale = new Intl.Locale(tag) as LocaleWithHourCycles;
+  } catch {
+    return null;
+  }
   const [preferred] = locale.getHourCycles();
   return preferred === "h23" || preferred === "h24" ? "h23" : "h12";
 }
