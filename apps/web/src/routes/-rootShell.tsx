@@ -11,6 +11,7 @@ import { UpdateProvider } from "../components/updates/UpdateProvider";
 import { RunningChatsQuitCoordinator } from "../components/RunningChatsQuitCoordinator";
 import { Button, dialogActionButtonClassName } from "../components/ui/button";
 import { AnchoredToastProvider, ToastProvider } from "../components/ui/toast";
+import { TooltipProvider } from "../components/ui/tooltip";
 import { useGitProgressToastPreview } from "../components/useGitProgressToastPreview";
 import { useFeatureFlags } from "../featureFlags";
 import { useAppDensity } from "../hooks/useAppDensity";
@@ -104,27 +105,30 @@ export function RootRouteView() {
     <>
       <ToastProvider position="top-center">
         <AnchoredToastProvider>
-          <DiffWorkerPoolProvider>
-            <GitProgressToastPreviewDev />
-            <EnvironmentRouters />
-            <SshPromptDialog />
-            <ProviderStatusRefreshCoordinator />
-            <GlobalShortcutsDialog />
-            <GlobalFeedbackDialog />
-            <WorkspaceRestoreDialog />
-            <CrashResumeDialog />
-            <GlobalWhatsNewSurface />
-            <TaskCompletionNotifications />
-            <QueuedComposerDrainCoordinator />
+          {/* Groups every tooltip so moving from one to the next skips the open delay. */}
+          <TooltipProvider>
+            <DiffWorkerPoolProvider>
+              <GitProgressToastPreviewDev />
+              <EnvironmentRouters />
+              <SshPromptDialog />
+              <ProviderStatusRefreshCoordinator />
+              <GlobalShortcutsDialog />
+              <GlobalFeedbackDialog />
+              <WorkspaceRestoreDialog />
+              <CrashResumeDialog />
+              <GlobalWhatsNewSurface />
+              <TaskCompletionNotifications />
+              <QueuedComposerDrainCoordinator />
 
-            <GlobalOnboardingDialog />
+              <GlobalOnboardingDialog />
 
-            <DesktopProjectBootstrap />
-            <ContextMenuHost />
-            <UpdateProvider>
-              <Outlet />
-            </UpdateProvider>
-          </DiffWorkerPoolProvider>
+              <DesktopProjectBootstrap />
+              <ContextMenuHost />
+              <UpdateProvider>
+                <Outlet />
+              </UpdateProvider>
+            </DiffWorkerPoolProvider>
+          </TooltipProvider>
         </AnchoredToastProvider>
       </ToastProvider>
       {desktopChrome}
