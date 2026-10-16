@@ -60,8 +60,8 @@ Glade presents the document whenever a server advertises
 `client_id_metadata_document_supported`, and registers a client only when it does not. The
 document lists portless loopback redirects while the callback carries a per-launch port; OAuth 2.1
 has servers accept any port for loopback redirects. A full Linear sign-in confirmed this on
-2026-10-16, and ElevenLabs, Inngest, MongoDB Atlas and Tableau Cloud accept the document up to
-their sign-in page. Those four offer no registration, so they work only through the document.
+2026-10-16, and ElevenLabs, Eachlabs and MongoDB Atlas accept the document up to their sign-in
+page. ElevenLabs and MongoDB Atlas offer no registration, so they work only through the document.
 
 Serving it:
 

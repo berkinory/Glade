@@ -57,7 +57,8 @@ function ConnectedRow(props: {
   return (
     <div className={ROW_CLASS_NAME}>
       <ConnectorIcon
-        brand={[connector.presetId, connector.name]}
+        presetId={connector.presetId}
+        name={connector.name}
         url={connectorIconUrl(connector)}
       />
       <RowText
@@ -232,7 +233,7 @@ export function ConnectorsSettingsPanel() {
                 onClick={() => setTarget({ kind: "preset", preset })}
                 className="group flex min-w-0 items-center gap-3 rounded-lg px-2.5 py-2 text-left outline-none hover:bg-[var(--color-background-elevated-secondary)] focus-visible:ring-1 focus-visible:ring-ring/60"
               >
-                <ConnectorIcon brand={[preset.id, preset.name]} url={preset.homepage} />
+                <ConnectorIcon presetId={preset.id} name={preset.name} url={preset.homepage} />
                 <RowText title={preset.name} description={preset.description} />
                 <PlusIcon
                   aria-hidden

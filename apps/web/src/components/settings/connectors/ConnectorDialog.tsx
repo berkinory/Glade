@@ -223,7 +223,8 @@ function ConnectorDialogContent(
       <DialogHeader className="px-5 pt-5">
         <div className="mb-2">
           <ConnectorIcon
-            brand={preset ? [preset.id, preset.name] : [name]}
+            presetId={preset?.id ?? null}
+            name={preset?.name ?? name}
             url={preset ? targetIconUrl(target) : url.trim() || "custom"}
             size="lg"
           />

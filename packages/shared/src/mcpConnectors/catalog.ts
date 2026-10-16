@@ -322,13 +322,6 @@ export const MCP_CONNECTOR_PRESETS: ReadonlyArray<McpConnectorPreset> = [
       url: "https://mcp.clerk.com/mcp",
       homepage: "https://clerk.com",
     },
-    {
-      id: "inngest",
-      name: "Inngest",
-      description: "Functions, events, runs and traces",
-      url: "https://api.inngest.com/mcp",
-      homepage: "https://www.inngest.com",
-    },
   ]),
   ...shelf("observability", "oauth", [
     {
@@ -394,12 +387,15 @@ export const MCP_CONNECTOR_PRESETS: ReadonlyArray<McpConnectorPreset> = [
       url: "https://api.braintrust.dev/mcp",
       homepage: "https://www.braintrust.dev",
     },
+  ]),
+  ...shelf("ai", "token", [
     {
-      id: "tableau",
-      name: "Tableau Cloud",
-      description: "Data sources, workbooks, views and Pulse",
-      url: "https://mcp.tableau.com",
-      homepage: "https://www.tableau.com",
+      id: "wiro",
+      name: "Wiro",
+      description: "Run image, video, audio and 3D models",
+      url: "https://mcp.wiro.ai/v1",
+      homepage: "https://wiro.ai",
+      tokenUrl: "https://wiro.ai/panel/project",
     },
   ]),
   ...shelf("ai", "oauth", [
@@ -426,7 +422,7 @@ export const MCP_CONNECTOR_PRESETS: ReadonlyArray<McpConnectorPreset> = [
     },
     {
       id: "fal",
-      name: "fal",
+      name: "Fal",
       description: "Generate images, video and audio",
       url: "https://mcp.fal.ai/mcp-relay",
       homepage: "https://fal.ai",
@@ -444,6 +440,13 @@ export const MCP_CONNECTOR_PRESETS: ReadonlyArray<McpConnectorPreset> = [
       description: "Voice agents, speech and audio",
       url: "https://api.elevenlabs.io/v1/mcp",
       homepage: "https://elevenlabs.io",
+    },
+    {
+      id: "eachlabs",
+      name: "Eachlabs",
+      description: "Run image, video and audio models and workflows",
+      url: "https://mcp.eachlabs.ai/mcp",
+      homepage: "https://www.eachlabs.ai",
     },
   ]),
   ...shelf("design", "oauth", [
@@ -546,13 +549,6 @@ export const MCP_CONNECTOR_PRESETS: ReadonlyArray<McpConnectorPreset> = [
       description: "Boards, lists and cards",
       url: "https://mcp.trello.com/v1",
       homepage: "https://trello.com",
-    },
-    {
-      id: "monday",
-      name: "monday.com",
-      description: "Boards, items and updates",
-      url: "https://mcp.monday.com/mcp",
-      homepage: "https://monday.com",
     },
     {
       id: "airtable",
