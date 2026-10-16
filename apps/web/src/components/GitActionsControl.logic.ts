@@ -134,9 +134,7 @@ export function resolveCreatePrExecution(input: {
   if (gitStatus.behindCount > 0) {
     return {
       kind: "unavailable",
-      hint: isAhead
-        ? "Branch has diverged from upstream."
-        : "Branch is behind upstream.",
+      hint: isAhead ? "Branch has diverged from upstream." : "Branch is behind upstream.",
     };
   }
   if (!gitStatus.hasUpstream && !hasOriginRemote) {
