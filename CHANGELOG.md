@@ -5,6 +5,7 @@
 ### Fixed
 
 - Tool calls from connected MCP servers show the service's name, like Exa or Linear, instead of a generic connector label. ([154d07882](https://github.com/berkinory/Glade/commit/154d078828c5382ad6c81a64bfc69ccb0558ff16))
+- Codex chats no longer fill with empty moderation notices during a turn. ([2d50d41f4](https://github.com/berkinory/Glade/commit/2d50d41f45871fe482671cab66d260ae5d9439de))
 
 ## 0.2.9 - 2026-10-16
 
