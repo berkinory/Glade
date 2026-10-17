@@ -146,7 +146,7 @@ export function useSidebarRows(context: ReturnType<typeof useSidebarPanelEffects
       <SidebarRowHoverActions threadId={input.threadId}>
         <div
           className={cn(
-            "pointer-events-auto inline-flex items-center gap-2",
+            "pointer-events-auto inline-flex items-center gap-1",
             !compact && SIDEBAR_TRAILING_ICON_FORCE_CLASS,
           )}
         >

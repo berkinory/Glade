@@ -162,7 +162,7 @@ export function threadRowStatusSlotClassName(
   toneClassName?: string,
 ): string {
   return cn(
-    "flex w-[15px] shrink-0 items-center justify-center leading-none tabular-nums",
+    "flex size-5 shrink-0 items-center justify-center leading-none tabular-nums",
     sidebarHoverRevealHideClassName("thread-row"),
     isSubagentThread ? "text-ui-xs" : "text-[length:calc(var(--app-font-size-ui-meta,11px)+0.5px)]",
     toneClassName ?? (isSubagentThread ? "text-muted-foreground/26" : "text-muted-foreground/38"),
