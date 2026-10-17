@@ -1,27 +1,28 @@
 # Glade Changelog
 
-## 0.2.10 - Unreleased
+## 0.3.0 - 2026-10-17
 
 ### Improved
 
-- Glade has a refreshed look: a quieter violet accent across the app, warmer light mode colors, a misty landscape behind the empty start screen and a new installer background.
-- First-run setup is rebuilt around today's Glade: turn agents on or off and sign in to any of them in place, decide on Computer Use and keeping the Mac awake, then open your first chat in a project or without one.
+- Glade has a refreshed look: a quieter violet accent, warmer light mode colors, new artwork behind the start screen and while Glade starts, and a new installer background. ([12dd80815](https://github.com/berkinory/Glade/commit/12dd8081513f86ec23210b188f2be7287d36ff1f), [474a6120b](https://github.com/berkinory/Glade/commit/474a6120bd2034acbd0652409991f08625e6cb63))
+- First-run setup is rebuilt around today's Glade: turn agents on or off and sign in to them in place, decide on Computer Use and keeping the Mac awake, then open your first chat. ([a044c03c8](https://github.com/berkinory/Glade/commit/a044c03c8f7f013b52ae9d5bcd0131a4bcd4a7b8))
+- Claude starts getting ready while you type, so the first reply in a new or idle chat arrives sooner. ([c7fe44f8a](https://github.com/berkinory/Glade/commit/c7fe44f8aa699632600b569f5fce6e9be0db18d7))
+- Glade stays responsive while agents work, even with long chats, several agents at once or many background tasks. ([b9a5a6e45](https://github.com/berkinory/Glade/commit/b9a5a6e45481310d06beefe40418c1a9e38a308a), [61f23ba46](https://github.com/berkinory/Glade/commit/61f23ba4674090c3838cf1f720a7e47d4eee21c2), [131cc7fb5](https://github.com/berkinory/Glade/commit/131cc7fb59e5e407a262385e32d8d2dd0820c16e))
 - Chats show when an agent loads a skill, naming the skill, whichever provider runs it. ([d22481c5a](https://github.com/berkinory/Glade/commit/d22481c5ab9ba28e1d9cc22063598ea426e9624c))
-- Update progress in the sidebar has its own row, so it no longer squeezes out usage meters or the help menu. ([b91bef2ba](https://github.com/berkinory/Glade/commit/b91bef2ba1de121323f5a42a2aa96bfee421da78))
-- Running several agents at once puts less load on the app. ([61f23ba46](https://github.com/berkinory/Glade/commit/61f23ba4674090c3838cf1f720a7e47d4eee21c2))
-- Long chats no longer slow the app down while an agent is working. ([b9a5a6e45](https://github.com/berkinory/Glade/commit/b9a5a6e45481310d06beefe40418c1a9e38a308a))
-- The sidebar and chats with many background tasks load faster. ([131cc7fb5](https://github.com/berkinory/Glade/commit/131cc7fb59e5e407a262385e32d8d2dd0820c16e))
-- Claude starts getting ready while you type, so the first reply in a new chat, or after a chat sat idle, arrives sooner. ([c7fe44f8a](https://github.com/berkinory/Glade/commit/c7fe44f8aa699632600b569f5fce6e9be0db18d7))
 
 ### Fixed
 
-- Screenshots agents show in their replies appear with every provider instead of an "image could not be preserved" note, and are cleaned up when the chat is deleted.
-- Tool calls from connected MCP servers show the service's name, like Exa or Linear, instead of a generic connector label. ([154d07882](https://github.com/berkinory/Glade/commit/154d078828c5382ad6c81a64bfc69ccb0558ff16))
-- Codex chats no longer fill with empty moderation notices during a turn. ([2d50d41f4](https://github.com/berkinory/Glade/commit/2d50d41f45871fe482671cab66d260ae5d9439de))
-- Diffs and worktree transfers work with custom Git diff prefix or color settings. ([81e819447](https://github.com/berkinory/Glade/commit/81e819447fcfa095e273ab338810546d7694c855))
-- Chats that stop on a dropped connection or a temporary provider error continue on their own after a short wait, with any provider, or once you are back if the Mac slept through it, and Keep awake holds the Mac awake while they wait. ([707549f58](https://github.com/berkinory/Glade/commit/707549f5803cfc6eff799138c1c1fc18362baf65), [58713a48b](https://github.com/berkinory/Glade/commit/58713a48b4a599cd5a76acc779a43b179d5744d0))
+- Chats stopped by a dropped connection or a temporary provider error continue on their own, also after the Mac wakes from sleep. ([707549f58](https://github.com/berkinory/Glade/commit/707549f5803cfc6eff799138c1c1fc18362baf65), [58713a48b](https://github.com/berkinory/Glade/commit/58713a48b4a599cd5a76acc779a43b179d5744d0))
+- A turn whose agent stops responding ends on its own after a long silence, for every provider, without cutting off long-running commands or waiting approvals. ([043f5ef32](https://github.com/berkinory/Glade/commit/043f5ef32c1149f66a7550587ea4248d50c08a9c), [58713a48b](https://github.com/berkinory/Glade/commit/58713a48b4a599cd5a76acc779a43b179d5744d0))
 - Long-running agent commands are no longer marked as stopped while they are still working. ([d315f619c](https://github.com/berkinory/Glade/commit/d315f619cdc87020ef20868fb6d6faa3437bfa98))
-- A turn whose agent stops responding now ends on its own after 15 minutes of silence, for every provider, without cutting off long-running commands, waiting approvals or a turn the Mac slept through. ([043f5ef32](https://github.com/berkinory/Glade/commit/043f5ef32c1149f66a7550587ea4248d50c08a9c), [58713a48b](https://github.com/berkinory/Glade/commit/58713a48b4a599cd5a76acc779a43b179d5744d0))
+- Screenshots agents show in their replies appear with every provider, and are removed when the chat is deleted. ([5175d2411](https://github.com/berkinory/Glade/commit/5175d24119c6b477fc5f8856f01a0b2330078d77))
+- Tool calls from connected MCP servers show the service's name instead of a generic label. ([154d07882](https://github.com/berkinory/Glade/commit/154d078828c5382ad6c81a64bfc69ccb0558ff16))
+- Codex chats no longer fill with empty moderation notices. ([2d50d41f4](https://github.com/berkinory/Glade/commit/2d50d41f45871fe482671cab66d260ae5d9439de))
+- Diffs and worktree transfers work with custom Git diff prefix or color settings. ([81e819447](https://github.com/berkinory/Glade/commit/81e819447fcfa095e273ab338810546d7694c855))
+
+### Removed
+
+- Keyboard shortcuts for starting a new chat with a specific provider. ([deb5a081b](https://github.com/berkinory/Glade/commit/deb5a081b0a532899f355dc3a910aa6060ace10f))
 
 ## 0.2.9 - 2026-10-16
 
