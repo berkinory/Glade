@@ -576,7 +576,7 @@ export function SidebarView({ context }: { context: ReturnType<typeof useSidebar
                       <button
                         type="button"
                         aria-label={updatePill.tooltip}
-                        className="inline-flex h-6 shrink-0 items-center justify-center gap-1.5 rounded-full bg-[var(--info)] px-2.5 font-system-ui text-ui-xs font-medium leading-none text-white transition-colors hover:brightness-110"
+                        className="inline-flex h-6 max-w-full shrink-0 items-center justify-center gap-1.5 self-start rounded-full bg-[var(--info)] px-2.5 font-system-ui text-ui-xs font-medium leading-none text-white transition-colors hover:brightness-110"
                         onClick={openUpdates}
                       >
                         {updatePill.busy ? (
