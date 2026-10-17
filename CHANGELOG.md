@@ -10,6 +10,7 @@
 - Running several agents at once puts less load on the app. ([61f23ba46](https://github.com/berkinory/Glade/commit/61f23ba4674090c3838cf1f720a7e47d4eee21c2))
 - Long chats no longer slow the app down while an agent is working. ([b9a5a6e45](https://github.com/berkinory/Glade/commit/b9a5a6e45481310d06beefe40418c1a9e38a308a))
 - The sidebar and chats with many background tasks load faster. ([131cc7fb5](https://github.com/berkinory/Glade/commit/131cc7fb59e5e407a262385e32d8d2dd0820c16e))
+- Claude starts getting ready while you type, so the first reply in a new chat, or after a chat sat idle, arrives sooner. ([c7fe44f8a](https://github.com/berkinory/Glade/commit/c7fe44f8aa699632600b569f5fce6e9be0db18d7))
 
 ### Fixed
 
