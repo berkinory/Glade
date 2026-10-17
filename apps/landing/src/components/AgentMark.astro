@@ -1,0 +1,39 @@
+---
+import claude from "@glade/catalog/brands/claude.svg?raw";
+import codex from "@glade/catalog/brands/openai.svg?raw";
+import cursor from "@glade/catalog/brands/cursor.svg?raw";
+import grok from "@glade/catalog/brands/xaigrok.svg?raw";
+import opencode from "@glade/catalog/brands/opencodeai.svg?raw";
+import type { ProviderKind } from "@glade/contracts/core/baseSchemas";
+
+// Brand artwork from the shared catalog. Claude keeps its colour; the rest follow the text colour,
+// as they do inside the app.
+const sources: Record<ProviderKind, string> = { claudeAgent: claude, codex, cursor, grok, opencode };
+
+interface Props {
+  agent: ProviderKind;
+  size?: number;
+}
+
+const { agent, size = 18 } = Astro.props;
+const source = sources[agent];
+const viewBox = source.match(/viewBox="([^"]+)"/)?.[1] ?? "0 0 24 24";
+const body = source
+  .replace(/^[\s\S]*?<svg[^>]*>/, "")
+  .replace(/<\/svg>\s*$/, "")
+  .replace(/<!--[\s\S]*?-->|<defs>[\s\S]*?<\/defs>|<style>[\s\S]*?<\/style>/g, "")
+  .replace(/\s(class|clip-rule)="[^"]*"/g, "")
+  .replace(/\sfill="(?!none)[^"]*"/g, source === claude ? "$&" : "")
+  .trim();
+---
+
+<svg
+  class="agent-mark"
+  width={size}
+  height={size}
+  viewBox={viewBox}
+  fill="currentColor"
+  aria-hidden="true"
+  focusable="false"
+  set:html={body}
+/>

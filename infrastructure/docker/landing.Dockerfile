@@ -37,6 +37,8 @@ WORKDIR /app
 RUN bun add serve@14.2.6
 
 COPY --from=builder --chown=bun:bun /app/apps/landing/dist ./dist
+# Response headers (caching, Markdown and llms.txt types, agent Link headers) live outside dist.
+COPY --from=builder --chown=bun:bun /app/apps/landing/serve.json ./serve.json
 
 USER bun
 
@@ -45,4 +47,4 @@ EXPOSE 4001
 ENV NODE_ENV=production
 ENV NO_UPDATE_CHECK=1
 
-CMD ["bunx", "--bun", "serve", "./dist", "--listen", "4001", "--no-clipboard"]
+CMD ["bunx", "--bun", "serve", "./dist", "--listen", "4001", "--no-clipboard", "--config", "../serve.json"]

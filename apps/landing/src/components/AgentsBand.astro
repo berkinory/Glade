@@ -1,0 +1,74 @@
+---
+import { agents, agentsBand } from "../content/site";
+import AgentMark from "./AgentMark.astro";
+---
+
+<section id="agents" class="band container" aria-labelledby="agents-title" data-reveal>
+  <h2 id="agents-title" class="eyebrow">{agentsBand.eyebrow}</h2>
+  <ul>
+    {
+      agents.map((agent) => (
+        <li>
+          <AgentMark agent={agent.id} size={19} />
+          <span>{agent.name}</span>
+        </li>
+      ))
+    }
+  </ul>
+  <p>{agentsBand.note}</p>
+</section>
+
+<style>
+  .band {
+    display: grid;
+    justify-items: center;
+    gap: 30px;
+    padding-block: clamp(72px, 9vw, 120px) clamp(96px, 11vw, 150px);
+    text-align: center;
+  }
+  h2 {
+    font-weight: 500;
+  }
+  ul {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+  li {
+    display: flex;
+    align-items: center;
+    gap: 11px;
+    height: 30px;
+    padding: 0 clamp(18px, 2.8vw, 38px);
+    font-size: 17px;
+    font-weight: 500;
+    letter-spacing: -0.012em;
+    color: var(--ink-80);
+  }
+  li + li {
+    border-left: 1px solid var(--line-strong);
+  }
+  p {
+    max-width: 520px;
+    font-size: 15px;
+    color: var(--ink-60);
+  }
+  @media (max-width: 720px) {
+    ul {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 12px 0;
+      width: 100%;
+      max-width: 380px;
+    }
+    li,
+    li + li {
+      border: 0;
+      padding: 0;
+      justify-content: flex-start;
+    }
+  }
+</style>

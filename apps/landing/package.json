@@ -10,6 +10,9 @@
     "typecheck": "bun ../../node_modules/@typescript/native/bin/tsc --noEmit"
   },
   "dependencies": {
+    "@glade/catalog": "workspace:*",
+    "@glade/contracts": "workspace:*",
+    "@hugeicons/core-free-icons": "4.3.5",
     "astro": "7.4.0"
   },
   "devDependencies": {

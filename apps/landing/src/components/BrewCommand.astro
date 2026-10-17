@@ -1,0 +1,115 @@
+---
+import { BREW_COMMAND } from "../content/site";
+import Icon from "./Icon.astro";
+---
+
+<div class="brew">
+  <code><span aria-hidden="true" class="prompt">$</span><span class="command">{BREW_COMMAND}</span></code>
+  <button type="button" class="copy" data-copy={BREW_COMMAND} aria-label="Copy the Homebrew command">
+    <Icon name="copy" size={15} class="copy-icon" />
+    <Icon name="check" size={15} class="check-icon" />
+  </button>
+  <span class="visually-hidden" role="status" data-copy-status></span>
+</div>
+
+<script>
+  for (const button of document.querySelectorAll<HTMLButtonElement>("[data-copy]")) {
+    button.addEventListener("click", async () => {
+      try {
+        await navigator.clipboard.writeText(button.dataset.copy ?? "");
+      } catch {
+        return;
+      }
+      button.dataset.copied = "";
+      const status = button.parentElement?.querySelector("[data-copy-status]");
+      if (status) status.textContent = "Copied";
+      setTimeout(() => {
+        delete button.dataset.copied;
+        if (status) status.textContent = "";
+      }, 1600);
+    });
+  }
+</script>
+
+<style>
+  .brew {
+    display: inline-flex;
+    align-items: center;
+    gap: 14px;
+    height: 48px;
+    min-width: 0;
+    max-width: 100%;
+    padding: 0 8px 0 18px;
+    border-radius: 12px;
+    background: rgb(245 242 234 / 0.05);
+    box-shadow: 0 0 0 1px var(--line-strong) inset;
+    backdrop-filter: blur(16px);
+  }
+  code {
+    display: flex;
+    align-items: center;
+    overflow: hidden;
+    font: 13.5px/1 var(--mono);
+    color: var(--ink-80);
+    white-space: nowrap;
+    text-overflow: ellipsis;
+  }
+  /* The monospace dollar sits low in its line box; lift it onto the command's centre line. */
+  .prompt {
+    flex: none;
+    translate: 0 -1.5px;
+    margin-right: 8px;
+    color: var(--ink-60);
+  }
+  .command {
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .copy {
+    display: grid;
+    flex: none;
+    place-items: center;
+    width: 32px;
+    height: 32px;
+    border: 0;
+    border-radius: 8px;
+    background: rgb(245 242 234 / 0.06);
+    color: var(--ink-68);
+    cursor: pointer;
+    transition:
+      background-color 120ms ease,
+      transform 160ms var(--ease-out);
+  }
+  .copy > :global(svg) {
+    grid-area: 1 / 1;
+    transition:
+      opacity 180ms var(--ease-out),
+      transform 180ms var(--ease-out),
+      filter 180ms ease;
+  }
+  .copy :global(.check-icon) {
+    color: #7ee2a8;
+    opacity: 0;
+    transform: scale(0.6);
+    filter: blur(2px);
+  }
+  .copy[data-copied] :global(.copy-icon) {
+    opacity: 0;
+    transform: scale(0.6);
+    filter: blur(2px);
+  }
+  .copy[data-copied] :global(.check-icon) {
+    opacity: 1;
+    transform: none;
+    filter: none;
+  }
+  @media (hover: hover) and (pointer: fine) {
+    .copy:hover {
+      background: rgb(245 242 234 / 0.12);
+      color: var(--ink);
+    }
+  }
+  .copy:active {
+    transform: scale(0.94);
+  }
+</style>

@@ -1,0 +1,96 @@
+---
+import displayFont from "../assets/fonts/newsreader-display-300.woff2?url";
+import { structuredData } from "../content/structuredData";
+import { meta, SITE_URL } from "../content/site";
+import "../styles/global.css";
+
+interface Props {
+  title?: string;
+  description?: string;
+  path?: string;
+  markdownPath?: string;
+}
+
+const {
+  title = meta.title,
+  description = meta.description,
+  path = "/",
+  markdownPath = "/index.md",
+} = Astro.props;
+const canonical = SITE_URL + path;
+// Escapes "<" so no string in the data can close the script element early.
+const jsonLd = JSON.stringify(structuredData({ includeFaq: path === "/" })).replace(/</g, "\\u003c");
+---
+
+<!doctype html>
+<html lang="en" dir="ltr">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>{title}</title>
+    <meta name="description" content={description} />
+    <link rel="canonical" href={canonical} />
+    <meta name="robots" content="index, follow, max-image-preview:large" />
+    <meta name="theme-color" content="#0e0e0f" />
+    <meta name="color-scheme" content="dark" />
+
+    <link rel="preload" href={displayFont} as="font" type="font/woff2" crossorigin />
+
+    <link rel="icon" href="/favicon.ico" sizes="48x48" />
+    <link rel="icon" href="/favicon-32.png" type="image/png" sizes="32x32" />
+    <link rel="apple-touch-icon" href="/icon.png" />
+
+    <link rel="alternate" type="text/markdown" href={markdownPath} title={`${title} (Markdown)`} />
+    <link rel="describedby" type="text/plain" href="/llms.txt" />
+    <link rel="sitemap" type="application/xml" href="/sitemap.xml" />
+
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="Glade" />
+    <meta property="og:url" content={canonical} />
+    <meta property="og:title" content={title} />
+    <meta property="og:description" content={description} />
+    <meta property="og:image" content={`${SITE_URL}/og.png`} />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:image:alt" content="Glade: one workspace for every coding agent" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content={title} />
+    <meta name="twitter:description" content={description} />
+    <meta name="twitter:image" content={`${SITE_URL}/og.png`} />
+
+    <script type="application/ld+json" set:html={jsonLd} />
+    <!-- Self-hosted Open Analytics: cookieless, async, and the key can only write events. -->
+    <link rel="preconnect" href="https://analytics-c.mirac.dev" crossorigin />
+    <script
+      is:inline
+      async
+      src="https://analytics-c.mirac.dev/oa.js"
+      data-key="oa_pk_X809CMacdVQqk66XGoTj9WCs8qd421Aq"
+      data-collector="https://analytics-c.mirac.dev"></script>
+  </head>
+  <body>
+    <a class="skip" href="#main">Skip to content</a>
+    <slot />
+  </body>
+</html>
+
+<style>
+  .skip {
+    position: fixed;
+    top: 12px;
+    left: 12px;
+    z-index: 100;
+    padding: 10px 14px;
+    border-radius: 10px;
+    background: var(--ink);
+    color: var(--bg);
+    font-size: 14px;
+    font-weight: 500;
+    text-decoration: none;
+    translate: 0 -200%;
+    transition: translate 200ms var(--ease-out);
+  }
+  .skip:focus-visible {
+    translate: 0 0;
+  }
+</style>

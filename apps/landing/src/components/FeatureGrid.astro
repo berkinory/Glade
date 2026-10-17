@@ -1,0 +1,139 @@
+---
+import { chapters, features } from "../content/site";
+import ChapterHeading from "./ChapterHeading.astro";
+import Icon from "./Icon.astro";
+
+const chapter = chapters.features;
+---
+
+<section id="features" class="section" aria-labelledby="features-title">
+  <div class="container">
+    <div class="head" data-reveal>
+      <ChapterHeading
+        id="features-title"
+        numeral={chapter.numeral}
+        label={chapter.label}
+        title={chapter.title}
+      />
+      <p class="lede">{chapter.body}</p>
+    </div>
+    <ul class="grid" data-reveal>
+      {
+        features.map((feature) => (
+          <li class:list={{ core: feature.core }}>
+            <Icon name={feature.icon} size={19} class="icon" />
+            <h3>{feature.title}</h3>
+            <p>{feature.body}</p>
+          </li>
+        ))
+      }
+    </ul>
+  </div>
+</section>
+
+<style>
+  .section {
+    padding-block: clamp(96px, 11vw, 140px) clamp(96px, 11vw, 150px);
+    border-top: 1px solid var(--line);
+  }
+  .head {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 48px;
+    margin-bottom: clamp(44px, 5vw, 60px);
+  }
+  .head .lede {
+    max-width: 440px;
+  }
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    border-bottom: 1px solid var(--line);
+  }
+  li {
+    display: grid;
+    align-content: start;
+    gap: 10px;
+    padding: 30px 28px 34px;
+    border-top: 1px solid var(--line);
+    transition: background-color 200ms ease;
+  }
+  li:not(:nth-child(4n + 1)) {
+    border-left: 1px solid var(--line);
+  }
+  li:nth-child(4n + 1) {
+    padding-left: 0;
+  }
+  li :global(.icon) {
+    margin-bottom: 6px;
+    color: var(--ink-80);
+  }
+  li.core :global(.icon) {
+    color: var(--accent);
+  }
+  h3 {
+    font-size: 15.5px;
+    font-weight: 500;
+  }
+  p {
+    font-size: 14px;
+    line-height: 1.55;
+    color: var(--ink-60);
+  }
+  @media (hover: hover) and (pointer: fine) {
+    li:hover {
+      background: linear-gradient(to bottom, rgb(245 242 234 / 0.025), transparent);
+    }
+  }
+  @media (max-width: 960px) {
+    .head {
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 20px;
+    }
+    .grid {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+    li:not(:nth-child(4n + 1)) {
+      border-left: 0;
+    }
+    li,
+    li:nth-child(4n + 1) {
+      padding: 24px 16px 28px 0;
+    }
+    li:nth-child(2n) {
+      padding-left: 20px;
+      border-left: 1px solid var(--line);
+    }
+  }
+  /* Phones get a compact three-column index: icon and name only. */
+  @media (max-width: 720px) {
+    .grid {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+    li,
+    li:nth-child(4n + 1),
+    li:nth-child(2n) {
+      gap: 8px;
+      padding: 18px 10px 20px;
+      border-left: 0;
+    }
+    li:not(:nth-child(3n + 1)) {
+      border-left: 1px solid var(--line);
+    }
+    li :global(.icon) {
+      margin-bottom: 2px;
+    }
+    h3 {
+      font-size: 13.5px;
+      line-height: 1.3;
+    }
+    p {
+      display: none;
+    }
+  }
+</style>

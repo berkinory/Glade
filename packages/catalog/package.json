@@ -6,6 +6,7 @@
   "exports": {
     "./brands.json": "./brands.json",
     "./mcp-servers.json": "./mcp-servers.json",
-    "./signed/mcp-servers.json": "./signed/mcp-servers.json"
+    "./signed/mcp-servers.json": "./signed/mcp-servers.json",
+    "./brands/*": "./brands/*"
   }
 }

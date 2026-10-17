@@ -1,0 +1,182 @@
+---
+import { DOCS_URL, REPO_URL } from "../content/site";
+import GladeMark from "./GladeMark.astro";
+import Icon from "./Icon.astro";
+
+const links: ReadonlyArray<[string, string]> = [
+  ["Features", "/#shared"],
+  ["Agents", "/#agents"],
+  ["FAQ", "/#faq"],
+  ["Docs", DOCS_URL],
+];
+---
+
+<header class="nav">
+  <div class="inner">
+    <a class="brand" href="/" aria-label="Glade home">
+      <span>Glade</span>
+      <GladeMark size={17} />
+    </a>
+    <nav aria-label="Main">
+      <ul>
+        {
+          links.map(([label, href]) => (
+            <li>
+              <a href={href}>{label}</a>
+            </li>
+          ))
+        }
+      </ul>
+    </nav>
+    <div class="actions">
+      <a class="github" href={REPO_URL} aria-label="Glade on GitHub">
+        <Icon name="github" size={16} />
+        <span class="github-label" aria-hidden="true">GitHub</span>
+      </a>
+      <a class="cta" href="/#get-glade">Download</a>
+    </div>
+  </div>
+</header>
+
+<style>
+  /* A floating capsule: wide and bare over the hero, then it tightens into a glass pill as the page
+     scrolls. The scroll position drives it, so it needs no script; without scroll-driven animations
+     it simply stays in its glass state. */
+  .nav {
+    position: sticky;
+    top: 0;
+    z-index: 50;
+    height: 76px;
+    margin-bottom: -76px;
+    padding: 12px clamp(12px, 2.4vw, 32px) 0;
+    pointer-events: none;
+  }
+  .inner {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 20px;
+    max-width: 940px;
+    height: 56px;
+    margin-inline: auto;
+    padding: 0 8px 0 20px;
+    border-radius: 18px;
+    background: rgb(20 20 22 / 0.68);
+    box-shadow:
+      0 0 0 1px rgb(245 242 234 / 0.1),
+      0 1px 0 rgb(255 255 255 / 0.06) inset,
+      0 16px 40px rgb(0 0 0 / 0.45);
+    -webkit-backdrop-filter: blur(20px) saturate(160%);
+    backdrop-filter: blur(20px) saturate(160%);
+    pointer-events: auto;
+  }
+  @supports (animation-timeline: scroll()) {
+    .inner {
+      animation: settle linear both;
+    }
+    /* Kept out of the shorthand above, which the minifier would fold it into. */
+    div.inner {
+      animation-timeline: scroll(root);
+      animation-range: 0 140px;
+    }
+  }
+  @keyframes settle {
+    from {
+      max-width: 1440px;
+      padding-inline: 12px 0;
+      background: rgb(20 20 22 / 0);
+      box-shadow:
+        0 0 0 1px rgb(245 242 234 / 0),
+        0 1px 0 rgb(255 255 255 / 0) inset,
+        0 16px 40px rgb(0 0 0 / 0);
+      -webkit-backdrop-filter: blur(0) saturate(100%);
+      backdrop-filter: blur(0) saturate(100%);
+    }
+  }
+  .brand {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    flex: 1 1 0;
+    font-size: 18px;
+    font-weight: 600;
+    letter-spacing: -0.01em;
+    text-decoration: none;
+  }
+  ul {
+    display: flex;
+    gap: 2px;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+  nav a {
+    display: inline-flex;
+    align-items: center;
+    height: 34px;
+    padding: 0 13px;
+    border-radius: 10px;
+    font-size: 14px;
+    color: var(--ink-68);
+    text-decoration: none;
+    transition:
+      color 120ms ease,
+      background-color 120ms ease;
+  }
+  .actions {
+    display: flex;
+    flex: 1 1 0;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 4px;
+  }
+  .github {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    height: 38px;
+    padding: 0 12px;
+    border-radius: 11px;
+    font-size: 14px;
+    line-height: 1;
+    color: var(--ink-68);
+    text-decoration: none;
+    transition: color 120ms ease;
+  }
+  .cta {
+    display: inline-flex;
+    align-items: center;
+    height: 40px;
+    padding: 0 16px;
+    border-radius: 12px;
+    background: var(--ink);
+    color: var(--bg);
+    font-size: 14px;
+    font-weight: 500;
+    line-height: 1;
+    text-decoration: none;
+    transition: transform 160ms var(--ease-out);
+  }
+  .cta:active {
+    transform: scale(0.97);
+  }
+  @media (hover: hover) and (pointer: fine) {
+    nav a:hover {
+      color: var(--ink);
+      background: rgb(245 242 234 / 0.06);
+    }
+    .github:hover {
+      color: var(--ink);
+    }
+  }
+  @media (max-width: 860px) {
+    nav {
+      display: none;
+    }
+  }
+  @media (max-width: 480px) {
+    .github-label {
+      display: none;
+    }
+  }
+</style>

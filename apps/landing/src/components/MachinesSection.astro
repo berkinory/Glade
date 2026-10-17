@@ -1,0 +1,132 @@
+---
+import { Picture } from "astro:assets";
+import remote from "../assets/images/settings-remote.png";
+import ssh from "../assets/images/settings-ssh.png";
+import { chapters } from "../content/site";
+import ChapterHeading from "./ChapterHeading.astro";
+
+const chapter = chapters.machines;
+---
+
+<section id="machines" class="section" aria-labelledby="machines-title">
+  <div class="container inner">
+    <div class="text" data-reveal>
+      <ChapterHeading
+        id="machines-title"
+        numeral={chapter.numeral}
+        label={chapter.label}
+        title={chapter.title}
+      />
+      <p class="lede">{chapter.body}</p>
+      <ul class="details">
+        {chapter.details.map((detail) => <li>{detail}</li>)}
+      </ul>
+    </div>
+    <div class="visual" data-reveal>
+      <Picture
+        pictureAttributes={{ class: "shot" }}
+        src={ssh}
+        alt="Glade's SSH hosts settings with three connected hosts, the agents installed on each, and more hosts found in the SSH config."
+        formats={["avif", "webp"]}
+      fallbackFormat="webp"
+        widths={[480, 640, 960, 1270]}
+        sizes="(max-width: 960px) 100vw, 640px"
+        quality={70}
+      />
+      <Picture
+        pictureAttributes={{ class: "shot offset" }}
+        src={remote}
+        alt="Two other computers paired with this Glade, both connected, with their agents."
+        formats={["avif", "webp"]}
+      fallbackFormat="webp"
+        widths={[480, 640, 960, 1270]}
+        sizes="(max-width: 960px) 100vw, 640px"
+        quality={70}
+      />
+    </div>
+  </div>
+</section>
+
+<style>
+  .section {
+    position: relative;
+    overflow: hidden;
+    padding-block: clamp(96px, 11vw, 150px) clamp(104px, 12vw, 160px);
+    background:
+      repeating-linear-gradient(to bottom, transparent 0 89px, rgb(245 242 234 / 0.035) 89px 90px),
+      var(--bg-steel);
+  }
+  .section::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    background: linear-gradient(
+      to right,
+      var(--bg-steel),
+      transparent 30%,
+      transparent 70%,
+      var(--bg-steel)
+    );
+  }
+  .inner {
+    position: relative;
+    z-index: 1;
+    display: grid;
+    grid-template-columns: minmax(0, 440px) minmax(0, 1fr);
+    align-items: center;
+    gap: clamp(48px, 7vw, 88px);
+  }
+  .text {
+    display: grid;
+    gap: 22px;
+  }
+  .details {
+    margin: 8px 0 0;
+    padding: 0;
+    list-style: none;
+  }
+  .details li {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    min-height: 40px;
+    font-size: 14.5px;
+    color: var(--ink-80);
+  }
+  .details li::before {
+    content: "";
+    flex: none;
+    width: 6.5px;
+    height: 6.5px;
+    margin-inline: 2px;
+    border-radius: 1.2px;
+    background: var(--accent);
+    rotate: 45deg;
+  }
+  .visual {
+    display: grid;
+    gap: 28px;
+  }
+  .visual :global(.shot) {
+    display: block;
+  }
+  .visual :global(.shot img) {
+    width: 100%;
+    border-radius: 12px;
+    box-shadow:
+      0 0 0 1px var(--line-strong),
+      0 40px 90px rgb(0 0 0 / 0.6);
+  }
+  .visual :global(.offset) {
+    margin-left: 6%;
+  }
+  @media (max-width: 960px) {
+    .inner {
+      grid-template-columns: 1fr;
+    }
+    .visual :global(.offset) {
+      margin-left: 0;
+    }
+  }
+</style>

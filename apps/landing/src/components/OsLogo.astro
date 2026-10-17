@@ -1,0 +1,38 @@
+---
+import appleDark from "../assets/os/apple.svg?raw";
+import appleLight from "../assets/os/apple-light.svg?raw";
+import linux from "../assets/os/linux.svg?raw";
+import windows from "../assets/os/windows.svg?raw";
+import { nextOsLogoSuffix } from "./osLogoIds";
+
+// Platform marks from svgl.app, drawn inline. Apple comes in two inks: dark on the light button,
+// light in the menu.
+const sources = { appleDark, appleLight, windows, linux };
+
+interface Props {
+  name: keyof typeof sources;
+  size?: number;
+  class?: string;
+}
+
+const { name, size = 18, class: className } = Astro.props;
+const source = sources[name];
+// The Linux mark carries gradient ids; each copy on the page gets its own so they never collide.
+const suffix = nextOsLogoSuffix(name);
+const viewBox = source.match(/viewBox="([^"]+)"/)?.[1] ?? "0 0 24 24";
+const body = source
+  .replace(/^[\s\S]*?<svg[^>]*>/, "")
+  .replace(/<\/svg>\s*$/, "")
+  .replace(/id="([^"]+)"/g, `id="$1${suffix}"`)
+  .replace(/url\(#([^)]+)\)/g, `url(#$1${suffix})`);
+---
+
+<svg
+  class={className}
+  width={size}
+  height={size}
+  viewBox={viewBox}
+  aria-hidden="true"
+  focusable="false"
+  set:html={body}
+/>

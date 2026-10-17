@@ -1,0 +1,111 @@
+---
+import { footerLinks, REPO_URL } from "../content/site";
+import GladeMark from "./GladeMark.astro";
+
+interface Props {
+  // The landing ends on the dusk artwork; other pages end on the plain page colour.
+  tone?: "dusk" | "plain";
+}
+
+const { tone = "dusk" } = Astro.props;
+const year = new Date().getFullYear();
+---
+
+<footer class:list={["footer", tone]}>
+  <div class="container">
+    <div class="top">
+      <div class="brand">
+        <p class="wordmark"><span>Glade</span><GladeMark size={17} /></p>
+        <p class="tagline">One workspace for every coding agent.</p>
+        <p class="legal">
+          © {year} Glade. Released under the <a href={`${REPO_URL}/blob/main/LICENSE`}>MIT license</a>.
+        </p>
+      </div>
+      <nav class="columns" aria-label="Footer">
+        {
+          footerLinks.map((column) => (
+            <div>
+              <h2>{column.heading}</h2>
+              <ul>
+                {column.links.map(([label, href]) => (
+                  <li>
+                    <a href={href}>{label}</a>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ))
+        }
+      </nav>
+    </div>
+  </div>
+</footer>
+
+<style>
+  .footer {
+    padding-block: 24px 40px;
+    background: var(--dusk);
+  }
+  .footer.plain {
+    background: var(--bg);
+  }
+  .top {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    gap: 48px;
+    padding-block: 48px 8px;
+    border-top: 1px solid rgb(245 242 234 / 0.1);
+  }
+  .brand {
+    display: grid;
+    align-content: start;
+    gap: 14px;
+  }
+  .wordmark {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    font-size: 18px;
+    font-weight: 600;
+  }
+  .tagline {
+    font: italic 300 20px var(--serif);
+    color: var(--ink-68);
+  }
+  .columns {
+    display: flex;
+    flex-wrap: wrap;
+    gap: clamp(40px, 7vw, 96px);
+  }
+  h2 {
+    margin-bottom: 14px;
+    font-size: 13px;
+    font-weight: 500;
+  }
+  ul {
+    display: grid;
+    gap: 10px;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+  .columns a {
+    font-size: 14px;
+    color: var(--ink-68);
+    text-decoration: none;
+  }
+  .legal {
+    margin-top: 18px;
+    font-size: 13px;
+    color: var(--ink-60);
+  }
+  .legal a {
+    text-underline-offset: 3px;
+  }
+  @media (hover: hover) and (pointer: fine) {
+    .columns a:hover {
+      color: var(--ink);
+    }
+  }
+</style>

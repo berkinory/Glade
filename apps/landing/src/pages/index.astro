@@ -1,17 +1,28 @@
-<!doctype html>
-<html lang="en">
-  <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Glade</title>
-    <meta name="description" content="A local-first desktop app for working with coding agents." />
-    <link rel="icon" href="/icon.png" />
-  </head>
-  <body>
-    <main>
-      <h1>Glade</h1>
-      <p>A local-first desktop app for working with coding agents.</p>
-      <p><a href="https://github.com/berkinory/Glade">GitHub</a></p>
-    </main>
-  </body>
-</html>
+---
+import AgentsBand from "../components/AgentsBand.astro";
+import ComputerUseSection from "../components/ComputerUseSection.astro";
+import Faq from "../components/Faq.astro";
+import FeatureGrid from "../components/FeatureGrid.astro";
+import FinalCta from "../components/FinalCta.astro";
+import Hero from "../components/Hero.astro";
+import MachinesSection from "../components/MachinesSection.astro";
+import SharedSection from "../components/SharedSection.astro";
+import SiteFooter from "../components/SiteFooter.astro";
+import SiteNav from "../components/SiteNav.astro";
+import Base from "../layouts/Base.astro";
+---
+
+<Base>
+  <SiteNav />
+  <main id="main" tabindex="-1">
+    <Hero />
+    <AgentsBand />
+    <SharedSection />
+    <ComputerUseSection />
+    <MachinesSection />
+    <FeatureGrid />
+    <Faq />
+    <FinalCta />
+  </main>
+  <SiteFooter />
+</Base>

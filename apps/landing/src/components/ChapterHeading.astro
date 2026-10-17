@@ -1,0 +1,51 @@
+---
+interface Props {
+  numeral: string;
+  label: string;
+  title: ReadonlyArray<string>;
+  id: string;
+  align?: "start" | "center";
+}
+
+const { numeral, label, title, id, align = "start" } = Astro.props;
+---
+
+<div class:list={["heading", align]}>
+  <p class="tag">
+    <span class="numeral" aria-hidden="true">{numeral}.</span>
+    <span class="label">{label}</span>
+  </p>
+  <h2 id={id} class="serif-title section-title">
+    {title.map((line, index) => (index === 0 ? line : [" ", <br />, line]))}
+  </h2>
+</div>
+
+<style>
+  .heading {
+    display: grid;
+    gap: 20px;
+  }
+  .center {
+    justify-items: center;
+    text-align: center;
+  }
+  /* Numeral and label share the serif and its baseline, so they read as one line. */
+  .tag {
+    display: flex;
+    align-items: baseline;
+    gap: 10px;
+    font-family: var(--serif);
+    font-style: italic;
+    font-weight: 300;
+    line-height: 1;
+  }
+  .numeral {
+    font-size: 30px;
+    color: var(--accent);
+  }
+  .label {
+    font-size: 24px;
+    letter-spacing: -0.01em;
+    color: var(--ink-80);
+  }
+</style>

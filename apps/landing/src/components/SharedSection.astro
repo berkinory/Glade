@@ -1,0 +1,116 @@
+---
+import { Picture } from "astro:assets";
+import mcp from "../assets/images/settings-mcp.png";
+import skills from "../assets/images/settings-skills.png";
+import { chapters } from "../content/site";
+import ChapterHeading from "./ChapterHeading.astro";
+import PointList from "./PointList.astro";
+
+const chapter = chapters.shared;
+const shot = { formats: ["avif", "webp"] as const, fallbackFormat: "webp" as const, quality: 68 };
+---
+
+<section id="shared" class="section" aria-labelledby="shared-title">
+  <div class="dawn" aria-hidden="true"></div>
+  <div class="container inner">
+    <div class="intro" data-reveal>
+      <ChapterHeading
+        id="shared-title"
+        numeral={chapter.numeral}
+        label={chapter.label}
+        title={chapter.title}
+        align="center"
+      />
+      <p class="lede">{chapter.body}</p>
+    </div>
+
+    <div class="visual" data-reveal>
+      <Picture
+        pictureAttributes={{ class: "shot skills" }}
+        src={skills}
+        alt="Glade's Skills settings: skills shared with every agent, each with a Use in all agents switch and the agents that already have it."
+        widths={[480, 640, 960, 1270]}
+        sizes="(max-width: 820px) 100vw, 600px"
+        {...shot}
+      />
+      <Picture
+        pictureAttributes={{ class: "shot mcp" }}
+        src={mcp}
+        alt="Glade's MCP servers settings: Context7, Exa and Hugging Face connected, servers found in the agents' own settings, and a catalog of documentation servers."
+        widths={[480, 640, 960, 1270]}
+        sizes="(max-width: 820px) 100vw, 600px"
+        {...shot}
+      />
+    </div>
+
+    <PointList points={chapter.points} />
+  </div>
+</section>
+
+<style>
+  .section {
+    position: relative;
+    isolation: isolate;
+    overflow: hidden;
+    padding-block: clamp(96px, 11vw, 150px);
+    background: var(--bg-violet);
+  }
+  .section::before {
+    content: "";
+    position: absolute;
+    inset: 0 0 auto;
+    height: 1px;
+    background: linear-gradient(to right, transparent, rgb(147 135 224 / 0.4), transparent);
+  }
+  .dawn {
+    position: absolute;
+    top: -260px;
+    left: 50%;
+    z-index: -1;
+    width: min(1000px, 140vw);
+    height: 760px;
+    translate: -50% 0;
+    background: radial-gradient(50% 50% at 50% 50%, rgb(147 135 224 / 0.2), rgb(147 135 224 / 0.05) 55%, transparent 100%);
+  }
+  .inner {
+    display: grid;
+    gap: clamp(48px, 6vw, 68px);
+  }
+  .intro {
+    display: grid;
+    justify-items: center;
+    gap: 20px;
+    text-align: center;
+  }
+  .intro .lede {
+    max-width: 620px;
+  }
+  .visual {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 24px;
+  }
+  .visual :global(.shot) {
+    display: block;
+  }
+  /* Both panels share one height and show the top of their screen, framed on all four sides like
+     the SSH panels further down. */
+  .visual :global(.shot img) {
+    width: 100%;
+    aspect-ratio: 1330 / 900;
+    object-fit: cover;
+    object-position: top;
+    border-radius: 14px;
+    box-shadow:
+      0 0 0 1px var(--line-strong),
+      0 40px 90px rgb(0 0 0 / 0.6);
+  }
+  @media (max-width: 820px) {
+    .visual {
+      grid-template-columns: 1fr;
+    }
+    .visual :global(.skills) {
+      display: none;
+    }
+  }
+</style>

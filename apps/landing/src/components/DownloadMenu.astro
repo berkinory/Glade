@@ -1,0 +1,264 @@
+---
+import { installers } from "../content/site";
+import Icon from "./Icon.astro";
+import OsLogo from "./OsLogo.astro";
+
+interface Props {
+  size?: "md" | "lg";
+  // The menu lines up with the button's edge on the side the layout is aligned to.
+  align?: "center" | "start";
+}
+
+const { size = "md", align = "center" } = Astro.props;
+const [primary] = installers;
+const choices = JSON.stringify(
+  Object.fromEntries(installers.map((installer) => [installer.id, installer])),
+);
+---
+
+<div class:list={["download", size, align]} data-download-menu data-installers={choices}>
+  <a class="main" href={primary?.url} data-download-main>
+    <span class="main-logo" data-logo="apple"><OsLogo name="appleDark" size={17} /></span>
+    <span class="main-logo" data-logo="windows" hidden><OsLogo name="windows" size={16} /></span>
+    <span class="main-logo" data-logo="linux" hidden><OsLogo name="linux" size={18} /></span>
+    <span data-download-label>Download for macOS</span>
+  </a>
+  <details class="more">
+    <summary aria-label="Choose another platform">
+      <Icon name="chevronDown" size={16} />
+    </summary>
+    <ul class="menu" role="list">
+      {
+        installers.map((installer) => (
+          <li>
+            <a href={installer.url} data-installer={installer.id}>
+              <span class="logo">
+                <OsLogo name={installer.logo === "apple" ? "appleLight" : installer.logo} size={installer.logo === "windows" ? 15 : 17} />
+              </span>
+              <span class="name">{installer.platform}</span>
+              <span class="variant">{installer.variant}</span>
+            </a>
+          </li>
+        ))
+      }
+    </ul>
+  </details>
+</div>
+
+<script>
+  type NavigatorWithHints = Navigator & {
+    userAgentData?: {
+      platform?: string;
+      getHighEntropyValues?: (hints: string[]) => Promise<{ architecture?: string }>;
+    };
+  };
+  const nav = navigator as NavigatorWithHints;
+  const platform = (nav.userAgentData?.platform ?? navigator.platform ?? "").toLowerCase();
+  const mobile = /android|iphone|ipad/i.test(navigator.userAgent);
+
+  interface Choice {
+    url: string;
+    platform: string;
+    logo: string;
+  }
+
+  function choose(id: string) {
+    for (const root of document.querySelectorAll<HTMLElement>("[data-download-menu]")) {
+      const installer = (JSON.parse(root.dataset.installers ?? "{}") as Record<string, Choice>)[id];
+      if (!installer) continue;
+      const main = root.querySelector<HTMLAnchorElement>("[data-download-main]");
+      const label = root.querySelector("[data-download-label]");
+      if (main) main.href = installer.url;
+      if (label) label.textContent = `Download for ${installer.platform}`;
+      for (const logo of root.querySelectorAll<HTMLElement>("[data-logo]")) {
+        logo.hidden = logo.dataset.logo !== installer.logo;
+      }
+      for (const item of root.querySelectorAll<HTMLElement>("[data-installer]")) {
+        item.toggleAttribute("data-suggested", item.dataset.installer === id);
+      }
+    }
+  }
+
+  // Static HTML offers the Apple Silicon build; the visitor's own platform takes over once known.
+  if (!mobile && platform.startsWith("win")) choose("windows");
+  else if (!mobile && platform.includes("linux")) choose("linux");
+  else {
+    choose("macArm");
+    void nav.userAgentData
+      ?.getHighEntropyValues?.(["architecture"])
+      .then(({ architecture }) => {
+        if (architecture === "x86") choose("macIntel");
+      })
+      .catch(() => {});
+  }
+
+  // A disclosure menu: Escape, an outside click or a choice closes it.
+  for (const details of document.querySelectorAll<HTMLDetailsElement>("[data-download-menu] details")) {
+    const close = () => {
+      if (details.open) details.open = false;
+    };
+    details.addEventListener("keydown", (event) => {
+      if (event.key === "Escape" && details.open) {
+        close();
+        details.querySelector("summary")?.focus();
+      }
+    });
+    details.querySelector(".menu")?.addEventListener("click", close);
+    document.addEventListener("pointerdown", (event) => {
+      if (!details.contains(event.target as Node)) close();
+    });
+  }
+</script>
+
+<style>
+  .download {
+    position: relative;
+    display: inline-flex;
+    height: 48px;
+    border-radius: 12px;
+    background: var(--ink);
+    color: var(--bg);
+    box-shadow:
+      0 1px 0 rgb(255 255 255 / 0.5) inset,
+      0 10px 30px rgb(0 0 0 / 0.45);
+  }
+  .download.lg {
+    height: 50px;
+  }
+  .main {
+    display: inline-flex;
+    align-items: center;
+    gap: 9px;
+    padding: 0 18px 0 18px;
+    border-radius: 12px 0 0 12px;
+    font-size: 15px;
+    font-weight: 500;
+    line-height: 1;
+    text-decoration: none;
+    white-space: nowrap;
+    transition: background-color 140ms ease;
+  }
+  .main-logo {
+    display: grid;
+    place-items: center;
+    width: 18px;
+  }
+  /* The apple's leaf lifts its visual centre; nudge the body onto the text's centre line. */
+  .main-logo[data-logo="apple"] {
+    translate: 0 -1px;
+  }
+  .main-logo[hidden] {
+    display: none;
+  }
+  .more {
+    display: flex;
+  }
+  summary {
+    display: grid;
+    place-items: center;
+    width: 42px;
+    height: 100%;
+    border-left: 1px solid rgb(14 14 15 / 0.14);
+    border-radius: 0 12px 12px 0;
+    cursor: pointer;
+    list-style: none;
+    transition: background-color 140ms ease;
+  }
+  summary::-webkit-details-marker {
+    display: none;
+  }
+  summary :global(svg) {
+    transition: rotate 220ms var(--ease-out);
+  }
+  details[open] summary :global(svg) {
+    rotate: 180deg;
+  }
+  @media (hover: hover) and (pointer: fine) {
+    .main:hover,
+    summary:hover {
+      background: rgb(255 255 255 / 0.55);
+    }
+  }
+  .main:active {
+    transform: scale(0.98);
+  }
+  .menu {
+    position: absolute;
+    right: 0;
+    z-index: 20;
+    display: grid;
+    gap: 2px;
+    width: 264px;
+    margin: 0;
+    padding: 6px;
+    border-radius: 14px;
+    background: rgb(24 24 27 / 0.97);
+    box-shadow:
+      0 0 0 1px rgb(245 242 234 / 0.12),
+      0 1px 0 rgb(255 255 255 / 0.06) inset,
+      0 24px 60px rgb(0 0 0 / 0.6);
+    -webkit-backdrop-filter: blur(20px) saturate(150%);
+    backdrop-filter: blur(20px) saturate(150%);
+    list-style: none;
+    text-align: left;
+  }
+  /* A closed disclosure still lays out its content in some engines; keep the menu out of the page. */
+  details:not([open]) .menu {
+    display: none;
+  }
+  .menu {
+    top: calc(100% + 8px);
+    transform-origin: top right;
+  }
+  .start .menu {
+    right: auto;
+    left: 0;
+    transform-origin: top left;
+  }
+  @media (prefers-reduced-motion: no-preference) {
+    details[open] .menu {
+      animation: open 180ms var(--ease-out);
+    }
+  }
+  @keyframes open {
+    from {
+      opacity: 0;
+      scale: 0.96;
+    }
+  }
+  .menu a {
+    display: grid;
+    grid-template-columns: 20px auto 1fr;
+    align-items: center;
+    gap: 10px;
+    height: 40px;
+    padding: 0 12px;
+    border-radius: 9px;
+    color: var(--ink);
+    font-size: 14px;
+    line-height: 1;
+    text-decoration: none;
+    transition: background-color 120ms ease;
+  }
+  .logo {
+    display: grid;
+    place-items: center;
+  }
+  .menu a[data-suggested] {
+    background: rgb(245 242 234 / 0.06);
+  }
+  .name {
+    font-weight: 500;
+  }
+  .variant {
+    color: var(--ink-60);
+  }
+  .menu a:focus-visible {
+    outline-offset: -2px;
+  }
+  @media (hover: hover) and (pointer: fine) {
+    .menu a:hover {
+      background: rgb(245 242 234 / 0.07);
+    }
+  }
+</style>

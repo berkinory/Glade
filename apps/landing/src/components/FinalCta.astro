@@ -1,0 +1,111 @@
+---
+import { Picture } from "astro:assets";
+import dusk from "../assets/images/art-dusk.png";
+import { finalCta } from "../content/site";
+import BrewCommand from "./BrewCommand.astro";
+import DownloadMenu from "./DownloadMenu.astro";
+---
+
+<section id="get-glade" class="cta" aria-labelledby="cta-title">
+  <div class="art">
+    <Picture
+      src={dusk}
+      alt="Engraving of a stone causeway winding through misty hills at dusk toward a temple, framed by a winged arch."
+      formats={["avif", "webp"]}
+      fallbackFormat="webp"
+      widths={[768, 1280, 1576]}
+      sizes="100vw"
+      quality={52}
+    />
+  </div>
+  <div class="container copy" data-reveal>
+    <h2 id="cta-title" class="serif-title">
+      {finalCta.title[0]} <br />
+      {finalCta.title[1]}
+    </h2>
+    <p class="lede">{finalCta.body}</p>
+    <div class="buttons">
+      <DownloadMenu size="lg" align="start" />
+      <BrewCommand />
+    </div>
+  </div>
+</section>
+
+<style>
+  .cta {
+    position: relative;
+    isolation: isolate;
+    display: flex;
+    align-items: flex-end;
+    min-height: clamp(640px, 62vw, 880px);
+    padding-bottom: clamp(56px, 6vw, 80px);
+    background: var(--dusk);
+  }
+  /* Only the artwork is clipped, so the platform menu can open past the section. */
+  .art {
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    overflow: hidden;
+  }
+  .copy {
+    position: relative;
+    z-index: 2;
+  }
+  .art :global(picture),
+  .art :global(img) {
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    object-position: 70% 30%;
+  }
+  .art::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background:
+      linear-gradient(to bottom, #0b0b0e 0%, rgb(11 11 14 / 0.55) 14%, transparent 34%),
+      linear-gradient(to right, rgb(24 19 42 / 0.88), rgb(24 19 42 / 0.55) 34%, transparent 62%),
+      linear-gradient(to bottom, transparent 50%, rgb(24 19 42 / 0.75) 82%, var(--dusk));
+  }
+  .copy {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    justify-items: start;
+  }
+  h2 {
+    font-size: clamp(48px, 6.6vw, 86px);
+    line-height: 0.98;
+    letter-spacing: -0.025em;
+  }
+  .lede {
+    max-width: 520px;
+    margin-top: 26px;
+    color: var(--ink-80);
+  }
+  .buttons {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    margin-top: 38px;
+  }
+  .buttons > :global(*) {
+    min-width: 0;
+    max-width: 100%;
+  }
+  @media (max-width: 720px) {
+    .buttons > :global(.brew) {
+      display: none;
+    }
+    .art {
+      inset: 0 0 auto;
+      height: 62%;
+    }
+    .art::after {
+      background:
+        linear-gradient(to bottom, #0b0b0e 0%, transparent 22%),
+        linear-gradient(to bottom, transparent 40%, var(--dusk) 100%);
+    }
+  }
+</style>

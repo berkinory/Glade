@@ -1,0 +1,126 @@
+---
+import { faq } from "../content/site";
+---
+
+<section id="faq" class="section" aria-labelledby="faq-title">
+  <div class="container inner">
+    <div class="head" data-reveal>
+      <p class="eyebrow">Questions</p>
+      <h2 id="faq-title" class="serif-title section-title">Before you install.</h2>
+    </div>
+    <div class="list" data-reveal>
+      {
+        faq.map((item) => (
+          <details name="faq">
+            <summary>
+              <h3>{item.question}</h3>
+              <span class="mark" aria-hidden="true" />
+            </summary>
+            <p>{item.answer}</p>
+          </details>
+        ))
+      }
+    </div>
+  </div>
+</section>
+
+<style>
+  .section {
+    padding-block: clamp(80px, 9vw, 120px) clamp(96px, 11vw, 140px);
+    background: linear-gradient(to bottom, var(--bg), #0b0b0e);
+  }
+  .inner {
+    display: grid;
+    grid-template-columns: minmax(0, 360px) minmax(0, 1fr);
+    gap: clamp(40px, 7vw, 96px);
+  }
+  .head {
+    display: grid;
+    align-content: start;
+    gap: 20px;
+  }
+  .list {
+    border-bottom: 1px solid var(--line);
+  }
+  details {
+    border-top: 1px solid var(--line);
+  }
+  summary {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 24px;
+    padding: 22px 0;
+    cursor: pointer;
+    list-style: none;
+  }
+  summary::-webkit-details-marker {
+    display: none;
+  }
+  h3 {
+    font-size: 17px;
+    font-weight: 500;
+  }
+  .mark {
+    position: relative;
+    flex: none;
+    width: 14px;
+    height: 14px;
+  }
+  .mark::before,
+  .mark::after {
+    content: "";
+    position: absolute;
+    top: 6px;
+    left: 0;
+    width: 14px;
+    height: 1.5px;
+    border-radius: 1px;
+    background: var(--ink-68);
+    transition: rotate 240ms var(--ease-out);
+  }
+  .mark::after {
+    rotate: 90deg;
+  }
+  details[open] .mark::after {
+    rotate: 0deg;
+  }
+  details p {
+    max-width: 640px;
+    padding-bottom: 24px;
+    font-size: 15.5px;
+    line-height: 1.65;
+    color: var(--ink-68);
+  }
+  @media (hover: hover) and (pointer: fine) {
+    summary:hover h3 {
+      color: #fff;
+    }
+  }
+  /* Smooth open and close where the browser can animate to auto height. */
+  @supports (interpolate-size: allow-keywords) {
+    @media (prefers-reduced-motion: no-preference) {
+      .list {
+        interpolate-size: allow-keywords;
+      }
+      details::details-content {
+        height: 0;
+        overflow: clip;
+        opacity: 0;
+        transition:
+          height 320ms var(--ease-out),
+          opacity 240ms ease,
+          content-visibility 320ms allow-discrete;
+      }
+      details[open]::details-content {
+        height: auto;
+        opacity: 1;
+      }
+    }
+  }
+  @media (max-width: 860px) {
+    .inner {
+      grid-template-columns: 1fr;
+    }
+  }
+</style>
