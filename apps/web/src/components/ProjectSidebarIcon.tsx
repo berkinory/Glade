@@ -123,13 +123,15 @@ function ProjectFolderIcon({
       image.removeEventListener("error", handleError);
     };
   }, [faviconSrc]);
+  // Desktop app icons keep a transparent safe area (824 of 1024 px on macOS), so at glyph size they
+  // read smaller than the folder glyph, which spans about 90% of its box. A layout-free scale evens it.
   if (hasFavicon)
     return (
       <img
         src={faviconSrc}
         alt=""
         aria-hidden
-        className={cn(glyphClassName, "object-contain rounded-sm")}
+        className={cn(glyphClassName, "scale-[1.125] object-contain rounded-sm")}
         onError={() => {
           projectFaviconPresence.set(faviconSrc, false);
           setProbe({
