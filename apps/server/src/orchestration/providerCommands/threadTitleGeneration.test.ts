@@ -29,7 +29,7 @@ describe("conversation title ownership", () => {
     const generate = makeThreadTitleGeneration({
       engine: harness.engine,
       projection: {
-        resolveThread: (id) =>
+        resolveThreadWithoutActivities: (id) =>
           harness.engine
             .getReadModel()
             .pipe(Effect.map((model) => model.threads.find((thread) => thread.id === id))),

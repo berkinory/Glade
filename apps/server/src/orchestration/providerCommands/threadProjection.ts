@@ -16,7 +16,7 @@ export function makeProviderThreadProjection(input: {
   readonly providerService: Pick<ServiceMap.Service.Shape<typeof ProviderService>, "listSessions">;
 }) {
   const { orchestrationEngine, projectionAccess, providerService } = input;
-  const { resolveThread } = projectionAccess;
+  const { resolveThreadShell } = projectionAccess;
   const appendProviderFailureActivity = (input: {
     readonly threadId: ThreadId;
     readonly kind:
@@ -85,7 +85,7 @@ export function makeProviderThreadProjection(input: {
     readonly expectedSession?: Pick<OrchestrationSession, "status" | "updatedAt">;
     readonly createdAt: string;
   }) {
-    const thread = yield* resolveThread(input.threadId);
+    const thread = yield* resolveThreadShell(input.threadId);
     if (!thread) {
       return;
     }
@@ -122,7 +122,7 @@ export function makeProviderThreadProjection(input: {
     readonly threadId: ThreadId;
     readonly createdAt: string;
   }) {
-    const thread = yield* resolveThread(input.threadId);
+    const thread = yield* resolveThreadShell(input.threadId);
     const session = thread?.session;
     if (!thread || !session) {
       return;
@@ -151,7 +151,7 @@ export function makeProviderThreadProjection(input: {
     event: Extract<ProviderIntentEvent, { type: "thread.turn-start-requested" }>,
     detail: string,
   ) {
-    const session = (yield* resolveThread(event.payload.threadId))?.session;
+    const session = (yield* resolveThreadShell(event.payload.threadId))?.session;
     if (session?.status !== "starting" || session.activeTurnId !== null) {
       return;
     }

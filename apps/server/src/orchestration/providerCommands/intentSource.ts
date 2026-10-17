@@ -102,7 +102,7 @@ export function makeProviderIntentSource(input: {
     setThreadSession,
     projectionAccess,
   } = input;
-  const { resolveThread } = projectionAccess;
+  const { resolveThreadShell } = projectionAccess;
   const startProviderIntentSource = Effect.gen(function* () {
     const liveEventSource = yield* orchestrationEngine.subscribeDomainEvents;
     // Preserve the source/consumer handoff without retaining an unbounded event mirror while startup or
@@ -831,7 +831,7 @@ export function makeProviderIntentSource(input: {
               consumerName: PROVIDER_COMMAND_REACTOR_CONSUMER,
               threadId: blocker.threadId,
             });
-            const session = (yield* resolveThread(blocker.threadId))?.session;
+            const session = (yield* resolveThreadShell(blocker.threadId))?.session;
             if (
               Option.isNone(remaining) &&
               session?.status === "error" &&

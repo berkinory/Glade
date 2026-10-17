@@ -28,6 +28,7 @@ export function fakeProjectionSnapshotQuery(
     threadIdExistsIncludingDeleted: unused,
     findSyntheticSubagentParentThread: unused,
     getThreadDetailById: unused,
+    getThreadDetailWithoutActivitiesById: unused,
     getThreadMentionContextById: unused,
     getThreadDetailForExportById: unused,
     getThreadDetailSnapshotById: unused,

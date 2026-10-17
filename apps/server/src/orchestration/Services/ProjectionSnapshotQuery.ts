@@ -36,6 +36,10 @@ export interface OrchestrationThreadMentionContext {
   readonly totalMessageCount: number;
 }
 
+// The activity window is the most expensive part of a detail read on long threads. Omitting the field
+// makes a caller that needs activities fail to compile instead of reading an empty list.
+export type OrchestrationThreadWithoutActivities = Omit<OrchestrationThread, "activities">;
+
 export interface ProjectionSnapshotCounts {
   readonly projectCount: number;
   readonly threadCount: number;
@@ -183,6 +187,14 @@ export interface ProjectionSnapshotQueryShape {
   readonly getThreadDetailById: (
     threadId: ThreadId,
   ) => Effect.Effect<Option.Option<OrchestrationThread>, ProjectionRepositoryError>;
+
+  // Pending-request flags come from the stored thread summary, as in the thread shell.
+  readonly getThreadDetailWithoutActivitiesById: (
+    threadId: ThreadId,
+  ) => Effect.Effect<
+    Option.Option<OrchestrationThreadWithoutActivities>,
+    ProjectionRepositoryError
+  >;
 
   readonly getThreadMentionContextById: (
     threadId: ThreadId,

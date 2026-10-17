@@ -20,7 +20,7 @@ export type MaybeGenerateThreadTitle = (input: AutoThreadTitleInput) => Effect.E
 
 export function makeThreadTitleGeneration(input: {
   readonly engine: OrchestrationEngineShape;
-  readonly projection: Pick<ProviderProjectionAccessShape, "resolveThread">;
+  readonly projection: Pick<ProviderProjectionAccessShape, "resolveThreadWithoutActivities">;
   readonly generator: ThreadTitleGenerationShape;
 }): MaybeGenerateThreadTitle {
   return (request) =>
@@ -33,7 +33,7 @@ export function makeThreadTitleGeneration(input: {
         intent.titleSource === "provider"
       )
         return;
-      const thread = yield* input.projection.resolveThread(request.threadId);
+      const thread = yield* input.projection.resolveThreadWithoutActivities(request.threadId);
       if (!thread) return;
       const messages = thread.messages.filter(
         (message) =>

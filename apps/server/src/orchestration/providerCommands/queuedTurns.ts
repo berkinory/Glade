@@ -24,7 +24,8 @@ export function makeProviderQueuedTurns(input: {
     queuedTurnPromotionOwner,
     projectionAccess,
   } = input;
-  const { resolveProviderSessionThread, resolveThread, hasLiveProviderTurn } = projectionAccess;
+  const { resolveProviderSessionThread, resolveThreadShell, hasLiveProviderTurn } =
+    projectionAccess;
   const hasHandledTurnStartRecently = (key: string) =>
     Cache.getOption(handledTurnStartKeys, key).pipe(
       Effect.flatMap((cached) =>
@@ -51,7 +52,7 @@ export function makeProviderQueuedTurns(input: {
 
   const drainQueuedTurnsForThread = Effect.fnUntraced(function* (threadId: ThreadId) {
     const sessionThreadId = (yield* resolveProviderSessionThread(threadId))?.id ?? threadId;
-    if ((yield* resolveThread(sessionThreadId))?.claudeCacheReview) return;
+    if ((yield* resolveThreadShell(sessionThreadId))?.claudeCacheReview) return;
     if (!queuedDispatchState.beginDrain(threadId, sessionThreadId)) return;
     // `Effect.ensuring`, never a JS `finally`: a generator driven by `Effect.fnUntraced` does not
     // resume to run `finally` blocks when a yielded effect fails, so a failed promotion dispatch would
@@ -159,7 +160,7 @@ export function makeProviderQueuedTurns(input: {
 
   const hasPendingQueuedTurnForSession = Effect.fnUntraced(function* (threadId: ThreadId) {
     const sessionThreadId = (yield* resolveProviderSessionThread(threadId))?.id ?? threadId;
-    if ((yield* resolveThread(sessionThreadId))?.claudeCacheReview) return;
+    if ((yield* resolveThreadShell(sessionThreadId))?.claudeCacheReview) return;
     if (queuedDispatchState.hasReservation(sessionThreadId)) {
       return true;
     }
@@ -174,8 +175,8 @@ export function makeProviderQueuedTurns(input: {
   });
 
   const recoverQueuedTurnPromotionsForThread = Effect.fnUntraced(function* (threadId: ThreadId) {
-    const thread = yield* resolveThread(threadId);
-    if (!thread || thread.deletedAt !== null) {
+    const thread = yield* resolveThreadShell(threadId);
+    if (!thread) {
       yield* queuedTurnPromotions.cancelThread({
         threadId,
         updatedAt: new Date().toISOString(),

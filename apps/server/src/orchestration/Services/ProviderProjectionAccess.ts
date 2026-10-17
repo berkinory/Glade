@@ -5,11 +5,20 @@ import type {
   OrchestrationThreadShell,
 } from "@glade/contracts/orchestration/threadEntities";
 import type { ProjectionRepositoryError } from "../../persistence/Errors.ts";
+import type { OrchestrationThreadWithoutActivities } from "./ProjectionSnapshotQuery.ts";
 
 export interface ProviderProjectionAccessShape {
+  // The full detail reads the activity window, the most expensive part on long threads. Prefer the
+  // lighter reads unless the caller needs activities.
   readonly resolveThread: (
     threadId: ThreadId,
   ) => Effect.Effect<OrchestrationThread | undefined, ProjectionRepositoryError>;
+  readonly resolveThreadWithoutActivities: (
+    threadId: ThreadId,
+  ) => Effect.Effect<OrchestrationThreadWithoutActivities | undefined, ProjectionRepositoryError>;
+  readonly resolveThreadShell: (
+    threadId: ThreadId,
+  ) => Effect.Effect<OrchestrationThreadShell | undefined, ProjectionRepositoryError>;
   readonly resolveProjectedThreadWorkspaceCwd: (
     thread: Pick<
       OrchestrationThread,

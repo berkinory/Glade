@@ -40,7 +40,10 @@ import { ProviderService } from "../../provider/Services/ProviderService.ts";
 import { isNativeChildRuntimeEvent } from "../../provider/core/providerRuntimeBinding.ts";
 import { CheckpointReactor, type CheckpointReactorShape } from "../Services/CheckpointReactor.ts";
 import { OrchestrationEngineService } from "../Services/OrchestrationEngine.ts";
-import { ProjectionSnapshotQuery } from "../Services/ProjectionSnapshotQuery.ts";
+import {
+  ProjectionSnapshotQuery,
+  type OrchestrationThreadWithoutActivities,
+} from "../Services/ProjectionSnapshotQuery.ts";
 import { RuntimeReceiptBus } from "../Services/RuntimeReceiptBus.ts";
 import { TurnCheckpointCoordinator } from "../Services/TurnCheckpointCoordinator.ts";
 import { CheckpointInvariantError, type CheckpointStoreError } from "../../checkpointing/Errors.ts";
@@ -162,7 +165,9 @@ const make = Effect.gen(function* () {
     readonly turnId: TurnId;
     readonly assistantMessageId: MessageId | undefined;
   }) {
-    const currentThreadOption = yield* projectionSnapshotQuery.getThreadDetailById(input.threadId);
+    const currentThreadOption = yield* projectionSnapshotQuery.getThreadDetailWithoutActivitiesById(
+      input.threadId,
+    );
     const currentThread = Option.getOrUndefined(currentThreadOption);
     const knownInputAssistantMessageId = resolveExistingAssistantMessageIdForTurn(
       currentThread,
@@ -174,7 +179,9 @@ const make = Effect.gen(function* () {
     }
 
     for (let attempt = 0; attempt < ASSISTANT_MESSAGE_ID_RETRY_ATTEMPTS; attempt += 1) {
-      const threadOption = yield* projectionSnapshotQuery.getThreadDetailById(input.threadId);
+      const threadOption = yield* projectionSnapshotQuery.getThreadDetailWithoutActivitiesById(
+        input.threadId,
+      );
       const thread = Option.getOrUndefined(threadOption);
       const candidateAssistantMessageId =
         resolveExistingAssistantMessageIdForTurn(
@@ -292,7 +299,7 @@ const make = Effect.gen(function* () {
   const appendBaselineUnavailableActivity = Effect.fnUntraced(function* (input: {
     readonly threadId: ThreadId;
     readonly turnId: TurnId;
-    readonly thread: Pick<OrchestrationThread, "activities" | "messages" | "modelSelection">;
+    readonly thread: Pick<OrchestrationThread, "messages" | "modelSelection">;
     readonly createdAt: string;
   }) {
     const messageId = yield* persistedTurnMessageId(input.threadId, input.turnId);
@@ -300,8 +307,13 @@ const make = Effect.gen(function* () {
     // A native compaction turn changes no files, so it has no snapshot to miss.
     const message = input.thread.messages.find((entry) => entry.id === messageId);
     if (isPromptTurnCompaction(input.thread.modelSelection.provider, message?.text)) return;
+    // Only this rare path reads the activity window, so it alone pays for the full detail.
+    const detail = yield* projectionSnapshotQuery
+      .getThreadDetailById(input.threadId)
+      .pipe(Effect.catch(() => Effect.succeed(Option.none())));
     if (
-      input.thread.activities.some(
+      Option.isNone(detail) ||
+      detail.value.activities.some(
         (activity) =>
           activity.kind === CHECKPOINT_BASELINE_SKIPPED_ACTIVITY_KIND &&
           activity.turnId === input.turnId,
@@ -368,10 +380,10 @@ const make = Effect.gen(function* () {
 
   const getThreadDetail = Effect.fnUntraced(function* (
     threadId: ThreadId,
-  ): Effect.fn.Return<OrchestrationThread | undefined> {
+  ): Effect.fn.Return<OrchestrationThreadWithoutActivities | undefined> {
     return Option.getOrUndefined(
       yield* projectionSnapshotQuery
-        .getThreadDetailById(threadId)
+        .getThreadDetailWithoutActivitiesById(threadId)
         .pipe(Effect.catch(() => Effect.succeed(Option.none()))),
     );
   });
@@ -420,7 +432,7 @@ const make = Effect.gen(function* () {
   const captureAndDispatchCheckpoint = Effect.fnUntraced(function* (input: {
     readonly threadId: ThreadId;
     readonly turnId: TurnId;
-    readonly thread: Pick<OrchestrationThread, "messages" | "activities" | "modelSelection">;
+    readonly thread: Pick<OrchestrationThread, "messages" | "modelSelection">;
     readonly cwd: string;
     readonly turnCount: number;
     readonly status: "ready" | "missing" | "error";

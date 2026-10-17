@@ -39,7 +39,8 @@ export function makeProviderConversationEdit(input: {
     projectionAccess,
   } = input;
   const {
-    resolveThread,
+    resolveThreadWithoutActivities,
+    resolveThreadShell,
     resolveProjectedThreadWorkspaceCwd,
     resolveProviderSessionThread,
     withProviderSessionLease,
@@ -82,7 +83,7 @@ export function makeProviderConversationEdit(input: {
   }) {
     // Without a confirmation the user chose to keep the workspace as it is.
     if (!input.confirmation || !input.removedTurnIds.length) return null;
-    const thread = yield* resolveThread(input.threadId);
+    const thread = yield* resolveThreadWithoutActivities(input.threadId);
     if (!thread) return null;
     const cwd = yield* resolveProjectedThreadWorkspaceCwd(thread);
     if (!cwd || !(yield* checkpointStore.isGitRepository(cwd))) return null;
@@ -128,7 +129,7 @@ export function makeProviderConversationEdit(input: {
         updatedAt: new Date().toISOString(),
       });
     }
-    const originalThread = yield* resolveThread(payload.threadId);
+    const originalThread = yield* resolveThreadWithoutActivities(payload.threadId);
     const originalMessage = originalThread?.messages.find(
       (message) => message.id === payload.messageId,
     );
@@ -194,7 +195,7 @@ export function makeProviderConversationEdit(input: {
       createdAt: payload.createdAt,
     });
 
-    const thread = yield* resolveThread(payload.threadId);
+    const thread = yield* resolveThreadShell(payload.threadId);
     if (thread && options?.preserveThreadSession !== true) {
       yield* setThreadSession({
         threadId: payload.threadId,
@@ -241,7 +242,7 @@ export function makeProviderConversationEdit(input: {
   const processMessageEditResendRequestedWithoutLease = Effect.fnUntraced(function* (
     event: Extract<ProviderIntentEvent, { type: "thread.message-edit-resend-requested" }>,
   ) {
-    const thread = yield* resolveThread(event.payload.threadId);
+    const thread = yield* resolveThreadShell(event.payload.threadId);
     const providerThread = yield* resolveProviderSessionThread(event.payload.threadId);
     const activeTurnId =
       providerThread?.session?.status === "running"

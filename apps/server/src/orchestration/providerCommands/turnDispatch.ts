@@ -139,6 +139,7 @@ export function makeProviderTurnDispatch(input: {
   } = input;
   const {
     resolveThread,
+    resolveThreadShell,
     resolveProviderSessionThread,
     resolveSubagentProviderThreadId,
     resolveProjectedThreadWorkspaceCwd,
@@ -477,7 +478,7 @@ export function makeProviderTurnDispatch(input: {
       checkpointStore,
       threadId: input.threadId,
       messageId: input.messageId,
-      resolveCwd: resolveThread(input.threadId).pipe(
+      resolveCwd: resolveThreadShell(input.threadId).pipe(
         Effect.flatMap((currentThread) =>
           currentThread
             ? resolveProjectedThreadWorkspaceCwd(currentThread)

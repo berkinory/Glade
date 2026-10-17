@@ -95,6 +95,7 @@ import {
 import { OrchestrationEngineService } from "../Services/OrchestrationEngine.ts";
 import {
   ProjectionSnapshotQuery,
+  type OrchestrationThreadWithoutActivities,
   type ProjectionGeneratedImageActivityRecord,
 } from "../Services/ProjectionSnapshotQuery.ts";
 import {
@@ -921,12 +922,13 @@ const make = Effect.gen(function* () {
     );
   });
 
+  // No ingestion handler reads the activity window, the most expensive part of a detail read.
   const getThreadDetail = Effect.fnUntraced(function* (
     threadId: ThreadId,
-  ): Effect.fn.Return<OrchestrationThread | undefined> {
+  ): Effect.fn.Return<OrchestrationThreadWithoutActivities | undefined> {
     return Option.getOrUndefined(
       yield* projectionSnapshotQuery
-        .getThreadDetailById(threadId)
+        .getThreadDetailWithoutActivitiesById(threadId)
         .pipe(Effect.catch(() => Effect.succeed(Option.none()))),
     );
   });
@@ -936,12 +938,14 @@ const make = Effect.gen(function* () {
   // engine's command read model holds current as of every commit, so streamed events cost no SQL read.
   const getThreadShellDetail = Effect.fnUntraced(function* (
     threadId: ThreadId,
-  ): Effect.fn.Return<OrchestrationThread | undefined> {
+  ): Effect.fn.Return<OrchestrationThreadWithoutActivities | undefined> {
     const readModel = yield* orchestrationEngine.getReadModel();
     const thread = readModel.threads.find(
       (entry) => entry.id === threadId && entry.deletedAt === null,
     );
-    return thread ? { ...thread, messages: [], activities: [], checkpoints: [] } : undefined;
+    if (!thread) return undefined;
+    const { activities: _activities, ...shell } = thread;
+    return { ...shell, messages: [], checkpoints: [] };
   });
 
   const getProjectShell = Effect.fnUntraced(function* (
@@ -1196,7 +1200,7 @@ const make = Effect.gen(function* () {
 
   const resolveAssistantCompletionMessageId = (input: {
     event: ProviderRuntimeEvent;
-    thread: OrchestrationThread;
+    thread: OrchestrationThreadWithoutActivities;
     turnId?: TurnId;
   }) =>
     Effect.gen(function* () {
@@ -1547,7 +1551,7 @@ const make = Effect.gen(function* () {
 
   const flushPendingGeneratedImagesForTurn = (input: {
     event: ProviderRuntimeEvent;
-    thread: OrchestrationThread;
+    thread: OrchestrationThreadWithoutActivities;
     turnId: TurnId;
     createdAt: string;
   }) =>
@@ -1681,7 +1685,7 @@ const make = Effect.gen(function* () {
           // only this event's heavy-detail handlers read the child's message/plan/checkpoint arrays, so
           // otherwise use the cheap shell.
           const existingThread = needsHeavyThreadDetail
-            ? yield* projectionSnapshotQuery.getThreadDetailById(childThreadId)
+            ? yield* projectionSnapshotQuery.getThreadDetailWithoutActivitiesById(childThreadId)
             : Option.fromUndefinedOr(yield* getThreadShellDetail(childThreadId));
           // Reuse the parent's full selection when the models match so capability flags (e.g.
           // supportsAutoMode) survive; a diverging subagent model gets a bare selection because the parent's
@@ -1818,8 +1822,6 @@ const make = Effect.gen(function* () {
                 modelSelection: resolvedModelSelection ?? parentThread.modelSelection,
                 latestTurn: null,
                 messages: [],
-
-                activities: [],
                 checkpoints: [],
                 session: null,
                 createdAt: now,

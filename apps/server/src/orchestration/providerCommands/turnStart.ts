@@ -90,7 +90,8 @@ export function makeProviderTurnStart(input: {
   const {
     resolveProviderSessionThread,
     resolveLiveProviderTurnId,
-    resolveThread,
+    resolveThreadWithoutActivities,
+    resolveThreadShell,
     withProviderSessionLease,
   } = projectionAccess;
   const processTurnStartRequestedWithoutLease = Effect.fnUntraced(function* (
@@ -166,7 +167,7 @@ export function makeProviderTurnStart(input: {
         return;
       }
 
-      const thread = yield* resolveThread(event.payload.threadId);
+      const thread = yield* resolveThreadWithoutActivities(event.payload.threadId);
       if (!thread) {
         return;
       }
@@ -337,7 +338,7 @@ export function makeProviderTurnStart(input: {
                 // Failures before native acceptance keep the switch pending and retryable; an
                 // ambiguous send already marked it uncertain.
                 if (event.payload.handoffOperationId && Option.isSome(handoffTransitions)) {
-                  const current = yield* resolveThread(event.payload.threadId);
+                  const current = yield* resolveThreadShell(event.payload.threadId);
                   if (
                     current?.handoff?.operationId === event.payload.handoffOperationId &&
                     current.handoff.stage === "pending"

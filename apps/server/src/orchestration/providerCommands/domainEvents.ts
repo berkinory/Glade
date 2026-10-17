@@ -127,7 +127,13 @@ export function makeProviderDomainEvents(input: {
     recoverQueuedTurnPromotionsForThread,
     projectionAccess,
   } = input;
-  const { resolveProviderSessionThread, hasLiveProviderTurn, resolveThread } = projectionAccess;
+  const {
+    resolveProviderSessionThread,
+    hasLiveProviderTurn,
+    resolveThread,
+    resolveThreadWithoutActivities,
+    resolveThreadShell,
+  } = projectionAccess;
   const processQueueDrainEvent = Effect.fnUntraced(function* (event: ProviderQueueDrainEvent) {
     if (
       event.type === "turn.completed" &&
@@ -187,7 +193,7 @@ export function makeProviderDomainEvents(input: {
           ) {
             return;
           }
-          const thread = yield* resolveThread(event.payload.threadId);
+          const thread = yield* resolveThreadShell(event.payload.threadId);
           if (thread) {
             threadSessionSettings.setModelSelection(event.payload.threadId, thread.modelSelection);
           }
@@ -264,11 +270,10 @@ export function makeProviderDomainEvents(input: {
               action: { type: "rename", title: event.payload.title },
             });
           }
-          const thread = yield* resolveThread(event.payload.threadId);
-
           if (event.payload.modelSelection === undefined) {
             return;
           }
+          const thread = yield* resolveThreadShell(event.payload.threadId);
 
           if (
             !thread?.session ||
@@ -319,7 +324,7 @@ export function makeProviderDomainEvents(input: {
               (entry) =>
                 entry.id === event.payload.threadId &&
                 entry.messages.some((message) => message.id === event.payload.messageId),
-            ) ?? (yield* resolveThread(event.payload.threadId));
+            ) ?? (yield* resolveThreadWithoutActivities(event.payload.threadId));
           const message = thread?.messages.find(
             (message) => message.id === event.payload.messageId,
           );

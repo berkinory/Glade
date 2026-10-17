@@ -46,6 +46,16 @@ export function makeProviderProjectionAccess(input: {
     return Option.getOrUndefined(yield* projectionSnapshotQuery.getThreadDetailById(threadId));
   });
 
+  const resolveThreadWithoutActivities = Effect.fnUntraced(function* (threadId: ThreadId) {
+    return Option.getOrUndefined(
+      yield* projectionSnapshotQuery.getThreadDetailWithoutActivitiesById(threadId),
+    );
+  });
+
+  const resolveThreadShell = Effect.fnUntraced(function* (threadId: ThreadId) {
+    return Option.getOrUndefined(yield* projectionSnapshotQuery.getThreadShellById(threadId));
+  });
+
   const resolveProviderSessionThread = (threadId: ThreadId) =>
     resolveProviderSessionThreadFromProjection(projectionSnapshotQuery, threadId);
 
@@ -82,6 +92,8 @@ export function makeProviderProjectionAccess(input: {
     resolveLiveProviderTurnId(threadId).pipe(Effect.map((turnId) => turnId !== undefined));
   return {
     resolveThread,
+    resolveThreadWithoutActivities,
+    resolveThreadShell,
     resolveProjectedThreadWorkspaceCwd,
     hasLiveProviderTurn,
     resolveProviderSessionThread,

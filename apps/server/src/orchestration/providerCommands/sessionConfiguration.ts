@@ -62,7 +62,7 @@ export function makeProviderSessionConfiguration(input: {
     orchestrationEngine,
   } = input;
 
-  const { resolveThread, resolveProjectedThreadWorkspaceCwd, hasLiveProviderTurn } =
+  const { resolveThreadShell, resolveProjectedThreadWorkspaceCwd, hasLiveProviderTurn } =
     projectionAccess;
   const clearThreadRuntimeCaches = (threadId: ThreadId) =>
     Effect.sync(() => {
@@ -115,7 +115,7 @@ export function makeProviderSessionConfiguration(input: {
       readonly handoffResumeCursor?: unknown;
     },
   ) {
-    const thread = yield* resolveThread(threadId);
+    const thread = yield* resolveThreadShell(threadId);
     if (!thread) {
       return yield* Effect.die(
         new Error(`Thread '${threadId}' was not found in projection state.`),
@@ -224,7 +224,7 @@ export function makeProviderSessionConfiguration(input: {
     };
 
     const bindSessionToThread = Effect.fnUntraced(function* (session: ProviderSession) {
-      const currentSession = (yield* resolveThread(threadId))?.session;
+      const currentSession = (yield* resolveThreadShell(threadId))?.session;
       // Keep the pending start's updatedAt so turn-start failure handling can still compare-and-set it.
       const pendingStart =
         session.status === "ready" && isAwaitingRequestedTurn(currentSession)

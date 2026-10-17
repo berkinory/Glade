@@ -56,7 +56,7 @@ export function makeProviderTaskControl(input: {
   } = input;
 
   const {
-    resolveThread,
+    resolveThreadShell,
     resolveProviderSessionThread,
     hasLiveProviderTurn,
     resolveSubagentProviderThreadId,
@@ -122,7 +122,7 @@ export function makeProviderTaskControl(input: {
     readonly createdAt: string;
     readonly intentionalQuit?: boolean;
   }) {
-    const thread = yield* resolveThread(input.threadId);
+    const thread = yield* resolveThreadShell(input.threadId);
     const providerThread = yield* resolveProviderSessionThread(input.threadId);
     if (!thread) {
       return;
@@ -328,7 +328,7 @@ export function makeProviderTaskControl(input: {
     readonly createdAt: string;
     readonly interruptEscalated?: boolean;
   }) {
-    const thread = yield* resolveThread(input.threadId);
+    const thread = yield* resolveThreadShell(input.threadId);
     const providerThread = yield* resolveProviderSessionThread(input.threadId);
     if (!thread) {
       return;

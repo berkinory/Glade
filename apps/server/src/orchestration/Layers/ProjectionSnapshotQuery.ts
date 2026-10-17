@@ -141,6 +141,7 @@ const makeProjectionSnapshotQuery = Effect.gen(function* () {
   });
   const {
     getThreadDetailById,
+    getThreadDetailWithoutActivitiesById,
     getThreadMentionContextById,
     getThreadDetailForExportById,
     getThreadDetailSnapshotById,
@@ -188,6 +189,7 @@ const makeProjectionSnapshotQuery = Effect.gen(function* () {
     threadIdExistsIncludingDeleted,
     findSyntheticSubagentParentThread,
     getThreadDetailById,
+    getThreadDetailWithoutActivitiesById,
     getThreadMentionContextById,
     getThreadDetailForExportById,
     getThreadDetailSnapshotById,

@@ -55,7 +55,7 @@ export function makeProviderConversationNaming(input: {
     textGeneration,
     projectionAccess,
   } = input;
-  const { resolveThread } = projectionAccess;
+  const { resolveThreadWithoutActivities } = projectionAccess;
   const waitForGatewayOperationCompletion = Effect.fnUntraced(function* (operationId: string) {
     const completed = yield* Effect.gen(function* () {
       while (true) {
@@ -153,7 +153,7 @@ export function makeProviderConversationNaming(input: {
     threadId: ThreadId,
     messageId: string,
   ) {
-    const thread = yield* resolveThread(threadId);
+    const thread = yield* resolveThreadWithoutActivities(threadId);
     if (!thread) return null;
     const firstUserMessage = thread.messages.find(
       (message) =>
