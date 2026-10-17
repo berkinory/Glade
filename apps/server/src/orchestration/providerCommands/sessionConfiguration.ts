@@ -178,7 +178,14 @@ export function makeProviderSessionConfiguration(input: {
       });
     }
     const resolvedProviderOptions = providerStartOptionsFromServerSettings(settings);
-    const effectiveCwd = yield* resolveProjectedThreadWorkspaceCwd(thread);
+    const requestedCwd = yield* resolveProjectedThreadWorkspaceCwd(thread);
+    const activeSessionBeforeEnsure = yield* resolveActiveSession(threadId);
+    // A follow-up steers the live turn; workspace moves take effect between turns.
+    const effectiveCwd =
+      activeSessionBeforeEnsure?.status === "running" &&
+      activeSessionBeforeEnsure.activeTurnId != null
+        ? activeSessionBeforeEnsure.cwd
+        : requestedCwd;
     const workspaceState = resolveThreadWorkspaceState({
       envMode: thread.envMode,
       worktreePath: thread.worktreePath,
@@ -255,7 +262,6 @@ export function makeProviderSessionConfiguration(input: {
     // Providers read the gateway's tool list once per session, so allowing or disallowing Computer
     // Use in Settings takes effect when the session next (re)starts.
     const computerToolsListed = settings.allowComputerUse;
-    const activeSessionBeforeEnsure = yield* resolveActiveSession(threadId);
     const workspaceChanged =
       activeSessionBeforeEnsure !== undefined &&
       providerWorkspaceChanged(activeSessionBeforeEnsure.cwd, effectiveCwd);

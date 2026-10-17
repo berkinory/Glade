@@ -27,6 +27,7 @@ export const GladeForkThreadInput = Schema.Struct({
   messageId: MessageId,
 });
 export const GladeRunDevServerInput = Schema.Struct({ command: TrimmedNonEmptyString });
+export const GladeSetThreadWorkspaceInput = Schema.Struct({ path: TrimmedNonEmptyString });
 
 export const GladeAppOpenInput = Schema.Union([
   Schema.Struct({

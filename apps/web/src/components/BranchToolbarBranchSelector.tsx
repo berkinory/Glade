@@ -1,3 +1,4 @@
+import { workspaceRootsEqual } from "@glade/shared/threads/threadWorkspace";
 import { ChevronDownIcon, PlusIcon, SearchIcon, WorkflowCircle04Icon } from "~/lib/icons";
 import { CreateBranchDialog } from "./CreateBranchDialog";
 import type { GitBranch, GitStashInfoResult, GitStatusResult } from "@glade/contracts/git/git";
@@ -27,7 +28,6 @@ import {
   dedupeRemoteBranchesWithLocalMatches,
   deriveLocalBranchNameFromRemoteRef,
   EnvMode,
-  resolveBranchSelectionTarget,
   resolveBranchToolbarValue,
   shouldSyncLocalThreadBranch,
 } from "./BranchToolbar.logic";
@@ -80,7 +80,6 @@ interface BranchToolbarBranchSelectorProps {
     effectiveEnvMode: EnvMode;
   };
   thread: {
-    envLocked: boolean;
     hasServerThread: boolean;
     isThreadSettled: boolean;
   };
@@ -108,7 +107,7 @@ function getBranchTriggerLabel(input: {
     return input.isDetachedCheckout ? "Detached HEAD" : "Select branch";
   }
   if (effectiveEnvMode === "worktree" && !activeWorktreePath) {
-    return `From ${resolvedActiveBranch}`;
+    return `Base: ${resolvedActiveBranch}`;
   }
   return resolvedActiveBranch;
 }
@@ -136,7 +135,7 @@ export function BranchToolbarBranchSelector({
     branchCwd,
     effectiveEnvMode,
   },
-  thread: { envLocked, hasServerThread, isThreadSettled },
+  thread: { hasServerThread, isThreadSettled },
   actions: { onSetThreadWorkspace, onCheckoutPullRequestRequest, onComposerFocusRequest },
   variant: variantProp,
 }: BranchToolbarBranchSelectorProps) {
@@ -144,6 +143,7 @@ export function BranchToolbarBranchSelector({
   const isPanel = variant === "panel";
   const queryClient = useQueryClient();
   const [isBranchMenuOpen, setIsBranchMenuOpen] = useState(false);
+  const [workspaceBranch, setWorkspaceBranch] = useState<GitBranch | null>(null);
   const [isCreateBranchDialogOpen, setIsCreateBranchDialogOpen] = useState(false);
   const [createBranchName, setCreateBranchName] = useState("");
   const [branchQuery, setBranchQuery] = useState("");
@@ -174,8 +174,7 @@ export function BranchToolbarBranchSelector({
   const deferredTrimmedBranchQuery = deferredBranchQuery.trim();
   const normalizedDeferredBranchQuery = deferredTrimmedBranchQuery.toLowerCase();
   const prReference = parsePullRequestReference(trimmedBranchQuery);
-  const isSelectingWorktreeBase =
-    effectiveEnvMode === "worktree" && !envLocked && !activeWorktreePath;
+  const isSelectingWorktreeBase = effectiveEnvMode === "worktree" && !activeWorktreePath;
   const checkoutPullRequestItemValue =
     prReference && onCheckoutPullRequestRequest ? `__checkout_pull_request__:${prReference}` : null;
   const canPrefillCreateBranch = !isSelectingWorktreeBase && trimmedBranchQuery.length > 0;
@@ -320,27 +319,10 @@ export function BranchToolbarBranchSelector({
   const selectBranch = (branch: GitBranch) => {
     const api = readNativeApi();
     if (!api || !branchCwd || isBranchActionPending) return;
-    if (isSelectingWorktreeBase) {
-      onSetThreadWorkspace({
-        branch: branch.name,
-        worktreePath: null,
-      });
+    if (isSelectingWorktreeBase || branch.current) return;
+    if (branch.worktreePath && !workspaceRootsEqual(branch.worktreePath, branchCwd)) {
       setIsBranchMenuOpen(false);
-      onComposerFocusRequest?.();
-      return;
-    }
-    const selectionTarget = resolveBranchSelectionTarget({
-      activeProjectCwd,
-      activeWorktreePath,
-      branch,
-    });
-    if (selectionTarget.reuseExistingWorktree) {
-      onSetThreadWorkspace({
-        branch: branch.name,
-        worktreePath: selectionTarget.nextWorktreePath,
-      });
-      setIsBranchMenuOpen(false);
-      onComposerFocusRequest?.();
+      setWorkspaceBranch(branch);
       return;
     }
     const selectedBranchName = branch.isRemote
@@ -353,20 +335,20 @@ export function BranchToolbarBranchSelector({
         setOptimisticBranch(selectedBranchName);
         try {
           await api.git.checkout({
-            cwd: selectionTarget.checkoutCwd,
+            cwd: branchCwd,
             branch: branch.name,
           });
         } catch (error) {
           handleCheckoutError(error, {
             api,
             branch: branch.name,
-            cwd: selectionTarget.checkoutCwd,
+            cwd: branchCwd,
             fallbackTitle: "Could not check out branch",
             onSuccess: () => {
               setOptimisticBranch(selectedBranchName);
               onSetThreadWorkspace({
                 branch: selectedBranchName,
-                worktreePath: selectionTarget.nextWorktreePath,
+                worktreePath: activeWorktreePath,
               });
             },
             runBranchAction,
@@ -388,11 +370,11 @@ export function BranchToolbarBranchSelector({
         setOptimisticBranch(nextBranchName);
         onSetThreadWorkspace({
           branch: nextBranchName,
-          worktreePath: selectionTarget.nextWorktreePath,
+          worktreePath: activeWorktreePath,
         });
       },
       {
-        refreshCwds: [selectionTarget.checkoutCwd],
+        refreshCwds: [branchCwd],
       },
     );
   };
@@ -565,7 +547,8 @@ export function BranchToolbarBranchSelector({
     }
     const branch = branchByName.get(itemValue);
     if (!branch) return null;
-    const hasSecondaryWorktree = branch.worktreePath && branch.worktreePath !== activeProjectCwd;
+    const hasSecondaryWorktree =
+      branch.worktreePath && branchCwd && !workspaceRootsEqual(branch.worktreePath, branchCwd);
     const currentBranchChangeSummary = getCurrentBranchChangeSummary(
       branch,
       branchStatusQuery.data,
@@ -573,7 +556,7 @@ export function BranchToolbarBranchSelector({
     const badge = branch.current
       ? "current"
       : hasSecondaryWorktree
-        ? "worktree"
+        ? "other workspace"
         : branch.isRemote
           ? "remote"
           : branch.isDefault
@@ -638,19 +621,36 @@ export function BranchToolbarBranchSelector({
               ? ENVIRONMENT_ROW_CLASS_NAME
               : `${COMPOSER_TOOLBAR_PICKER_TRIGGER_CLASS_NAME} disabled:cursor-not-allowed disabled:opacity-50`
         }
-        disabled={(branchesQuery.isLoading && branches.length === 0) || isBranchActionPending}
+        aria-label={`${isSelectingWorktreeBase ? "Base branch" : "Branch"}: ${resolvedActiveBranch ?? "Detached HEAD"}`}
+        title={
+          isSelectingWorktreeBase
+            ? "Configure the base branch in the workspace menu."
+            : "Switch branch in this workspace"
+        }
+        disabled={
+          isSelectingWorktreeBase ||
+          (branchesQuery.isLoading && branches.length === 0) ||
+          isBranchActionPending
+        }
       >
         {isPanel ? (
           <EnvironmentRowBody
             icon={<WorkflowCircle04Icon className={ENVIRONMENT_ROW_ICON_CLASS_NAME} />}
-            label={triggerLabel}
-            trailing={<EnvironmentRowChevron />}
+            label={isSelectingWorktreeBase ? "Base branch" : "Branch"}
+            trailing={
+              <>
+                <span className="max-w-28 truncate text-muted-foreground">
+                  {resolvedActiveBranch ?? "Detached HEAD"}
+                </span>
+                {!isSelectingWorktreeBase ? <EnvironmentRowChevron /> : null}
+              </>
+            }
           />
         ) : (
           <>
             <WorkflowCircle04Icon className="size-3.5 shrink-0" />
             <span className="max-w-[240px] truncate">{triggerLabel}</span>
-            <ChevronDownIcon className="size-3 opacity-60" />
+            {!isSelectingWorktreeBase ? <ChevronDownIcon className="size-3 opacity-60" /> : null}
           </>
         )}
       </ComboboxTrigger>
@@ -713,6 +713,51 @@ export function BranchToolbarBranchSelector({
           </div>
         ) : null}
       </ComboboxPopup>
+      <Dialog
+        open={workspaceBranch !== null}
+        onOpenChange={(open) => {
+          if (!open) setWorkspaceBranch(null);
+        }}
+      >
+        <DialogPopup className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Branch is open in another workspace</DialogTitle>
+            <DialogDescription>
+              {workspaceBranch?.name} is already checked out there. Switch this chat to that
+              workspace to use it. Files and uncommitted changes stay in their current folders.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogPanel>
+            <p className="break-all font-mono text-ui-sm text-muted-foreground">
+              {workspaceBranch?.worktreePath}
+            </p>
+          </DialogPanel>
+          <DialogFooter>
+            <Button variant="outline" size="sm" onClick={() => setWorkspaceBranch(null)}>
+              Cancel
+            </Button>
+            <Button
+              size="sm"
+              onClick={() => {
+                if (!workspaceBranch?.worktreePath) return;
+                const path = workspaceRootsEqual(workspaceBranch.worktreePath, activeProjectCwd)
+                  ? null
+                  : workspaceBranch.worktreePath;
+                onSetThreadWorkspace({
+                  envMode: path ? "worktree" : "local",
+                  branch: workspaceBranch.name,
+                  worktreePath: path,
+                  workingDirectory: null,
+                });
+                setWorkspaceBranch(null);
+                onComposerFocusRequest?.();
+              }}
+            >
+              Switch workspace
+            </Button>
+          </DialogFooter>
+        </DialogPopup>
+      </Dialog>
       <CreateBranchDialog
         open={isCreateBranchDialogOpen}
         onOpenChange={setIsCreateBranchDialogOpen}

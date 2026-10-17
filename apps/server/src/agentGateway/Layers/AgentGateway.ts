@@ -12,6 +12,7 @@ import { AppPresentation } from "../Services/AppPresentation";
 import { CheckpointDiffQuery } from "../../checkpointing/Services/CheckpointDiffQuery";
 import { makeThreadDiffTools } from "../threadDiffTools";
 import { makeForkThreadTool } from "../forkThreadTool";
+import { makeThreadWorkspaceTool } from "../threadWorkspaceTool";
 import { makeAppPresentationTool } from "../appPresentationTool";
 import { AgentGatewayDiscovery } from "../Services/AgentGatewayDiscovery";
 import { randomUUID } from "node:crypto";
@@ -586,6 +587,7 @@ const makeAgentGateway = Effect.gen(function* () {
     ...readTools,
     ...makeThreadDiffTools(diffs, snapshotQuery),
     makeForkThreadTool(orchestrationEngine, snapshotQuery, eventStore),
+    makeThreadWorkspaceTool(orchestrationEngine, snapshotQuery, git, fs, path),
     makeAppPresentationTool(presentation, snapshotQuery, fs, path),
     ...diagnosticTools,
     createThreads,

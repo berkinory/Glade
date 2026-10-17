@@ -1,12 +1,15 @@
-import { ChevronDownIcon, GitForkIcon, HandIcon, ShieldCheckIcon, ShieldIcon } from "~/lib/icons";
-import { useQuery } from "@tanstack/react-query";
+import { ComposerPickerMenuPopup } from "./chat/ComposerPickerMenuPopup";
+import { workspaceRootsEqual } from "@glade/shared/threads/threadWorkspace";
+import { NewWorktreeDialog } from "./chat/NewWorktreeDialog";
+import { toastManager } from "./ui/toast";
+import { ChevronDownIcon, HandIcon, ShieldCheckIcon, ShieldIcon } from "~/lib/icons";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { gitBranchesQueryOptions, gitStatusQueryOptions } from "../lib/gitQueryOptions";
-import { Checkbox } from "./ui/checkbox";
 import type { ProviderKind, ThreadId } from "@glade/contracts/core/baseSchemas";
 import type { ProviderModelDescriptor } from "@glade/contracts/provider/providerDiscovery";
 import type { ServerProviderStatus } from "@glade/contracts/server/server";
 import type { RuntimeMode } from "@glade/contracts/provider/sessionPolicy";
-import { useCallback, useMemo, type ReactNode } from "react";
+import { useCallback, useMemo, useState, type ReactNode } from "react";
 import { newCommandId, cn } from "../lib/utils";
 import { readNativeApi } from "../nativeApi";
 import { useComposerDraftStore } from "../composerDraftStore";
@@ -20,7 +23,6 @@ import { createProjectSelector, createThreadBranchContextSelector } from "../sto
 import {
   EnvMode,
   resolveAssociatedWorktreeMetadataAfterWorkspacePatch,
-  resolveDraftEnvModeAfterBranchChange,
   resolveEffectiveEnvMode,
 } from "./BranchToolbar.logic";
 import {
@@ -32,20 +34,11 @@ import {
   RUNTIME_FULL_ACCESS_ACCENT_CLASS_NAME,
   COMPOSER_PICKER_TRIGGER_TEXT_CLASS_NAME,
 } from "./chat/composerPickerStyles";
-import {
-  ENVIRONMENT_ROW_CLASS_NAME,
-  ENVIRONMENT_ROW_ICON_CLASS_NAME,
-  EnvironmentRowBody,
-} from "./chat/environment/EnvironmentRow";
 import type { ContextWindowSnapshot } from "../lib/contextWindow";
-import { ComposerPickerMenuPopup } from "./chat/ComposerPickerMenuPopup";
 import { ComposerEnvironmentPicker } from "./chat/ComposerEnvironmentPicker";
 import { Button } from "./ui/button";
-import { Menu, MenuCheckboxItem, MenuRadioGroup, MenuRadioItem, MenuTrigger } from "./ui/menu";
+import { Menu, MenuRadioGroup, MenuRadioItem, MenuTrigger } from "./ui/menu";
 import type { ThreadWorkspacePatch } from "../types";
-function WorktreeGlyph({ className }: { className?: string }) {
-  return <GitForkIcon className={className} />;
-}
 function RuntimeModeMenuItem({
   mode,
   icon,
@@ -223,6 +216,8 @@ export default function BranchToolbar({
   showBranchSelector: showBranchSelectorProp,
   showEnvironment = true,
 }: BranchToolbarProps) {
+  const queryClient = useQueryClient();
+  const [newWorktreeOpen, setNewWorktreeOpen] = useState(false);
   const handoffBusy = handoffBusyProp ?? false;
   const variant = variantProp ?? "toolbar";
   const showBranchSelector = showBranchSelectorProp ?? true;
@@ -250,13 +245,13 @@ export default function BranchToolbar({
     : (draftThread?.workingDirectory ?? null);
   const branchCwd = activeWorktreePath ?? activeWorkingDirectory ?? activeProject?.cwd ?? null;
   const branchProjectCwd = activeProject?.cwd ?? null;
-  const draftGit = useQuery({
+  const workspaceBranches = useQuery({
     ...gitBranchesQueryOptions(branchCwd),
-    enabled: !hasServerThread && Boolean(branchCwd),
+    enabled: Boolean(branchCwd),
   });
-  const draftStatus = useQuery({
+  const workspaceStatus = useQuery({
     ...gitStatusQueryOptions(branchCwd),
-    enabled: !hasServerThread && Boolean(branchCwd) && draftGit.data?.isRepo === true,
+    enabled: Boolean(branchCwd) && workspaceBranches.data?.isRepo === true,
   });
   const effectiveEnvMode = resolveEffectiveEnvMode({
     activeWorktreePath,
@@ -298,54 +293,56 @@ export default function BranchToolbar({
             }
           : {}),
       });
-      const api = readNativeApi();
-      if (serverThread?.hasSession && worktreePath !== activeWorktreePath && api) {
-        void api.orchestration
-          .dispatchCommand({
-            type: "thread.session.stop",
-            commandId: newCommandId(),
-            threadId: activeThreadId,
-            createdAt: new Date().toISOString(),
-          })
-          .catch(() => undefined);
-      }
-      if (api && hasServerThread) {
-        void api.orchestration.dispatchCommand({
-          type: "thread.meta.update",
-          commandId: newCommandId(),
-          threadId: activeThreadId,
-          envMode: nextEnvMode,
-          branch,
-          worktreePath,
-          associatedWorktreePath: nextAssociatedWorktree.associatedWorktreePath,
-          associatedWorktreeBranch: nextAssociatedWorktree.associatedWorktreeBranch,
-          associatedWorktreeRef: nextAssociatedWorktree.associatedWorktreeRef,
-        });
-      }
-      if (hasServerThread) {
-        setThreadWorkspaceAction(activeThreadId, {
-          envMode: nextEnvMode,
-          branch,
-          worktreePath,
-          ...nextAssociatedWorktree,
-        });
-        return;
-      }
-      const nextDraftEnvMode = resolveDraftEnvModeAfterBranchChange({
-        nextWorktreePath: worktreePath,
-        currentWorktreePath: activeWorktreePath,
-        effectiveEnvMode,
-      });
-      setDraftThreadContext(threadId, {
+      const workingDirectory =
+        patch.workingDirectory !== undefined
+          ? patch.workingDirectory
+          : worktreePath !== activeWorktreePath
+            ? null
+            : activeWorkingDirectory;
+      const nextWorkspace = {
+        envMode: nextEnvMode,
         branch,
         worktreePath,
-        envMode: nextDraftEnvMode,
-      });
+        workingDirectory,
+        ...nextAssociatedWorktree,
+      };
+      if (hasServerThread) {
+        const api = readNativeApi();
+        if (!api) {
+          toastManager.add({
+            type: "error",
+            title: "Could not switch workspace",
+            description: "Native API is unavailable.",
+          });
+          return;
+        }
+        // The provider reconciles its working directory at the next turn boundary.
+        void api.orchestration
+          .dispatchCommand({
+            type: "thread.meta.update",
+            commandId: newCommandId(),
+            threadId: activeThreadId,
+            ...nextWorkspace,
+            ...(worktreePath !== activeWorktreePath || branch !== activeThreadBranch
+              ? { lastKnownPr: null }
+              : {}),
+          })
+          .then(() => setThreadWorkspaceAction(activeThreadId, nextWorkspace))
+          .catch((error) => {
+            toastManager.add({
+              type: "error",
+              title: "Could not update workspace",
+              description: error instanceof Error ? error.message : String(error),
+            });
+          });
+        return;
+      }
+      setDraftThreadContext(threadId, nextWorkspace);
     },
     [
       activeThreadId,
       activeThreadBranch,
-      serverThread?.hasSession,
+      activeWorkingDirectory,
       activeWorktreePath,
       hasServerThread,
       setThreadWorkspaceAction,
@@ -361,16 +358,6 @@ export default function BranchToolbar({
   const canSwitchToWorktree = Boolean(
     !envLocked && !activeWorktreePath && effectiveEnvMode === "local",
   );
-  const canSwitchToLocal = Boolean(!envLocked && effectiveEnvMode === "worktree");
-  const showEnvPicker = effectiveEnvMode === "local" || canSwitchToLocal;
-  // Mirrors the send-time rule: only a worktree based on the checked-out branch can carry its changes.
-  const canCopyLocalChanges =
-    !hasServerThread &&
-    effectiveEnvMode === "worktree" &&
-    !activeWorktreePath &&
-    draftStatus.data?.hasWorkingTreeChanges === true &&
-    activeThreadBranch !== null &&
-    activeThreadBranch === draftStatus.data.branch;
   if (!activeThreadId || !activeProject) return null;
   return (
     <div
@@ -382,6 +369,76 @@ export default function BranchToolbar({
       )}
     >
       <div className={isPanel ? "flex flex-col gap-0.5" : "flex w-full min-w-0 items-center gap-2"}>
+        {showEnvironment ? (
+          <ComposerEnvironmentPicker
+            environmentPresentation={environmentPresentation}
+            onEnvModeChange={onEnvModeChange}
+            canSwitchToWorktree={canSwitchToWorktree}
+            canHandoffToLocal={canHandoffToLocal}
+            onHandoffToLocal={onHandoffToLocal}
+            handoffBusy={handoffBusy}
+            isPanel={isPanel}
+            onOpenChange={(open) => {
+              if (open)
+                void queryClient.invalidateQueries({
+                  queryKey: gitBranchesQueryOptions(branchCwd).queryKey,
+                });
+            }}
+            workspace={{
+              projectCwd: activeProject.cwd,
+              path: activeWorktreePath,
+              branches: workspaceBranches.data?.branches ?? [],
+              onNewWorktree: () => setNewWorktreeOpen(true),
+              onSelect: (selected) => {
+                const path = selected?.worktreePath ?? null;
+                if (
+                  (path === activeWorktreePath && effectiveEnvMode !== "worktree") ||
+                  (path !== null &&
+                    activeWorktreePath !== null &&
+                    workspaceRootsEqual(path, activeWorktreePath))
+                )
+                  return;
+                const projectBranch = workspaceBranches.data?.branches.find(
+                  (branch) =>
+                    branch.worktreePath &&
+                    workspaceRootsEqual(branch.worktreePath, activeProject.cwd),
+                );
+                if (!hasServerThread) onEnvModeChange(path ? "worktree" : "local");
+                setThreadWorkspace({
+                  envMode: path ? "worktree" : "local",
+                  worktreePath: path,
+                  workingDirectory: null,
+                  branch: selected?.name ?? projectBranch?.name ?? null,
+                });
+              },
+            }}
+          />
+        ) : null}
+        {newWorktreeOpen ? (
+          <NewWorktreeDialog
+            key={`worktree:${threadId}`}
+            branches={workspaceBranches.data?.branches ?? []}
+            initialBranch={activeThreadBranch ?? workspaceStatus.data?.branch ?? null}
+            localBranch={workspaceStatus.data?.branch ?? null}
+            hasLocalChanges={
+              !hasServerThread && workspaceStatus.data?.hasWorkingTreeChanges === true
+            }
+            copyLocalChanges={draftThread?.copyLocalChanges ?? true}
+            onOpenChange={setNewWorktreeOpen}
+            onSelect={(branch, copyChanges) => {
+              if (!hasServerThread) onEnvModeChange("worktree");
+              setThreadWorkspace({
+                envMode: "worktree",
+                branch,
+                worktreePath: null,
+                workingDirectory: null,
+              });
+              if (!hasServerThread)
+                setDraftThreadContext(threadId, { copyLocalChanges: copyChanges });
+              setNewWorktreeOpen(false);
+            }}
+          />
+        ) : null}
         {showBranchSelector ? (
           // ChatView stays mounted while the route switches threads. Reset the selector's optimistic checkout
           // state at that boundary so a previous thread cannot paint its branch while the new thread's
@@ -396,7 +453,6 @@ export default function BranchToolbar({
               effectiveEnvMode,
             }}
             thread={{
-              envLocked,
               hasServerThread,
               isThreadSettled: serverThread?.settled === true || !threadDetailReady,
             }}
@@ -415,84 +471,6 @@ export default function BranchToolbar({
             }}
             variant={variant}
           />
-        ) : null}
-
-        {showEnvironment && (!isPanel || hasServerThread) ? (
-          !hasServerThread ? (
-            <>
-              <label
-                className={cn(
-                  "inline-flex shrink-0 items-center gap-2 text-ui-sm text-muted-foreground",
-                  !isPanel && "ml-auto px-2 sm:px-2.5",
-                )}
-              >
-                <Checkbox
-                  checked={effectiveEnvMode === "worktree"}
-                  disabled={
-                    envLocked ||
-                    (effectiveEnvMode !== "worktree" &&
-                      (!canSwitchToWorktree || draftGit.data?.isRepo !== true))
-                  }
-                  onCheckedChange={(checked) => onEnvModeChange(checked ? "worktree" : "local")}
-                />
-                Worktree
-              </label>
-              {canCopyLocalChanges ? (
-                <Menu>
-                  <MenuTrigger
-                    disabled={envLocked}
-                    render={
-                      <button
-                        type="button"
-                        aria-label="Worktree options"
-                        title="Worktree options"
-                        className={cn(
-                          "inline-flex shrink-0 items-center gap-1 rounded-md px-1 text-ui-sm text-muted-foreground hover:text-foreground",
-                          !isPanel && "mr-2 sm:mr-2.5",
-                        )}
-                      />
-                    }
-                  >
-                    {(draftThread?.copyLocalChanges ?? true) ? "With changes" : "Without changes"}
-                    <ChevronDownIcon aria-hidden className="size-3 opacity-60" />
-                  </MenuTrigger>
-                  <ComposerPickerMenuPopup align="end" side="top" className="min-w-60">
-                    <MenuCheckboxItem
-                      checked={draftThread?.copyLocalChanges ?? true}
-                      variant="switch"
-                      onCheckedChange={(checked) =>
-                        setDraftThreadContext(threadId, { copyLocalChanges: Boolean(checked) })
-                      }
-                    >
-                      Copy uncommitted changes
-                    </MenuCheckboxItem>
-                  </ComposerPickerMenuPopup>
-                </Menu>
-              ) : null}
-            </>
-          ) : showEnvPicker ? (
-            <ComposerEnvironmentPicker
-              environmentPresentation={environmentPresentation}
-              onEnvModeChange={onEnvModeChange}
-              canSwitchToWorktree={canSwitchToWorktree}
-              canHandoffToLocal={canHandoffToLocal}
-              onHandoffToLocal={onHandoffToLocal}
-              handoffBusy={handoffBusy}
-              isPanel={isPanel}
-            />
-          ) : isPanel ? (
-            <div className={cn(ENVIRONMENT_ROW_CLASS_NAME, "cursor-default hover:bg-transparent")}>
-              <EnvironmentRowBody
-                icon={<WorktreeGlyph className={ENVIRONMENT_ROW_ICON_CLASS_NAME} />}
-                label={environmentPresentation.shortLabel}
-              />
-            </div>
-          ) : (
-            <span className="inline-flex items-center gap-2 px-1.5 text-ui-sm font-normal text-[var(--color-text-foreground-secondary)]">
-              <WorktreeGlyph className="size-3.5" />
-              {environmentPresentation.shortLabel}
-            </span>
-          )
         ) : null}
       </div>
     </div>

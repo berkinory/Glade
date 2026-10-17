@@ -8,6 +8,7 @@
 
 ### Improved
 
+- Workspace and branch selection are separate, and chats stay in sync when agents move into a worktree.
 - Installer files no longer carry the version in their names, so download links always fetch the latest release. Windows downloads the first update after this one in full.
 - Unsaved file edits no longer block sending a message. Renaming files and Git actions ask whether to save or discard them instead of refusing.
 - New files and folders from the explorer go into the workspace root when no folder is selected.

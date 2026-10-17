@@ -199,6 +199,13 @@ by rebase conflicts retains its recovery intent across restart.
 File menus add selected untracked files to the repository-root `.gitignore` using
 literal, rooted paths; tracked files remain tracked and existing ignore rules are preserved.
 
+The Environment panel separates Workspace from Branch. Workspace selects the project folder or an
+existing branch-backed worktree; switching folders leaves files and uncommitted changes in place.
+Moving changes back to the project folder is a separate action. Branch checks out in the selected
+workspace, and asks explicitly before switching to a different workspace where a branch is already
+open. New worktree setup chooses a base branch in its own dialog; the pending base branch is read-only
+in the panel. Its new branch and folder are created on the first message.
+
 The Environment panel's Git row shows the next step for the branch (Commit, Commit & push,
 Commit, push & PR, Push & create PR, Pull, Create PR or Publish repository) with a short
 status line, and shows live progress while an action runs; a disabled row states why. Its

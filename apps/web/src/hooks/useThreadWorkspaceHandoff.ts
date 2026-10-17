@@ -51,13 +51,13 @@ export function useThreadWorkspaceHandoff(input: {
       setThreadWorkspace(input.activeThread.id, resolveWorktreeHandoffWorkspaceMetadata(result));
       toastManager.add({
         type: result.conflictsDetected ? "warning" : "success",
-        title: "Chat handed off to local",
+        title: "Changes moved to project folder",
         ...(result.message ? { description: result.message } : {}),
       });
     } catch (error) {
       toastManager.add({
         type: "error",
-        title: "Could not hand off to local",
+        title: "Could not move changes to project folder",
         description:
           error instanceof Error ? error.message : "An error occurred during the handoff.",
       });

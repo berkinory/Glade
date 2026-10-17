@@ -268,6 +268,14 @@ const make = Effect.gen(function* () {
     const threadOption = yield* projectionSnapshotQuery.getThreadShellById(captured.threadId);
     const thread = Option.getOrUndefined(threadOption);
     if (!thread) return;
+    const context = yield* resolveWorkspaceContext(captured.threadId);
+    if (
+      !context ||
+      context.cwd !== captured.cwd ||
+      context.hasDedicatedWorktree !== captured.hasDedicatedWorktree
+    ) {
+      return;
+    }
     if (latestCaptureTokenByThread.get(captured.threadId) !== captured.token) return;
     if (
       thread.branch !== captured.expectedThreadBranch &&

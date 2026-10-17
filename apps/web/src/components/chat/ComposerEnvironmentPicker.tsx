@@ -1,3 +1,6 @@
+import { basenameOfPath } from "~/file-icons";
+import type { GitBranch } from "@glade/contracts/git/git";
+import { workspaceRootsEqual } from "@glade/shared/threads/threadWorkspace";
 import {
   CheckIcon,
   ChevronDownIcon,
@@ -51,6 +54,13 @@ function WorkInMenuItem({
   );
 }
 interface ComposerEnvironmentPickerProps {
+  workspace?: {
+    projectCwd: string;
+    path: string | null;
+    branches: readonly GitBranch[];
+    onSelect: (branch: GitBranch | null) => void;
+    onNewWorktree: () => void;
+  };
   environmentPresentation: ThreadEnvironmentPresentation;
   onEnvModeChange: (mode: ThreadEnvironmentMode) => void;
   canSwitchToWorktree: boolean;
@@ -63,6 +73,7 @@ interface ComposerEnvironmentPickerProps {
 }
 export function ComposerEnvironmentPicker({
   environmentPresentation,
+  workspace,
   onEnvModeChange,
   canSwitchToWorktree,
   canHandoffToLocal = false,
@@ -78,10 +89,20 @@ export function ComposerEnvironmentPicker({
     ) : (
       <GitForkIcon className={className} />
     );
+  const currentPath = workspace?.path;
+  const worktrees =
+    workspace?.branches.filter(
+      (branch) =>
+        branch.worktreePath && !workspaceRootsEqual(branch.worktreePath, workspace.projectCwd),
+    ) ?? [];
+  const workspaceName = workspace?.path ? basenameOfPath(workspace.path) : null;
+  const label = workspaceName ?? environmentPresentation.shortLabel;
   return (
     <Menu onOpenChange={onOpenChange}>
       <MenuTrigger
-        disabled={disabled}
+        disabled={disabled || handoffBusy}
+        aria-label={`Workspace: ${label}`}
+        title={workspace?.path ?? "Workspace"}
         render={
           <button
             type="button"
@@ -94,13 +115,18 @@ export function ComposerEnvironmentPicker({
         {isPanel ? (
           <EnvironmentRowBody
             icon={envGlyph(ENVIRONMENT_ROW_ICON_CLASS_NAME)}
-            label={environmentPresentation.shortLabel}
-            trailing={<EnvironmentRowChevron />}
+            label="Workspace"
+            trailing={
+              <>
+                <span className="max-w-28 truncate text-muted-foreground">{label}</span>
+                <EnvironmentRowChevron />
+              </>
+            }
           />
         ) : (
           <>
             {envGlyph("size-3.5")}
-            {environmentPresentation.shortLabel}
+            {label}
             <ChevronDownIcon className="size-3 opacity-60" />
           </>
         )}
@@ -110,41 +136,63 @@ export function ComposerEnvironmentPicker({
         align="start"
         side={isPanel ? "bottom" : "top"}
         sideOffset={6}
-        className="w-60 min-w-60"
+        className="w-64 min-w-64"
       >
         <MenuGroup>
-          <MenuGroupLabel>Work in</MenuGroupLabel>
-          {environmentPresentation.mode === "local" ? (
+          <MenuGroupLabel>Workspace</MenuGroupLabel>
+          <WorkInMenuItem
+            icon={<LaptopIcon className={ENV_MENU_ICON_CLASS_NAME} />}
+            label={environmentPresentation.localOptionLabel}
+            selected={environmentPresentation.mode === "local"}
+            onSelect={() => (workspace ? workspace.onSelect(null) : onEnvModeChange("local"))}
+          />
+          {worktrees.map((branch) => (
             <WorkInMenuItem
-              icon={<LaptopIcon className={ENV_MENU_ICON_CLASS_NAME} />}
-              label={environmentPresentation.localOptionLabel}
-              selected
+              key={branch.worktreePath}
+              icon={<GitForkIcon className={ENV_MENU_ICON_CLASS_NAME} />}
+              label={
+                <span className="flex min-w-0 flex-col">
+                  <span className="truncate">
+                    {branch.worktreePath ? basenameOfPath(branch.worktreePath) : branch.name}
+                  </span>
+                  <span className="truncate text-ui-xs text-muted-foreground">{branch.name}</span>
+                </span>
+              }
+              selected={Boolean(
+                branch.worktreePath &&
+                currentPath &&
+                workspaceRootsEqual(branch.worktreePath, currentPath),
+              )}
+              onSelect={() => workspace?.onSelect(branch)}
             />
-          ) : (
-            <WorkInMenuItem
-              icon={<LaptopIcon className={ENV_MENU_ICON_CLASS_NAME} />}
-              label={environmentPresentation.localOptionLabel}
-              onSelect={() => onEnvModeChange("local")}
-            />
-          )}
-          {canSwitchToWorktree ? (
+          ))}
+          {currentPath &&
+          !worktrees.some(
+            (branch) =>
+              branch.worktreePath && workspaceRootsEqual(branch.worktreePath, currentPath),
+          ) ? (
             <WorkInMenuItem
               icon={<GitForkIcon className={ENV_MENU_ICON_CLASS_NAME} />}
-              label="New worktree"
-              onSelect={() => onEnvModeChange("worktree")}
+              label={label}
+              selected
             />
           ) : null}
-          {environmentPresentation.mode === "worktree" && !canHandoffToLocal ? (
+          {canSwitchToWorktree || environmentPresentation.workspaceState === "worktree-pending" ? (
             <WorkInMenuItem
               icon={<GitForkIcon className={ENV_MENU_ICON_CLASS_NAME} />}
-              label={environmentPresentation.worktreeOptionLabel}
-              selected
+              label={
+                environmentPresentation.workspaceState === "worktree-pending"
+                  ? "Configure new worktree…"
+                  : "New worktree…"
+              }
+              selected={environmentPresentation.workspaceState === "worktree-pending"}
+              onSelect={() => (workspace ? workspace.onNewWorktree() : onEnvModeChange("worktree"))}
             />
           ) : null}
           {canHandoffToLocal && onHandoffToLocal ? (
             <WorkInMenuItem
               icon={<ArrowLeftRightIcon className={ENV_MENU_ICON_CLASS_NAME} />}
-              label="Hand off to local"
+              label="Move changes to project folder"
               disabled={handoffBusy}
               onSelect={() => onHandoffToLocal()}
             />

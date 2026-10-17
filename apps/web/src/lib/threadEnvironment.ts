@@ -24,9 +24,8 @@ export interface ResolvedForkThreadEnvironment {
 export interface ThreadEnvironmentPresentation {
   mode: ThreadEnvironmentMode;
   workspaceState: ResolvedThreadWorkspaceState;
-  shortLabel: "Local" | "Worktree";
-  localOptionLabel: "Local project";
-  worktreeOptionLabel: "Worktree";
+  shortLabel: "Project folder" | "Worktree" | "New worktree";
+  localOptionLabel: "Project folder";
   worktreeBadgeLabel: "Worktree" | "Worktree pending" | null;
 }
 
@@ -40,9 +39,13 @@ export function resolveThreadEnvironmentPresentation(input: {
   return {
     mode,
     workspaceState,
-    shortLabel: mode === "worktree" ? "Worktree" : "Local",
-    localOptionLabel: "Local project",
-    worktreeOptionLabel: "Worktree",
+    shortLabel:
+      mode === "local"
+        ? "Project folder"
+        : workspaceState === "worktree-pending"
+          ? "New worktree"
+          : "Worktree",
+    localOptionLabel: "Project folder",
     worktreeBadgeLabel:
       workspaceState === "worktree-ready"
         ? "Worktree"

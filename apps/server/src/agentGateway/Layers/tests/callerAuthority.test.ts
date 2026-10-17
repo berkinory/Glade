@@ -15,6 +15,11 @@ import {
 describe("AgentGateway caller authority", () => {
   it.effect.each([
     {
+      tool: "glade_set_thread_workspace",
+      args: { path: "/tmp/worktrees/task" },
+      requiredCapability: "thread:write",
+    },
+    {
       tool: "glade_create_threads",
       args: {
         requestId: "readonly-create",
@@ -63,6 +68,7 @@ describe("AgentGateway caller authority", () => {
     return Effect.gen(function* () {
       const harness = yield* makeHarness;
       const attempts = [
+        { name: "glade_set_thread_workspace", args: { path: "/tmp/worktrees/task" } },
         {
           name: "glade_create_threads",
           args: {
