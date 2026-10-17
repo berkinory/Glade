@@ -1,4 +1,4 @@
-import { useState, type ComponentProps, type CSSProperties, type ReactNode } from "react";
+import { type ComponentProps, type CSSProperties, type ReactNode } from "react";
 
 import { cn } from "~/lib/utils";
 
@@ -168,18 +168,28 @@ const GLYPHS: Record<SpinnerVariant, () => ReactNode> = {
   voice: stretchingPills,
 };
 
-// CSS animations start when their element mounts, so spinners that appear at different moments
-// would turn out of phase. A negative delay of the current document time places every spinner on
-// one shared timeline that began at document start; infinite animations wrap the delay per cycle.
+function synchronizeSpinner(element: HTMLSpanElement) {
+  // Align actual animation starts, including variant changes and restarts after being hidden.
+  // Render-time delays become stale when React retains the spinner but replaces its glyph.
+  const synchronize = () => {
+    for (const animation of element.getAnimations({ subtree: true })) {
+      animation.startTime = 0;
+    }
+  };
+  element.addEventListener("animationstart", synchronize);
+  synchronize();
+  return () => element.removeEventListener("animationstart", synchronize);
+}
+
 export function Spinner({ className, style, variant = "loading", ...props }: SpinnerProps) {
-  const [syncDelay] = useState(() => `${-performance.now()}ms`);
   return (
     <span
       aria-label="Loading"
       role="status"
       {...props}
+      ref={synchronizeSpinner}
       className={cn("relative inline-block size-4 shrink-0", className)}
-      style={{ ...style, "--spinner-sync": syncDelay } as CSSProperties}
+      style={style}
     >
       {GLYPHS[variant]()}
     </span>

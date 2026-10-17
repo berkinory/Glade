@@ -544,26 +544,13 @@
   }
 }
 
-/* Shares one timeline across spinners; see Spinner. Must follow the animation shorthands above. */
-.spinner-action-spin,
-.spinner-action-offset,
-.spinner-action-near,
-.spinner-action-far,
-.spinner-action-head,
-.spinner-loading-turn,
-.spinner-loading-fold,
-.spinner-subagent-orbit,
-.spinner-subagent-tuck {
-  animation-delay: var(--spinner-sync, 0s);
-}
-
 .spinner-voice-pill,
 .spinner-voice-bar,
 .spinner-voice-cap-top,
 .spinner-voice-cap-bottom {
   animation-duration: 1.2s;
   animation-timing-function: cubic-bezier(0.65, 0, 0.35, 1);
-  animation-delay: calc(var(--spinner-voice-delay) + var(--spinner-sync, 0s));
+  animation-delay: var(--spinner-voice-delay);
   animation-iteration-count: infinite;
 }
 
