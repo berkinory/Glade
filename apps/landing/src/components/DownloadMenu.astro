@@ -48,13 +48,10 @@ const choices = JSON.stringify(
 <script>
   type NavigatorWithHints = Navigator & {
     userAgentData?: {
-      platform?: string;
       getHighEntropyValues?: (hints: string[]) => Promise<{ architecture?: string }>;
     };
   };
   const nav = navigator as NavigatorWithHints;
-  const platform = (nav.userAgentData?.platform ?? navigator.platform ?? "").toLowerCase();
-  const mobile = /android|iphone|ipad/i.test(navigator.userAgent);
 
   interface Choice {
     url: string;
@@ -79,9 +76,9 @@ const choices = JSON.stringify(
     }
   }
 
-  // Static HTML offers the Apple Silicon build; the visitor's own platform takes over once known.
-  if (!mobile && platform.startsWith("win")) choose("windows");
-  else if (!mobile && platform.includes("linux")) choose("linux");
+  // Static HTML offers the Apple Silicon build; the platform Base detected before paint takes over.
+  const detected = document.documentElement.dataset.platform;
+  if (detected) choose(detected);
   else {
     choose("macArm");
     void nav.userAgentData

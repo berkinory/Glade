@@ -32,6 +32,10 @@ import Icon from "./Icon.astro";
 </script>
 
 <style>
+  /* The cask is macOS only; Base marks Windows and Linux visitors on the root element. */
+  :global(html[data-platform]) .brew {
+    display: none;
+  }
   .brew {
     display: inline-flex;
     align-items: center;

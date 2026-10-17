@@ -33,6 +33,15 @@ const jsonLd = JSON.stringify(structuredData({ includeFaq: path === "/" })).repl
     <meta name="robots" content="index, follow, max-image-preview:large" />
     <meta name="theme-color" content="#0e0e0f" />
     <meta name="color-scheme" content="dark" />
+    <!-- Runs before first paint, so Windows and Linux visitors never see the macOS-only Homebrew command. -->
+    <script is:inline>
+      (() => {
+        if (/android|iphone|ipad/i.test(navigator.userAgent)) return;
+        const platform = (navigator.userAgentData?.platform ?? navigator.platform ?? "").toLowerCase();
+        if (platform.startsWith("win")) document.documentElement.dataset.platform = "windows";
+        else if (platform.includes("linux")) document.documentElement.dataset.platform = "linux";
+      })();
+    </script>
 
     <link rel="preload" href={displayFont} as="font" type="font/woff2" crossorigin />
 
