@@ -1,99 +1,48 @@
 import { Button } from "~/components/ui/button";
-import { DialogFooter } from "~/components/ui/dialog";
-import { cn } from "~/lib/utils";
-import { ONBOARDING_INSET_CLASS_NAME } from "./layout";
-import { ONBOARDING_STEPS, type OnboardingStep } from "./logic";
 
 const FOOTER_BUTTON_CLASS_NAME = "px-4 text-ui-lg sm:text-ui-lg";
 
 export function OnboardingStepFooter(props: {
-  step: OnboardingStep;
+  showBack: boolean;
   onBack: () => void;
   onSkip: () => void;
   primaryLabel: string;
   onPrimary: () => void;
-  primaryDisabled?: boolean;
-  primaryBusy?: boolean;
-
-  navigationLocked?: boolean;
-
-  secondaryLabel?: string;
-  onSecondary?: () => void;
+  busy: boolean;
 }) {
-  const stepIndex = ONBOARDING_STEPS.indexOf(props.step);
-  const showBack = props.step !== "welcome" && props.step !== "done";
-  const showSkip = props.step !== "done";
   return (
-    <DialogFooter
-      variant="bare"
-      className={cn("items-center gap-2 pt-5 pb-6", ONBOARDING_INSET_CLASS_NAME)}
-    >
-      <div className="flex flex-1 items-center gap-4">
-        <div
-          className="flex items-center gap-1.5"
-          role="progressbar"
-          aria-label="Setup progress"
-          aria-valuemin={1}
-          aria-valuemax={ONBOARDING_STEPS.length}
-          aria-valuenow={stepIndex + 1}
-        >
-          {ONBOARDING_STEPS.map((step, index) => (
-            <span
-              key={step}
-              className={cn(
-                "size-1.5 rounded-full transition-colors motion-reduce:transition-none",
-                index === stepIndex
-                  ? "bg-foreground"
-                  : index < stepIndex
-                    ? "bg-foreground/50"
-                    : "bg-muted-foreground/30",
-              )}
-            />
-          ))}
-        </div>
-        {showSkip ? (
-          <Button
-            variant="ghost"
-            size="sm"
-            shape="capsule"
-            className="-ml-2"
-            disabled={props.navigationLocked}
-            onClick={props.onSkip}
-          >
-            Skip setup
-          </Button>
-        ) : null}
-      </div>
-      {showBack ? (
+    <div className="flex items-center gap-2 border-t border-foreground/6 px-10 py-4">
+      <Button
+        variant="ghost"
+        size="sm"
+        shape="capsule"
+        className="-ms-2.5 text-muted-foreground"
+        disabled={props.busy}
+        onClick={props.onSkip}
+      >
+        Skip setup
+      </Button>
+      <div className="flex-1" />
+      {props.showBack ? (
         <Button
           variant="ghost"
           shape="capsule"
           className={FOOTER_BUTTON_CLASS_NAME}
-          disabled={props.navigationLocked}
+          disabled={props.busy}
           onClick={props.onBack}
         >
           Back
         </Button>
       ) : null}
-      {props.secondaryLabel && props.onSecondary ? (
-        <Button
-          variant="outline"
-          shape="capsule"
-          className={FOOTER_BUTTON_CLASS_NAME}
-          onClick={props.onSecondary}
-        >
-          {props.secondaryLabel}
-        </Button>
-      ) : null}
       <Button
         variant="prominent"
         shape="capsule"
-        className={cn(FOOTER_BUTTON_CLASS_NAME, "hover:scale-100")}
-        disabled={props.primaryDisabled || props.primaryBusy || props.navigationLocked}
+        className={`${FOOTER_BUTTON_CLASS_NAME} hover:scale-100`}
+        disabled={props.busy}
         onClick={props.onPrimary}
       >
-        {props.primaryBusy ? "Working…" : props.primaryLabel}
+        {props.busy ? "Working…" : props.primaryLabel}
       </Button>
-    </DialogFooter>
+    </div>
   );
 }

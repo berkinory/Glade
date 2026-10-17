@@ -51,7 +51,7 @@ function platformLimits(platform: string): string {
 }
 
 // The permission itself: on lets agents use the computer in every chat, off lists no computer tools.
-function AllowComputerUseRow() {
+export function AllowComputerUseRow() {
   const queryClient = useQueryClient();
   const allowed = useQuery(serverSettingsQueryOptions()).data?.allowComputerUse;
   const setAllowed = (allowComputerUse: boolean) => {
@@ -109,7 +109,7 @@ function DriverRow(props: { status: ComputerDriverStatus | null }) {
 
 // macOS grants attach to Glade itself. They are re-read whenever the window regains focus, which
 // is when the user comes back from System Settings.
-function PermissionRows() {
+export function PermissionRows() {
   const bridge = window.desktopBridge?.computer;
   const [permissions, setPermissions] = useState<DesktopComputerPermissions | null>(null);
   useEffect(() => {
