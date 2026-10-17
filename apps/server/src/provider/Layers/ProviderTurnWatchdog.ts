@@ -13,7 +13,7 @@ import {
   type ProviderTurnWatchdogShape,
 } from "../Services/ProviderTurnWatchdog.ts";
 
-const CHECK_INTERVAL = Duration.seconds(15);
+const CHECK_INTERVAL_MS = 15_000;
 
 function describeSilence(idleTimeoutMs: number): string {
   const minutes = Math.round(idleTimeoutMs / 60_000);
@@ -91,8 +91,17 @@ export const ProviderTurnWatchdogLive = Layer.effect(
         ),
       );
 
+    // A check long past its interval means the host slept or the process was suspended. That
+    // silence is not the agent's, so every turn's window restarts.
+    let lastCheckMs: number | null = null;
     const checkIdleTurns = Effect.gen(function* () {
       const nowMs = yield* Clock.currentTimeMillis;
+      const suspended = lastCheckMs !== null && nowMs - lastCheckMs > 2 * CHECK_INTERVAL_MS;
+      lastCheckMs = nowMs;
+      if (suspended) {
+        tracker.touchAll(nowMs);
+        return;
+      }
       yield* Effect.forEach(
         tracker.idleTurns(nowMs, idleTimeoutMs),
         (idle) => stopIdleTurn(idle, nowMs),
@@ -109,7 +118,7 @@ export const ProviderTurnWatchdogLive = Layer.effect(
           { startImmediately: true },
         );
         yield* Effect.forkScoped(
-          checkIdleTurns.pipe(Effect.repeat(Schedule.spaced(CHECK_INTERVAL))),
+          checkIdleTurns.pipe(Effect.repeat(Schedule.spaced(Duration.millis(CHECK_INTERVAL_MS)))),
         );
       });
 

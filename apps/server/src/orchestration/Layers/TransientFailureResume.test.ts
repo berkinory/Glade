@@ -61,7 +61,7 @@ function makeHarness() {
         ),
       ),
     );
-    yield* service.start();
+    yield* recording.onHost(service.start());
 
     return {
       ...recording,
@@ -158,6 +158,24 @@ describe("TransientFailureResume", () => {
       );
       expect(delays).toHaveLength(6);
       expect(delays.every((delay, index) => index === 0 || delay > delays[index - 1]!)).toBe(true);
+    }).pipe(Effect.scoped),
+  );
+
+  it.effect("continues a chat once the host is back from sleep", () =>
+    Effect.gen(function* () {
+      const harness = yield* makeHarness();
+      yield* harness.fail("turn-0", failure({}));
+      yield* harness.advance("10 seconds");
+      yield* harness.sleepHost("3 hours");
+      for (let darkWake = 0; darkWake < 4; darkWake += 1) {
+        yield* harness.advance("5 seconds");
+        yield* harness.sleepHost("25 seconds");
+      }
+      yield* harness.advance("20 seconds");
+      expect(harness.turnStarts()).toEqual([]);
+
+      yield* harness.advance("1 minute");
+      expect(harness.turnStarts()).toHaveLength(1);
     }).pipe(Effect.scoped),
   );
 

@@ -4,7 +4,7 @@ import type { ProviderRuntimeEvent } from "@glade/contracts/provider/runtimeEven
 import { Clock, Effect, FiberMap, Layer, Stream, SubscriptionRef } from "effect";
 
 import { ProviderService } from "../../provider/Services/ProviderService.ts";
-import { isResumableThread, sleepUntil } from "../agentResume.ts";
+import { isResumableThread, sleepUntilAwake } from "../agentResume.ts";
 import { OrchestrationEngineService } from "../Services/OrchestrationEngine.ts";
 import {
   TransientFailureResume,
@@ -16,9 +16,6 @@ import {
   transientFailureResumeActivityCommand,
   transientFailureResumeTurnCommand,
 } from "../transientFailureResume.ts";
-
-// A resume due while the host slept would continue a chat long after the user last saw it.
-const LATE_RESUME_LIMIT_MS = 10 * 60_000;
 
 // The user taking over a chat ends its wait.
 const USER_TAKEOVER_EVENTS: ReadonlySet<OrchestrationEvent["type"]> = new Set([
@@ -60,13 +57,9 @@ const make = Effect.gen(function* () {
 
   const waitThenResume = (wait: TransientFailureWait): Effect.Effect<void> =>
     Effect.gen(function* () {
-      yield* sleepUntil(wait.dueMs);
-      if ((yield* Clock.currentTimeMillis) > wait.dueMs + LATE_RESUME_LIMIT_MS) {
-        yield* Effect.logInfo("transient-failure resume came due while the host was away", {
-          threadId: wait.threadId,
-        });
-        return;
-      }
+      // A sleeping host spends the provider's own retries without a network; the resume waits for
+      // the host to be back instead of spending its attempts the same way.
+      yield* sleepUntilAwake(wait.dueMs);
       const thread = yield* readThread(wait.threadId);
       if (
         !thread ||

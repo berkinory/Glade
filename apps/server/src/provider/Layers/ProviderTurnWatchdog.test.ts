@@ -61,7 +61,7 @@ function makeHarness() {
         ),
       ),
     );
-    yield* watchdog.start();
+    yield* recording.onHost(watchdog.start());
 
     const emit = (input: EventInput) =>
       recording.publishRuntimeEvent({
@@ -75,6 +75,7 @@ function makeHarness() {
     return {
       emit,
       advance: recording.advance,
+      sleepHost: recording.sleepHost,
       setActiveTurn: (turnId: TurnId | undefined) => {
         activeTurnId = turnId;
       },
@@ -204,6 +205,20 @@ describe("ProviderTurnWatchdog", () => {
       expect(harness.interrupts()).toEqual([]);
 
       yield* harness.advance("2 minutes");
+      expect(harness.interrupts()).toHaveLength(1);
+    }).pipe(Effect.scoped),
+  );
+
+  it.effect("restarts the silence window after the host slept", () =>
+    Effect.gen(function* () {
+      const harness = yield* makeHarness();
+      yield* harness.emit(turnStarted());
+      yield* harness.advance("1 minute");
+      yield* harness.sleepHost("3 hours");
+      yield* harness.advance("1 minute");
+      expect(harness.interrupts()).toEqual([]);
+
+      yield* harness.advance("15 minutes");
       expect(harness.interrupts()).toHaveLength(1);
     }).pipe(Effect.scoped),
   );

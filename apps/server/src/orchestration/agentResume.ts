@@ -15,6 +15,25 @@ export const sleepUntil = (targetMs: number) =>
     }
   });
 
+const AWAKE_TICK_MS = 5_000;
+const SUSPENSION_GAP_MS = 3 * AWAKE_TICK_MS;
+const AWAKE_QUIET_MS = 30_000;
+
+// A sleeping host wakes for seconds at a time without a network (macOS dark wakes) long before the
+// user is back. A wall-clock jump between short ticks marks a suspension, so this returns only once
+// the target passed and the host stayed up for a quiet window since its last suspension.
+export const sleepUntilAwake = (targetMs: number) =>
+  Effect.gen(function* () {
+    let lastTickMs = yield* Clock.currentTimeMillis;
+    let awakeSinceMs = lastTickMs;
+    while (lastTickMs < targetMs || lastTickMs - awakeSinceMs < AWAKE_QUIET_MS) {
+      yield* Effect.sleep(Duration.millis(AWAKE_TICK_MS));
+      const nowMs = yield* Clock.currentTimeMillis;
+      if (nowMs - lastTickMs > SUSPENSION_GAP_MS) awakeSinceMs = nowMs;
+      lastTickMs = nowMs;
+    }
+  });
+
 // Child threads belong to the agent that delegated them, which owns their recovery.
 export const isResumableThread = (thread: OrchestrationThread): boolean =>
   thread.deletedAt === null && thread.archivedAt == null && thread.parentThreadId === null;

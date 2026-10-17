@@ -126,9 +126,13 @@ export function makeTurnIdleTracker() {
     if (turn?.turnId === idle.turnId) turn.lastEventAtMs = nowMs;
   };
 
+  const touchAll = (nowMs: number): void => {
+    for (const turn of turns.values()) turn.lastEventAtMs = nowMs;
+  };
+
   const forget = (idle: IdleTurn): void => {
     if (isCurrent(idle)) turns.delete(idle.threadId);
   };
 
-  return { observe, idleTurns, isCurrent, touch, forget };
+  return { observe, idleTurns, isCurrent, touch, touchAll, forget };
 }
