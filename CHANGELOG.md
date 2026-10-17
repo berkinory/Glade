@@ -5,6 +5,7 @@
 ### Improved
 
 - Glade has a refreshed look: a quieter violet accent across the app, warmer light mode colors, a misty landscape behind the empty start screen and a new installer background.
+- Chats show when an agent loads a skill, naming the skill, whichever provider runs it. ([d22481c5a](https://github.com/berkinory/Glade/commit/d22481c5ab9ba28e1d9cc22063598ea426e9624c))
 - Update progress in the sidebar has its own row, so it no longer squeezes out usage meters or the help menu. ([b91bef2ba](https://github.com/berkinory/Glade/commit/b91bef2ba1de121323f5a42a2aa96bfee421da78))
 
 ### Fixed
