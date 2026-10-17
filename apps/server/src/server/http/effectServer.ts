@@ -52,6 +52,7 @@ import { captureCrashInterruptedChats } from "../../orchestration/crashResume";
 import { reconcileRestartStuckTurns } from "../../orchestration/startupTurnReconciliation";
 import { ProviderSessionReaper } from "../../provider/Services/ProviderSessionReaper";
 import { ProviderRuntimeReconciler } from "../../provider/Services/ProviderRuntimeReconciler";
+import { ProviderTurnWatchdog } from "../../provider/Services/ProviderTurnWatchdog";
 import {
   ProviderService,
   type ProviderServiceShape,
@@ -86,6 +87,7 @@ export interface ServerShape {
     | ProjectionSnapshotQuery
     | ProviderSessionReaper
     | ProviderRuntimeReconciler
+    | ProviderTurnWatchdog
     | ProviderService
     | ServerRuntimeStartup
     | ServerSettingsService
@@ -173,6 +175,7 @@ export const createEffectServer = Effect.fn(function* (
   const providerService = yield* ProviderService;
   const providerSessionReaper = yield* ProviderSessionReaper;
   const providerRuntimeReconciler = yield* ProviderRuntimeReconciler;
+  const providerTurnWatchdog = yield* ProviderTurnWatchdog;
   const runtimeStartup = yield* ServerRuntimeStartup;
   const serverSettings = yield* ServerSettingsService;
   const threadDeletionReactor = yield* ThreadDeletionReactor;
@@ -284,6 +287,7 @@ export const createEffectServer = Effect.fn(function* (
       threadDeletionReactor,
       providerSessionReaper,
       providerRuntimeReconciler,
+      providerTurnWatchdog,
       keepAwake,
       usageLimitResume,
       transientFailureResume,

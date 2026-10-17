@@ -43,6 +43,7 @@ import { createClaudeCredentialKeepaliveController } from "./provider/claude/cla
 import { ProjectionSnapshotQuery } from "./orchestration/Services/ProjectionSnapshotQuery";
 import { ProviderSessionReaperLive } from "./provider/Layers/ProviderSessionReaper";
 import { ProviderRuntimeReconcilerLive } from "./provider/Layers/ProviderRuntimeReconciler";
+import { ProviderTurnWatchdogLive } from "./provider/Layers/ProviderTurnWatchdog";
 import { Server } from "./server/http/effectServer";
 import { ServerLoggerLive } from "./diagnostics/serverLogger";
 import { ServerSettingsService } from "./settings/serverSettings";
@@ -286,11 +287,16 @@ const LayerLive = (input: CliInput) => {
     Layer.provideMerge(runtimeServicesLayer),
     Layer.provideMerge(providerLayer),
   );
+  const providerTurnWatchdogLayer = ProviderTurnWatchdogLive.pipe(
+    Layer.provideMerge(runtimeServicesLayer),
+    Layer.provideMerge(providerLayer),
+  );
   return Layer.empty.pipe(
     Layer.provideMerge(runtimeServicesLayer),
     Layer.provideMerge(providerLayer),
     Layer.provideMerge(providerSessionReaperLayer),
     Layer.provideMerge(providerRuntimeReconcilerLayer),
+    Layer.provideMerge(providerTurnWatchdogLayer),
     Layer.provideMerge(SqlitePersistence.layerConfig),
     Layer.provideMerge(ServerLoggerLive),
     Layer.provideMerge(ServerConfigLive(input)),

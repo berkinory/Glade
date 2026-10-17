@@ -353,7 +353,7 @@ queued work drains. Generation and native-turn checks prevent old failures from
 clearing a newer session. The transcript remains available for fresh-session context.
 A new Claude session becomes resumable only after Claude records conversation output. A session
 stopped or restarted before that starts fresh and carries Glade's transcript into its next turn.
-When the Codex watchdog actually retires gateway authority, its terminal event asks
+When a Codex terminal event reports that gateway authority was retired, it asks
 the existing lifecycle owner to renew the connection on the next send.
 
 ### Sign-in and usage indicators
