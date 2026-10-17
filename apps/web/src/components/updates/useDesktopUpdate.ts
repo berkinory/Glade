@@ -36,7 +36,6 @@ export interface DesktopUpdateControls {
   desktopUpdateDownloadPercent: number | null;
   desktopUpdateReadyVersion: string | null;
   desktopCurrentVersion: string | null;
-  preparing: boolean;
   installing: boolean;
   handleDesktopUpdateButtonClick: () => void;
 }
@@ -342,9 +341,6 @@ export function useDesktopUpdate(): DesktopUpdateControls {
 
   return {
     installing: installingDesktopUpdate,
-    preparing:
-      desktopUpdateState?.status === "downloading" ||
-      (desktopUpdateState?.status === "available" && desktopUpdateState.errorContext === null),
     showDesktopUpdateButton,
     desktopUpdateTooltip,
     desktopUpdateButtonDisabled,

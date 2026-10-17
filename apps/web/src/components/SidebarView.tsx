@@ -569,6 +569,33 @@ export function SidebarView({ context }: { context: ReturnType<typeof useSidebar
                   <DebugFeatureFlagsMenu />
                 </Suspense>
               ) : null}
+              {updatePill ? (
+                <Tooltip>
+                  <TooltipTrigger
+                    render={
+                      <button
+                        type="button"
+                        aria-label={updatePill.tooltip}
+                        className="inline-flex h-6 shrink-0 items-center justify-center gap-1.5 rounded-full bg-[var(--info)] px-2.5 font-system-ui text-ui-xs font-medium leading-none text-white transition-colors hover:brightness-110"
+                        onClick={openUpdates}
+                      >
+                        {updatePill.busy ? (
+                          <Spinner variant="action" aria-hidden="true" className="size-3" />
+                        ) : null}
+                        <span className="min-w-0 truncate text-center leading-tight">
+                          {updatePill.label}
+                        </span>
+                        {updatePill.downloadPercent !== null ? (
+                          <span className="rounded-full bg-white/20 px-1.5 py-0.5 text-ui-2xs font-semibold tabular-nums text-white/95">
+                            {updatePill.downloadPercent}%
+                          </span>
+                        ) : null}
+                      </button>
+                    }
+                  />
+                  <TooltipPopup side="top">{updatePill.tooltip}</TooltipPopup>
+                </Tooltip>
+              ) : null}
               {usageInSeparateRow ? (
                 <SidebarUsageIndicators providers={sidebarUsageProviders} />
               ) : null}
@@ -595,38 +622,10 @@ export function SidebarView({ context }: { context: ReturnType<typeof useSidebar
                   </SidebarLeadingIcon>
                   <span>{isOnSettings ? "Home" : "Settings"}</span>
                 </SidebarMenuButton>
-                {!usageInSeparateRow && !desktopUpdate.preparing ? (
+                {!usageInSeparateRow ? (
                   <SidebarUsageIndicators providers={sidebarUsageProviders} />
                 ) : null}
-                {updatePill ? (
-                  <Tooltip>
-                    <TooltipTrigger
-                      render={
-                        <button
-                          type="button"
-                          aria-label={updatePill.tooltip}
-                          className="inline-flex h-6 shrink-0 items-center justify-center gap-1.5 rounded-full bg-[var(--info)] px-2.5 font-system-ui text-ui-xs font-medium leading-none text-white transition-colors hover:brightness-110"
-                          onClick={openUpdates}
-                        >
-                          {updatePill.busy ? (
-                            <Spinner variant="action" aria-hidden="true" className="size-3" />
-                          ) : null}
-                          <span className="min-w-0 truncate text-center leading-tight">
-                            {updatePill.label}
-                          </span>
-                          {updatePill.downloadPercent !== null ? (
-                            <span className="rounded-full bg-white/20 px-1.5 py-0.5 text-ui-2xs font-semibold tabular-nums text-white/95">
-                              {updatePill.downloadPercent}%
-                            </span>
-                          ) : null}
-                        </button>
-                      }
-                    />
-                    <TooltipPopup side="top">{updatePill.tooltip}</TooltipPopup>
-                  </Tooltip>
-                ) : (
-                  <SidebarHelpMenu {...sidebarHelpMenuProps} />
-                )}
+                <SidebarHelpMenu {...sidebarHelpMenuProps} />
               </div>
             </div>
           </SidebarMenuItem>
