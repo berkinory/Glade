@@ -11,10 +11,9 @@ import type { ProviderRuntimeBinding } from "../Services/ProviderSessionDirector
 
 export const DEFAULT_RUNTIME_RECONCILIATION_STALE_AFTER_MS = 15_000;
 
-// Past this the turn is settled even when the live runtime still claims to be running, because
-// every other signal this planner trusts (a settled session, a missing session, a failed binding)
-// can be absent when a provider wedges mid-turn. `thread.updatedAt` advances on every appended
-// message, so a legitimately long-running turn keeps resetting this clock and is never affected.
+// Recovery bound for a lifecycle without live ownership. Age never revokes a turn the live adapter
+// still runs: tool activity does not advance `thread.updatedAt`, so one long command would look
+// abandoned, and the adapter's own watchdog or interrupt path owns a truly wedged turn.
 const RUNTIME_RECONCILIATION_MAX_TURN_AGE_MS = 45 * 60_000;
 
 // A lifecycle stranded in `starting` or `running` with no turn has no output to wait for, and every
@@ -205,8 +204,19 @@ export function planProviderRuntimeReconciliation(input: {
     const projectedTurnId = projectedInFlightTurnId(thread);
     const liveTurnId = turnIdOrNull(liveSession?.activeTurnId);
 
-    if (liveSession?.status === "running" && liveTurnId !== null && !abandoned) {
-      if (liveTurnId === projectedTurnId) continue;
+    if (liveSession?.status === "running" && liveTurnId !== null) {
+      // The projector never reopens a completed or errored turn, so aligning to one would repeat on
+      // every tick without converging.
+      const latestTurn = thread.latestTurn?.turnId === liveTurnId ? thread.latestTurn : null;
+      if (latestTurn?.state === "completed" || latestTurn?.state === "error") continue;
+      if (
+        liveTurnId === projectedTurnId &&
+        thread.session?.status === "running" &&
+        latestTurn?.state === "running" &&
+        latestTurn.completedAt === null
+      ) {
+        continue;
+      }
       plans.push({
         action: "align-running-turn",
         threadId: thread.id,

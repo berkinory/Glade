@@ -115,6 +115,9 @@ export function makeTurnProjector(input: {
             yield* projectionTurnRepository.upsertByTurnId({
               ...existingTurn.value,
               state: nextState,
+              // Runtime reconciliation can reopen a turn that was wrongly settled while its
+              // provider kept running; the completion time must reopen with it.
+              completedAt: nextState === "running" ? null : existingTurn.value.completedAt,
               pendingMessageId:
                 existingTurn.value.pendingMessageId ??
                 (Option.isSome(pendingTurnStart) ? pendingTurnStart.value.messageId : null),

@@ -129,10 +129,13 @@ const make = (options?: ProviderRuntimeReconcilerLiveOptions) =>
         updatedAt: now,
       };
 
-      if (
-        thread.latestTurn?.state !== "running" &&
-        isSameProjectedSession(thread.session, session)
-      ) {
+      const turnNeedsRepair =
+        plan.action === "align-running-turn"
+          ? thread.latestTurn?.turnId !== plan.runtimeTurnId ||
+            thread.latestTurn.state !== "running" ||
+            thread.latestTurn.completedAt !== null
+          : thread.latestTurn?.state === "running";
+      if (!turnNeedsRepair && isSameProjectedSession(thread.session, session)) {
         return;
       }
 

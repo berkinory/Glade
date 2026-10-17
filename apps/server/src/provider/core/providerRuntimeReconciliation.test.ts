@@ -1,4 +1,4 @@
-import { ProjectId, ThreadId } from "@glade/contracts/core/baseSchemas";
+import { ProjectId, ThreadId, TurnId } from "@glade/contracts/core/baseSchemas";
 import { type OrchestrationThreadShell } from "@glade/contracts/orchestration/threadEntities";
 import { type ProviderSession } from "@glade/contracts/provider/provider";
 import { describe, expect, it } from "vitest";
@@ -68,5 +68,56 @@ describe("planProviderRuntimeReconciliation stalled starts", () => {
     });
 
     expect(plans.map((plan) => plan.action)).toEqual(settles ? ["settle-interrupted"] : []);
+  });
+});
+
+const LIVE_TURN_ID = TurnId.makeUnsafe("turn-long-tool-call");
+
+const runningTurnThread = (latestTurnState: "running" | "completed"): OrchestrationThreadShell =>
+  ({
+    ...stalledStartThread,
+    latestTurn: {
+      turnId: LIVE_TURN_ID,
+      state: latestTurnState,
+      requestedAt: STARTED_AT,
+      startedAt: STARTED_AT,
+      completedAt: latestTurnState === "running" ? null : STARTED_AT,
+      assistantMessageId: null,
+    },
+    session: { ...stalledStartThread.session, status: "running", activeTurnId: LIVE_TURN_ID },
+  }) as OrchestrationThreadShell;
+
+describe("planProviderRuntimeReconciliation past the abandoned bound", () => {
+  it.each([
+    {
+      label: "keeps a turn the live provider still runs",
+      latestTurnState: "running",
+      live: "running",
+      actions: [],
+    },
+    {
+      label: "does not reopen a turn the projection already finished",
+      latestTurnState: "completed",
+      live: "running",
+      actions: [],
+    },
+    {
+      label: "settles a turn the live provider no longer runs",
+      latestTurnState: "running",
+      live: "ready",
+      actions: ["settle-interrupted"],
+    },
+  ] as const)("$label", ({ latestTurnState, live, actions }) => {
+    const plans = planProviderRuntimeReconciliation({
+      threads: [runningTurnThread(latestTurnState)],
+      bindings: [{ ...binding, runtimePayload: { activeTurnId: LIVE_TURN_ID } }],
+      liveSessions: [
+        { ...liveSession(live), ...(live === "running" ? { activeTurnId: LIVE_TURN_ID } : {}) },
+      ],
+      pumpHealth: [],
+      nowMs: Date.parse(STARTED_AT) + 50 * MINUTE_MS,
+    });
+
+    expect(plans.map((plan) => plan.action)).toEqual(actions);
   });
 });
