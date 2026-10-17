@@ -42,6 +42,8 @@ export const WS_TERMINAL_IDLE_INPUT_CAPABILITY = "terminal.idle-input";
 export const WS_SERVER_RUNTIME_STATUS_CAPABILITY = "server.runtime-status";
 // Older servers have no thread detail head; clients then verify a thread by reading its full detail.
 export const WS_THREAD_DETAIL_HEAD_CAPABILITY = "orchestration.thread-detail-head";
+// Older servers cannot start a thread's provider runtime before its first turn.
+export const WS_SESSION_PREWARM_CAPABILITY = "orchestration.session-prewarm";
 // Older servers cannot open a listener for other devices or pair them.
 export const WS_REMOTE_ACCESS_CAPABILITY = "server.remote-access";
 
@@ -64,6 +66,7 @@ export const WS_SERVER_CAPABILITIES = [
   WS_SERVER_RUNTIME_STATUS_CAPABILITY,
   WS_REMOTE_ACCESS_CAPABILITY,
   WS_THREAD_DETAIL_HEAD_CAPABILITY,
+  WS_SESSION_PREWARM_CAPABILITY,
 
   "transport.http-negotiate",
 ] as const;

@@ -101,6 +101,7 @@ function makeClaudeAdapter(options?: ClaudeAdapterLiveOptions) {
       withSessionLifecycleLock(
         threadId,
         Effect.gen(function* () {
+          yield* discardWarmLaunch(threadId);
           const failedOwner = processOwnership.failedStartupOwner(threadId);
           if (failedOwner) yield* teardownFailedStartupProcess(threadId, failedOwner);
           const context = sessions.get(threadId);
@@ -132,6 +133,7 @@ function makeClaudeAdapter(options?: ClaudeAdapterLiveOptions) {
             teardownFailedStartupProcess(threadId, owner),
           ),
           teardownFailedDiscoveryProcesses(),
+          discardWarmLaunches,
         ],
         (teardown) => teardown,
       );
@@ -306,7 +308,13 @@ function makeClaudeAdapter(options?: ClaudeAdapterLiveOptions) {
       settlePendingApproval,
       settlePendingUserInput,
     });
-    const { startSessionUnlocked, startSession } = makeClaudeSessionStartup({
+    const {
+      startSessionUnlocked,
+      startSession,
+      prewarmSession,
+      discardWarmLaunch,
+      discardWarmLaunches,
+    } = makeClaudeSessionStartup({
       resolveClaudeStartPreflight,
       nowIso,
       processOwnership,
@@ -353,6 +361,7 @@ function makeClaudeAdapter(options?: ClaudeAdapterLiveOptions) {
             teardownFailedStartupProcess(threadId, owner),
           ),
           teardownFailedDiscoveryProcesses(),
+          discardWarmLaunches,
         ],
         (teardown) => teardown,
       ).pipe(Effect.ignore),
@@ -372,6 +381,7 @@ function makeClaudeAdapter(options?: ClaudeAdapterLiveOptions) {
       },
       titleGeneration: claudeTitleGeneration,
       startSession,
+      prewarmSession,
       canResumeNativeConversation: (resumeCursor) =>
         readClaudeResumeState(resumeCursor)?.resume !== undefined,
       prepareSessionReplacement,

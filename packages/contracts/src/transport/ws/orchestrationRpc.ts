@@ -85,6 +85,15 @@ export const WsOrchestrationGetThreadDetailHeadRpc = Rpc.make(
   },
 );
 
+export const WsOrchestrationPrewarmThreadSessionRpc = Rpc.make(
+  ORCHESTRATION_WS_METHODS.prewarmThreadSession,
+  {
+    payload: OrchestrationRpcSchemas.prewarmThreadSession.input,
+    success: OrchestrationRpcSchemas.prewarmThreadSession.output,
+    error: WsRpcError,
+  },
+);
+
 export const WsOrchestrationSearchThreadMessagesRpc = Rpc.make(
   ORCHESTRATION_WS_METHODS.searchThreadMessages,
   {

@@ -5,7 +5,10 @@ export class ProviderSessionStartup extends ServiceMap.Service<
   Required<
     Pick<
       ProviderServiceShape,
-      "startSession" | "startSessionWithOutcome" | "completePriorTranscriptBootstrap"
+      | "startSession"
+      | "startSessionWithOutcome"
+      | "prewarmSession"
+      | "completePriorTranscriptBootstrap"
     >
   >
 >()("glade/provider/ProviderSessionStartup") {}

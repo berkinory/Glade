@@ -39,6 +39,7 @@ import { ServerSecretStoreLive } from "./auth/Layers/ServerSecretStore";
 import { SessionCredentialServiceLive } from "./auth/Layers/SessionCredentialService";
 import { ProfileStatsQueryLive } from "./diagnostics/Layers/ProfileStatsQuery";
 import { ThreadMessageSearchLive } from "./orchestration/Layers/ThreadMessageSearch";
+import { ThreadSessionPrewarmLive } from "./orchestration/Layers/ThreadSessionPrewarm";
 import { ProfileStatsArchiveLive } from "./diagnostics/profileStatsArchive";
 import { ServerLifecycleEventsLive } from "./server/lifecycle/serverLifecycleEvents";
 import { ServerEventLoopMonitorLive } from "./server/runtime/eventLoopMonitor";
@@ -134,6 +135,11 @@ function makeServerRuntimeServicesLayer(
     Layer.provide(ProjectionThreadActivityRepositoryLive),
   );
 
+  const threadSessionPrewarmLayer = ThreadSessionPrewarmLive.pipe(
+    Layer.provideMerge(OrchestrationLayerLive),
+    Layer.provideMerge(ServerSettingsLive),
+  );
+
   const sessionCredentialLayer = SessionCredentialServiceLive.pipe(
     Layer.provide(ServerSecretStoreLive),
   );
@@ -208,6 +214,7 @@ function makeServerRuntimeServicesLayer(
     ServerEnvironmentLive,
     ProfileStatsQueryLive,
     ThreadMessageSearchLive,
+    threadSessionPrewarmLayer,
     authServicesLayer,
     remoteAccessLayer,
     McpConnectorsLive,

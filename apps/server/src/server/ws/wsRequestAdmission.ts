@@ -72,6 +72,7 @@ const EXPENSIVE_READ_METHODS = new Set<string>([
 const PROVIDER_READ_METHODS = new Set<string>([
   WS_METHODS.serverListProviderUsage,
   WS_METHODS.serverPrewarmVoice,
+  ORCHESTRATION_WS_METHODS.prewarmThreadSession,
   WS_METHODS.serverTranscribeVoice,
   WS_METHODS.providerListCommands,
   WS_METHODS.providerListSkills,

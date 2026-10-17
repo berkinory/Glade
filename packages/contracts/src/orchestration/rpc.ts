@@ -2,6 +2,7 @@ import { PreviewWorkspaceRestoreInput, WorkspaceRestoreReview } from "./workspac
 import { Schema, Struct } from "effect";
 import {
   NonNegativeInt,
+  ProjectId,
   ThreadId,
   EventId,
   IsoDateTime,
@@ -17,12 +18,14 @@ import {
 import { TurnCountRange, ThreadTurnDiff } from "./threadEntities";
 import { OrchestrationEvent } from "./events";
 import { ClientOrchestrationCommand, ClientThreadTurnStartCommand } from "./commands";
+import { ModelSelection, RuntimeMode } from "../provider/sessionPolicy";
 
 export const ORCHESTRATION_WS_METHODS = {
   getProjectionCounts: "orchestration.getProjectionCounts",
   getShellSnapshot: "orchestration.getShellSnapshot",
   getThreadDetailSnapshot: "orchestration.getThreadDetailSnapshot",
   getThreadDetailHead: "orchestration.getThreadDetailHead",
+  prewarmThreadSession: "orchestration.prewarmThreadSession",
   searchThreadMessages: "orchestration.searchThreadMessages",
   dispatchCommand: "orchestration.dispatchCommand",
   settleTurnDispatch: "orchestration.settleTurnDispatch",
@@ -280,6 +283,23 @@ export const OrchestrationGetThreadDetailSnapshotResult = Schema.NullOr(
 export type OrchestrationGetThreadDetailSnapshotResult =
   typeof OrchestrationGetThreadDetailSnapshotResult.Type;
 
+// The composer's selection the next turn will start with. A draft has no server thread yet, so it
+// names its project instead; drafts that create a worktree on send are not prewarmed.
+export const OrchestrationPrewarmThreadSessionInput = Schema.Struct({
+  threadId: ThreadId,
+  modelSelection: ModelSelection,
+  runtimeMode: RuntimeMode,
+  draft: Schema.optional(
+    Schema.Struct({
+      projectId: ProjectId,
+      workingDirectory: Schema.NullOr(TrimmedNonEmptyString),
+    }),
+  ),
+});
+
+export type OrchestrationPrewarmThreadSessionInput =
+  typeof OrchestrationPrewarmThreadSessionInput.Type;
+
 export const OrchestrationGetThreadDetailHeadInput = Schema.Struct({
   threadId: ThreadId,
 });
@@ -349,6 +369,10 @@ export const OrchestrationRpcSchemas = {
   getThreadDetailHead: {
     input: OrchestrationGetThreadDetailHeadInput,
     output: OrchestrationGetThreadDetailHeadResult,
+  },
+  prewarmThreadSession: {
+    input: OrchestrationPrewarmThreadSessionInput,
+    output: Schema.Void,
   },
   searchThreadMessages: {
     input: OrchestrationSearchThreadMessagesInput,

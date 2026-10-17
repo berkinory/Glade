@@ -531,4 +531,50 @@ describe("Claude processLifecycle", () => {
       Effect.provide(harness.layer),
     );
   });
+
+  for (const scenario of [
+    {
+      name: "claims a prewarmed runtime when the start matches it",
+      startRuntimeMode: "full-access",
+      spawned: 1,
+      expectedPermissionMode: "bypassPermissions",
+    },
+    {
+      name: "never claims a prewarmed runtime started with different settings",
+      startRuntimeMode: "approval-required",
+      spawned: 2,
+      expectedPermissionMode: "default",
+    },
+  ] as const) {
+    it.effect(scenario.name, () => {
+      const harness = makeMultiQueryHarness();
+      return Effect.gen(function* () {
+        const adapter = yield* ClaudeAdapter;
+        yield* adapter.prewarmSession!({
+          threadId: THREAD_ID,
+          provider: "claudeAgent",
+          runtimeMode: "full-access",
+        });
+        assert.equal(yield* adapter.hasSession(THREAD_ID), false);
+
+        yield* adapter.startSession({
+          threadId: THREAD_ID,
+          provider: "claudeAgent",
+          runtimeMode: scenario.startRuntimeMode,
+          lifecycleGeneration: "generation-1",
+        });
+
+        assert.equal(harness.createInputs.length, scenario.spawned);
+        assert.equal(harness.queries[0]?.closeCalls, scenario.spawned - 1);
+        assert.equal(
+          harness.createInputs.at(-1)?.options.permissionMode,
+          scenario.expectedPermissionMode,
+        );
+        assert.equal(yield* adapter.hasSession(THREAD_ID), true);
+      }).pipe(
+        Effect.provideService(Random.Random, makeDeterministicRandomService()),
+        Effect.provide(harness.layer),
+      );
+    });
+  }
 });

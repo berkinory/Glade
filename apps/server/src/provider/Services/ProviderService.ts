@@ -65,6 +65,12 @@ export interface ProviderServiceShape {
     options?: ProviderSessionStartOutcomeOptions,
   ) => Effect.Effect<ProviderSessionStartOutcome, ProviderServiceError>;
 
+  /** Starts the runtime the thread's next start will claim; a no-op where unsupported. */
+  readonly prewarmSession?: (
+    threadId: ThreadId,
+    input: ProviderSessionStartInput,
+  ) => Effect.Effect<void, ProviderServiceError>;
+
   readonly completePriorTranscriptBootstrap?: (input: {
     readonly threadId: ThreadId;
   }) => Effect.Effect<void, ProviderServiceError>;

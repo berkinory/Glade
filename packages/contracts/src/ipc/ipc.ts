@@ -232,6 +232,7 @@ import type {
   OrchestrationGetThreadDetailSnapshotInput,
   OrchestrationGetThreadDetailSnapshotResult,
   OrchestrationGetThreadDetailHeadInput,
+  OrchestrationPrewarmThreadSessionInput,
   OrchestrationGetThreadDetailHeadResult,
   OrchestrationSearchThreadMessagesInput,
   OrchestrationSearchThreadMessagesResult,
@@ -795,6 +796,8 @@ export interface NativeApi {
     getThreadDetailHead: (
       input: OrchestrationGetThreadDetailHeadInput,
     ) => Promise<OrchestrationGetThreadDetailHeadResult>;
+    // Resolves without starting anything on a server that cannot prewarm.
+    prewarmThreadSession: (input: OrchestrationPrewarmThreadSessionInput) => Promise<void>;
     searchThreadMessages: (
       input: OrchestrationSearchThreadMessagesInput,
       options?: { readonly signal?: AbortSignal },

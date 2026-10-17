@@ -130,6 +130,7 @@ import { consumeCodexResetCreditEffect, listProviderUsage } from "../../provider
 import { getProviderUsageSnapshot } from "../../provider/usage/providerUsageSnapshot";
 import { ProfileStatsQuery } from "../../diagnostics/Services/ProfileStatsQuery";
 import { ThreadMessageSearch } from "../../orchestration/Services/ThreadMessageSearch";
+import { ThreadSessionPrewarm } from "../../orchestration/Services/ThreadSessionPrewarm";
 import { redactSensitiveProcessArgs } from "../../platform/processArgumentRedaction";
 import { ServerEnvironment } from "../../environment/Services/ServerEnvironment";
 import { ServerLifecycleEvents } from "../lifecycle/serverLifecycleEvents";
@@ -429,6 +430,7 @@ const makeWsRpcHandlersLayer = () =>
       const path = yield* Path.Path;
       const profileStatsQuery = yield* ProfileStatsQuery;
       const threadMessageSearch = yield* ThreadMessageSearch;
+      const threadSessionPrewarm = yield* ThreadSessionPrewarm;
       const projectionReadModelQuery = yield* ProjectionSnapshotQuery;
       const providerAdapterRegistry = yield* ProviderAdapterRegistry;
       const providerDiscoveryService = yield* ProviderDiscoveryService;
@@ -974,6 +976,8 @@ const makeWsRpcHandlersLayer = () =>
               .pipe(Effect.map(Option.getOrNull)),
             "Failed to load orchestration thread detail head",
           ),
+        [ORCHESTRATION_WS_METHODS.prewarmThreadSession]: (input) =>
+          threadSessionPrewarm.prewarm(input),
         [ORCHESTRATION_WS_METHODS.searchThreadMessages]: (input) =>
           rpcEffect(threadMessageSearch.search(input), "Failed to search chat messages"),
         [ORCHESTRATION_WS_METHODS.repairState]: () =>

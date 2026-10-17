@@ -28,6 +28,7 @@ import { readNativeApi } from "~/nativeApi";
 import { useProjectPreferencesStore } from "~/projectPreferencesStore";
 import { selectWorkspaceSidebar, useWorkspaceSidebarStore } from "~/workspaceSidebarStore";
 import { useChatThreadContext } from "../ChatThreadContext";
+import { useThreadSessionPrewarm } from "../useThreadSessionPrewarm";
 import type { useChatComposerController } from "./useChatComposerController";
 import type { useChatDiscoveryController } from "./useChatDiscoveryController";
 import type { useChatProviderController } from "./useChatProviderController";
@@ -55,6 +56,7 @@ export function useChatEnvironmentController({
     settings,
     updateSettings,
     activeThread,
+    prompt,
 
     legendListRef,
     composerTranscriptInsetPx,
@@ -544,6 +546,22 @@ export function useChatEnvironmentController({
 
     envMode,
   };
+
+  // A draft that creates its worktree on send has no workspace to start in yet.
+  const prewarmDraft =
+    !isServerThread && draftThread?.envMode === "local"
+      ? { projectId: draftThread.projectId, workingDirectory: draftThread.workingDirectory ?? null }
+      : null;
+  useThreadSessionPrewarm({
+    threadId,
+    prompt,
+    eligible: isServerThread
+      ? !activeThread?.session || activeThread.session.status === "closed"
+      : prewarmDraft !== null,
+    modelSelection: selectedModelSelection,
+    runtimeMode,
+    draft: prewarmDraft,
+  });
 
   useEffect(() => {
     if (!activeThreadId) return;

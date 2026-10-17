@@ -1,12 +1,15 @@
 import { ProviderAdmission } from "../Services/ProviderAdmission";
 import { ProviderSessionStartup } from "../Services/ProviderSessionStartup";
-import { Layer } from "effect";
+import { Layer, type ServiceMap } from "effect";
 import { ProviderInterruptions } from "../Services/ProviderInterruptions";
 
 import { Effect, Option, Duration, Cause, Exit } from "effect";
 import { type ProviderAdapterError } from "../core/Errors.ts";
 import { ProviderAdapterRegistry } from "../Services/ProviderAdapterRegistry.ts";
-import { ProviderSessionDirectory } from "../Services/ProviderSessionDirectory.ts";
+import {
+  ProviderSessionDirectory,
+  type ProviderRuntimeBinding,
+} from "../Services/ProviderSessionDirectory.ts";
 import { ProviderLifecycle } from "../Services/ProviderLifecycle";
 import {
   readPersistedProviderOptions,
@@ -28,6 +31,7 @@ import {
 } from "@glade/contracts/provider/provider";
 import type { ProviderAdapterShape } from "../Services/ProviderAdapter.ts";
 import { asRecord } from "@glade/shared/transport/payloadValues";
+import type { ProviderKind, ThreadId } from "@glade/contracts/core/baseSchemas";
 import {
   ProviderStartupLifecycle,
   observeProviderStartup,
@@ -40,6 +44,45 @@ import {
 import { AGENT_GATEWAY_CREDENTIAL_ROTATION_REQUIRED } from "../../agentGateway/sessionLease.ts";
 import { ProviderIdleRuntime } from "../Services/ProviderIdleRuntime";
 import { ProviderRuntimeBindings } from "../Services/ProviderRuntimeBindings";
+
+type ResolvedStartInput = ProviderSessionStartInput & {
+  readonly threadId: ThreadId;
+  readonly provider: ProviderKind;
+};
+
+function resolveEffectiveStart(
+  input: ResolvedStartInput,
+  persistedBinding: ProviderRuntimeBinding | undefined,
+  retiredResumeCursor: unknown,
+) {
+  const sameProviderBinding =
+    persistedBinding?.provider === input.provider ? persistedBinding : undefined;
+  return {
+    resumeCursor:
+      input.forkSourceResumeCursor !== undefined
+        ? undefined
+        : (input.resumeCursor ?? retiredResumeCursor ?? sameProviderBinding?.resumeCursor),
+    providerOptions:
+      input.providerOptions ??
+      (sameProviderBinding
+        ? readPersistedProviderOptions(sameProviderBinding.runtimePayload)
+        : undefined),
+  };
+}
+
+function adapterStartInputFor(
+  input: ResolvedStartInput,
+  effective: ReturnType<typeof resolveEffectiveStart>,
+) {
+  const { resumeCursor: _inputResumeCursor, ...adapterStartInput } = input;
+  return {
+    ...adapterStartInput,
+    ...(effective.providerOptions !== undefined
+      ? { providerOptions: effective.providerOptions }
+      : {}),
+    ...(hasResumeCursor(effective.resumeCursor) ? { resumeCursor: effective.resumeCursor } : {}),
+  };
+}
 
 export const ProviderSessionStartupLive = Layer.effect(
   ProviderSessionStartup,
@@ -111,38 +154,25 @@ export const ProviderSessionStartupLive = Layer.effect(
           (lease) =>
             Effect.gen(function* () {
               const persistedBinding = Option.getOrUndefined(yield* directory.getBinding(threadId));
-              const effectiveResumeCursor =
-                input.forkSourceResumeCursor !== undefined
-                  ? undefined
-                  : (input.resumeCursor ??
-                    retiredSession?.resumeCursor ??
-                    (persistedBinding?.provider === input.provider
-                      ? persistedBinding.resumeCursor
-                      : undefined));
+              const {
+                resumeCursor: effectiveResumeCursor,
+                providerOptions: effectiveProviderOptions,
+              } = resolveEffectiveStart(input, persistedBinding, retiredSession?.resumeCursor);
               const persistedPriorTranscriptBootstrapPending =
                 persistedBinding?.provider === input.provider &&
                 (asRecord(persistedBinding.runtimePayload) ?? {})[
                   PRIOR_TRANSCRIPT_BOOTSTRAP_PENDING
                 ] === true;
-              const { resumeCursor: _inputResumeCursor, ...adapterStartInput } = input;
-              const effectiveProviderOptions =
-                input.providerOptions ??
-                (persistedBinding?.provider === input.provider
-                  ? readPersistedProviderOptions(persistedBinding.runtimePayload)
-                  : undefined);
               let replacementStarted = false;
               const startupLifecycle = new ProviderStartupLifecycle();
               const startAndPersistReplacement = Effect.gen(function* () {
                 yield* ensureProviderEnabled(input.provider, "ProviderService.startSession");
                 const resolvedAdapterStartInput = {
-                  ...adapterStartInput,
+                  ...adapterStartInputFor(input, {
+                    resumeCursor: effectiveResumeCursor,
+                    providerOptions: effectiveProviderOptions,
+                  }),
                   lifecycleGeneration: lease.generation,
-                  ...(effectiveProviderOptions !== undefined
-                    ? { providerOptions: effectiveProviderOptions }
-                    : {}),
-                  ...(hasResumeCursor(effectiveResumeCursor)
-                    ? { resumeCursor: effectiveResumeCursor }
-                    : {}),
                 };
                 // A provider start that never returns holds this thread's lifecycle lock and the caller's command
                 // slot forever.
@@ -346,6 +376,40 @@ export const ProviderSessionStartupLive = Layer.effect(
           }),
         );
       });
-    return { startSession, startSessionWithOutcome, completePriorTranscriptBootstrap };
+    // Mirrors the start's input resolution so the start that follows claims the prewarmed runtime.
+    const prewarmSession: ServiceMap.Service.Shape<
+      typeof ProviderSessionStartup
+    >["prewarmSession"] = (threadId, rawInput) =>
+      Effect.gen(function* () {
+        const parsed = yield* decodeInputOrValidationError({
+          operation: "ProviderService.prewarmSession",
+          schema: ProviderSessionStartInput,
+          payload: rawInput,
+        });
+        const provider = parsed.provider ?? parsed.modelSelection?.provider;
+        if (provider === undefined || parsed.forkSourceResumeCursor !== undefined) return;
+        const input = { ...parsed, threadId, provider };
+        yield* ensureProviderEnabled(provider, "ProviderService.prewarmSession");
+        yield* validateAutoRuntimeMode(
+          "ProviderService.prewarmSession",
+          provider,
+          input.runtimeMode,
+        );
+        const adapter = yield* registry.getByProvider(provider);
+        if (!adapter.prewarmSession) return;
+        const binding = Option.getOrUndefined(yield* directory.getBinding(threadId));
+        // A provider switch replaces the bound runtime, which only a real start may do.
+        if (binding !== undefined && binding.provider !== provider) return;
+        if (yield* adapter.hasSession(threadId)) return;
+        yield* adapter.prewarmSession(
+          adapterStartInputFor(input, resolveEffectiveStart(input, binding, undefined)),
+        );
+      });
+    return {
+      startSession,
+      startSessionWithOutcome,
+      prewarmSession,
+      completePriorTranscriptBootstrap,
+    };
   }),
 );

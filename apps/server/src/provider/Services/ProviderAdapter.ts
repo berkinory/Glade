@@ -117,6 +117,12 @@ export interface ProviderAdapterShape<TError> {
     input: ProviderSessionStartInput,
   ) => Effect.Effect<ProviderSession, TError>;
 
+  /**
+   * Starts the runtime a later `startSession` with the same input will claim, so the first message
+   * skips process startup. Does nothing while the thread has a session.
+   */
+  readonly prewarmSession?: (input: ProviderSessionStartInput) => Effect.Effect<void, TError>;
+
   readonly sendTurn: (
     input: ProviderSendTurnInput,
   ) => Effect.Effect<ProviderTurnStartResult, TError>;

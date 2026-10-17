@@ -49,6 +49,7 @@ import { MCP_CONNECTORS_WS_METHODS } from "@glade/contracts/transport/ws/mcpConn
 import { SKILLS_DIRECTORY_WS_METHODS } from "@glade/contracts/transport/ws/skillsDirectoryRpc";
 import {
   WS_THREAD_DETAIL_HEAD_CAPABILITY,
+  WS_SESSION_PREWARM_CAPABILITY,
   type WsBootstrapNegotiateResult,
 } from "@glade/contracts/transport/ws/wsCompatibility";
 import { VOICE_TRANSCRIPTION_UPLOAD_ROUTE_PATH } from "@glade/shared/transport/binaryTransfer";
@@ -723,6 +724,11 @@ function buildNativeApi(transport: WsTransport, listeners: NativeApiListeners): 
         transport.getCompatibility()?.capabilities.includes(WS_THREAD_DETAIL_HEAD_CAPABILITY)
           ? transport.request(ORCHESTRATION_WS_METHODS.getThreadDetailHead, input)
           : Promise.reject(new Error("This server has no thread detail head.")),
+      prewarmThreadSession: async (input) => {
+        if (transport.getCompatibility()?.capabilities.includes(WS_SESSION_PREWARM_CAPABILITY)) {
+          await transport.request(ORCHESTRATION_WS_METHODS.prewarmThreadSession, input);
+        }
+      },
       searchThreadMessages: (input, options) =>
         transport.request(ORCHESTRATION_WS_METHODS.searchThreadMessages, input, options),
       dispatchCommand: (command) => {
