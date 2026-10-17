@@ -8,6 +8,7 @@
 - Chats show when an agent loads a skill, naming the skill, whichever provider runs it. ([d22481c5a](https://github.com/berkinory/Glade/commit/d22481c5ab9ba28e1d9cc22063598ea426e9624c))
 - Update progress in the sidebar has its own row, so it no longer squeezes out usage meters or the help menu. ([b91bef2ba](https://github.com/berkinory/Glade/commit/b91bef2ba1de121323f5a42a2aa96bfee421da78))
 - Running several agents at once puts less load on the app. ([61f23ba46](https://github.com/berkinory/Glade/commit/61f23ba4674090c3838cf1f720a7e47d4eee21c2))
+- Long chats no longer slow the app down while an agent is working. ([b9a5a6e45](https://github.com/berkinory/Glade/commit/b9a5a6e45481310d06beefe40418c1a9e38a308a))
 
 ### Fixed
 
