@@ -596,7 +596,7 @@ export function subscribeStreamEvents(
     state.threadSubscriptionGenerationById.clear();
     state.nextThreadProjectionReconcileAtById.clear();
     state.threadCatchupBackoffById.clear();
-    batching.domainEventFlushThrottler.cancel();
+    batching.cancelPendingRefreshes();
     context.reconcileThreadSubscriptionsRef.current = null;
     subscriptions.unregisterEmptyRouteRestoreRefresh();
     void context.api.orchestration.unsubscribeShell().catch(() => undefined);
