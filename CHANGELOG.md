@@ -19,9 +19,9 @@
 - Tool calls from connected MCP servers show the service's name, like Exa or Linear, instead of a generic connector label. ([154d07882](https://github.com/berkinory/Glade/commit/154d078828c5382ad6c81a64bfc69ccb0558ff16))
 - Codex chats no longer fill with empty moderation notices during a turn. ([2d50d41f4](https://github.com/berkinory/Glade/commit/2d50d41f45871fe482671cab66d260ae5d9439de))
 - Diffs and worktree transfers work with custom Git diff prefix or color settings. ([81e819447](https://github.com/berkinory/Glade/commit/81e819447fcfa095e273ab338810546d7694c855))
-- Chats that stop on a dropped connection or a temporary provider error continue on their own after a short wait, with any provider, and Keep awake holds the Mac awake while they wait. ([707549f58](https://github.com/berkinory/Glade/commit/707549f5803cfc6eff799138c1c1fc18362baf65))
+- Chats that stop on a dropped connection or a temporary provider error continue on their own after a short wait, with any provider, or once you are back if the Mac slept through it, and Keep awake holds the Mac awake while they wait. ([707549f58](https://github.com/berkinory/Glade/commit/707549f5803cfc6eff799138c1c1fc18362baf65), [58713a48b](https://github.com/berkinory/Glade/commit/58713a48b4a599cd5a76acc779a43b179d5744d0))
 - Long-running agent commands are no longer marked as stopped while they are still working. ([d315f619c](https://github.com/berkinory/Glade/commit/d315f619cdc87020ef20868fb6d6faa3437bfa98))
-- A turn whose agent stops responding now ends on its own after 15 minutes of silence, for every provider, without cutting off long-running commands or waiting approvals. ([043f5ef32](https://github.com/berkinory/Glade/commit/043f5ef32c1149f66a7550587ea4248d50c08a9c))
+- A turn whose agent stops responding now ends on its own after 15 minutes of silence, for every provider, without cutting off long-running commands, waiting approvals or a turn the Mac slept through. ([043f5ef32](https://github.com/berkinory/Glade/commit/043f5ef32c1149f66a7550587ea4248d50c08a9c), [58713a48b](https://github.com/berkinory/Glade/commit/58713a48b4a599cd5a76acc779a43b179d5744d0))
 
 ## 0.2.9 - 2026-10-16
 
