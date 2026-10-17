@@ -887,6 +887,19 @@ const makeWsRpcHandlersLayer = () =>
             ),
           );
 
+      const localServerWorkspaceRoots = orchestrationEngine
+        .getReadModel()
+        .pipe(
+          Effect.map((readModel) => [
+            ...readModel.projects
+              .filter((project) => project.deletedAt === null)
+              .map((project) => project.workspaceRoot),
+            ...readModel.threads.flatMap((thread) =>
+              thread.deletedAt === null && thread.worktreePath ? [thread.worktreePath] : [],
+            ),
+          ]),
+        );
+
       const browserHandlers = makeBrowserWsHandlers({
         host: yield* Effect.serviceOption(BrowserHost),
         snapshots: projectionReadModelQuery,
@@ -1887,12 +1900,16 @@ const makeWsRpcHandlersLayer = () =>
           ),
         [WS_METHODS.serverListLocalServers]: () =>
           rpcEffect(
-            Effect.promise(() => listLocalServers()),
+            localServerWorkspaceRoots.pipe(
+              Effect.flatMap((roots) => Effect.promise(() => listLocalServers(roots))),
+            ),
             "Failed to list local servers",
           ),
         [WS_METHODS.serverStopLocalServer]: (input) =>
           rpcEffect(
-            Effect.promise(() => stopLocalServer(input)),
+            localServerWorkspaceRoots.pipe(
+              Effect.flatMap((roots) => Effect.promise(() => stopLocalServer(input, roots))),
+            ),
             "Failed to stop local server",
           ),
         [WS_METHODS.statsGetProfileStats]: (input) =>

@@ -1,3 +1,4 @@
+import * as fs from "node:fs/promises";
 import path from "node:path";
 
 import type {
@@ -10,6 +11,7 @@ import type {
 
 import { redactSensitiveProcessArgs } from "../../platform/processArgumentRedaction";
 import { execProcessFileAsync } from "../../platform/processRunner";
+import { isContainedPath } from "../realPathContainment";
 import {
   AGENT_LINEAGE_MAX_DEPTH,
   lineageUnderOwner,
@@ -105,6 +107,11 @@ const DEV_COMMAND_LABELS = new Map<string, string>([
   ["vite", "Vite"],
   ["webpack-dev-server", "Webpack"],
 ]);
+
+// `node …/.bin/serve` and `bun …/astro` run a tool through its runtime; the tool names the server.
+const SCRIPT_RUNTIME_COMMANDS = new Set(["bun", "node"]);
+
+const UNRECOGNIZED_SERVER_LABEL = "Local Server";
 
 const DATABASE_OR_SYSTEM_COMMANDS = new Set([
   "memcached",
@@ -276,7 +283,11 @@ function commandTokenName(token: string): string {
 }
 
 function normalizeCommandName(command: string, args: string): string {
-  return commandTokenName(tokenizeCommandLine(args)[0] ?? command);
+  const tokens = tokenizeCommandLine(args);
+  const executableName = commandTokenName(tokens[0] ?? command);
+  if (!SCRIPT_RUNTIME_COMMANDS.has(executableName)) return executableName;
+  const script = tokens.slice(1).find((token) => !token.startsWith("-"));
+  return script ? commandTokenName(script) : executableName;
 }
 
 function processCommandTokens(command: string, args: string): string[] {
@@ -784,6 +795,7 @@ function toServerProcess(
   processInfoByPid: ReadonlyMap<number, LocalServerProcessInfo>,
   cwdByPid: ReadonlyMap<number, string>,
   startedByAgent: ServerLocalServerProcess["startedByAgent"],
+  workspaceRealRoots: readonly string[],
 ): ServerLocalServerProcess | null {
   if (pid === process.pid) {
     return null;
@@ -801,13 +813,20 @@ function toServerProcess(
   if (isIgnoredLocalServerProcess(candidate)) {
     return null;
   }
-  const displayName = detectDevServerKindFromText(candidate);
+  const cwd = resolveProcessCwd(pid, processInfoByPid, cwdByPid);
+  // Names only label what they recognize. A server an agent task started or one running inside a
+  // workspace is the user's own, whatever its tool.
+  const displayName =
+    detectDevServerKindFromText(candidate) ??
+    (startedByAgent?.taskId !== undefined ||
+    (cwd !== null && workspaceRealRoots.some((root) => isContainedPath(root, cwd)))
+      ? UNRECOGNIZED_SERVER_LABEL
+      : null);
   if (!displayName) {
     return null;
   }
 
   const isStoppable = isProcessSignalable(pid);
-  const cwd = resolveProcessCwd(pid, processInfoByPid, cwdByPid);
   const server: ServerLocalServerProcess = {
     id: `${pid}:${ports.join(",")}`,
     pid,
@@ -958,12 +977,10 @@ async function readAgentStartedServers(
 
 function buildLocalServerProcesses(
   listeners: readonly ParsedLsofListener[],
-  processInfoByPid: ReadonlyMap<number, LocalServerProcessInfo> = new Map(),
-  cwdByPid: ReadonlyMap<number, string> = new Map(),
-  startedByAgentByPid: ReadonlyMap<
-    number,
-    NonNullable<ServerLocalServerProcess["startedByAgent"]>
-  > = new Map(),
+  processInfoByPid: ReadonlyMap<number, LocalServerProcessInfo>,
+  cwdByPid: ReadonlyMap<number, string>,
+  startedByAgentByPid: ReadonlyMap<number, NonNullable<ServerLocalServerProcess["startedByAgent"]>>,
+  workspaceRealRoots: readonly string[],
 ): ServerLocalServerProcess[] {
   const grouped = groupListenersByPid(listeners);
   const processes: ServerLocalServerProcess[] = [];
@@ -974,6 +991,7 @@ function buildLocalServerProcesses(
       processInfoByPid,
       cwdByPid,
       startedByAgentByPid.get(pid),
+      workspaceRealRoots,
     );
     if (processRow) {
       processes.push(processRow);
@@ -984,8 +1002,21 @@ function buildLocalServerProcesses(
   );
 }
 
-async function scanLocalServers(): Promise<ServerListLocalServersResult> {
-  const listeners = await readLsofListeners();
+// lsof reports a process cwd with symlinks resolved. A root that no longer exists holds no server.
+async function resolveWorkspaceRealRoots(workspaceRoots: readonly string[]): Promise<string[]> {
+  const realRoots = await Promise.all(
+    workspaceRoots.map((root) => fs.realpath(root).catch(() => null)),
+  );
+  return [...new Set(realRoots.filter((root) => root !== null))];
+}
+
+async function scanLocalServers(
+  workspaceRoots: readonly string[],
+): Promise<ServerListLocalServersResult> {
+  const [listeners, workspaceRealRoots] = await Promise.all([
+    readLsofListeners(),
+    resolveWorkspaceRealRoots(workspaceRoots),
+  ]);
   const pids = [...new Set(listeners.map((listener) => listener.pid))];
   const processInfoByPid = await readProcessInfoWithAncestors(pids);
 
@@ -996,6 +1027,7 @@ async function scanLocalServers(): Promise<ServerListLocalServersResult> {
     processInfoByPid,
     cwdByPid,
     startedByAgentByPid,
+    workspaceRealRoots,
   );
   return {
     generatedAt: new Date().toISOString(),
@@ -1004,6 +1036,7 @@ async function scanLocalServers(): Promise<ServerListLocalServersResult> {
 }
 
 interface LocalServerScan {
+  readonly workspaceKey: string;
   readonly result: Promise<ServerListLocalServersResult>;
   expiresAtMs: number;
 }
@@ -1011,11 +1044,22 @@ interface LocalServerScan {
 let currentScan: LocalServerScan | null = null;
 
 // Shared by every client so concurrent panels trigger one scan; a pending scan never expires.
-export function listLocalServers(): Promise<ServerListLocalServersResult> {
-  if (currentScan && currentScan.expiresAtMs > Date.now()) {
+export function listLocalServers(
+  workspaceRoots: readonly string[],
+): Promise<ServerListLocalServersResult> {
+  const workspaceKey = workspaceRoots.toSorted().join("\0");
+  if (
+    currentScan &&
+    currentScan.workspaceKey === workspaceKey &&
+    currentScan.expiresAtMs > Date.now()
+  ) {
     return currentScan.result;
   }
-  const scan: LocalServerScan = { result: scanLocalServers(), expiresAtMs: Infinity };
+  const scan: LocalServerScan = {
+    workspaceKey,
+    result: scanLocalServers(workspaceRoots),
+    expiresAtMs: Infinity,
+  };
   currentScan = scan;
   scan.result.then(
     () => {
@@ -1045,8 +1089,9 @@ function delay(ms: number): Promise<void> {
 // kill arbitrary processes.
 export async function stopLocalServer(
   input: ServerStopLocalServerInput,
+  workspaceRoots: readonly string[],
 ): Promise<ServerStopLocalServerResult> {
-  const target = (await scanLocalServers()).servers.find(
+  const target = (await scanLocalServers(workspaceRoots)).servers.find(
     (server) => server.pid === input.pid && server.ports.includes(input.port),
   );
 
