@@ -7,11 +7,13 @@
 - Glade has a refreshed look: a quieter violet accent across the app, warmer light mode colors, a misty landscape behind the empty start screen and a new installer background.
 - Chats show when an agent loads a skill, naming the skill, whichever provider runs it. ([d22481c5a](https://github.com/berkinory/Glade/commit/d22481c5ab9ba28e1d9cc22063598ea426e9624c))
 - Update progress in the sidebar has its own row, so it no longer squeezes out usage meters or the help menu. ([b91bef2ba](https://github.com/berkinory/Glade/commit/b91bef2ba1de121323f5a42a2aa96bfee421da78))
+- Running several agents at once puts less load on the app. ([61f23ba46](https://github.com/berkinory/Glade/commit/61f23ba4674090c3838cf1f720a7e47d4eee21c2))
 
 ### Fixed
 
 - Tool calls from connected MCP servers show the service's name, like Exa or Linear, instead of a generic connector label. ([154d07882](https://github.com/berkinory/Glade/commit/154d078828c5382ad6c81a64bfc69ccb0558ff16))
 - Codex chats no longer fill with empty moderation notices during a turn. ([2d50d41f4](https://github.com/berkinory/Glade/commit/2d50d41f45871fe482671cab66d260ae5d9439de))
+- Diffs and worktree transfers work with custom Git diff prefix or color settings. ([81e819447](https://github.com/berkinory/Glade/commit/81e819447fcfa095e273ab338810546d7694c855))
 
 ## 0.2.9 - 2026-10-16
 
