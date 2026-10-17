@@ -153,16 +153,7 @@ const makeGitDiff = Effect.gen(function* () {
           executeGit(
             `${operationPrefix}.untrackedPatch`,
             cwd,
-            [
-              "diff",
-              "--patch",
-              "--no-color",
-              ...RAW_DIFF_ARGS,
-              "--no-renames",
-              "--relative",
-              "--src-prefix=a/",
-              "--dst-prefix=b/",
-            ],
+            ["diff", "--patch", ...RAW_DIFF_ARGS, "--no-renames", "--relative"],
             {
               env,
               timeoutMs: WORKING_TREE_DIFF_TIMEOUT_MS,
@@ -262,7 +253,6 @@ const makeGitDiff = Effect.gen(function* () {
           "diff-files",
           "-M",
           "--patch",
-          "--no-color",
           ...RAW_DIFF_ARGS,
           ...(filePath ? ["--", `:(literal)${filePath}`] : []),
         ],
@@ -308,7 +298,6 @@ const makeGitDiff = Effect.gen(function* () {
           "diff",
           "--cached",
           "--patch",
-          "--no-color",
           ...RAW_DIFF_ARGS,
           ...(filePath ? ["--", `:(literal)${filePath}`] : []),
         ],
@@ -455,7 +444,6 @@ const makeGitDiff = Effect.gen(function* () {
           "diff-index",
           "-M",
           "--patch",
-          "--no-color",
           ...RAW_DIFF_ARGS,
           headExists ? "HEAD" : EMPTY_TREE_OBJECT_ID,
           ...(filePath === undefined ? [] : ["--", ...paths.map((path) => `:(literal)${path}`)]),
@@ -576,7 +564,7 @@ const makeGitDiff = Effect.gen(function* () {
       const tracked = yield* executeGit(
         "GitCore.readBranchPatch.trackedPatch",
         cwd,
-        ["diff-index", "-M", "--patch", "--minimal", "--no-color", ...RAW_DIFF_ARGS, mergeBase],
+        ["diff-index", "-M", "--patch", "--minimal", ...RAW_DIFF_ARGS, mergeBase],
         {
           timeoutMs: WORKING_TREE_DIFF_TIMEOUT_MS,
           maxOutputBytes: 10_000_000,
@@ -770,7 +758,7 @@ const makeGitDiff = Effect.gen(function* () {
           const tracked = yield* executeGit(
             "GitCore.readRefPatch.trackedPatch",
             cwd,
-            ["diff", "--patch", "--no-color", ...RAW_DIFF_ARGS, resolvedRef],
+            ["diff", "--patch", ...RAW_DIFF_ARGS, resolvedRef],
             {
               env,
               timeoutMs: WORKING_TREE_DIFF_TIMEOUT_MS,

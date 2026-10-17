@@ -66,8 +66,16 @@ const DEFAULT_TIMEOUT_MS = 30_000;
 export const DEFAULT_MAX_OUTPUT_BYTES = 1_000_000;
 
 // Output we parse, show or apply must be plain Git patches, never what a user's diff
-// driver or textconv filter renders.
-export const RAW_DIFF_ARGS = ["--no-ext-diff", "--no-textconv"] as const;
+// driver, textconv filter, color or prefix config (`diff.noprefix`, `diff.mnemonicPrefix`,
+// `diff.srcPrefix`) renders. Porcelain diff and show honor those settings; git apply and the
+// patch parser expect `a/` and `b/`.
+export const RAW_DIFF_ARGS = [
+  "--no-ext-diff",
+  "--no-textconv",
+  "--no-color",
+  "--src-prefix=a/",
+  "--dst-prefix=b/",
+] as const;
 
 type TraceTailState = {
   processedBytes: number;

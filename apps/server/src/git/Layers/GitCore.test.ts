@@ -572,6 +572,41 @@ it.layer(TestLayer)("git integration", (it) => {
       }),
     );
 
+    it.effect("produces plain a/ b/ patches under user diff prefix and color config", () =>
+      Effect.gen(function* () {
+        const tmp = yield* makeTmpDir();
+        yield* initRepoWithCommit(tmp);
+        yield* git(tmp, ["config", "diff.noprefix", "true"]);
+        yield* git(tmp, ["config", "color.ui", "always"]);
+        yield* Effect.promise(() => fs.mkdir(path.join(tmp, "src")));
+        yield* writeTextFile(path.join(tmp, "src", "app.ts"), "before\n");
+        yield* git(tmp, ["add", "src/app.ts"]);
+        yield* git(tmp, ["commit", "-m", "add app"]);
+        yield* writeTextFile(path.join(tmp, "src", "app.ts"), "staged\n");
+        yield* git(tmp, ["add", "src/app.ts"]);
+
+        const core = yield* GitCore;
+        const header = "diff --git a/src/app.ts b/src/app.ts\n";
+        const staged = (yield* core.readStagedPatch(tmp)).patch;
+        const sha = yield* git(tmp, ["rev-parse", "HEAD"]);
+        const commit = (yield* core.readCommit({ cwd: tmp, sha })).patch;
+        for (const patch of [staged, commit]) {
+          expect(patch.startsWith(header)).toBe(true);
+          expect(patch).not.toContain("\x1b[");
+        }
+
+        const wtPath = path.join(tmp, "wt-configured-diff");
+        yield* core.createDetachedWorktree({
+          cwd: tmp,
+          ref: "HEAD",
+          path: wtPath,
+          copyChangesFrom: tmp,
+        });
+        expect(yield* readTextFile(path.join(wtPath, "src", "app.ts"))).toBe("staged\n");
+        yield* core.removeWorktree({ cwd: tmp, path: wtPath, force: true });
+      }),
+    );
+
     it.effect("deletes the pre-created branch when worktree add fails", () =>
       Effect.gen(function* () {
         const tmp = yield* makeTmpDir();

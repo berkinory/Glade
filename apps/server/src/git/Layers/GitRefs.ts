@@ -463,7 +463,6 @@ const makeGitRefs = Effect.gen(function* () {
           "-m",
           "--first-parent",
           "--patch",
-          "--no-color",
           ...RAW_DIFF_ARGS,
           input.sha,
         ],

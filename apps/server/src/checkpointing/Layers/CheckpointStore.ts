@@ -9,6 +9,7 @@ import { Cause, Deferred, Effect, Exit, Layer, FileSystem, Option, Path, Semapho
 
 import { CheckpointInvariantError, type CheckpointStoreError } from "../Errors.ts";
 import { GitCommandError } from "../../git/Errors.ts";
+import { RAW_DIFF_ARGS } from "../../git/Layers/GitCommands.ts";
 import { GitCore } from "../../git/Services/GitCore.ts";
 import { CheckpointStore, type CheckpointStoreShape } from "../Services/CheckpointStore.ts";
 import { CheckpointRef } from "@glade/contracts/core/baseSchemas";
@@ -391,9 +392,7 @@ const makeCheckpointStore = Effect.gen(function* () {
           "diff",
           "--patch",
           "--minimal",
-          "--no-color",
-          "--no-ext-diff",
-          "--no-textconv",
+          ...RAW_DIFF_ARGS,
           ...(input.ignoreWhitespace ? ["--ignore-all-space"] : []),
           fromCommitOid,
           toCommitOid,
@@ -420,9 +419,7 @@ const makeCheckpointStore = Effect.gen(function* () {
           "--numstat",
           "-z",
           "--minimal",
-          "--no-color",
-          "--no-ext-diff",
-          "--no-textconv",
+          ...RAW_DIFF_ARGS,
           fromCommitOid,
           toCommitOid,
         ],
