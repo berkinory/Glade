@@ -7,6 +7,7 @@ import {
 import { useQueryClient } from "@tanstack/react-query";
 import { directoryChain, useExplorerRevealRequestStore } from "~/explorerRevealRequestStore";
 import type { ChatFileReference } from "~/lib/chatReferences";
+import { selectMainWorkspace, useMainWorkspaceStore } from "~/mainWorkspaceStore";
 import { selectWorkspaceFileTabs, useWorkspaceFileTabsStore } from "~/workspaceFileTabsStore";
 import {
   dirtyWorkspaceEditorPaths,
@@ -32,6 +33,8 @@ export const DockExplorerPane = function DockExplorerPane(props: {
   );
   const openFile = useWorkspaceFileTabsStore((state) => state.openFile);
   const closeFile = useWorkspaceFileTabsStore((state) => state.closeFile);
+  const mainWorkspace = useMainWorkspaceStore(selectMainWorkspace(props.threadId));
+  const closeReview = useMainWorkspaceStore((state) => state.closeReview);
   const subscribeDirty = useCallback(
     (listener: () => void) => subscribeDirtyWorkspaceEditors(queryClient, listener),
     [queryClient],
@@ -51,6 +54,11 @@ export const DockExplorerPane = function DockExplorerPane(props: {
       ),
   );
   const [codeQuery, setCodeQuery] = useState("");
+  // The file tab's editor bundle is large; loading it with the explorer keeps the first file click
+  // from waiting on it.
+  useEffect(() => {
+    void import("../WorkspaceFilePreview").catch(() => undefined);
+  }, []);
   const revealRequest = useExplorerRevealRequestStore(
     (state) => state.requestsByThreadId[props.threadId],
   );
@@ -136,10 +144,16 @@ export const DockExplorerPane = function DockExplorerPane(props: {
         }
         containerClassName="flex min-h-0 flex-1 flex-col"
         onSelectFile={handleSelectFile}
-        onDeleted={(path) => {
+        onRemoved={(path) => {
+          const removed = (file: string | null) =>
+            file !== null && (file === path || file.startsWith(`${path}/`));
           for (const file of fileTabs.filePaths) {
-            if ((file === path || file.startsWith(`${path}/`)) && !dirtyPaths.has(file))
-              closeFile(props.threadId, file);
+            if (removed(file)) closeFile(props.threadId, file);
+          }
+          // Commit tabs show history and stay; working tree and turn diffs of the file go with it.
+          for (const review of mainWorkspace.reviews) {
+            if ((review.kind === "gitFile" || review.kind === "diff") && removed(review.filePath))
+              closeReview(props.threadId, review.id);
           }
         }}
         onToggleDirectory={handleToggleDirectory}

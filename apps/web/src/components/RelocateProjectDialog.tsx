@@ -6,7 +6,7 @@ import { LOCAL_ENVIRONMENT } from "../environments/environmentKey";
 import { environmentOfProject } from "../environments/environmentStores";
 import { ensureEnvironmentNativeApi } from "../nativeApi";
 import { relocateProjectFromClient } from "../lib/projectRelocation";
-import { hasUnsavedWorkspaceEditors } from "../lib/workspaceEditorSession";
+import { resolveUnsavedWorkspaceEditors } from "./UnsavedEditorsDialog";
 import { RenameDialog } from "./RenameDialog";
 import { toastManager } from "./ui/toast";
 
@@ -27,9 +27,14 @@ export function RelocateProjectDialog(props: {
       onOpenChange={props.onOpenChange}
       onSave={async (workspaceRoot) => {
         try {
-          if (hasUnsavedWorkspaceEditors(queryClient)) {
-            throw new Error("Save or discard unsaved file edits before changing a project path.");
-          }
+          if (
+            !(await resolveUnsavedWorkspaceEditors(
+              queryClient,
+              { cwd: null },
+              "changing the project path",
+            ))
+          )
+            return;
           // The snapshot read names no project, so it is sent to the project's own machine.
           const environmentKey = environmentOfProject(props.projectId) ?? LOCAL_ENVIRONMENT;
           await relocateProjectFromClient(

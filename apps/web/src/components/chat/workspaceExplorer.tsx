@@ -207,7 +207,7 @@ export function WorkspaceExplorerSidebar(props: {
   ) => void;
   onToggleDirectory: (path: string) => void;
   onReferenceInChat: ((reference: ChatFileReference) => void) | undefined;
-  onDeleted?: ((path: string) => void) | undefined;
+  onRemoved?: ((path: string) => void) | undefined;
 }) {
   const queryClient = useQueryClient();
   const onDirectoryChange = useCallback(
@@ -256,7 +256,7 @@ export function WorkspaceExplorerSidebar(props: {
     props.onSelectFile,
     props.expandedDirectories,
     props.onToggleDirectory,
-    props.onDeleted,
+    props.onRemoved,
   );
   const handleTreeEntryContextMenu = useTreeEntryContextMenu(
     props.workspaceRoot,

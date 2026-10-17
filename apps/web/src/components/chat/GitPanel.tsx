@@ -21,7 +21,7 @@ import {
   gitUnstageFilesMutationOptions,
 } from "~/lib/gitReactQuery";
 import { expensiveReadErrorRefetchInterval } from "~/lib/expensiveReadRetry";
-import { hasUnsavedWorkspaceEditors } from "~/lib/workspaceEditorSession";
+import { resolveUnsavedWorkspaceEditors } from "~/components/UnsavedEditorsDialog";
 import { cn } from "~/lib/utils";
 import { Alert } from "../ui/alert";
 import { Input } from "../ui/input";
@@ -271,14 +271,14 @@ export function GitPanel(props: {
     }
     if (clicked === "revert") setReverting(targets);
     if (clicked === "ignore") {
-      if (hasUnsavedWorkspaceEditors(queryClient, cwd)) {
-        toastManager.add({
-          type: "error",
-          title: "Save open files first",
-          description: "Save your open files before updating .gitignore.",
-        });
+      if (
+        !(await resolveUnsavedWorkspaceEditors(
+          queryClient,
+          { cwd, paths: [".gitignore"] },
+          "updating .gitignore",
+        ))
+      )
         return;
-      }
       ignoreMutation.mutate(
         {
           action: "ignore",

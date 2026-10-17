@@ -1,5 +1,5 @@
 diff --git a/dist/components/File.js b/dist/components/File.js
-index fa9a91568ab6464890d4570465c7bb1b93828555..69558b5f6cdaebd0e2568d54d9e4936b7afe0980 100644
+index fa9a91568ab6464890d4570465c7bb1b93828555..58ec7ed597912ff37f5417bad42d78381af96af7 100644
 --- a/dist/components/File.js
 +++ b/dist/components/File.js
 @@ -326,6 +326,9 @@ var File = class {
@@ -12,3 +12,16 @@ index fa9a91568ab6464890d4570465c7bb1b93828555..69558b5f6cdaebd0e2568d54d9e4936b
  	}
  	updateRenderCache(dirtyLines, themeType, options) {
  		this.fileRenderer.updateRenderCache(dirtyLines, themeType, options?.lineCountChangeInFlight);
+diff --git a/dist/renderers/FileRenderer.js b/dist/renderers/FileRenderer.js
+index fb146c3585d1ee374b8d99fefe26867b6384a73a..d394ada6a9eb46c21bd2a066c18b6ee57b008a40 100644
+--- a/dist/renderers/FileRenderer.js
++++ b/dist/renderers/FileRenderer.js
+@@ -311,6 +311,8 @@ var FileRenderer = class {
+ 			this.lineCache = void 0;
+ 			this.textDocumentCache = /* @__PURE__ */ new WeakMap();
+ 		}
++		// Edits live in lineCache while file.contents keeps the seed text; a local re-highlight must read the edits.
++		if (this.renderCache?.file === file) this.syncEditedContentsToFile();
+ 		let { options, forceHighlight } = this.getRenderOptions(file);
+ 		if (this.renderCache?.isDirty === true && !areFileRenderOptionsEqual(options, this.renderCache.options)) this.clearRenderCache();
+ 		const cache = this.getMatchingWorkerResultCache(file, options);

@@ -34,6 +34,7 @@ import {
   GlobalWhatsNewSurface,
 } from "./-rootDialogs";
 import { SshPromptDialog } from "../components/SshPromptDialog";
+import { UnsavedEditorsDialog } from "../components/UnsavedEditorsDialog";
 import { WorkspaceRestoreDialog } from "../components/chat/WorkspaceRestoreDialog";
 import { CrashResumeDialog } from "../components/CrashResumeDialog";
 import { EnvironmentRouters } from "./-rootEnvironmentRouters";
@@ -107,6 +108,7 @@ export function RootRouteView() {
               <GitProgressToastPreviewDev />
               <EnvironmentRouters />
               <SshPromptDialog />
+              <UnsavedEditorsDialog />
               <ProviderStatusRefreshCoordinator />
               <GlobalShortcutsDialog />
               <GlobalFeedbackDialog />

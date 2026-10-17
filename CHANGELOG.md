@@ -2,8 +2,15 @@
 
 ## 0.3.1 - Unreleased
 
+### Improved
+
+- Unsaved file edits no longer block sending a message, renaming files or Git actions: Glade asks whether to save or discard them and carries on.
+- New files and folders from the explorer go into the workspace root when no folder is selected.
+
 ### Fixed
 
+- Pasting or adding lines in plain text and empty files no longer breaks the file editor.
+- Deleting or renaming a file in the explorer closes or updates its open tabs and diffs.
 - Local Servers lists servers that agents start or that run inside your projects, whatever tool runs them. ([6a6fada7d](https://github.com/berkinory/Glade/commit/6a6fada7d2df8346b4498e07c61d7d1e7db693fb))
 
 ## 0.3.0 - 2026-10-17

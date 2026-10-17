@@ -1,7 +1,7 @@
 import { useIsMutating, useMutation, useQueryClient } from "@tanstack/react-query";
 import { gitRevertUnstagedFileMutationOptions } from "~/lib/gitReactQuery";
 import { projectQueryKeys } from "~/lib/projectReactQuery";
-import { hasUnsavedWorkspaceEditors } from "~/lib/workspaceEditorSession";
+import { resolveUnsavedWorkspaceEditors } from "~/components/UnsavedEditorsDialog";
 import { toastManager } from "../ui/toast";
 import { Button } from "../ui/button";
 import type { SourceFile } from "./GitFileList";
@@ -64,14 +64,14 @@ export function GitRevertDialog(props: {
             onClick={() => {
               void (async () => {
                 if (!cwd || !files) return;
-                if (hasUnsavedWorkspaceEditors(queryClient, cwd)) {
-                  toastManager.add({
-                    type: "warning",
-                    title: "Save open files first",
-                    description: "Save open files before discarding changes.",
-                  });
+                if (
+                  !(await resolveUnsavedWorkspaceEditors(
+                    queryClient,
+                    { cwd, paths: files.map((file) => file.path) },
+                    "discarding these changes",
+                  ))
+                )
                   return;
-                }
                 let completed = 0;
                 try {
                   for (const file of files) {

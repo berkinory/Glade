@@ -36,7 +36,7 @@ import {
   gitSourceControlActionMutationOptions,
   type SourceControlAction,
 } from "~/lib/gitReactQuery";
-import { hasUnsavedWorkspaceEditors } from "~/lib/workspaceEditorSession";
+import { resolveUnsavedWorkspaceEditors } from "~/components/UnsavedEditorsDialog";
 export function SourceControlToolbar({
   cwd,
   threadId,
@@ -80,20 +80,14 @@ export function SourceControlToolbar({
     !files.isError &&
     message.trim().length > 0;
   const run = (request: SourceControlAction) => {
-    if (!disabled) execute(request);
+    if (!disabled) void execute(request);
   };
-  const execute = (request: SourceControlAction) => {
+  const execute = async (request: SourceControlAction) => {
     if (
       (request.action === "pull" || request.action === "rebase") &&
-      hasUnsavedWorkspaceEditors(queryClient, cwd)
-    ) {
-      toastManager.add({
-        type: "error",
-        title: "Save open files first",
-        description: "Save your open files before changing the working tree.",
-      });
+      !(await resolveUnsavedWorkspaceEditors(queryClient, { cwd }, "changing the working tree"))
+    )
       return;
-    }
     mutation.mutate(request, {
       onSuccess: () => {
         if (request.action === "commit") {
@@ -127,8 +121,7 @@ export function SourceControlToolbar({
     if (!canCommit || !files.data) return;
     setCheckingCommit(true);
     try {
-      if (hasUnsavedWorkspaceEditors(queryClient, cwd))
-        throw new Error("Save your open files before committing.");
+      if (!(await resolveUnsavedWorkspaceEditors(queryClient, { cwd }, "committing"))) return;
       const scope = await readCommitScope(cwd);
       if (commitScopeInventory(files.data) !== scope.inventory)
         throw new Error("The commit scope changed. Review the changes and try again.");
@@ -172,7 +165,7 @@ export function SourceControlToolbar({
             }
           : {}),
       });
-      if (thenPush) publishFlow.start(() => execute({ action: "push" }));
+      if (thenPush) publishFlow.start(() => void execute({ action: "push" }));
     } catch (error) {
       toastManager.add({
         type: "error",

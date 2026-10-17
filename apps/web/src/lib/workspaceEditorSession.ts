@@ -224,6 +224,12 @@ class WorkspaceEditorSession {
     void this.flush(true);
   };
 
+  revert = () => {
+    this.editGeneration += 1;
+    this.dispatch({ type: "reverted" });
+    this.releaseIfUnused();
+  };
+
   discard = () => {
     this.dispatch({ type: "closed" });
     this.releaseIfUnused();
@@ -248,8 +254,50 @@ export function getWorkspaceEditorSession(client: QueryClient, cwd: string, rela
   return session;
 }
 
-export function hasUnsavedWorkspaceEditors(client: QueryClient, cwd?: string | null) {
-  return [...(sessions.get(client)?.values() ?? [])].some(
-    (session) => (cwd == null || session.cwd === cwd) && (session.dirty || session.saving),
+// `paths` narrows the scope to those entries and everything below them; omitted, every file under
+// `cwd` (or in every workspace when `cwd` is null) counts.
+export interface WorkspaceEditorScope {
+  readonly cwd: string | null;
+  readonly paths?: readonly string[] | undefined;
+}
+
+function unsavedSessions(client: QueryClient, scope: WorkspaceEditorScope) {
+  return [...(sessions.get(client)?.values() ?? [])].filter(
+    (session) =>
+      (session.dirty || session.saving) &&
+      (scope.cwd === null || session.cwd === scope.cwd) &&
+      (scope.paths === undefined ||
+        scope.paths.some(
+          (path) => session.relativePath === path || session.relativePath.startsWith(`${path}/`),
+        )),
   );
+}
+
+export function unsavedWorkspaceEditorPaths(
+  client: QueryClient,
+  scope: WorkspaceEditorScope,
+): string[] {
+  return unsavedSessions(client, scope).map((session) => session.relativePath);
+}
+
+export async function saveWorkspaceEditors(client: QueryClient, scope: WorkspaceEditorScope) {
+  const results = await Promise.all(
+    unsavedSessions(client, scope).map((session) => {
+      session.resume();
+      return session.flush();
+    }),
+  );
+  return results.every(Boolean);
+}
+
+export function revertWorkspaceEditors(client: QueryClient, scope: WorkspaceEditorScope) {
+  for (const session of unsavedSessions(client, scope)) session.revert();
+}
+
+export function discardWorkspaceEditors(client: QueryClient, scope: WorkspaceEditorScope) {
+  for (const session of unsavedSessions(client, scope)) session.discard();
+}
+
+export function hasUnsavedWorkspaceEditors(client: QueryClient, cwd?: string | null) {
+  return unsavedSessions(client, { cwd: cwd ?? null }).length > 0;
 }

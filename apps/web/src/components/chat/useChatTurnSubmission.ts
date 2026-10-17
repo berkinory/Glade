@@ -1,5 +1,6 @@
 import { createEmptyThreadDraft } from "../../composerDraftDomain";
 import { usePendingTurnDispatchStore } from "../../pendingTurnDispatch";
+import { resolveUnsavedWorkspaceEditors } from "~/components/UnsavedEditorsDialog";
 import { hasUnsavedWorkspaceEditors } from "~/lib/workspaceEditorSession";
 import { useCallback } from "react";
 import {
@@ -219,12 +220,19 @@ export function useChatTurnSubmission({
       let restoreSentPromptOnExit: (() => void) | null = null;
       try {
         sendPreflightInFlightRef.current = true;
-        const editorSaved = !hasUnsavedWorkspaceEditors(
-          queryClient,
-          threadWorkspaceCwd ?? chatWorkspaceRoot,
-        );
+        const editorCwd = threadWorkspaceCwd ?? chatWorkspaceRoot;
+        // Queue drains retry on their own, so only a person pressing Send is asked about edits.
+        const editorSaved = queuedTurn
+          ? !hasUnsavedWorkspaceEditors(queryClient, editorCwd)
+          : await resolveUnsavedWorkspaceEditors(
+              queryClient,
+              { cwd: editorCwd ?? null },
+              "sending",
+            );
         sendPreflightInFlightRef.current = false;
+        if (activeThreadIdRef.current !== activeThread.id) return false;
         if (!editorSaved) {
+          if (!queuedTurn) return false;
           setThreadError(
             threadId,
             "Save your editor changes with Cmd/Ctrl+S before sending. Your prompt and file draft are preserved.",

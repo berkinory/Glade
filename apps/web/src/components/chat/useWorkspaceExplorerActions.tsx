@@ -14,7 +14,8 @@ import {
 } from "~/components/ui/alert-dialog";
 import { toastManager } from "~/components/ui/toast";
 import { refreshProjectDirectories } from "~/lib/projectDirectoryRefresh";
-import { hasUnsavedWorkspaceEditors } from "~/lib/workspaceEditorSession";
+import { resolveUnsavedWorkspaceEditors } from "~/components/UnsavedEditorsDialog";
+import { discardWorkspaceEditors, unsavedWorkspaceEditorPaths } from "~/lib/workspaceEditorSession";
 import { ensureNativeApi } from "~/nativeApi";
 
 type EntryKind = ProjectFileSystemEntry["kind"];
@@ -48,31 +49,19 @@ export function useWorkspaceExplorerActions(
   onSelectFile: (path: string) => void,
   expandedDirectories: ReadonlySet<string>,
   onToggleDirectory: (path: string) => void,
-  onDeleted?: (path: string) => void,
+  // Called with an entry path that no longer exists after a delete or rename.
+  onRemoved?: (path: string) => void,
 ): WorkspaceExplorerActions {
   const queryClient = useQueryClient();
   const [edit, setEdit] = useState<ExplorerEdit | null>(null);
-  const [selection, setSelection] = useState({
-    filePath: selectedFilePath,
-    directory: selectedFilePath?.split("/").slice(0, -1).join("/") ?? "",
-  });
-  const selectedDirectory =
-    selection.filePath === selectedFilePath
-      ? selection.directory
-      : (selectedFilePath?.split("/").slice(0, -1).join("/") ?? "");
+  // New entries go into the folder the user picked. Opening another file clears that pick, so with no
+  // folder picked they land in the workspace root.
+  const [selection, setSelection] = useState({ filePath: selectedFilePath, directory: "" });
+  const selectedDirectory = selection.filePath === selectedFilePath ? selection.directory : "";
   const setSelectedDirectory = (directory: string) =>
     setSelection({ filePath: selectedFilePath, directory });
   const [deleting, setDeleting] = useState<ProjectFileSystemEntry | null>(null);
   const [busy, setBusy] = useState(false);
-  const blockDirtyMutation = () => {
-    if (!hasUnsavedWorkspaceEditors(queryClient, cwd)) return false;
-    toastManager.add({
-      type: "warning",
-      title: "Unsaved editor changes",
-      description: "Press Cmd/Ctrl+S before renaming or deleting files.",
-    });
-    return true;
-  };
   const create = (parent: string, kind: EntryKind) => {
     if (parent && !expandedDirectories.has(parent)) onToggleDirectory(parent);
     setSelectedDirectory(parent);
@@ -93,7 +82,16 @@ export function useWorkspaceExplorerActions(
       setEdit(null);
       return;
     }
-    if (edit.action === "rename" && blockDirtyMutation()) return;
+    if (
+      edit.action === "rename" &&
+      edit.entry &&
+      !(await resolveUnsavedWorkspaceEditors(
+        queryClient,
+        { cwd, paths: [edit.entry.path] },
+        "renaming",
+      ))
+    )
+      return;
     setBusy(true);
     try {
       const result = await ensureNativeApi().projects.manageEntry({
@@ -107,9 +105,11 @@ export function useWorkspaceExplorerActions(
       await refreshProjectDirectories(queryClient, cwd, [edit.parent || "."]);
       if (edit.action === "create" && edit.kind === "file") {
         onSelectFile(result.relativePath);
+        setSelection({ filePath: result.relativePath, directory: edit.parent });
       }
       if (edit.action === "rename" && edit.entry) {
         const oldPath = edit.entry.path;
+        onRemoved?.(oldPath);
         if (selectedDirectory === oldPath || selectedDirectory.startsWith(`${oldPath}/`)) {
           setSelectedDirectory(result.relativePath + selectedDirectory.slice(oldPath.length));
         }
@@ -130,6 +130,10 @@ export function useWorkspaceExplorerActions(
       setBusy(false);
     }
   };
+  const deletingUnsaved =
+    cwd !== null &&
+    deleting !== null &&
+    unsavedWorkspaceEditorPaths(queryClient, { cwd, paths: [deleting.path] }).length > 0;
   const dialogs = (
     <AlertDialog
       open={deleting !== null}
@@ -146,6 +150,7 @@ export function useWorkspaceExplorerActions(
             {deleting?.kind === "directory"
               ? "This folder and its contents will be deleted."
               : "This file will be deleted."}
+            {deletingUnsaved ? " Unsaved changes will be discarded." : null}
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
@@ -157,7 +162,7 @@ export function useWorkspaceExplorerActions(
             size="sm"
             onClick={() => {
               void (async () => {
-                if (!cwd || !deleting || blockDirtyMutation()) return;
+                if (!cwd || !deleting) return;
                 try {
                   await ensureNativeApi().projects.manageEntry({
                     cwd,
@@ -165,7 +170,8 @@ export function useWorkspaceExplorerActions(
                     kind: deleting.kind,
                     relativePath: deleting.path,
                   });
-                  onDeleted?.(deleting.path);
+                  discardWorkspaceEditors(queryClient, { cwd, paths: [deleting.path] });
+                  onRemoved?.(deleting.path);
                   setDeleting(null);
                   await refreshProjectDirectories(queryClient, cwd, [deleting.parentPath || "."]);
                 } catch (error) {

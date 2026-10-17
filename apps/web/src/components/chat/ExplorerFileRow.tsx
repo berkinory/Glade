@@ -79,7 +79,6 @@ export const ExplorerRow = forwardRef<
       onSelectDirectory(entry.path);
       return;
     }
-    onSelectDirectory(entry.parentPath ?? "");
     onSelectFile(entry.path, { preview: event.detail !== 2 });
   };
   const prefetchIntent = usePrefetchIntent(() => onPrefetchEntry(entry));
