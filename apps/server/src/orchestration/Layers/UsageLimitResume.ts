@@ -1,6 +1,5 @@
 import type { ProviderKind, ThreadId, TurnId } from "@glade/contracts/core/baseSchemas";
 import type { OrchestrationEvent } from "@glade/contracts/orchestration/events";
-import type { OrchestrationThread } from "@glade/contracts/orchestration/threadEntities";
 import {
   USAGE_LIMIT_RESUME_CANCELLED_ACTIVITY_KIND,
   USAGE_LIMIT_RESUME_SCHEDULED_ACTIVITY_KIND,
@@ -10,7 +9,7 @@ import {
   pendingUsageLimitResume,
   USAGE_LIMIT_RESUME_GRACE_MS,
 } from "@glade/shared/threads/usageLimitResume";
-import { Clock, Duration, Effect, FiberMap, Layer, Stream } from "effect";
+import { Clock, Effect, FiberMap, Layer, Stream } from "effect";
 
 import {
   ProjectionThreadActivityRepository,
@@ -22,6 +21,7 @@ import { ServerConfig } from "../../server/config.ts";
 import { ServerSettingsService } from "../../settings/serverSettings.ts";
 import { OrchestrationEngineService } from "../Services/OrchestrationEngine.ts";
 import { UsageLimitResume, type UsageLimitResumeShape } from "../Services/UsageLimitResume.ts";
+import { isResumableThread, sleepUntil } from "../agentResume.ts";
 import {
   exhaustedUsageResetsAt,
   isUsageLimitFailure,
@@ -33,8 +33,6 @@ import {
 
 // Reset times are minute-granular and clocks drift; continuing a little late avoids a rejection.
 const RESUME_DELAY_MS = 30_000;
-// Node timers pause while the host sleeps, so waits re-read the wall clock at least this often.
-const WALL_CLOCK_CHECK_MS = 60_000;
 
 interface UsageLimitWait {
   readonly threadId: ThreadId;
@@ -43,9 +41,6 @@ interface UsageLimitWait {
   readonly resetsAt: string;
   readonly scheduledAt: string;
 }
-
-const isResumableThread = (thread: OrchestrationThread): boolean =>
-  thread.deletedAt === null && thread.archivedAt == null && thread.parentThreadId === null;
 
 const make = Effect.gen(function* () {
   const engine = yield* OrchestrationEngineService;
@@ -103,15 +98,6 @@ const make = Effect.gen(function* () {
         }),
       ),
     );
-
-  const sleepUntil = (targetMs: number) =>
-    Effect.gen(function* () {
-      for (;;) {
-        const remainingMs = targetMs - (yield* Clock.currentTimeMillis);
-        if (remainingMs <= 0) return;
-        yield* Effect.sleep(Duration.millis(Math.min(remainingMs, WALL_CLOCK_CHECK_MS)));
-      }
-    });
 
   const waitThenResume = (wait: UsageLimitWait): Effect.Effect<void> =>
     Effect.gen(function* () {

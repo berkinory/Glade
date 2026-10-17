@@ -22,6 +22,7 @@ import { OrchestrationEngineService } from "../../orchestration/Services/Orchest
 import { ProjectionSnapshotQuery } from "../../orchestration/Services/ProjectionSnapshotQuery";
 import { shouldPublishThreadShellForEvent } from "../../orchestration/threadShellEvents";
 import { spawnEffectProcess } from "../../platform/effectProcessRuntime";
+import { TransientFailureResume } from "../../orchestration/Services/TransientFailureResume";
 import { RemoteAccess } from "../../remoteAccess/Services/RemoteAccess";
 import { ServerSettingsService } from "../../settings/serverSettings";
 import { KeepAwake, type KeepAwakeShape } from "../Services/KeepAwake";
@@ -55,6 +56,7 @@ const make = Effect.gen(function* () {
   const projectionSnapshotQuery = yield* ProjectionSnapshotQuery;
   const spawner = yield* ChildProcessSpawner.ChildProcessSpawner;
   const remoteAccess = yield* RemoteAccess;
+  const transientFailureResume = yield* TransientFailureResume;
 
   const supported = process.platform === "darwin" && isExecutableFile(CAFFEINATE_PATH);
   const statusRef = yield* Ref.make<ServerKeepAwakeStatus>({
@@ -63,6 +65,8 @@ const make = Effect.gen(function* () {
     error: null,
   });
   const workingThreadsRef = yield* Ref.make<ReadonlySet<string>>(new Set());
+  // A chat waiting to continue after a temporary provider error is still unfinished agent work.
+  const resumeWaitingRef = yield* Ref.make(false);
   // Paired devices can reach this Mac only while it is awake, so remote access holds idle sleep off
   // on its own, whatever the keep-awake setting says.
   const remoteListeningRef = yield* Ref.make(false);
@@ -128,7 +132,8 @@ const make = Effect.gen(function* () {
         );
         if (settings === null) return;
         const working =
-          settings.keepAwakeMode === "agent" && (yield* Ref.get(workingThreadsRef)).size > 0;
+          settings.keepAwakeMode === "agent" &&
+          ((yield* Ref.get(workingThreadsRef)).size > 0 || (yield* Ref.get(resumeWaitingRef)));
         const remoteListening = yield* Ref.get(remoteListeningRef);
         const wanted = !supported
           ? null
@@ -195,6 +200,12 @@ const make = Effect.gen(function* () {
         Ref.set(remoteListeningRef, status.enabled && status.listener === "on").pipe(
           Effect.andThen(reconcile(holder)),
         ),
+      ),
+      { startImmediately: true },
+    );
+    yield* Effect.forkScoped(
+      Stream.runForEach(transientFailureResume.streamWaiting, (waiting) =>
+        Ref.set(resumeWaitingRef, waiting).pipe(Effect.andThen(reconcile(holder))),
       ),
       { startImmediately: true },
     );

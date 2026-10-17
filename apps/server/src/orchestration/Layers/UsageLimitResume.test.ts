@@ -1,7 +1,6 @@
 import * as NodeServices from "@effect/platform-node/NodeServices";
 import { it } from "@effect/vitest";
 import { EventId, ThreadId, TurnId } from "@glade/contracts/core/baseSchemas";
-import type { OrchestrationCommand } from "@glade/contracts/orchestration/commands";
 import type { OrchestrationEvent } from "@glade/contracts/orchestration/events";
 import type { OrchestrationReadModel } from "@glade/contracts/orchestration/snapshots";
 import type { OrchestrationLatestTurn } from "@glade/contracts/orchestration/threadEntities";
@@ -9,9 +8,7 @@ import {
   USAGE_LIMIT_RESUME_CANCELLED_ACTIVITY_KIND,
   USAGE_LIMIT_RESUME_SCHEDULED_ACTIVITY_KIND,
 } from "@glade/contracts/orchestration/usageLimitResume";
-import type { ProviderRuntimeEvent } from "@glade/contracts/provider/runtimeEvents";
-import { Duration, Effect, Layer, PubSub, Stream } from "effect";
-import { TestClock } from "effect/testing";
+import { Duration, Effect, Layer } from "effect";
 import { describe, expect } from "vitest";
 
 import {
@@ -22,39 +19,20 @@ import {
   ProjectionThreadActivityRepository,
   type ProjectionThreadActivity,
 } from "../../persistence/Services/ProjectionThreadActivities.ts";
-import {
-  ProviderService,
-  type ProviderServiceShape,
-} from "../../provider/Services/ProviderService.ts";
+import { ProviderService } from "../../provider/Services/ProviderService.ts";
 import { ServerConfig } from "../../server/config.ts";
 import { ServerSettingsService } from "../../settings/serverSettings.ts";
-import {
-  OrchestrationEngineService,
-  type OrchestrationEngineShape,
-} from "../Services/OrchestrationEngine.ts";
+import { OrchestrationEngineService } from "../Services/OrchestrationEngine.ts";
 import { UsageLimitResume } from "../Services/UsageLimitResume.ts";
 import { UsageLimitResumeLive } from "./UsageLimitResume.ts";
+import { failedTurn, makeRecordingEngine, unused } from "./resumeTestFixtures.ts";
 
 const THREAD_ID = ThreadId.makeUnsafe("thread-limited");
 const LIMITED_TURN = TurnId.makeUnsafe("turn-limited");
 // TestClock starts at the epoch.
 const RESETS_AT = new Date(Duration.toMillis(Duration.hours(1))).toISOString();
 
-const unused = (): never => Effect.die("unused") as never;
-
-function failedTurn(turnId: TurnId): OrchestrationLatestTurn {
-  return {
-    turnId,
-    state: "error",
-    requestedAt: new Date(0).toISOString(),
-    startedAt: new Date(0).toISOString(),
-    completedAt: new Date(0).toISOString(),
-    assistantMessageId: null,
-  };
-}
-
 function makeHarness(input: { readonly persistedActivities?: ProjectionThreadActivity[] } = {}) {
-  const dispatched: OrchestrationCommand[] = [];
   let latestTurn = failedTurn(LIMITED_TURN);
   // The service reads only the thread list.
   const readModel = (): OrchestrationReadModel =>
@@ -70,36 +48,10 @@ function makeHarness(input: { readonly persistedActivities?: ProjectionThreadAct
     }) as unknown as OrchestrationReadModel;
 
   return Effect.gen(function* () {
-    const runtimeEvents = yield* PubSub.unbounded<ProviderRuntimeEvent>();
-    const domainEvents = yield* PubSub.unbounded<OrchestrationEvent>();
-    const engine: OrchestrationEngineShape = {
-      quiesce: Effect.void,
-      drain: Effect.void,
-      stop: Effect.void,
-      getProjectionCatchUpStatus: unused(),
-      readEvents: unused,
-      readEventsThrough: unused,
-      readThreadEvents: unused,
-      readThreadEventsThrough: unused,
-      getEventHighWaterSequence: unused(),
-      getThreadTitleHighWaterSequence: unused,
-      subscribeDomainEvents: Effect.succeed(Stream.fromPubSub(domainEvents)),
-      getReadModel: () => Effect.sync(readModel),
-      dispatch: (command) =>
-        Effect.sync(() => {
-          dispatched.push(command);
-          return { sequence: dispatched.length };
-        }),
-      repairState: unused,
-      refreshCommandReadModel: unused,
-      streamDomainEvents: Stream.empty,
-    };
-    const providerService = {
-      streamEvents: Stream.fromPubSub(runtimeEvents),
-    } as unknown as ProviderServiceShape; // Only the event stream is read.
+    const recording = yield* makeRecordingEngine(readModel);
     const layer = UsageLimitResumeLive.pipe(
-      Layer.provide(Layer.succeed(OrchestrationEngineService, engine)),
-      Layer.provide(Layer.succeed(ProviderService, providerService)),
+      Layer.provide(Layer.succeed(OrchestrationEngineService, recording.engine)),
+      Layer.provide(Layer.succeed(ProviderService, recording.providerService)),
       Layer.provide(
         Layer.succeed(ProjectionThreadActivityRepository, {
           getById: unused,
@@ -121,14 +73,12 @@ function makeHarness(input: { readonly persistedActivities?: ProjectionThreadAct
     const service = yield* Effect.service(UsageLimitResume).pipe(Effect.provide(layer));
     yield* service.start();
 
-    const turnStarts = () => dispatched.filter((command) => command.type === "thread.turn.start");
     return {
-      dispatched,
-      turnStarts,
+      ...recording,
       setLatestTurn: (turn: OrchestrationLatestTurn) => {
         latestTurn = turn;
       },
-      failWithUsageLimit: PubSub.publish(runtimeEvents, {
+      failWithUsageLimit: recording.publishRuntimeEvent({
         type: "runtime.error",
         eventId: EventId.makeUnsafe("event-limit"),
         provider: "claudeAgent",
@@ -147,9 +97,6 @@ function makeHarness(input: { readonly persistedActivities?: ProjectionThreadAct
           },
         },
       }),
-      publishDomainEvent: (event: OrchestrationEvent) => PubSub.publish(domainEvents, event),
-      advance: (duration: Duration.Input) =>
-        Effect.yieldNow.pipe(Effect.andThen(TestClock.adjust(duration))),
     };
   });
 }

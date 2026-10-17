@@ -36,6 +36,7 @@ import { ProjectionSnapshotQuery } from "../../orchestration/Services/Projection
 import { ProjectionPendingInteractionRepository } from "../../persistence/Services/ProjectionPendingInteractions";
 import { ThreadDeletionReactor } from "../../orchestration/Services/ThreadDeletionReactor";
 import { KeepAwake } from "../../keepAwake/Services/KeepAwake";
+import { TransientFailureResume } from "../../orchestration/Services/TransientFailureResume";
 import { UsageLimitResume } from "../../orchestration/Services/UsageLimitResume";
 import { RemoteAccess } from "../../remoteAccess/Services/RemoteAccess";
 import {
@@ -91,6 +92,7 @@ export interface ServerShape {
     | ThreadDeletionReactor
     | KeepAwake
     | UsageLimitResume
+    | TransientFailureResume
     | SqlClient.SqlClient
   >;
   readonly stopSignal: Effect.Effect<void, never>;
@@ -176,6 +178,7 @@ export const createEffectServer = Effect.fn(function* (
   const threadDeletionReactor = yield* ThreadDeletionReactor;
   const keepAwake = yield* KeepAwake;
   const usageLimitResume = yield* UsageLimitResume;
+  const transientFailureResume = yield* TransientFailureResume;
   const remoteAccess = yield* RemoteAccess;
   const readiness = yield* makeServerReadiness;
 
@@ -283,6 +286,7 @@ export const createEffectServer = Effect.fn(function* (
       providerRuntimeReconciler,
       keepAwake,
       usageLimitResume,
+      transientFailureResume,
     ],
     subscriptionsScope,
   });

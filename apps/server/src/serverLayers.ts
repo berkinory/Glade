@@ -54,6 +54,7 @@ import { ThreadDiagnosticsQueryLive } from "./diagnostics/Layers/ThreadDiagnosti
 import { ManagedAttachmentCleanupLive } from "./attachments/managedAttachmentCleanup";
 import { ProviderHealthLive } from "./provider/Layers/ProviderHealth";
 import { KeepAwakeLive } from "./keepAwake/Layers/KeepAwake";
+import { TransientFailureResumeLive } from "./orchestration/Layers/TransientFailureResume";
 import { RemoteAccessLive } from "./remoteAccess/Layers/RemoteAccess";
 import { McpConnectorsLive } from "./mcpConnectors/Layers/McpConnectors";
 import { makeServerProviderLayer } from "./provider/core/runtimeLayer";
@@ -158,8 +159,11 @@ function makeServerRuntimeServicesLayer(
     Layer.provide(authServicesLayer),
     Layer.provide(ServerEnvironmentLive),
   );
-  const keepAwakeLayer = KeepAwakeLive.pipe(
+  const transientFailureResumeLayer = TransientFailureResumeLive.pipe(
     Layer.provideMerge(OrchestrationLayerLive),
+  );
+  const keepAwakeLayer = KeepAwakeLive.pipe(
+    Layer.provideMerge(transientFailureResumeLayer),
     Layer.provideMerge(ServerSettingsLive),
     Layer.provide(remoteAccessLayer),
   );

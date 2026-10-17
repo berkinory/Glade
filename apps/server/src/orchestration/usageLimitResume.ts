@@ -1,10 +1,4 @@
-import {
-  CommandId,
-  EventId,
-  MessageId,
-  type ThreadId,
-  type TurnId,
-} from "@glade/contracts/core/baseSchemas";
+import { CommandId, EventId, type ThreadId, type TurnId } from "@glade/contracts/core/baseSchemas";
 import type { OrchestrationCommand } from "@glade/contracts/orchestration/commands";
 import type { OrchestrationThread } from "@glade/contracts/orchestration/threadEntities";
 import {
@@ -14,6 +8,7 @@ import {
 import type { ProviderFailure } from "@glade/contracts/provider/providerFailure";
 import type { ServerProviderUsageSnapshot } from "@glade/contracts/server/server";
 import { randomUUID } from "node:crypto";
+import { consecutiveResumes, resumeTurnCommand } from "./agentResume.ts";
 
 const RESUME_ID_PREFIX = "usage-limit-resume:";
 // Each automatic resume that runs into the limit again arms the next one; a chain this long without
@@ -33,16 +28,8 @@ export function isUsageLimitFailure(failure: ProviderFailure | undefined): boole
   );
 }
 
-// Messages are only those the engine saw since boot, so a restart starts a fresh chain.
 export function usageLimitResumeChainExhausted(messages: OrchestrationThread["messages"]): boolean {
-  let resumes = 0;
-  for (let index = messages.length - 1; index >= 0; index -= 1) {
-    const message = messages[index];
-    if (!message || message.role !== "user") continue;
-    if (!message.id.startsWith(RESUME_ID_PREFIX)) break;
-    resumes += 1;
-  }
-  return resumes >= MAX_CONSECUTIVE_RESUMES;
+  return consecutiveResumes(messages, RESUME_ID_PREFIX) >= MAX_CONSECUTIVE_RESUMES;
 }
 
 // The latest reset among windows the provider reports as used up; null when none is.
@@ -94,22 +81,5 @@ export function usageLimitResumeTurnCommand(input: {
   readonly scheduledAt: string;
   readonly now: string;
 }): OrchestrationCommand {
-  // Keyed by the stopped turn, so a duplicate wait for it can never send twice.
-  const key = `${RESUME_ID_PREFIX}${input.turnId}`;
-  return {
-    type: "thread.turn.start",
-    commandId: CommandId.makeUnsafe(key),
-    threadId: input.thread.id,
-    message: {
-      messageId: MessageId.makeUnsafe(key),
-      role: "user",
-      text: CONTINUATION_PROMPT,
-      attachments: [],
-    },
-    dispatchMode: "queue",
-    dispatchOrigin: "agent",
-    runtimeMode: input.thread.runtimeMode,
-    resumePrecondition: { recordedTurnId: input.turnId, recordedAt: input.scheduledAt },
-    createdAt: input.now,
-  };
+  return resumeTurnCommand({ ...input, idPrefix: RESUME_ID_PREFIX, prompt: CONTINUATION_PROMPT });
 }
