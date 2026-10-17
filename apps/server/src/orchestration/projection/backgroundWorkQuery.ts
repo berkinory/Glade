@@ -13,21 +13,32 @@ const Rows = Schema.Array(
   }),
 );
 
-// Task activities of each thread's latest turn. The kind list must stay identical to the predicate
-// of idx_projection_thread_activities_background_work, or SQLite stops using that partial index.
+// Task activities of each thread's latest turn, joined as `a`. The latest turn is resolved once per
+// thread: a correlated subquery per activity row made SQLite walk every activity of the thread and
+// re-sort its turns for each task row. The kind list must stay identical to the predicate of
+// idx_projection_thread_activities_background_work, or SQLite stops using that partial index.
 // Pending turn-start rows have no turn id yet; counting them would hide the running turn's tasks
 // whenever a steer or follow-up is requested, which reads as the turn settling.
-const latestTurnTaskActivity = (sql: SqlClient) => sql`
-  a.kind IN ('task.started', 'task.updated', 'task.progress', 'task.completed', 'background-work.reset')
-  AND (a.turn_id = (SELECT t.turn_id FROM projection_turns t WHERE t.thread_id = a.thread_id AND t.turn_id IS NOT NULL ORDER BY t.requested_at DESC, t.turn_id DESC LIMIT 1)
-    OR (a.turn_id IS NULL AND a.created_at >= (SELECT MAX(t.requested_at) FROM projection_turns t WHERE t.thread_id = a.thread_id AND t.turn_id IS NOT NULL)))
+const latestTurnTaskActivities = (sql: SqlClient, threadIds?: readonly ThreadId[]) => sql`
+  (
+    SELECT thread_id, turn_id, requested_at
+    FROM (
+      SELECT thread_id, turn_id, requested_at,
+        ROW_NUMBER() OVER (PARTITION BY thread_id ORDER BY requested_at DESC, turn_id DESC) AS turn_rank
+      FROM projection_turns
+      WHERE ${threadIds ? sql.in("thread_id", threadIds) : sql`1 = 1`} AND turn_id IS NOT NULL
+    )
+    WHERE turn_rank = 1
+  ) latest
+  JOIN projection_thread_activities a ON a.thread_id = latest.thread_id
+    AND a.kind IN ('task.started', 'task.updated', 'task.progress', 'task.completed', 'background-work.reset')
+    AND (a.turn_id = latest.turn_id OR (a.turn_id IS NULL AND a.created_at >= latest.requested_at))
 `;
 
 export function readThreadIdsWithBackgroundActivity(sql: SqlClient) {
   return sql<{ threadId: string }>`
     SELECT DISTINCT a.thread_id AS "threadId"
-    FROM projection_thread_activities a
-    WHERE ${latestTurnTaskActivity(sql)}
+    FROM ${latestTurnTaskActivities(sql)}
   `.pipe(
     Effect.flatMap(Schema.decodeUnknownEffect(ThreadIdRows)),
     Effect.map((rows) => rows.map((row) => row.threadId)),
@@ -42,9 +53,7 @@ export function readBackgroundActivities(sql: SqlClient, threadIds?: readonly Th
     SELECT a.thread_id AS "threadId", json_object('id', a.activity_id, 'kind', a.kind,
       'turnId', a.turn_id, 'payload', json_object('taskId', json_extract(a.payload_json, '$.taskId'), 'taskType', json_extract(a.payload_json, '$.taskType'), 'status', json_extract(a.payload_json, '$.status'), 'isBackgrounded', json(CASE json_extract(a.payload_json, '$.isBackgrounded') WHEN 1 THEN 'true' WHEN 0 THEN 'false' ELSE 'null' END), 'wakesAgent', json(CASE json_extract(a.payload_json, '$.wakesAgent') WHEN 1 THEN 'true' ELSE 'null' END)), 'createdAt', a.created_at,
       'tone', a.tone, 'summary', a.summary, 'sequence', a.sequence) AS activity
-    FROM projection_thread_activities a
-    WHERE ${threadIds ? sql.in("a.thread_id", threadIds) : sql`1 = 1`}
-      AND ${latestTurnTaskActivity(sql)}
+    FROM ${latestTurnTaskActivities(sql, threadIds)}
     ORDER BY a.created_at, a.activity_id
   `.pipe(
     Effect.flatMap(Schema.decodeUnknownEffect(Rows)),
