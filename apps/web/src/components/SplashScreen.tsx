@@ -1,4 +1,7 @@
 import { GladeLogo } from "~/components/GladeLogo";
+import { cn } from "~/lib/utils";
+
+import { CHAT_MAIN_CONTENT_SURFACE_CLASS_NAME } from "./chat/composerPickerStyles";
 
 export function SplashScreen({
   errorMessage,
@@ -10,8 +13,15 @@ export function SplashScreen({
   const showRetry = Boolean(errorMessage && onRetry);
 
   return (
-    <div className="flex min-h-0 min-w-0 flex-1 items-center justify-center bg-background">
-      <div className="flex flex-col items-center gap-5 select-none">
+    <div
+      className={cn(
+        "flex min-h-0 min-w-0 flex-1 items-center justify-center",
+        CHAT_MAIN_CONTENT_SURFACE_CLASS_NAME,
+      )}
+    >
+      <div aria-hidden="true" className="landing-horizon" />
+      <div aria-hidden="true" className="landing-dither" />
+      <div className="relative flex flex-col items-center gap-5 select-none">
         <GladeLogo aria-label="Glade" className="size-24" />
 
         {errorMessage ? (
