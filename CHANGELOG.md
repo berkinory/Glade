@@ -1,5 +1,11 @@
 # Glade Changelog
 
+## 0.3.1 - Unreleased
+
+### Fixed
+
+- Local Servers lists servers that agents start or that run inside your projects, whatever tool runs them. ([6a6fada7d](https://github.com/berkinory/Glade/commit/6a6fada7d2df8346b4498e07c61d7d1e7db693fb))
+
 ## 0.3.0 - 2026-10-17
 
 ### Improved
