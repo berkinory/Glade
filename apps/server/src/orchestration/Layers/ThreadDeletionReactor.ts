@@ -7,6 +7,7 @@ import {
 import { terminalScopeIdsForThread } from "@glade/shared/threads/terminalThreads";
 import { Cause, Effect, Layer, Option, Stream } from "effect";
 
+import { removeThreadToolImages } from "../../agentGateway/toolResultImages.ts";
 import { BrowserHost } from "../../browser/Services/BrowserHost";
 import { ServerConfig } from "../../server/config";
 import { GitCore } from "../../git/Services/GitCore";
@@ -227,6 +228,7 @@ const make = Effect.gen(function* () {
     const providerCleanupSucceeded = yield* stopProviderSession(threadId);
     const terminalCleanupSucceeded = yield* closeThreadTerminals(threadId, true);
     yield* closeThreadBrowserTabs(threadId);
+    yield* removeThreadToolImages(threadId);
     return providerCleanupSucceeded && terminalCleanupSucceeded;
   });
 

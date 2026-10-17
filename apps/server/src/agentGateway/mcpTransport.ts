@@ -33,6 +33,7 @@ import {
   type ToolEntry,
 } from "./toolRuntime.ts";
 import { errorText } from "./toolInput.ts";
+import { saveToolResultImages } from "./toolResultImages.ts";
 
 const MCP_MAX_BATCH_MESSAGES = 50;
 
@@ -199,6 +200,7 @@ export function makeAgentGatewayMcpTransport(input: {
           };
           const result = yield* Effect.suspend(() => tool.handler(args!, invocationContext)).pipe(
             Effect.catchDefect((defect) => Effect.succeed(mcpToolResultError(errorText(defect)))),
+            Effect.flatMap((result) => saveToolResultImages(context.callerThreadId, result)),
           );
           return jsonRpcResult(request.id, result);
         }

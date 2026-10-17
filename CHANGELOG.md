@@ -15,6 +15,7 @@
 
 ### Fixed
 
+- Screenshots agents show in their replies appear with every provider instead of an "image could not be preserved" note, and are cleaned up when the chat is deleted.
 - Tool calls from connected MCP servers show the service's name, like Exa or Linear, instead of a generic connector label. ([154d07882](https://github.com/berkinory/Glade/commit/154d078828c5382ad6c81a64bfc69ccb0558ff16))
 - Codex chats no longer fill with empty moderation notices during a turn. ([2d50d41f4](https://github.com/berkinory/Glade/commit/2d50d41f45871fe482671cab66d260ae5d9439de))
 - Diffs and worktree transfers work with custom Git diff prefix or color settings. ([81e819447](https://github.com/berkinory/Glade/commit/81e819447fcfa095e273ab338810546d7694c855))
