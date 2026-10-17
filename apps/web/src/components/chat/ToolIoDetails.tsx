@@ -1,10 +1,10 @@
-import type { WorkLogToolDetails } from "~/lib/toolCallDetails";
+import { toolInputFilePath, type WorkLogToolDetails } from "~/lib/toolCallDetails";
 import type { WorkLogToolKind } from "~/workLog.types";
 import { basenameOfPath } from "~/file-icons";
 import { isLocalImageMarkdownSrc } from "~/lib/localImageUrls";
 import ChatMarkdown from "../ChatMarkdown";
 import { MarkdownToolCodeBlock, TOOL_DETAILS_MARKDOWN_CLASS_NAME } from "./ToolDetailBlocks";
-import { describeToolInput, describeToolOutput, toolInputFilePath } from "./ToolIoDetails.logic";
+import { describeToolInput, describeToolOutput } from "./ToolIoDetails.logic";
 
 // Details of a tool with no dedicated presentation, such as a read, a search, a web fetch or an MCP
 // call: its arguments in one box, then its result in another.

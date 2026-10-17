@@ -83,6 +83,7 @@ export type ToolCallGroupActivity =
   | "browse"
   | "computer"
   | "agent"
+  | "skill"
   | "image_view"
   | "image_generation"
   | "tools";
@@ -98,6 +99,7 @@ const ACTIVITY_OF: Record<ToolCallSummaryCategory, ToolCallGroupActivity> = {
   browser: "browse",
   computer: "computer",
   agent: "agent",
+  skill: "skill",
   image_view: "image_view",
   image_generation: "image_generation",
   mcp: "tools",
@@ -112,6 +114,7 @@ const ACTIVITY_ORDER: ReadonlyArray<ToolCallGroupActivity> = [
   "browse",
   "computer",
   "agent",
+  "skill",
   "image_view",
   "image_generation",
   "tools",
@@ -152,6 +155,8 @@ function activityLabel(
       return timesLabel("used the computer", count("computer"));
     case "agent":
       return `ran ${count("agent")} agent ${pluralize(count("agent"), "task")}`;
+    case "skill":
+      return `loaded ${count("skill")} ${pluralize(count("skill"), "skill")}`;
     case "image_view":
       return `viewed ${count("image_view")} ${pluralize(count("image_view"), "image")}`;
     case "image_generation":

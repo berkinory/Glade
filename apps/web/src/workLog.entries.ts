@@ -36,7 +36,8 @@ import {
 import { describeBrowserToolCall, isGladeBrowserToolName } from "./lib/browserToolPresentation";
 import { describeComputerToolCall, isGladeComputerToolName } from "./lib/computerToolPresentation";
 import { gatewayToolCall, type GladeMcpToolStatus } from "./lib/gatewayToolCall";
-import { deriveWorkLogToolDetails } from "./lib/toolCallDetails";
+import { deriveWorkLogToolDetails, toolInputFilePath } from "./lib/toolCallDetails";
+import { loadedSkillName, skillLoadTitle } from "./lib/skillLoad";
 import { compareActivitiesByOrder } from "./workLog.ordering";
 import {
   CHECKPOINT_REVERT_FAILED_ACTIVITY_KIND,
@@ -668,6 +669,24 @@ function normalizeWorkLogActivity(activity: OrchestrationThreadActivity): Derive
   });
   if (toolDetails) {
     entry.toolDetails = toolDetails;
+  }
+  const skillName = activity.kind.startsWith("tool.")
+    ? loadedSkillName({
+        toolName,
+        toolInput: toolDetails?.input,
+        isRead: toolKind === "read",
+        readPath: commandAction?.path ?? toolInputFilePath(toolDetails?.input),
+        command: entry.command ?? entry.rawCommand,
+      })
+    : null;
+  if (skillName) {
+    entry.toolKind = "skill";
+    entry.toolTitle = skillLoadTitle(toolStatus ?? "completed");
+    entry.preview = skillName;
+    // Claude's Skill tool answers only "Launching skill: <name>", which the row already says.
+    if (toolName === "Skill" && toolDetails && !toolDetails.isError) {
+      delete toolDetails.output;
+    }
   }
   const collapseKey =
     deriveProviderRuntimeReconciliationCollapseKey(activity, payload) ??

@@ -9,6 +9,7 @@ import { cn } from "~/lib/utils";
 import { MUTED_LABEL_TEXT_CLASS_NAME } from "~/surfaceStyles";
 import { LinkChipIcon } from "../LinkChipIcon";
 import {
+  Book02Icon,
   ComputerTerminal01Icon,
   CursorInWindowIcon,
   Globe02Icon,
@@ -43,6 +44,7 @@ const ACTIVITY_ICONS: Record<Exclude<ToolCallGroupActivity, "tools" | "agent">, 
   explore: SearchIcon,
   browse: Globe02Icon,
   computer: CursorInWindowIcon,
+  skill: Book02Icon,
   image_view: ViewIcon,
   image_generation: Image01Icon,
 };

@@ -4,6 +4,16 @@ import { asRecord } from "@glade/shared/transport/payloadValues";
 import type { ToolLifecycleItemType } from "@glade/contracts/provider/runtimeMetadata";
 import { stripTrailingToolExitCode as stripTrailingExitCode } from "../features/chat/timeline/toolOutputSummary";
 
+export const FILE_PATH_KEYS = ["file_path", "filePath", "path", "notebook_path"] as const;
+
+export function toolInputFilePath(input: Readonly<Record<string, unknown>> | undefined) {
+  for (const key of FILE_PATH_KEYS) {
+    const value = input?.[key];
+    if (typeof value === "string" && value.trim()) return value.trim();
+  }
+  return null;
+}
+
 type WorkLogRequestKind = "command" | "file-read" | "file-change" | "permissions" | "tool";
 
 export interface WorkLogToolOutputDetails {

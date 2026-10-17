@@ -9,11 +9,12 @@ import {
   WORK_ROW_MUTED_HOVER_TONE,
 } from "./workRowStyles";
 import { FileNameChip } from "./FileNameChip";
-import { toolInputFilePath } from "./ToolIoDetails.logic";
+import { toolInputFilePath } from "~/lib/toolCallDetails";
 import { resolveMcpToolIcon } from "~/lib/mcpToolIcon";
 import { GitHubIcon } from "~/lib/brandIcons";
 import {
   CheckmarkCircle02Icon,
+  Book02Icon,
   BookOpen01Icon,
   Brain03Icon,
   InfoIcon,
@@ -151,9 +152,14 @@ function extractFilePathFromDetail(detail: string): string | null {
     fallbackScan: "whenUnparsed",
   });
 }
-// Gateway browser and computer rows carry their finished heading and preview from the work log.
+// Gateway browser and computer rows and skill loads carry their finished heading and preview from
+// the work log.
 function ownsToolTitle(workEntry: TimelineWorkEntry): boolean {
-  return workEntry.toolKind === "browser" || workEntry.toolKind === "computer";
+  return (
+    workEntry.toolKind === "browser" ||
+    workEntry.toolKind === "computer" ||
+    workEntry.toolKind === "skill"
+  );
 }
 function workEntryPreview(workEntry: TimelineWorkEntry): string | null {
   if (workEntry.monitorNotification) return null;
@@ -241,6 +247,8 @@ function workEntryIcon(workEntry: TimelineWorkEntry): IconComponent {
       // A launch with no subagents to show: its failure, or the generic tool mark. Launches that
       // did start show their subagent's avatar instead.
       return workEntry.toolStatus === "failed" ? AlertCircleIcon : ToolsIcon;
+    case "skill":
+      return Book02Icon;
     case "image_view":
       return ViewIcon;
     case "image_generation":
@@ -506,12 +514,15 @@ function ToolWorkEntryRow(props: TimelineWorkEntryRowProps & { launchStarting: b
   );
   // A shell command that writes one file, or only looks around and reads one, shows that file the
   // way a Read or Edit tool does. Its raw command text is never taken for a path.
-  const rowFilePath = isCommandRow
-    ? singleCommandFile(workEntry.command ?? workEntry.rawCommand)
-    : workEntry.toolKind === "read"
-      ? (toolInputFilePath(workEntry.toolDetails?.input) ??
-        (workEntry.detail ? extractFilePathFromDetail(workEntry.detail) : null))
-      : null;
+  const rowFilePath =
+    workEntry.toolKind === "skill"
+      ? null
+      : isCommandRow
+        ? singleCommandFile(workEntry.command ?? workEntry.rawCommand)
+        : workEntry.toolKind === "read"
+          ? (toolInputFilePath(workEntry.toolDetails?.input) ??
+            (workEntry.detail ? extractFilePathFromDetail(workEntry.detail) : null))
+          : null;
   // A command that read part of one file opens it where the read started.
   const rowReadRange =
     rowFilePath && isCommandRow

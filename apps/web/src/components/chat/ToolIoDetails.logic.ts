@@ -1,6 +1,6 @@
 import type { WorkLogToolKind } from "~/workLog.types";
+import { FILE_PATH_KEYS } from "~/lib/toolCallDetails";
 
-const FILE_PATH_KEYS = ["file_path", "filePath", "path", "notebook_path"] as const;
 // `cat -n` style prefixes Claude's Read output carries on every line.
 const NUMBERED_LINE_PATTERN = /^\s*\d+\t/;
 
@@ -8,6 +8,7 @@ const NUMBERED_LINE_PATTERN = /^\s*\d+\t/;
 // query searched) is not repeated in its details.
 const ROW_TITLE_KEYS: Partial<Record<WorkLogToolKind, ReadonlySet<string>>> = {
   read: new Set(FILE_PATH_KEYS),
+  skill: new Set(["skill", ...FILE_PATH_KEYS]),
   fetch: new Set(["url"]),
   web_search: new Set(["query"]),
 };
@@ -22,14 +23,6 @@ export function describeToolInput(
     ([key, value]) => value !== undefined && value !== null && value !== "" && !titleKeys?.has(key),
   );
   return shown.length > 0 ? JSON.stringify(Object.fromEntries(shown), null, 2) : null;
-}
-
-export function toolInputFilePath(input: Readonly<Record<string, unknown>> | undefined) {
-  for (const key of FILE_PATH_KEYS) {
-    const value = input?.[key];
-    if (typeof value === "string" && value.trim()) return value.trim();
-  }
-  return null;
 }
 
 function languageForPath(path: string): string {
@@ -74,7 +67,7 @@ export function describeToolOutput(input: {
     const trimmed = input.text.trim();
     return { format: "error", text: WRAPPED_ERROR_PATTERN.exec(trimmed)?.[2]?.trim() ?? trimmed };
   }
-  if (input.toolKind === "read" && input.filePath) {
+  if ((input.toolKind === "read" || input.toolKind === "skill") && input.filePath) {
     return {
       format: "code",
       language: languageForPath(input.filePath),

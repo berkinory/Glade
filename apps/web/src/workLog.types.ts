@@ -51,6 +51,7 @@ export type WorkLogToolKind =
   | "browser"
   | "computer"
   | "agent"
+  | "skill"
   | "image_view"
   | "image_generation"
   | "mcp"
