@@ -4,7 +4,6 @@ import type { ReactNode } from "react";
 import type { ServerLocalServerProcess } from "@glade/contracts/server/server";
 import type { ThreadId } from "@glade/contracts/core/baseSchemas";
 import { useStore } from "~/store";
-import type { WorkLogBackgroundTask } from "~/workLog.types";
 import { stopWorkflowTask } from "../chatTaskActions";
 import { useThreadBackgroundTasks } from "./useThreadBackgroundTasks";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -50,30 +49,15 @@ function LocalServersRefreshButton({
     </MenuItem>
   );
 }
-function agentNote(
-  server: ServerLocalServerProcess,
-  chatTask: WorkLogBackgroundTask | undefined,
-): string | null {
-  if (!server.startedByAgent) return null;
-  if (!chatTask) return "Started by an agent";
-  return chatTask.description
-    ? `Started by this chat · ${chatTask.description}`
-    : "Started by this chat";
-}
-
 function LocalServerRow({
   server,
-  chatTask,
   stopping,
   onStop,
 }: {
   server: ServerLocalServerProcess;
-  // The running background task of the open chat that serves this port, if any.
-  chatTask: WorkLogBackgroundTask | undefined;
   stopping: boolean;
   onStop: (server: ServerLocalServerProcess) => void;
 }) {
-  const note = agentNote(server, chatTask);
   const stoppable = server.isStoppable && !stopping;
   const primaryLabel = localServerPrimaryLabel(server);
   const stopHint = server.isStoppable
@@ -89,14 +73,6 @@ function LocalServerRow({
 
       <span className="min-w-0">
         <LocalServerIdentity server={server} tone="menu" />
-        {note ? (
-          <span
-            className="mt-0.5 block truncate text-ui-xs leading-tight text-muted-foreground/65"
-            title={note}
-          >
-            {note}
-          </span>
-        ) : null}
       </span>
 
       <MenuItem
@@ -228,7 +204,6 @@ export function EnvironmentLocalServersSection({
               <LocalServerRow
                 key={server.id}
                 server={server}
-                chatTask={chatTaskOf(server)}
                 stopping={activeStoppingPid === server.pid && stopLocalServerMutation.isPending}
                 onStop={(selectedServer) => {
                   // Stopping through the task tells the agent its server is gone.
