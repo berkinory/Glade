@@ -209,7 +209,6 @@ export interface ChatTurnSubmissionInput {
 }
 
 export type ChatTurnSubmissionControllerInput = {
-  props: Pick<ChatTurnSubmissionInput, "threadId">;
   provider: Pick<
     ChatTurnSubmissionInput,
     | "hasLiveTurn"
@@ -311,11 +310,7 @@ export type ChatTurnSubmissionControllerInput = {
   >;
   transcript: Pick<
     ChatTurnSubmissionInput,
-    | "threadWorkspaceCwd"
-    | "activeRootBranch"
-    | "gitBranchSourceCwd"
-    | "setTailAnchor"
-    | "setOptimisticUserMessages"
+    "activeRootBranch" | "gitBranchSourceCwd" | "setTailAnchor" | "setOptimisticUserMessages"
   >;
   discovery: Pick<
     ChatTurnSubmissionInput,

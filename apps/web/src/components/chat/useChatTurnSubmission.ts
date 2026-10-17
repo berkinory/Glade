@@ -1,7 +1,5 @@
 import { createEmptyThreadDraft } from "../../composerDraftDomain";
 import { usePendingTurnDispatchStore } from "../../pendingTurnDispatch";
-import { resolveUnsavedWorkspaceEditors } from "~/components/UnsavedEditorsDialog";
-import { hasUnsavedWorkspaceEditors } from "~/lib/workspaceEditorSession";
 import { useCallback } from "react";
 import {
   filterPromptProviderMentionReferences,
@@ -68,7 +66,6 @@ const BLOCKED_SEND_TOAST_COPY: Record<
 };
 
 export function useChatTurnSubmission({
-  props,
   provider,
   turn,
   session,
@@ -78,7 +75,6 @@ export function useChatTurnSubmission({
   transcript,
   discovery,
 }: ChatTurnSubmissionControllerInput) {
-  const { threadId } = props;
   const {
     hasLiveTurn,
     isConnecting,
@@ -143,13 +139,8 @@ export function useChatTurnSubmission({
     resolvedThreadWorktreePath,
     isContainerLandingProject,
   } = workspace;
-  const {
-    threadWorkspaceCwd,
-    activeRootBranch,
-    gitBranchSourceCwd,
-    setTailAnchor,
-    setOptimisticUserMessages,
-  } = transcript;
+  const { activeRootBranch, gitBranchSourceCwd, setTailAnchor, setOptimisticUserMessages } =
+    transcript;
   const {
     refreshProviderStatuses,
     hasNativeUserMessages,
@@ -219,26 +210,6 @@ export function useChatTurnSubmission({
       // over the failure handling.
       let restoreSentPromptOnExit: (() => void) | null = null;
       try {
-        sendPreflightInFlightRef.current = true;
-        const editorCwd = threadWorkspaceCwd ?? chatWorkspaceRoot;
-        // Queue drains retry on their own, so only a person pressing Send is asked about edits.
-        const editorSaved = queuedTurn
-          ? !hasUnsavedWorkspaceEditors(queryClient, editorCwd)
-          : await resolveUnsavedWorkspaceEditors(
-              queryClient,
-              { cwd: editorCwd ?? null },
-              "sending",
-            );
-        sendPreflightInFlightRef.current = false;
-        if (activeThreadIdRef.current !== activeThread.id) return false;
-        if (!editorSaved) {
-          if (!queuedTurn) return false;
-          setThreadError(
-            threadId,
-            "Save your editor changes with Cmd/Ctrl+S before sending. Your prompt and file draft are preserved.",
-          );
-          return false;
-        }
         if (!queuedTurn) {
           sendPreflightInFlightRef.current = true;
           await waitForPendingComposerImages();
@@ -770,7 +741,6 @@ export function useChatTurnSubmission({
       }
     },
     [
-      threadId,
       hasLiveTurn,
       lateComposerSendHandlersRef,
       activeThread,
@@ -782,7 +752,6 @@ export function useChatTurnSubmission({
       hasQueueableLiveTurn,
       scheduleComposerFocus,
       activeProject,
-      threadWorkspaceCwd,
       refreshProviderStatuses,
       isServerThread,
       hasNativeUserMessages,

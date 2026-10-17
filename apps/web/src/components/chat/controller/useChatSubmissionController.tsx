@@ -140,7 +140,6 @@ export function useChatSubmissionController({
   });
 
   const { onSend } = useChatTurnSubmission({
-    props,
     provider,
     turn: { lateComposerSendHandlersRef, setQueuedSteerGate },
     session,

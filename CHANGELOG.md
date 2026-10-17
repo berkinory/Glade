@@ -4,7 +4,7 @@
 
 ### Improved
 
-- Unsaved file edits no longer block sending a message, renaming files or Git actions: Glade asks whether to save or discard them and carries on.
+- Unsaved file edits no longer block sending a message. Renaming files and Git actions ask whether to save or discard them instead of refusing.
 - New files and folders from the explorer go into the workspace root when no folder is selected.
 
 ### Fixed
