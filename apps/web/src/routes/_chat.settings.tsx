@@ -12,9 +12,7 @@ import { ArchivedSettingsPanel } from "~/components/settings/ConversationStorage
 import { NotificationsSettingsPanel } from "~/components/settings/DesktopSettingsPanels";
 import { ProvidersSettingsPanel } from "~/components/settings/ProvidersSettingsPanel";
 import {
-  DEFAULT_CHAT_WIDTH,
   DEFAULT_EDITOR_CARET_STYLE,
-  DEFAULT_UI_DENSITY,
   MAX_CHAT_FONT_SIZE_PX,
   MAX_TERMINAL_FONT_SIZE_PX,
   MIN_CHAT_FONT_SIZE_PX,
@@ -26,7 +24,6 @@ import {
   useAppSettings,
   type EditorCaretStyle,
   type FollowUpBehavior,
-  type UiDensity,
 } from "../appSettings";
 import {
   CHAT_SURFACE_HEADER_HEIGHT_CLASS,
@@ -78,8 +75,6 @@ import { isElectron } from "../env";
 import { useDesktopCustomTitleBarState } from "../hooks/useDesktopCustomTitleBar";
 import { useDesktopTopBarTrafficLightGutterClassName } from "../hooks/useDesktopTopBarGutter";
 import { useTheme } from "../hooks/useTheme";
-import { isUiDensity } from "../lib/appDensity";
-import { isChatWidthMode, type ChatWidthMode } from "../lib/chatWidth";
 import {
   cn,
   getNavigatorPlatform,
@@ -102,40 +97,6 @@ const EDITOR_CARET_STYLE_OPTIONS = [
   { value: "line", label: "Line" },
   { value: "block", label: "Block" },
 ] as const satisfies readonly SettingsSegmentedOption<EditorCaretStyle>[];
-
-const UI_DENSITY_OPTIONS = [
-  {
-    value: "comfortable",
-    label: "Default",
-    description: "Balanced spacing for everyday use.",
-  },
-  {
-    value: "compact",
-    label: "Compact",
-    description: "Tighter spacing in the sidebar, composer, and settings rows.",
-  },
-] as const satisfies ReadonlyArray<{
-  value: UiDensity;
-  label: string;
-  description: string;
-}>;
-
-const CHAT_WIDTH_OPTIONS = [
-  {
-    value: "standard",
-    label: "Default",
-    description: "Keeps the chat column at the default reading width (46rem).",
-  },
-  {
-    value: "wide",
-    label: "Wide",
-    description: "Gives tables and wide content more room (72rem).",
-  },
-] as const satisfies ReadonlyArray<{
-  value: ChatWidthMode;
-  label: string;
-  description: string;
-}>;
 
 const FOLLOW_UP_BEHAVIOR_OPTIONS = [
   { value: "queue", label: "Queue" },
@@ -340,69 +301,6 @@ function SettingsRouteView() {
         </SettingsSection>
       ) : null}
 
-      <SettingsSection title="Layout">
-        <SettingsRow
-          id="setting-ui-density"
-          title="UI density"
-          description="Control spacing in the sidebar, composer, chat gutters, and settings rows without changing font size."
-          resetAction={
-            settings.uiDensity !== defaults.uiDensity ? (
-              <SettingResetButton
-                label="UI density"
-                onClick={() =>
-                  updateSettings({
-                    uiDensity: DEFAULT_UI_DENSITY,
-                  })
-                }
-              />
-            ) : null
-          }
-          control={
-            <SettingsSegmentedControl
-              value={settings.uiDensity}
-              onValueChange={(value) => {
-                if (!isUiDensity(value)) {
-                  return;
-                }
-                updateSettings({ uiDensity: value });
-              }}
-              ariaLabel="UI density"
-              options={UI_DENSITY_OPTIONS}
-            />
-          }
-        />
-
-        <SettingsRow
-          id="setting-chat-width"
-          title="Chat width"
-          description="Control how wide the chat column grows. Wide gives tables and wide content more room."
-          resetAction={
-            settings.chatWidth !== defaults.chatWidth ? (
-              <SettingResetButton
-                label="chat width"
-                onClick={() =>
-                  updateSettings({
-                    chatWidth: DEFAULT_CHAT_WIDTH,
-                  })
-                }
-              />
-            ) : null
-          }
-          control={
-            <SettingsSegmentedControl
-              value={settings.chatWidth}
-              onValueChange={(value) => {
-                if (!isChatWidthMode(value)) {
-                  return;
-                }
-                updateSettings({ chatWidth: value });
-              }}
-              ariaLabel="Chat width"
-              options={CHAT_WIDTH_OPTIONS}
-            />
-          }
-        />
-      </SettingsSection>
       <SettingsSection title="Fonts">
         <ThemeFontSettings />
         <SettingsRow

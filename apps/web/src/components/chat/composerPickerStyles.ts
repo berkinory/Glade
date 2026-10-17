@@ -28,7 +28,7 @@ export const COMPOSER_PICKER_OPTION_RADIUS_CLASS_NAME = "rounded-[0.625rem]";
 
 export const COMPOSER_MUTED_ACCENT_TEXT_CLASS_NAME = MUTED_LABEL_TEXT_CLASS_NAME;
 
-const COMPOSER_MAX_WIDTH_CLASS_NAME = "max-w-[var(--app-chat-max-width,46rem)]";
+const COMPOSER_MAX_WIDTH_CLASS_NAME = "max-w-[46rem]";
 
 export const CHAT_BACKGROUND_CLASS_NAME = "bg-[var(--color-background-surface)]";
 
@@ -44,8 +44,7 @@ export const CHAT_ROUTE_INSET_SHELL_CLASS_NAME =
 export const CHAT_MAIN_VIEWPORT_SHELL_CLASS_NAME =
   "flex h-dvh min-h-0 min-w-0 flex-1 overflow-hidden";
 
-export const CHAT_COLUMN_GUTTER_CLASS_NAME =
-  "px-[var(--app-density-chat-gutter-x,0.75rem)] sm:px-[var(--app-density-chat-gutter-x-lg,1.25rem)]";
+export const CHAT_COLUMN_GUTTER_CLASS_NAME = "px-3 sm:px-5";
 
 export const CHAT_COLUMN_FRAME_CLASS_NAME = `mx-auto w-full min-w-0 ${COMPOSER_MAX_WIDTH_CLASS_NAME}`;
 
@@ -122,22 +121,17 @@ export const COMPOSER_EDITOR_TEXT_CLASS_NAME = "text-chat";
 export const COMPOSER_EDITOR_TYPOGRAPHY_CLASS_NAME = `font-system-ui ${COMPOSER_EDITOR_TEXT_CLASS_NAME} ${COMPOSER_EDITOR_LINE_HEIGHT_CLASS_NAME}`;
 
 export const COMPOSER_PLACEHOLDER_TEXT_CLASS_NAME = "text-muted-foreground/40";
-export const COMPOSER_EDITOR_MIN_HEIGHT_CLASS_NAME =
-  "min-h-[var(--app-density-composer-editor-min-height,2lh)]";
+export const COMPOSER_EDITOR_MIN_HEIGHT_CLASS_NAME = "min-h-[2lh]";
 
 export const COMPOSER_EDITOR_CONTENT_RESET_CLASS_NAME = "[&_p]:m-0";
 
-export const COMPOSER_EDITOR_PADDING_CLASS_NAME = [
-  "relative",
-  "pl-[var(--app-density-composer-editor-padding-x,0.75rem)]",
-  "pr-[var(--app-density-composer-editor-padding-x-end,0.875rem)]",
-  "pt-[var(--app-density-composer-editor-padding-top,0.75rem)]",
-  "pb-[var(--app-density-composer-editor-padding-bottom,0.5rem)]",
-].join(" ");
+export const COMPOSER_EDITOR_PADDING_CLASS_NAME = ["relative", "pl-4", "pr-4", "pt-4", "pb-3"].join(
+  " ",
+);
 
 export const COMPOSER_FOOTER_ROW_CLASS_NAME = [
   "flex items-center justify-between",
-  "pl-[var(--app-density-composer-footer-padding,0.375rem)]",
-  "pr-[var(--app-density-composer-footer-padding-end,0.5rem)]",
-  "pb-[var(--app-density-composer-footer-padding,0.375rem)]",
+  "pl-2",
+  "pr-2",
+  "pb-2",
 ].join(" ");

@@ -32,16 +32,6 @@ import {
   serverQueryKeys,
   serverSettingsQueryOptions,
 } from "./lib/serverReactQuery";
-import {
-  DEFAULT_UI_DENSITY,
-  UI_DENSITY_MODES,
-  normalizeUiDensity as normalizeUiDensityValue,
-} from "./lib/appDensity";
-import {
-  DEFAULT_CHAT_WIDTH,
-  CHAT_WIDTH_MODES,
-  normalizeChatWidthMode as normalizeChatWidthModeValue,
-} from "./lib/chatWidth";
 
 const APP_SETTINGS_STORAGE_KEY = "glade:app-settings:v1";
 const SERVER_SETTINGS_MIGRATION_STORAGE_KEY = "glade:server-settings-migrated:v1";
@@ -78,33 +68,6 @@ const DEFAULT_SIDEBAR_PROJECT_SORT_ORDER: SidebarProjectSortOrder = "manual";
 export const FollowUpBehavior = Schema.Literals(["queue", "steer"]);
 export type FollowUpBehavior = typeof FollowUpBehavior.Type;
 const DEFAULT_FOLLOW_UP_BEHAVIOR: FollowUpBehavior = "steer";
-export const UiDensity = Schema.Literals(UI_DENSITY_MODES);
-export type UiDensity = typeof UiDensity.Type;
-export { DEFAULT_UI_DENSITY };
-const ChatWidthMode = Schema.Literals(CHAT_WIDTH_MODES);
-type ChatWidthMode = typeof ChatWidthMode.Type;
-export { DEFAULT_CHAT_WIDTH };
-
-const PersistedUiDensity = Schema.String.pipe(
-  Schema.decodeTo(
-    UiDensity,
-    SchemaTransformation.transform({
-      decode: (value) => normalizeUiDensityValue(value),
-      encode: (value) => value,
-    }),
-  ),
-);
-
-const PersistedChatWidth = Schema.String.pipe(
-  Schema.decodeTo(
-    ChatWidthMode,
-    SchemaTransformation.transform({
-      decode: (value) => normalizeChatWidthModeValue(value),
-      encode: (value) => value,
-    }),
-  ),
-);
-
 function getDefaultNativeFontSmoothing(platform = globalThis.navigator?.platform ?? "") {
   return /mac|iphone|ipad|ipod/i.test(platform);
 }
@@ -159,8 +122,6 @@ const AppSettingsSchema = Schema.Struct({
   ).pipe(withDefaults(() => ({}))),
 
   onboardingCompletedAt: Schema.NullOr(Schema.String).pipe(withDefaults((): string | null => null)),
-  uiDensity: PersistedUiDensity.pipe(withDefaults(() => DEFAULT_UI_DENSITY)),
-  chatWidth: PersistedChatWidth.pipe(withDefaults(() => DEFAULT_CHAT_WIDTH)),
   chatFontSizePx: Schema.Number.pipe(withDefaults(() => DEFAULT_CHAT_FONT_SIZE_PX)),
   chatCodeFontFamily: Schema.String.check(Schema.isMaxLength(256)).pipe(withDefaults(() => "")),
   terminalFontSizePx: Schema.Number.pipe(withDefaults(() => DEFAULT_TERMINAL_FONT_SIZE_PX)),
@@ -325,8 +286,6 @@ function normalizeAppSettings(settings: AppSettings): AppSettings {
   return {
     ...settings,
     providerBinaryPaths: normalizeProviderBinaryPaths(settings.providerBinaryPaths),
-    uiDensity: normalizeUiDensityValue(settings.uiDensity),
-    chatWidth: normalizeChatWidthModeValue(settings.chatWidth),
     chatFontSizePx: normalizeChatFontSizePx(settings.chatFontSizePx),
     terminalFontSizePx: normalizeTerminalFontSizePx(settings.terminalFontSizePx),
     terminalFontFamily: normalizeTerminalFontFamily(settings.terminalFontFamily),

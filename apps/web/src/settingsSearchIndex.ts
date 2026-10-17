@@ -142,22 +142,6 @@ const SETTINGS_SEARCH_ENTRIES: readonly SettingsSearchEntry[] = [
     keywords: "Use system UI font Use the operating system interface font throughout Glade.",
   },
   {
-    id: "appearance:ui-density",
-    section: "appearance",
-    title: "UI density",
-    target: "setting-ui-density",
-    keywords:
-      "Control spacing in the sidebar, composer, chat gutters, and settings rows without changing font size. default compact",
-  },
-  {
-    id: "appearance:chat-width",
-    section: "appearance",
-    title: "Chat width",
-    target: "setting-chat-width",
-    keywords:
-      "Control how wide the chat column grows so tables and wide content get more room. default wide",
-  },
-  {
     id: "appearance:base-font-size",
     section: "appearance",
     title: "App font size",

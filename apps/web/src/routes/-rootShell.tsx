@@ -14,9 +14,7 @@ import { AnchoredToastProvider, ToastProvider } from "../components/ui/toast";
 import { TooltipProvider } from "../components/ui/tooltip";
 import { useGitProgressToastPreview } from "../components/useGitProgressToastPreview";
 import { useFeatureFlags } from "../featureFlags";
-import { useAppDensity } from "../hooks/useAppDensity";
 import { useAppTypography } from "../hooks/useAppTypography";
-import { useChatWidth } from "../hooks/useChatWidth";
 import { useSyncDesktopTopBarTrafficLightGutterZoom } from "../hooks/useDesktopTopBarGutter";
 import { useNativeFontSmoothing } from "../hooks/useNativeFontSmoothing";
 import { useGitStatusPush } from "../hooks/useGitStatusPush";
@@ -42,8 +40,6 @@ import { EnvironmentRouters } from "./-rootEnvironmentRouters";
 import { ProviderStatusRefreshCoordinator } from "./-rootProviders";
 export function RootRouteView() {
   useAppTypography();
-  useAppDensity();
-  useChatWidth();
   useDesktopMenuShortcuts();
   usePreloadRouteChunks();
   useGitStatusPush();

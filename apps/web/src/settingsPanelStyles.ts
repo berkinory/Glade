@@ -25,8 +25,7 @@ export const SETTINGS_CARD_CLASS_NAME = [
   SETTINGS_RADIUS_CLASS_NAME,
 ].join(" ");
 
-export const SETTINGS_CARD_ROW_CLASS_NAME =
-  "px-3 py-[var(--app-density-settings-row-padding-y,0.625rem)]";
+export const SETTINGS_CARD_ROW_CLASS_NAME = "px-3 py-2.5";
 
 export const SETTINGS_CARD_ROW_TITLE_CLASS_NAME = "text-ui font-medium text-foreground";
 

@@ -498,7 +498,7 @@ export function MessageTrail({
           width: RAIL_WIDTH_PX,
           // The rail is only shown when this box can hold it, so it shrinks to
           // the real gutter left of the configured chat column.
-          maxWidth: `max(0px, calc((100% - var(--app-chat-max-width, 46rem) - var(--message-trail-content-inset)) / 2 - ${RAIL_CONTENT_CLEARANCE_PX}px))`,
+          maxWidth: `max(0px, calc((100% - 46rem - var(--message-trail-content-inset)) / 2 - ${RAIL_CONTENT_CLEARANCE_PX}px))`,
         } as CSSProperties
       }
     >
