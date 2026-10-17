@@ -68,7 +68,10 @@ import AgentMark from "./AgentMark.astro";
     li + li {
       border: 0;
       padding: 0;
-      justify-content: flex-start;
+      justify-content: center;
+    }
+    li:last-child:nth-child(odd) {
+      grid-column: 1 / -1;
     }
   }
 </style>
