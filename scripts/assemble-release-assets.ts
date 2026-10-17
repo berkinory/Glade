@@ -81,7 +81,7 @@ const platforms = [
     platform: "mac",
     arch: "arm64",
     files: [
-      `Glade-${version}-macOS-arm64.dmg`,
+      "Glade-macOS-arm64.dmg",
       `glade-${version}-macos-arm64.zip`,
       "latest-mac-arm64.yml",
       remoteServerArchive("darwin-arm64"),
@@ -95,7 +95,7 @@ const platforms = [
     platform: "mac",
     arch: "x64",
     files: [
-      `Glade-${version}-macOS-x64.dmg`,
+      "Glade-macOS-x64.dmg",
       `glade-${version}-macos-x64.zip`,
       "latest-mac-x64.yml",
       remoteServerArchive("darwin-x64"),
@@ -108,22 +108,18 @@ const platforms = [
     id: "linux-x64",
     platform: "linux",
     arch: "x64",
-    files: [
-      `Glade-${version}-Linux-x86_64.AppImage`,
-      "latest-linux.yml",
-      remoteServerArchive("linux-x64"),
-    ],
+    files: ["Glade-Linux-x86_64.AppImage", "latest-linux.yml", remoteServerArchive("linux-x64")],
     manifest: "latest-linux.yml",
-    download: `Glade-${version}-Linux-x86_64.AppImage`,
+    download: "Glade-Linux-x86_64.AppImage",
     signing: "not-applicable",
   },
   {
     id: "win-x64",
     platform: "win",
     arch: "x64",
-    files: [`Glade-${version}-Windows-x64.exe`, "latest.yml"],
+    files: ["Glade-Windows-x64.exe", "latest.yml"],
     manifest: "latest.yml",
-    download: `Glade-${version}-Windows-x64.exe`,
+    download: "Glade-Windows-x64.exe",
     signing: publish ? "unsigned-explicit-release" : "unsigned-build-only",
   },
 ] as const;
@@ -153,10 +149,10 @@ function releaseNotes(checksums: readonly string[]): string {
   const notes = lines.slice(start, end).join("\n").trim();
   if (!notes) throw new Error("Release notes are empty.");
   const downloads = [
-    ["macOS (Apple Silicon, arm64)", `Glade-${version}-macOS-arm64.dmg`],
-    ["macOS (Intel)", `Glade-${version}-macOS-x64.dmg`],
-    ["Linux (x64)", `Glade-${version}-Linux-x86_64.AppImage`],
-    ["Windows (x64)", `Glade-${version}-Windows-x64.exe`],
+    ["macOS (Apple Silicon, arm64)", "Glade-macOS-arm64.dmg"],
+    ["macOS (Intel)", "Glade-macOS-x64.dmg"],
+    ["Linux (x64)", "Glade-Linux-x86_64.AppImage"],
+    ["Windows (x64)", "Glade-Windows-x64.exe"],
   ] as const;
   const links = downloads.map(
     ([label, file]) =>

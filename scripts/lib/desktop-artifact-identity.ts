@@ -23,7 +23,9 @@ export function createDesktopArtifactIdentity(input: {
     buildConfig: {
       appId: identity.bundleId,
       productName: identity.displayName,
-      artifactName: `${identity.displayName.replaceAll(" ", "-")}-\${version}-${platformName}-\${arch}.\${ext}`,
+      // Installers carry no version: the release tag already holds it, and
+      // `releases/latest/download/<name>` then always serves the newest one.
+      artifactName: `${identity.displayName.replaceAll(" ", "-")}-${platformName}-\${arch}.\${ext}`,
       ...(input.flavor !== "production"
         ? { protocols: [{ name: identity.displayName, schemes: [identity.scheme] }] }
         : {}),

@@ -137,7 +137,7 @@ export function createDesktopPlatformBuildConfig(
           }
         : {}),
       dmg: {
-        artifactName: `Glade-\${version}-macOS-\${arch}.\${ext}`,
+        artifactName: `Glade-macOS-\${arch}.\${ext}`,
         background: "apps/desktop/resources/dmgly/assets/dmg-background.png",
         window: { width: 642, height: 406 },
         iconSize: 128,
